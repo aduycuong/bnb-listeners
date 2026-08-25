@@ -1,0 +1,43 @@
+---
+description: Drizzle schema editing rules — AI modifies schema only, never migration files
+globs: ["db/schema.ts", "drizzle.config.ts", ".ai/database-schema.md"]
+alwaysApply: true
+---
+# Drizzle Schema Workflow
+
+## When This Rule Applies
+
+Apply this workflow **whenever the user asks to create or modify database tables** (or otherwise change the database schema: tables/columns/indexes/relations/constraints).
+
+## The Only Rule That Matters
+
+**AI must only modify schema files. Never generate, edit, or touch migration files.**
+
+Migration files are owned by Drizzle, not by AI or humans.
+
+---
+
+## What AI Can Touch
+
+✅ `db/schema.ts` — add/modify tables, columns, indexes, foreign keys, delete cascades  
+✅ `drizzle.config.ts` — config only
+✅ `.ai/database-schema.md` — keep documentation in sync with schema changes  
+
+## What AI Must Never Touch
+
+❌ `drizzle/meta/*.json` — Drizzle internal snapshots, always malforms if edited  
+❌ `drizzle/*.sql` — generated migration SQL, never hand-edit  
+❌ Running `drizzle-kit generate` or `drizzle-kit migrate` — user runs these manually  
+
+---
+
+## After Every Schema Change, Tell the User
+
+When editing any schema file, also update `.ai/database-schema.md` so it reflects the latest schema.
+Always end your response with:
+
+```
+Run:
+  npm run db:generate
+  npm run db:migrate
+```

@@ -1,0 +1,36 @@
+---
+alwaysApply: false
+---
+# Frontend Stack
+
+## Core
+
+- **Next.js 16** (App Router) — Server/Client Components, file-based routing, SSR/SSG, API Routes, React 19, Turbopack.
+- **TypeScript** — Type safety.
+- **Tailwind CSS** — Utility-first styling.
+
+## UI & Components
+
+- **shadcn/ui** — Primary component library, based on Base UI.
+- **React Hook Form** — Form state management & validation.
+- **Zod** — Schema validation (forms, API, env).
+
+### Prefer shadcn/ui over custom components
+
+- **Before building a custom UI part:** check if shadcn/ui has a suitable component (Button, Input, Card, Dialog, Select, Tabs, Table, Form, etc.).
+- **Add via CLI when needed:** `npx shadcn@latest add <component>`.
+- **Only write custom components** when:
+  - shadcn/ui does not provide an equivalent, or
+  - The design/behavior is clearly outside what shadcn can cover with minor composition or styling.
+- **Extend shadcn, don’t replace:** Prefer composing or styling shadcn primitives over reimplementing them.
+
+## State
+
+- **TanStack Query (React Query)** — Server state, caching, mutations.
+- **Zustand** — Client-only state when needed.
+
+## Workflow
+
+1. **New UI need** → Search shadcn docs: https://ui.shadcn.com/docs/components
+2. **Match found** → Add with `npx shadcn@latest add <component>` and use or compose it.
+3. **No match / special case** → Implement a custom component; keep Tailwind and existing patterns (typography, spacing, theming) consistent with the app.

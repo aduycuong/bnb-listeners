@@ -1,0 +1,32 @@
+---
+name: common-helpers
+description: Put very common reusable helpers and shared primitive types in lib/common.
+---
+
+# Common Helpers
+
+## Use `lib/common` For Cross-Cutting Primitives
+
+- Put very common helpers and shared primitive types in `lib/common`.
+- Use this for utilities that are broadly reusable across unrelated domains, components, services, and app routes.
+- Examples include:
+  - Random ID creation
+  - JSON-safe primitive/value types
+  - Date/time primitives that are not tied to a feature module
+  - Small normalization or parsing helpers used by multiple modules
+
+## Keep Feature Helpers Local
+
+- Keep feature-specific helpers inside that feature's `lib/{feature}/utils/`, component folder, or service folder.
+- Do not move a helper to `lib/common` just because two nearby files use it. Move it there when it is genuinely generic and likely to be reused by unrelated parts of the app.
+
+## File Shape
+
+- Use one focused helper per kebab-case file.
+- Avoid barrel files. Import concrete module paths such as `@/lib/common/create-random-id` or `@/lib/common/types`.
+- Keep common helpers framework-neutral unless the helper is explicitly about a shared framework concern.
+
+## Before Adding A New Helper
+
+- Search `lib/common` first and reuse an existing helper when it fits.
+- If creating duplicate generic logic in a feature module, prefer extracting a common helper instead.

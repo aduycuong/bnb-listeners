@@ -1,0 +1,44 @@
+---
+description: Zod schema conventions, including avoiding deprecated chained validators.
+alwaysApply: false
+---
+# Zod Schema Rules
+
+These rules follow the Zod 4 changelog: https://zod.dev/v4/changelog
+
+## Avoid Deprecated Chained Validators
+
+- Use Zod v4 top-level string format validators instead of deprecated chained string validators.
+- Prefer:
+  - `z.url()` instead of `z.string().url()`
+  - `z.email()` instead of `z.string().email()`
+  - `z.uuid()` instead of `z.string().uuid()`
+  - `z.iso.datetime()` instead of `z.string().datetime()`
+- Prefer the direct top-level validator, for example `z.url({ error: "URL must be valid." })`.
+
+## Prefer Zod 4 Number Helpers
+
+- Use `z.int()` instead of `z.number().int()` for integer fields.
+
+## Avoid Deprecated Object Mode Helpers
+
+- Use Zod v4 object constructors or object mode methods instead of deprecated object helpers.
+- Prefer:
+  - `z.looseObject({ ... })` instead of `z.object({ ... }).passthrough()`
+  - `z.strictObject({ ... })` instead of `z.object({ ... }).strict()`
+  - default `z.object({ ... })` behavior instead of `z.object({ ... }).strip()`
+
+## Error Customization
+
+- Use the unified Zod 4 `{ error: "..." }` parameter instead of deprecated message-style parameters.
+- Example: `z.string().min(1, { error: "Required." })`.
+
+## ZodError Reporting
+
+- Use `error.issues` instead of deprecated `error.flatten()` or `error.format()`.
+- Example: `JSON.stringify(parsed.error.issues)`.
+
+## New Schemas
+
+- Do not add new usage of deprecated Zod APIs.
+- When touching an existing schema, modernize deprecated Zod usage in the edited area.

@@ -1,0 +1,178 @@
+---
+name: lib-services
+description: Service structure rules for lib modules — services folder, actions exposure, schema/types organization, and utils helpers.
+---
+
+# Lib Services Structure Rules
+
+## Directory Structure
+
+For each `lib/{name}/` module that provides services:
+
+```
+lib/{name}/
+├── schema.ts         # Shared Zod schemas (used by multiple services/actions)
+├── types.ts          # Shared TypeScript types (Params, Result, domain types)
+├── actions.ts        # Server actions exposed via createServerAction
+├── utils/            # Utility helper functions (optional, one per file)
+└── services/
+    ├── {name}.ts     # One file per service (kebab-case)
+    └── ...
+```
+
+## Services Folder
+
+- **Each service function should be in a single file** under `services/` folder
+- File naming: `{descriptive-name}.ts` (kebab-case)
+- Each service file exports **one main service function** (and any private helpers if needed)
+- Services are pure async functions that accept params and return results
+- **No barrel files** — import the concrete module path (`./services/create-content`, `@/lib/content/actions`, `@/lib/content/schema`, etc.); do not add `services/index.ts` or `lib/{name}/index.ts` to re-export the folder
+
+### Service Function Signature
+
+```ts
+export async function serviceName(
+  params: ServiceParams
+): Promise<ServiceResult> {
+  // ... service logic
+}
+```
+
+## Exposure Decision
+
+- When creating a new service, first determine whether it should be exposed to callers outside the service layer.
+- If the user did not specify exposure and intent is not obvious, **ask whether the service should be exposed as a server action, an API route, both, or kept internal** before creating exposure files.
+- Keep internal or composition-only services in `services/` only; import them from other services, route handlers, jobs, or actions as needed.
+
+## Actions Exposure
+
+- **Only services that should be callable from the client** (or that need the server-action boundary) get a corresponding entry in `actions.ts` — not every service needs an action. Internal or composition-only services stay in `services/` and are imported by other services, route handlers, or jobs.
+- **Server actions** that you do expose must use `@lib/exposers/create-server-action` in `actions.ts`
+- Actions wrap their underlying service function with role-based authorization
+- `createServerAction` validates session/roles, then calls the service with the same arguments the client passed (it does not inject fields into params)
+
+## API Exposure
+
+- **Only services that should be callable over HTTP** get an API route handler — do not create API routes for every service by default.
+- **API routes** that you do expose must use `@/lib/exposers/create-api-handler` in the route file.
+- `createApiHandler` validates route params, query params, and request body with Zod schemas, authorizes the API key session with `allowedRoles`, then calls the service with the merged validated params.
+- Define API-only route params, query params, and request body schemas in the route file. Do not place route-specific API schemas in the module's shared `schema.ts` unless they are reused by multiple services/actions/routes.
+- API route handlers should be thin adapters that configure local schemas/roles, call the service, and return the service result. Keep framework-specific `Request`/`Response` handling out of service files.
+
+### Actions Pattern
+
+```ts
+"use server";
+
+import { createServerAction } from "@/lib/exposers/create-server-action";
+import { serviceFunction } from "./services/service-file";
+import type { ServiceParams, ServiceResult } from "./types";
+
+export const serviceAction = createServerAction<
+  (params: ServiceParams) => Promise<ServiceResult>
+>(serviceFunction, { allowedRoles: ["user", "admin"] });
+```
+
+### API Route Pattern
+
+```ts
+import { createApiHandler } from "@/lib/exposers/create-api-handler";
+import { serviceFunction } from "@/lib/content/services/service-file";
+import { z } from "zod";
+
+const serviceRouteParamsSchema = z.object({
+  id: z.string(),
+});
+
+const serviceQueryParamsSchema = z.object({
+  includeDetails: z.coerce.boolean().optional(),
+});
+
+const serviceRequestBodySchema = z.object({
+  name: z.string().min(1),
+});
+
+export const POST = createApiHandler(
+  {
+    parameters: serviceRouteParamsSchema,
+    queryParams: serviceQueryParamsSchema,
+    requestBody: serviceRequestBodySchema,
+  },
+  serviceFunction,
+  { allowedRoles: ["user", "admin"] },
+);
+```
+
+## Schema and Types
+
+### `schema.ts`
+- Contains **shared** Zod schemas used by multiple services or actions
+- Includes request/response schemas, query params, route params only when they are shared across multiple services/actions/routes
+- Do not put API-only route params, query params, or request body schemas here if they are only used by one route file
+- Export types using `z.infer<typeof schema>`
+
+### `types.ts`
+- Contains **shared** TypeScript types for:
+  - Service function params (often `z.infer` / extensions of schema body types)
+  - Service function results
+  - Domain types (e.g., `ContentType`, `ContentStatus`)
+  - Data transfer objects (e.g., `ContentRow`, `ContentDetailRow`)
+
+### Type Pattern
+
+```ts
+// Params: shape the service actually needs (from schema, IDs, filters, etc.)
+export type ServiceParams = z.infer<typeof someRequestSchema>;
+
+// Results are plain objects
+export type ServiceResult = {
+  id: string;
+  message?: string;
+  // ... result data
+};
+```
+
+## Utils
+
+- **`utils/` folder** (optional) stores utility helper functions used across services
+- Each utility helper function should live in its own file: `{helper-name}.ts` (kebab-case)
+- **Utils may colocate** their types and schema in the same file (e.g. inline in `{helper-name}.ts`) — avoid polluting the module’s shared `schema.ts` and `types.ts` with util-only definitions
+- Keep utilities generic and reusable
+- If a helper is only used by one service, keep it in that service file
+
+## Example Structure
+
+```ts
+// lib/content/schema.ts
+export const createContentRequestSchema = z.object({ ... });
+
+// lib/content/types.ts
+export type CreateContentParams = CreateContentBody;
+export type CreateContentResult = { id: string; message?: string; };
+
+// lib/content/services/create-content.ts
+export async function createContent(
+  params: CreateContentParams
+): Promise<CreateContentResult> {
+  // ... implementation
+}
+
+// lib/content/actions.ts
+"use server";
+
+import { createServerAction } from "@/lib/exposers/create-server-action";
+import { createContent } from "./services/create-content";
+
+export const createContentAction = createServerAction<
+  (params: CreateContentParams) => Promise<CreateContentResult>
+>(createContent, { allowedRoles: ["user", "admin"] });
+```
+
+## Best Practices
+
+1. **One service per file** — Keep each service function in its own file for clarity
+2. **Services are pure** — Services should not depend on Next.js Request/Response objects
+3. **Type safety** — Use TypeScript types consistently; leverage Zod for runtime validation
+4. **Error handling** — Services throw shared errors from `@/lib/common/service-errors`; map them to `APIError` at the API/MCP boundary via `toAPIError`
+5. **Authentication** — Exposed actions use `createServerAction` / `allowedRoles` where appropriate; services are not required to call `getSession()` unless that service truly needs to assert identity itself
+6. **Reusability** — Services can call other services (e.g., `getContent` called by `createContent`); those helpers often have no action of their own

@@ -1,0 +1,44 @@
+---
+name: file-naming
+description: File naming conventions — all files must use kebab-case.
+---
+
+# File Naming Rules
+
+## All Files Must Use Kebab-Case
+
+- **All files** (components, utilities, pages, API routes, etc.) must be named in **kebab-case** (lowercase letters with hyphens).
+- This applies to:
+  - Component files (`.tsx`, `.ts`, `.jsx`, `.js`)
+  - Utility files
+  - Page files
+  - API route files
+  - Configuration files (when applicable)
+  - Any other source files
+
+## Examples
+
+✅ **Correct:**
+- `auth-provider.tsx`
+- `form-field-text.tsx`
+- `platform-delete-dialog.tsx`
+- `user-profile.tsx`
+- `api-handler.ts`
+
+❌ **Incorrect:**
+- `AuthProvider.tsx` (PascalCase)
+- `FormFieldText.tsx` (PascalCase)
+- `platformDeleteDialog.tsx` (camelCase)
+- `user_profile.tsx` (snake_case)
+- `APIHandler.ts` (PascalCase)
+
+## Component Files
+
+- Component files under `components/` must use kebab-case.
+- The component name itself (exported function/class) can still be PascalCase, but the file name must be kebab-case.
+- Example: File `auth-provider.tsx` exports `export function AuthProvider() { ... }`
+
+## When Creating New Files
+
+- Always use kebab-case when creating new files.
+- If you see a file that's not in kebab-case, rename it to kebab-case and update all imports.
