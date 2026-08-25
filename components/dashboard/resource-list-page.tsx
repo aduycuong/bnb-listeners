@@ -51,6 +51,7 @@ type ResourceListPageProps = {
   createLabel?: string;
   headerAction?: ReactNode;
   getItemHref?: (item: ResourceListRowItem) => string;
+  renderItemActions?: (item: ResourceListRowItem) => ReactNode;
   isLoading?: boolean;
   errorMessage?: string;
 };
@@ -64,9 +65,11 @@ function formatListDate(value: string) {
 function ResourceListRow({
   item,
   href,
+  actions,
 }: {
   item: ResourceListRowItem;
   href?: string;
+  actions?: ReactNode;
 }) {
   const content = (
     <>
@@ -128,18 +131,25 @@ function ResourceListRow({
     </>
   );
 
-  const className =
-    "flex items-center gap-3 rounded-xl border border-border/50 bg-card px-4 py-3.5 transition duration-200 hover:-translate-y-0.5 hover:border-border hover:bg-muted/20 hover:shadow-sm sm:gap-4 sm:px-5";
+  const inner = href ? (
+    <Link
+      href={href}
+      className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4"
+    >
+      {content}
+    </Link>
+  ) : (
+    <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+      {content}
+    </div>
+  );
 
-  if (href) {
-    return (
-      <Link href={href} className={className}>
-        {content}
-      </Link>
-    );
-  }
-
-  return <div className={className}>{content}</div>;
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-card px-4 py-3.5 transition duration-200 hover:-translate-y-0.5 hover:border-border hover:bg-muted/20 hover:shadow-sm sm:gap-4 sm:px-5">
+      {inner}
+      {actions ? <div className="shrink-0">{actions}</div> : null}
+    </div>
+  );
 }
 
 export function ResourceListPage({
@@ -152,6 +162,7 @@ export function ResourceListPage({
   createLabel = "Create",
   headerAction,
   getItemHref,
+  renderItemActions,
   isLoading = false,
   errorMessage,
 }: ResourceListPageProps) {
@@ -271,6 +282,7 @@ export function ResourceListPage({
                   <ResourceListRow
                     item={item}
                     href={getItemHref?.(item)}
+                    actions={renderItemActions?.(item)}
                   />
                 </li>
               ))}

@@ -23,6 +23,7 @@ import {
 import {
   DASHBOARD_NAV_ITEMS,
   getDashboardNavHref,
+  isDashboardNavActive,
 } from "@/lib/dashboard/nav-items";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 
@@ -56,7 +57,7 @@ export function DashboardSidebar({
             <SidebarMenu>
               {DASHBOARD_NAV_ITEMS.map(({ label, segment, icon: Icon }) => {
                 const href = getDashboardNavHref(workspaceIndex, segment);
-                const isActive = pathname === href;
+                const isActive = isDashboardNavActive(pathname, href, segment);
 
                 return (
                   <SidebarMenuItem key={segment || "overview"}>

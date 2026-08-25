@@ -1,4 +1,7 @@
 import { processDocument } from "@/lib/documents/services/process-document";
+import { runScheduledJob } from "@/lib/jobs/services/run-scheduled-job";
+
+import { RUN_SCHEDULED_JOB_QSTASH_JOB_NAME } from "@/lib/jobs/constants";
 
 export type QstashJobHandlerContext = {
   userId?: string;
@@ -16,14 +19,16 @@ export type QstashJobHandler = (
  * "my-job-name": async (payload, ctx) => { ... }
  */
 export const qstashJobHandlers: Record<string, QstashJobHandler> = {
-  "noop-job": async () => {
-    // Intentionally empty: placeholder job handler.
-  },
-
   /**
    * Triggered after a document is created.
    * Scores quality dimensions and detects near-duplicates.
    * Payload: { documentId: string }
    */
   "process-document": processDocument,
+
+  /**
+   * Fired by QStash on a workspace job's cron schedule.
+   * Payload: { jobId: string }
+   */
+  [RUN_SCHEDULED_JOB_QSTASH_JOB_NAME]: runScheduledJob,
 };
