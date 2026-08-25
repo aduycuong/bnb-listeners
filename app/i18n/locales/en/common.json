@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "title": "BNB Listeners",
+    "description": "Collect, score, classify, and serve research documents"
+  },
+  "authenticating": "Authenticating...",
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "vi": "Vietnamese"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "cancel": "Cancel"
+}

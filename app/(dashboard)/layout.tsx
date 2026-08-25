@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "next-i18next/client";
 
 import { useAuth } from "@/components/auth/auth-provider";
 
@@ -12,6 +13,7 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const { loading, user } = useAuth();
+  const { t } = useT("common");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -19,11 +21,10 @@ export default function DashboardLayout({
     }
   }, [loading, user, router]);
 
-  // Wait until the user is loaded before rendering the layout, so that children never have to handle a "loading user" state.
   if (!user) {
     return (
       <div className="flex h-screen items-center justify-center text-xs">
-        Authenticating...
+        {t("authenticating")}
       </div>
     );
   }

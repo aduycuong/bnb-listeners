@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { LogOutIcon } from "lucide-react";
+import { useT } from "next-i18next/client";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import {
@@ -18,6 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 
 export function LogoutButton() {
+  const { t: tDashboard } = useT("dashboard");
+  const { t: tCommon } = useT("common");
   const { signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -39,7 +42,7 @@ export function LogoutButton() {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Log out"
+            aria-label={tDashboard("logout.label")}
             className="size-8"
           />
         }
@@ -48,19 +51,21 @@ export function LogoutButton() {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Log out?</AlertDialogTitle>
+          <AlertDialogTitle>{tDashboard("logout.title")}</AlertDialogTitle>
           <AlertDialogDescription>
-            You will need to sign in again to access your workspace.
+            {tDashboard("logout.description")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={signingOut}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={signingOut}>
+            {tCommon("cancel")}
+          </AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             disabled={signingOut}
             onClick={handleSignOut}
           >
-            Log out
+            {tDashboard("logout.confirm")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

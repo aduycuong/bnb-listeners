@@ -58,8 +58,8 @@ export const JOB_MENU_CONFIGS = {
 } as const satisfies Record<JobMenuKey, JobMenuConfig>;
 
 export const JOB_MENU_NAV_ITEMS = Object.values(JOB_MENU_CONFIGS).map(
-  ({ label, segment, icon }) => ({
-    label,
+  ({ key, segment, icon }) => ({
+    labelKey: `nav.${key}` as const,
     segment,
     icon,
   }),

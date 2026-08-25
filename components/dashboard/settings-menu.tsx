@@ -1,6 +1,7 @@
 "use client";
 
 import { SettingsIcon, UserIcon } from "lucide-react";
+import { useT } from "next-i18next/client";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -15,13 +16,13 @@ import {
 
 const SETTINGS_ITEMS = [
   {
-    label: "Profile",
+    labelKey: "settingsMenu.profile",
     icon: UserIcon,
     href: (workspaceIndex: number) =>
       `/w/${workspaceIndex}/settings/profile`,
   },
   {
-    label: "Settings",
+    labelKey: "settingsMenu.workspace",
     icon: SettingsIcon,
     href: (workspaceIndex: number) =>
       `/w/${workspaceIndex}/settings/workspace`,
@@ -34,6 +35,7 @@ type SettingsMenuProps = {
 
 export function SettingsMenu({ workspaceIndex }: SettingsMenuProps) {
   const router = useRouter();
+  const { t } = useT("dashboard");
 
   return (
     <DropdownMenu>
@@ -42,7 +44,7 @@ export function SettingsMenu({ workspaceIndex }: SettingsMenuProps) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Settings"
+            aria-label={t("settingsMenu.label")}
             className="size-8"
           />
         }
@@ -51,15 +53,15 @@ export function SettingsMenu({ workspaceIndex }: SettingsMenuProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-40">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Settings</DropdownMenuLabel>
-          {SETTINGS_ITEMS.map(({ label, icon: Icon, href }) => (
+          <DropdownMenuLabel>{t("settingsMenu.label")}</DropdownMenuLabel>
+          {SETTINGS_ITEMS.map(({ labelKey, icon: Icon, href }) => (
             <DropdownMenuItem
-              key={label}
+              key={labelKey}
               className="whitespace-nowrap"
               onClick={() => router.push(href(workspaceIndex))}
             >
               <Icon className="size-4" />
-              {label}
+              {t(labelKey)}
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>

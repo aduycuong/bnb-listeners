@@ -1,0 +1,20 @@
+{
+  "nav": {
+    "overview": "Tổng quan",
+    "facebook-page": "Trang Facebook",
+    "website": "Website",
+    "workspace": "Không gian làm việc"
+  },
+  "settingsMenu": {
+    "label": "Cài đặt",
+    "profile": "Hồ sơ",
+    "workspace": "Cài đặt"
+  },
+  "logout": {
+    "label": "Đăng xuất",
+    "title": "Đăng xuất?",
+    "description": "Bạn sẽ cần đăng nhập lại để truy cập không gian làm việc.",
+    "confirm": "Đăng xuất"
+  },
+  "appName": "BNB Listeners"
+}

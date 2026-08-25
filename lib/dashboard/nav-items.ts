@@ -3,7 +3,7 @@ import { FileTextIcon } from "lucide-react";
 import { JOB_MENU_NAV_ITEMS } from "@/lib/jobs/job-menu-config";
 
 export const DASHBOARD_NAV_ITEMS = [
-  { label: "Overview", segment: "", icon: FileTextIcon },
+  { labelKey: "nav.overview", segment: "", icon: FileTextIcon },
   ...JOB_MENU_NAV_ITEMS,
 ];
 

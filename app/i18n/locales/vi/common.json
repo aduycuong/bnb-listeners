@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "title": "BNB Listeners",
+    "description": "Thu thập, chấm điểm, phân loại và phục vụ tài liệu nghiên cứu"
+  },
+  "authenticating": "Đang xác thực...",
+  "language": {
+    "label": "Ngôn ngữ",
+    "en": "Tiếng Anh",
+    "vi": "Tiếng Việt"
+  },
+  "theme": {
+    "label": "Giao diện",
+    "light": "Sáng",
+    "dark": "Tối",
+    "system": "Hệ thống"
+  },
+  "cancel": "Hủy"
+}

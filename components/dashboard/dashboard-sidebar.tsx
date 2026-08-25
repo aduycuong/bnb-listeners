@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useT } from "next-i18next/client";
 
+import { LanguageSelector } from "@/components/dashboard/language-selector";
 import { LogoutButton } from "@/components/dashboard/logout-button";
 import { SettingsMenu } from "@/components/dashboard/settings-menu";
 import { ThemeModeToggle } from "@/components/dashboard/theme-mode-toggle";
@@ -39,6 +41,7 @@ export function DashboardSidebar({
   workspaceIndex,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const { t } = useT("dashboard");
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
@@ -52,10 +55,11 @@ export function DashboardSidebar({
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("nav.workspace")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {DASHBOARD_NAV_ITEMS.map(({ label, segment, icon: Icon }) => {
+              {DASHBOARD_NAV_ITEMS.map(({ labelKey, segment, icon: Icon }) => {
+                const label = t(labelKey);
                 const href = getDashboardNavHref(workspaceIndex, segment);
                 const isActive = isDashboardNavActive(pathname, href, segment);
 
@@ -80,6 +84,7 @@ export function DashboardSidebar({
       <SidebarFooter className="border-t border-sidebar-border p-2">
         <div className="flex items-center justify-center gap-1">
           <SettingsMenu workspaceIndex={workspaceIndex} />
+          <LanguageSelector />
           <ThemeModeToggle />
           <LogoutButton />
         </div>

@@ -6,6 +6,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { useT } from "next-i18next/client";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 
 type DashboardShellProps = {
@@ -21,6 +22,8 @@ export function DashboardShell({
   workspaces,
   workspaceIndex,
 }: DashboardShellProps) {
+  const { t } = useT("dashboard");
+
   return (
     <SidebarProvider defaultOpen>
       <DashboardSidebar
@@ -32,7 +35,7 @@ export function DashboardShell({
         <div className="flex h-svh flex-col overflow-hidden">
           <div className="flex items-center gap-2 border-b border-border px-4 py-2 md:hidden">
             <SidebarTrigger />
-            <span className="text-sm font-medium">BNB Listeners</span>
+            <span className="text-sm font-medium">{t("appName")}</span>
           </div>
           <div className="flex-1 overflow-y-auto">{children}</div>
         </div>

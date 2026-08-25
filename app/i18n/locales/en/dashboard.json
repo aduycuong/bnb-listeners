@@ -1,0 +1,20 @@
+{
+  "nav": {
+    "overview": "Overview",
+    "facebook-page": "Facebook page",
+    "website": "Website",
+    "workspace": "Workspace"
+  },
+  "settingsMenu": {
+    "label": "Settings",
+    "profile": "Profile",
+    "workspace": "Settings"
+  },
+  "logout": {
+    "label": "Log out",
+    "title": "Log out?",
+    "description": "You will need to sign in again to access your workspace.",
+    "confirm": "Log out"
+  },
+  "appName": "BNB Listeners"
+}
