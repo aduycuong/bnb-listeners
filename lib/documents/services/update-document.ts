@@ -1,8 +1,13 @@
-import { db } from "@/lib/db";
-import { documents } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
+
+import { documents } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
-import type { UpdateDocumentParams, UpdateDocumentResult } from "@/lib/documents/types";
+import { db } from "@/lib/db";
+import type {
+  UpdateDocumentParams,
+  UpdateDocumentResult,
+} from "@/lib/documents/types";
+import { addJob } from "@/lib/qstash/services/add-job-service";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 export async function updateDocument(
@@ -16,6 +21,8 @@ export async function updateDocument(
   if (rawContent !== undefined) {
     updates.rawContent = rawContent;
     updates.embeddingStatus = "pending";
+    updates.isDuplicate = false;
+    updates.canonicalId = null;
   }
 
   const [doc] = await db
@@ -28,6 +35,14 @@ export async function updateDocument(
 
   if (!doc) {
     throw new NotFoundError("document", id);
+  }
+
+  if (rawContent !== undefined) {
+    await addJob({
+      jobName: "process-document",
+      payload: { documentId: doc.id },
+      userId: ctx.userId,
+    });
   }
 
   return doc;

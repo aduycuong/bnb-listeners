@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+export const DOCUMENT_TYPES = [
+  "news",
+  "post",
+  "review",
+  "legal",
+  "comment",
+  "guide",
+] as const;
+
+export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+
 export const createDocumentBodySchema = z.object({
   docType: z.string().min(1),
   sourceKey: z.string().min(1),
@@ -25,3 +36,28 @@ export const updateDocumentBodySchema = z
   .refine((data) => Object.keys(data).length > 0, {
     message: "At least one field must be provided",
   });
+
+export const documentFormSchema = z.object({
+  docType: z.string().min(1, { error: "Document type is required." }),
+  sourceKey: z.string().min(1, { error: "Source key is required." }),
+  sourceName: z.string().min(1, { error: "Source name is required." }),
+  sourceId: z.string().min(1, { error: "Source ID is required." }),
+  title: z.string(),
+  rawContent: z.string().min(1, { error: "Content is required." }),
+  metadataJson: z.string().superRefine((value, ctx) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    try {
+      JSON.parse(trimmed);
+    } catch {
+      ctx.addIssue({
+        code: "custom",
+        message: "Metadata must be valid JSON.",
+      });
+    }
+  }),
+  publishedAt: z.string(),
+});
