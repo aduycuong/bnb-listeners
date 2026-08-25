@@ -1,9 +1,12 @@
+import { z } from "zod";
+
 import { createBrightDataScraperJob } from "@/lib/bright-data/services/create-scraper-job";
 import { getBrightDataWebhookAuthorization } from "@/lib/bright-data/utils/get-webhook-authorization";
 import { getBrightDataWebhookUrl } from "@/lib/bright-data/utils/get-webhook-url";
-import { z } from "zod";
 
-import type { JobHandlerContext } from "./types";
+import type { JobHandlerContext } from "../types";
+
+export type { BrightDataFacebookPost, FacebookPostMetadata } from "./types";
 
 const brightDataFacebookGroupDatasetId = "gd_lz11l67o2cb3r0lkj3";
 const brightDataFacebookPageDatasetId = "gd_lkaxegm826bjpoo9m5";

@@ -12,3 +12,11 @@ export type UpdateDocumentResult = Document;
 
 export type DeleteDocumentParams = { id: string };
 export type DeleteDocumentResult = { id: string; message: string };
+
+/** Result of an upsert-document operation. */
+export type UpsertOutcome = "inserted" | "updated" | "unchanged";
+
+export type UpsertDocumentResult = {
+  documentId: string;
+  outcome: UpsertOutcome;
+};
