@@ -6,7 +6,7 @@ import { DocumentFormPage } from "@/components/documents/document-form-page";
 import { DocumentListPage } from "@/components/documents/document-list-page";
 import { documentQueryKey } from "@/components/documents/document-query-keys";
 import { useWorkspaceRouteContext } from "@/hooks/use-workspace-route-context";
-import type { Document } from "@/db/schema";
+import type { GetDocumentResult } from "@/lib/documents/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
 type DocumentRouteProps = {
@@ -62,9 +62,9 @@ type DocumentEditRoutePageProps = DocumentRouteProps & {
 async function fetchDocument(
   workspaceId: string,
   documentId: string,
-): Promise<Document> {
+): Promise<GetDocumentResult> {
   const res = await workspaceFetch(workspaceId, `/api/documents/${documentId}`);
-  const data = (await res.json()) as Document & {
+  const data = (await res.json()) as GetDocumentResult & {
     error?: string;
     message?: string;
   };

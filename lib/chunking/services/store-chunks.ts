@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { chunks, documents } from "@/db/schema";
+import { chunks, documentTopics, documents } from "@/db/schema";
 import { db } from "@/lib/db";
 
 import { EMBEDDING_MODEL, EMBEDDING_VERSION } from "../config";
@@ -18,6 +18,12 @@ export async function storeChunks(params: StoreChunksParams): Promise<number> {
   const { documentId, retrievalChunks, vectors, qualityScore, docType, publishedAt } = params;
 
   if (retrievalChunks.length > 0) {
+    const topicRows = await db
+      .select({ topicId: documentTopics.topicId })
+      .from(documentTopics)
+      .where(eq(documentTopics.documentId, documentId));
+    const topicIds = topicRows.map((row) => row.topicId);
+
     await db.delete(chunks).where(eq(chunks.documentId, documentId));
 
     await db.insert(chunks).values(
@@ -31,6 +37,7 @@ export async function storeChunks(params: StoreChunksParams): Promise<number> {
         metadata: chunk.metadata as Record<string, unknown>,
         embeddingModel: EMBEDDING_MODEL,
         embeddingVersion: EMBEDDING_VERSION,
+        topicIds,
         qualityScore,
       })),
     );

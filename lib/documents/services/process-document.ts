@@ -61,11 +61,11 @@ export async function processDocument(payload: unknown): Promise<void> {
   const classifyResult = await classifyDocument({ documentId });
 
   const topicLog = classifyResult.assignments
-    .map(({ slug, confidence }) => `${slug}=${confidence.toFixed(2)}`)
+    .map(({ name, confidence }) => `${name}=${confidence.toFixed(2)}`)
     .join(", ");
 
   const createdLog = classifyResult.createdTopics
-    .map(({ slug, name }) => `${slug} (${name})`)
+    .map(({ name }) => name)
     .join(", ");
 
   if (classifyResult.createdTopics.length > 0) {

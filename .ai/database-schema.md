@@ -29,6 +29,16 @@ Used by `workspace_members.permission`.
 | `edit` | Can modify workspace resources |
 | `owner` | Full control |
 
+### `topic_language`
+
+Used by `workspaces.topic_language`. Language for AI-generated topic names and descriptions.
+
+| Value | Description |
+| ----- | ----------- |
+| `vietnamese` | Always generate in Vietnamese |
+| `english` | Always generate in English |
+| `auto` | Match the language of the input document |
+
 ### `embedding_status`
 
 Used by `documents.embedding_status`.
@@ -81,6 +91,8 @@ Tenant container for documents, topics, and members.
 | name | text | NO | — | Display name |
 | slug | text | YES | — | URL-safe identifier |
 | owner_user_id | uuid | NO | — | Owning user (`users.id`) |
+| topic_scope | text | NO | `tin tức và dữ liệu về bất động sản` | Domain this workspace's topics cover; used in LLM system prompts |
+| topic_language | text | NO | `auto` | `vietnamese` \| `english` \| `auto` — language for AI-generated topics |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Last update time |
 
@@ -176,6 +188,7 @@ One row per ingested item within a workspace. Topic assignment is in `document_t
 | quality_score | real | YES | — | Weighted average of scoring dimensions (0–1). Null until scored. |
 | is_duplicate | boolean | NO | `false` | True when near-duplicate of another document |
 | canonical_id | uuid | YES | — | FK → `documents.id` — original when `is_duplicate` is true |
+| job_run_id | uuid | YES | — | FK → `job_runs.id` ON DELETE SET NULL — job run that first created this document; null when created manually |
 | published_at | timestamptz | YES | — | Source publish date; used for freshness scoring and canonical ordering |
 | created_at | timestamptz | NO | `now()` | Ingestion time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
@@ -194,14 +207,19 @@ One row per ingested item within a workspace. Topic assignment is in `document_t
 | `idx_documents_status` | `(embedding_status)` WHERE `<> 'chunked'` | Embedding job queue |
 | `idx_documents_quality_score` | `(quality_score)` | Filter/sort by quality |
 | `idx_documents_is_duplicate` | `(is_duplicate)` | Exclude duplicates from aggregates |
+| `idx_documents_job_run_id` | `(job_run_id)` | Documents created by a job run |
 
-Near-duplicate detection is scoped to the same workspace.
+Near-duplicate detection is scoped to the same workspace. `job_run_id` is set only when a scrape (or other) job first inserts the document; later upserts do not overwrite it.
+
+**Relations**
+
+- → `job_runs.id` (`job_run_id`)
 
 ---
 
 ### `chunks`
 
-RAG query table. One row per text chunk with vector embedding. `topic_slugs` is denormalized from `document_topics` (see triggers below).
+RAG query table. One row per text chunk with vector embedding. `topic_ids` is denormalized from `document_topics` (see triggers below).
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -220,7 +238,7 @@ RAG query table. One row per text chunk with vector embedding. `topic_slugs` is 
 | media_url | text | YES | — | Optional media reference |
 | media_metadata | jsonb | YES | — | Optional media metadata |
 | embedding_multimodal | vector(1024) | YES | — | Optional multimodal embedding |
-| topic_slugs | text[] | YES | `{}` | Denormalized topic slugs for fast filtering |
+| topic_ids | uuid[] | YES | `{}` | Denormalized topic ids for fast filtering |
 | quality_score | real | YES | — | Denormalized from `documents.quality_score` |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 
@@ -228,7 +246,7 @@ RAG query table. One row per text chunk with vector embedding. `topic_slugs` is 
 
 - HNSW on `embedding` (`vector_cosine_ops`, m=16, ef_construction=64)
 - Partial HNSW on `embedding_multimodal` WHERE NOT NULL
-- GIN on `content_tsv`, `topic_slugs`, `metadata`
+- GIN on `content_tsv`, `topic_ids`, `metadata`
 - B-tree on `doc_type`, `content_type`, `published_at`, `document_id`, `quality_score`
 - `(doc_type, published_at DESC)` for type + recency queries
 
@@ -244,8 +262,7 @@ Workspace-scoped subject taxonomy. Optional hierarchy via `parent_id`. The LLM c
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
-| slug | text | NO | — | URL-safe identifier, unique per workspace |
-| name | text | NO | — | Display name |
+| name | text | NO | — | Display name, unique per workspace |
 | parent_id | uuid | YES | — | FK → `topics.id` — optional parent |
 | description | text | YES | — | Topic description |
 | verified | boolean | NO | `false` | Admin sets `true` after review |
@@ -258,7 +275,7 @@ Workspace-scoped subject taxonomy. Optional hierarchy via `parent_id`. The LLM c
 
 | Index | Columns | Purpose |
 | ----- | ------- | ------- |
-| `idx_topics_workspace_slug` | UNIQUE `(workspace_id, slug)` | Slug unique within workspace |
+| `idx_topics_workspace_name` | UNIQUE `(workspace_id, name)` | Name unique within workspace |
 | `idx_topics_workspace_id` | `(workspace_id)` | List topics in a workspace |
 | `idx_topics_parent` | `(parent_id)` | Hierarchy queries |
 | `idx_topics_verified` | `(verified)` | Filter unverified LLM topics |
@@ -379,13 +396,17 @@ One row per job execution — success/failure, result payload, and error message
 | `idx_job_runs_status` | `(status)` | Filter by outcome |
 | `idx_job_runs_job_started` | `(job_id, started_at DESC)` | Recent runs per job |
 
+**Relations**
+
+- ← `documents.job_run_id` — documents first created by this run; set null if the run is deleted
+
 ---
 
 ## Triggers & functions (manual)
 
 Not represented in Drizzle schema. Reference SQL in `db/manual/triggers.sql`:
 
-- `sync_chunk_topics()` — keeps `chunks.topic_slugs` in sync when `document_topics` changes
+- `sync_chunk_topics()` — keeps `chunks.topic_ids` in sync when `document_topics` changes
 
 Apply after migrations if not already present.
 

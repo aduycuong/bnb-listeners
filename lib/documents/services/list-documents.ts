@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 
-import { documents } from "@/db/schema";
+import { documents, jobRuns, jobs } from "@/db/schema";
 import { db } from "@/lib/db";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
@@ -32,11 +32,15 @@ export async function listDocuments(
       embeddingStatus: documents.embeddingStatus,
       qualityScore: documents.qualityScore,
       isDuplicate: documents.isDuplicate,
+      jobRunId: documents.jobRunId,
+      jobName: jobs.name,
       publishedAt: documents.publishedAt,
       createdAt: documents.createdAt,
       updatedAt: documents.updatedAt,
     })
     .from(documents)
+    .leftJoin(jobRuns, eq(documents.jobRunId, jobRuns.id))
+    .leftJoin(jobs, eq(jobRuns.jobId, jobs.id))
     .where(and(...conditions))
     .orderBy(desc(documents.createdAt));
 

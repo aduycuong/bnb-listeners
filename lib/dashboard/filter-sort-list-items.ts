@@ -1,13 +1,13 @@
 export type ListSortOption =
   | "name-asc"
   | "name-desc"
-  | "created-desc"
-  | "created-asc";
+  | "date-desc"
+  | "date-asc";
 
 export type FilterSortListItem = {
   name: string;
   description?: string;
-  createdAt: string;
+  date: string;
 };
 
 export function filterSortListItems<T extends FilterSortListItem>(
@@ -34,11 +34,11 @@ export function filterSortListItems<T extends FilterSortListItem>(
         return left.name.localeCompare(right.name);
       case "name-desc":
         return right.name.localeCompare(left.name);
-      case "created-asc":
-        return left.createdAt.localeCompare(right.createdAt);
-      case "created-desc":
+      case "date-asc":
+        return left.date.localeCompare(right.date);
+      case "date-desc":
       default:
-        return right.createdAt.localeCompare(left.createdAt);
+        return right.date.localeCompare(left.date);
     }
   });
 
@@ -51,6 +51,6 @@ export const LIST_SORT_OPTIONS: {
 }[] = [
   { value: "name-asc", label: "Name (A–Z)" },
   { value: "name-desc", label: "Name (Z–A)" },
-  { value: "created-desc", label: "Newest first" },
-  { value: "created-asc", label: "Oldest first" },
+  { value: "date-desc", label: "Newest first" },
+  { value: "date-asc", label: "Oldest first" },
 ];

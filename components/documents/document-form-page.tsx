@@ -56,7 +56,15 @@ import {
   getEmbeddingStatusBadge,
 } from "@/lib/documents/document-config";
 import { DOCUMENT_TYPES, documentFormSchema } from "@/lib/documents/schema";
-import type { DocumentFormValues } from "@/lib/documents/types";
+import type {
+  DocumentFormValues,
+  GetDocumentResult,
+} from "@/lib/documents/types";
+import { isSchedulableJobType } from "@/lib/jobs/constants";
+import {
+  getJobMenuConfigByJobType,
+  getJobMenuHref,
+} from "@/lib/jobs/job-menu-config";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
@@ -64,7 +72,7 @@ type DocumentFormPageProps = {
   workspace: WorkspaceListItem;
   workspaceIndex: number;
   mode: "create" | "edit";
-  document?: Document;
+  document?: GetDocumentResult;
 };
 
 function toDatetimeLocal(value: string | Date | null | undefined) {
@@ -82,7 +90,7 @@ function toDatetimeLocal(value: string | Date | null | undefined) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function documentToFormValues(document: Document): DocumentFormValues {
+function documentToFormValues(document: GetDocumentResult): DocumentFormValues {
   return {
     docType: document.docType,
     sourceKey: document.sourceKey,
@@ -96,6 +104,26 @@ function documentToFormValues(document: Document): DocumentFormValues {
         : "",
     publishedAt: toDatetimeLocal(document.publishedAt),
   };
+}
+
+function getDocumentJobHref(
+  workspaceIndex: number,
+  document: GetDocumentResult,
+): string | null {
+  if (
+    !document.jobId ||
+    !document.jobType ||
+    !isSchedulableJobType(document.jobType)
+  ) {
+    return null;
+  }
+
+  const menu = getJobMenuConfigByJobType(document.jobType);
+  if (!menu) {
+    return null;
+  }
+
+  return getJobMenuHref(workspaceIndex, menu, document.jobId);
 }
 
 function parseMetadataJson(metadataJson: string) {
@@ -138,6 +166,9 @@ export function DocumentFormPage({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const listHref = getDocumentHref(workspaceIndex);
+  const jobHref = document
+    ? getDocumentJobHref(workspaceIndex, document)
+    : null;
 
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentFormSchema),
@@ -393,6 +424,48 @@ export function DocumentFormPage({
                 </FieldDescription>
                 <FieldError errors={[form.formState.errors.sourceId]} />
               </Field>
+
+              {mode === "edit" && document ? (
+                <Field>
+                  <FieldLabel htmlFor="document-job-run-id">Job run</FieldLabel>
+                  {document.jobRunId ? (
+                    <>
+                      <Input
+                        id="document-job-run-id"
+                        readOnly
+                        value={document.jobRunId}
+                        className="font-mono text-sm"
+                      />
+                      <FieldDescription>
+                        {document.jobName && jobHref ? (
+                          <>
+                            Created by{" "}
+                            <Link href={jobHref}>
+                              {document.jobName}
+                            </Link>
+                            .
+                          </>
+                        ) : document.jobName ? (
+                          <>Created by {document.jobName}.</>
+                        ) : (
+                          <>Created by a scrape job.</>
+                        )}
+                      </FieldDescription>
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        id="document-job-run-id"
+                        readOnly
+                        value="Created manually"
+                      />
+                      <FieldDescription>
+                        This document was added by a user, not a job run.
+                      </FieldDescription>
+                    </>
+                  )}
+                </Field>
+              ) : null}
 
               <Field data-invalid={!!form.formState.errors.title || undefined}>
                 <FieldLabel htmlFor="document-title">Title</FieldLabel>

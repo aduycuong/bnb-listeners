@@ -15,6 +15,27 @@
       "when": 1787612683363,
       "tag": "0001_bitter_stature",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787717179897,
+      "tag": "0002_swift_pestilence",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787720639345,
+      "tag": "0003_salty_the_enforcers",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787722042000,
+      "tag": "0004_opposite_iron_patriot",
+      "breakpoints": true
     }
   ]
 }

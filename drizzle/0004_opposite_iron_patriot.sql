@@ -1,0 +1,2 @@
+ALTER TABLE "workspaces" ADD COLUMN "topic_scope" text DEFAULT 'tin tức và dữ liệu về bất động sản' NOT NULL;--> statement-breakpoint
+ALTER TABLE "workspaces" ADD COLUMN "topic_language" text DEFAULT 'auto' NOT NULL;

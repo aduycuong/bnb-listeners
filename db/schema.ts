@@ -49,6 +49,10 @@ export const workspaces = pgTable(
     ownerUserId: uuid("owner_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    topicScope: text("topic_scope")
+      .notNull()
+      .default("tin tức và dữ liệu về bất động sản"),
+    topicLanguage: text("topic_language").notNull().default("auto"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -115,6 +119,9 @@ export const documents = pgTable(
     qualityScore: real("quality_score"),
     isDuplicate: boolean("is_duplicate").notNull().default(false),
     canonicalId: uuid("canonical_id"),
+    jobRunId: uuid("job_run_id").references(() => jobRuns.id, {
+      onDelete: "set null",
+    }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -145,6 +152,7 @@ export const documents = pgTable(
       .where(sql`${table.embeddingStatus} <> 'chunked'`),
     index("idx_documents_quality_score").on(table.qualityScore),
     index("idx_documents_is_duplicate").on(table.isDuplicate),
+    index("idx_documents_job_run_id").on(table.jobRunId),
     foreignKey({
       columns: [table.canonicalId],
       foreignColumns: [table.id],
@@ -182,7 +190,7 @@ export const chunks = pgTable(
     mediaUrl: text("media_url"),
     mediaMetadata: jsonb("media_metadata").$type<Record<string, unknown>>(),
     embeddingMultimodal: pgVector1024("embedding_multimodal"),
-    topicSlugs: text("topic_slugs").array().default([]),
+    topicIds: uuid("topic_ids").array().default([]),
     qualityScore: real("quality_score"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -197,7 +205,7 @@ export const chunks = pgTable(
       .with({ m: 16, ef_construction: 64 })
       .where(sql`${table.embeddingMultimodal} IS NOT NULL`),
     index("idx_chunks_content_tsv").using("gin", table.contentTsv),
-    index("idx_chunks_topic_slugs").using("gin", table.topicSlugs),
+    index("idx_chunks_topic_ids").using("gin", table.topicIds),
     index("idx_chunks_doc_type").on(table.docType),
     index("idx_chunks_content_type").on(table.contentType),
     index("idx_chunks_published_at").on(table.publishedAt.desc()),
@@ -224,7 +232,6 @@ export const topics = pgTable(
     workspaceId: uuid("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
-    slug: text("slug").notNull(),
     name: text("name").notNull(),
     parentId: uuid("parent_id"),
     description: text("description"),
@@ -243,7 +250,7 @@ export const topics = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    uniqueIndex("idx_topics_workspace_slug").on(table.workspaceId, table.slug),
+    uniqueIndex("idx_topics_workspace_name").on(table.workspaceId, table.name),
     index("idx_topics_workspace_id").on(table.workspaceId),
     foreignKey({
       columns: [table.parentId],

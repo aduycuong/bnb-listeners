@@ -62,16 +62,30 @@ export function DocumentListPage({
       return {
         id: doc.id,
         name: doc.title?.trim() || doc.sourceId,
-        subtitle: `${doc.sourceName} · ${doc.docType}`,
+        subtitle: [
+          doc.sourceName,
+          doc.docType,
+          doc.jobName ? `from ${doc.jobName}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
         description: truncateContent(doc.rawContent),
-        createdAt: doc.createdAt,
+        date: doc.publishedAt ?? doc.createdAt,
         meta:
           doc.qualityScore != null
             ? `Quality ${Math.round(doc.qualityScore * 100)}%`
             : undefined,
-        badge: doc.isDuplicate
-          ? { label: "Duplicate", className: "bg-muted text-muted-foreground" }
-          : statusBadge,
+        badges: [
+          statusBadge,
+          ...(doc.isDuplicate
+            ? [
+                {
+                  label: "Duplicate",
+                  className: "bg-muted text-muted-foreground",
+                },
+              ]
+            : []),
+        ],
       };
     });
   }, [data?.items]);

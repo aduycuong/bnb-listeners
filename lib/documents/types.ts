@@ -15,7 +15,11 @@ export type DeleteDocumentParams = { id: string };
 export type DeleteDocumentResult = { id: string; message: string };
 
 export type GetDocumentParams = { id: string };
-export type GetDocumentResult = Document;
+export type GetDocumentResult = Document & {
+  jobId: string | null;
+  jobName: string | null;
+  jobType: string | null;
+};
 
 export type ListDocumentsParams = {
   docType?: string;
@@ -33,6 +37,8 @@ export type DocumentListItem = {
   embeddingStatus: string;
   qualityScore: number | null;
   isDuplicate: boolean;
+  jobRunId: string | null;
+  jobName: string | null;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -41,6 +47,11 @@ export type DocumentListItem = {
 export type ListDocumentsResult = { items: DocumentListItem[] };
 
 export type DocumentFormValues = z.infer<typeof documentFormSchema>;
+
+export type UpsertDocumentParams = CreateDocumentParams & {
+  /** Set only on insert; later upserts leave the original job run in place. */
+  jobRunId?: string;
+};
 
 /** Result of an upsert-document operation. */
 export type UpsertOutcome = "inserted" | "updated" | "unchanged";

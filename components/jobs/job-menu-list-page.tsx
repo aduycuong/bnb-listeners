@@ -63,14 +63,16 @@ export function JobMenuListPage({
         id: job.id,
         name: job.name,
         description: scheduleText,
-        createdAt: job.createdAt,
-        badge: job.enabled
-          ? {
-              label: "Enabled",
-              className:
-                "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-            }
-          : { label: "Disabled", className: "bg-muted text-muted-foreground" },
+        date: job.createdAt,
+        badges: [
+          job.enabled
+            ? {
+                label: "Enabled",
+                className:
+                  "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+              }
+            : { label: "Disabled", className: "bg-muted text-muted-foreground" },
+        ],
       };
     });
   }, [data?.items]);

@@ -14,7 +14,6 @@ export async function loadTopicsForClassifier(
   const rows = await db
     .select({
       id: topics.id,
-      slug: topics.slug,
       name: topics.name,
       description: topics.description,
       parentId: topics.parentId,
@@ -26,7 +25,6 @@ export async function loadTopicsForClassifier(
 
   return rows.map((row) => ({
     id: row.id,
-    slug: row.slug,
     name: row.name,
     description: row.description,
     parentName: row.parentId ? (nameById.get(row.parentId) ?? null) : null,

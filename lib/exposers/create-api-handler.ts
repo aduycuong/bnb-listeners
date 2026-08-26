@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import type { SessionUser } from "@/lib/auth/session";
 import { APIError } from "@/lib/exposers/api-error";
+import { toAPIError } from "@/lib/exposers/to-api-error";
 import {
   X_WORKSPACE_ID_HEADER,
   type WorkspacePermission,
@@ -166,6 +167,14 @@ export function createApiHandler<Params, Body, SearchParams, Result>(
         return Response.json(
           { error: error.code, message: error.message },
           { status: error.statusCode },
+        );
+      }
+
+      const apiError = toAPIError(error);
+      if (apiError) {
+        return Response.json(
+          { error: apiError.code, message: apiError.message },
+          { status: apiError.statusCode },
         );
       }
 

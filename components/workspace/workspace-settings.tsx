@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { SettingsPageLayout } from "@/components/dashboard/settings-page-layout";
 import { WorkspaceMembersSection } from "@/components/workspace/workspace-members-section";
+import { WorkspaceTopicSettingsCard } from "@/components/workspace/workspace-topic-settings-card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -130,6 +131,8 @@ export function WorkspaceSettings({
           </dl>
         </CardContent>
       </Card>
+
+      <WorkspaceTopicSettingsCard workspace={workspace} />
 
       <WorkspaceMembersSection workspace={workspace} />
 

@@ -4,13 +4,12 @@ export type ClassifyDocumentParams = {
 
 export type TopicAssignment = {
   topicId: string;
-  slug: string;
+  name: string;
   confidence: number;
 };
 
 export type CreatedTopic = {
   id: string;
-  slug: string;
   name: string;
 };
 
@@ -29,7 +28,6 @@ export type ClassifyDocumentResult = {
 
 export type ClassifierTopic = {
   id: string;
-  slug: string;
   name: string;
   description: string | null;
   parentName: string | null;

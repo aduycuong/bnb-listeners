@@ -2,6 +2,8 @@ import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { z } from "zod";
 
 import { createChatModel } from "@/lib/langchain";
+import { buildClassifyTopicsSystemPrompt } from "@/lib/llm/utils/build-system-prompts";
+import type { WorkspaceLlmSettings } from "@/lib/workspaces/types";
 
 import {
   CLASSIFIER_CONTENT_MAX_CHARS,
@@ -11,7 +13,7 @@ import type { ClassifierTopic, ProposedTopic } from "../types";
 import { proposedTopicSchema } from "./propose-topic-with-llm";
 
 const assignmentSchema = z.object({
-  slug: z.string().min(1).describe("Topic slug from the provided list"),
+  id: z.uuid().describe("Topic id from the provided list"),
   confidence: z
     .number()
     .min(0)
@@ -39,20 +41,6 @@ export type ClassifyWithLlmResult = {
   proposedTopic: ProposedTopic | null;
 };
 
-const SYSTEM_PROMPT = `You are a topic classifier for a real estate and marketing research system.
-
-Given a document and a list of existing topics, either:
-1. Select every existing topic that clearly applies, OR
-2. When no existing topic is a reasonable fit, propose one new topic instead.
-
-Guidelines:
-- Use only slugs from the provided list for assignments — never invent slugs for assignments.
-- Assign one or more existing topics when the document is substantively about those subjects.
-- Prefer specific topics over broad parent topics when both fit.
-- Use confidence 0.9+ when the match is obvious, 0.6–0.8 when plausible but not central.
-- When no listed topic fits, return an empty assignments array and fill proposedTopic.
-- When assignments is non-empty, proposedTopic must be null.`;
-
 function formatTopicsForPrompt(classifierTopics: ClassifierTopic[]): string {
   return classifierTopics
     .map((topic) => {
@@ -61,7 +49,7 @@ function formatTopicsForPrompt(classifierTopics: ClassifierTopic[]): string {
         ? `\n  Description: ${topic.description.trim()}`
         : "";
 
-      return `- slug: ${topic.slug}\n  Name: ${topic.name}${parent}${description}`;
+      return `- id: ${topic.id}\n  Name: ${topic.name}${parent}${description}`;
     })
     .join("\n\n");
 }
@@ -102,12 +90,13 @@ export async function classifyWithLlm(
     sourceName: string;
   },
   classifierTopics: ClassifierTopic[],
+  llmSettings: WorkspaceLlmSettings,
 ): Promise<ClassifyWithLlmResult> {
   const model = createChatModel(DEFAULT_CLASSIFIER_MODEL, { temperature: 0 });
   const structured = model.withStructuredOutput(classificationResponseSchema);
 
   const response = await structured.invoke([
-    new SystemMessage(SYSTEM_PROMPT),
+    new SystemMessage(buildClassifyTopicsSystemPrompt(llmSettings)),
     new HumanMessage(buildUserMessage(doc, classifierTopics)),
   ]);
 

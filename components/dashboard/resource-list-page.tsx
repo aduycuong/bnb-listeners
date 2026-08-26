@@ -23,17 +23,19 @@ import {
 } from "@/lib/dashboard/filter-sort-list-items";
 import { cn } from "@/lib/utils";
 
+export type ResourceListBadge = {
+  label: string;
+  className?: string;
+};
+
 export type ResourceListRowItem = {
   id: string;
   name: string;
   description?: string;
-  createdAt: string;
-  subtitle?: string;
+  date: string;
+  subtitle?: ReactNode;
   meta?: string;
-  badge?: {
-    label: string;
-    className?: string;
-  };
+  badges?: ResourceListBadge[];
   leading?: {
     initials: string;
     className: string;
@@ -49,6 +51,7 @@ type ResourceListPageProps = {
   emptyDescription?: string;
   createHref?: string;
   createLabel?: string;
+  onCreateClick?: () => void;
   headerAction?: ReactNode;
   getItemHref?: (item: ResourceListRowItem) => string;
   renderItemActions?: (item: ResourceListRowItem) => ReactNode;
@@ -99,19 +102,22 @@ function ResourceListRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <p className="truncate font-medium">{item.name}</p>
-          {item.badge ? (
+          {item.badges?.map((badge) => (
             <span
+              key={badge.label}
               className={cn(
                 "inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium",
-                item.badge.className ?? "bg-muted text-muted-foreground",
+                badge.className ?? "bg-muted text-muted-foreground",
               )}
             >
-              {item.badge.label}
+              {badge.label}
             </span>
-          ) : null}
+          ))}
         </div>
         {item.subtitle ? (
-          <p className="truncate text-xs text-muted-foreground">{item.subtitle}</p>
+          <div className="truncate text-xs text-muted-foreground">
+            {item.subtitle}
+          </div>
         ) : null}
         {item.description ? (
           <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
@@ -125,7 +131,7 @@ function ResourceListRow({
           <p className="text-xs text-muted-foreground">{item.meta}</p>
         ) : null}
         <p className="text-xs text-muted-foreground">
-          {formatListDate(item.createdAt)}
+          {formatListDate(item.date)}
         </p>
       </div>
     </>
@@ -160,6 +166,7 @@ export function ResourceListPage({
   emptyDescription = "Items will appear here once you add them.",
   createHref,
   createLabel = "Create",
+  onCreateClick,
   headerAction,
   getItemHref,
   renderItemActions,
@@ -167,7 +174,7 @@ export function ResourceListPage({
   errorMessage,
 }: ResourceListPageProps) {
   const [keyword, setKeyword] = useState("");
-  const [sort, setSort] = useState<ListSortOption>("created-desc");
+  const [sort, setSort] = useState<ListSortOption>("date-desc");
 
   const filteredItems = useMemo(
     () => filterSortListItems(items, keyword, sort),
@@ -179,6 +186,7 @@ export function ResourceListPage({
 
   const hasKeyword = keyword.trim().length > 0;
   const showEmptyState = !isLoading && !errorMessage && filteredItems.length === 0;
+  const canCreate = Boolean(onCreateClick || createHref);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-8">
@@ -190,7 +198,16 @@ export function ResourceListPage({
           ) : null}
         </div>
         {headerAction ??
-          (createHref ? (
+          (onCreateClick ? (
+            <Button
+              type="button"
+              className="shrink-0"
+              onClick={onCreateClick}
+            >
+              <PlusIcon data-icon="inline-start" />
+              {createLabel}
+            </Button>
+          ) : createHref ? (
             <Button
               nativeButton={false}
               render={<Link href={createHref} />}
@@ -252,7 +269,7 @@ export function ResourceListPage({
         <ul className="flex flex-col gap-2.5">
           {Array.from({ length: 4 }).map((_, index) => (
             <li key={index}>
-              <Skeleton className="h-[74px] w-full rounded-xl" />
+              <Skeleton className="h-18.5 w-full rounded-xl" />
             </li>
           ))}
         </ul>
@@ -270,10 +287,11 @@ export function ResourceListPage({
                   ? "Try a different search term or clear the filter."
                   : emptyDescription
               }
-              actionLabel={
-                !hasKeyword && createHref ? createLabel : undefined
+              actionLabel={!hasKeyword && canCreate ? createLabel : undefined}
+              actionHref={
+                !hasKeyword && !onCreateClick ? createHref : undefined
               }
-              actionHref={!hasKeyword && createHref ? createHref : undefined}
+              onAction={!hasKeyword && onCreateClick ? onCreateClick : undefined}
             />
           ) : (
             <ul className="flex flex-col gap-2.5">

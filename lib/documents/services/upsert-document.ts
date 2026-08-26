@@ -4,7 +4,7 @@ import { documents } from "@/db/schema";
 import { db } from "@/lib/db";
 import { addJob } from "@/lib/qstash/services/add-job-service";
 
-import type { CreateDocumentParams, UpsertDocumentResult } from "../types";
+import type { UpsertDocumentParams, UpsertDocumentResult } from "../types";
 
 /**
  * Upserts a document identified by (workspaceId, docType, sourceKey, sourceId):
@@ -20,7 +20,7 @@ import type { CreateDocumentParams, UpsertDocumentResult } from "../types";
  *                jobs that run without a human session (webhooks, crons).
  */
 export async function upsertDocument(
-  params: CreateDocumentParams,
+  params: UpsertDocumentParams,
   workspaceId: string,
   userId = "system",
 ): Promise<UpsertDocumentResult> {
@@ -53,6 +53,7 @@ export async function upsertDocument(
         metadata: params.metadata ?? {},
         publishedAt: newPublishedAt,
         embeddingStatus: "pending",
+        jobRunId: params.jobRunId ?? null,
       })
       .returning({ id: documents.id });
 

@@ -69,7 +69,7 @@ export function CreateWorkspaceDialog({
       });
       onOpenChange(false);
       await queryClient.invalidateQueries({ queryKey: workspacesQueryKey });
-      router.push(`/w/${workspaceCount}`);
+      router.push(`/w/${workspaceCount}/settings/workspace`);
       router.refresh();
       return;
     }

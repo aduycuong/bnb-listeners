@@ -9,7 +9,7 @@ Each item is scored on more than one axis so quality is actionable, not a single
 - Source credibility
 - Completeness
 - Freshness
-- Relevance to real estate and marketing
+- Relevance to the workspace topic scope
 - Duplicate / near-duplicate status
 
 ## Quality-gated retrieval
