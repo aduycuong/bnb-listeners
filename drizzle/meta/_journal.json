@@ -36,6 +36,13 @@
       "when": 1787722042000,
       "tag": "0004_opposite_iron_patriot",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787736026697,
+      "tag": "0005_bent_maggott",
+      "breakpoints": true
     }
   ]
 }

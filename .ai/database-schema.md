@@ -402,6 +402,26 @@ One row per job execution — success/failure, result payload, and error message
 
 ---
 
+## workspace_api_keys
+
+Stores metadata for workspace API keys managed via Unkey. The actual key value is held by Unkey; only the display prefix and Unkey key ID are stored here.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | default random |
+| `workspace_id` | uuid FK → workspaces | cascade delete |
+| `unkey_key_id` | text NOT NULL UNIQUE | Unkey internal key ID |
+| `name` | text NOT NULL | human-readable label |
+| `key_start` | text NOT NULL | first ~12 chars of key for display (e.g. `bnb_xxxx...`) |
+| `created_at` | timestamptz | |
+
+**Indexes:** btree on `workspace_id`; unique on `unkey_key_id`.
+
+**Relations:**
+- `workspace_id` → `workspaces.id` (cascade delete)
+
+---
+
 ## Triggers & functions (manual)
 
 Not represented in Drizzle schema. Reference SQL in `db/manual/triggers.sql`:

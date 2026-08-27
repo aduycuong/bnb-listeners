@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { SettingsPageLayout } from "@/components/dashboard/settings-page-layout";
+import { WorkspaceApiKeysCard } from "@/components/workspace/workspace-api-keys-card";
 import { WorkspaceMembersSection } from "@/components/workspace/workspace-members-section";
 import { WorkspaceTopicSettingsCard } from "@/components/workspace/workspace-topic-settings-card";
 import {
@@ -133,6 +134,8 @@ export function WorkspaceSettings({
       </Card>
 
       <WorkspaceTopicSettingsCard workspace={workspace} />
+
+      <WorkspaceApiKeysCard workspace={workspace} />
 
       <WorkspaceMembersSection workspace={workspace} />
 

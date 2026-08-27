@@ -385,3 +385,26 @@ export const jobRuns = pgTable(
 
 export type JobRun = typeof jobRuns.$inferSelect;
 export type NewJobRun = typeof jobRuns.$inferInsert;
+
+export const workspaceApiKeys = pgTable(
+  "workspace_api_keys",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    unkeyKeyId: text("unkey_key_id").notNull().unique(),
+    name: text("name").notNull(),
+    keyStart: text("key_start").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_workspace_api_keys_workspace_id").on(table.workspaceId),
+    uniqueIndex("idx_workspace_api_keys_unkey_key_id").on(table.unkeyKeyId),
+  ],
+);
+
+export type WorkspaceApiKey = typeof workspaceApiKeys.$inferSelect;
+export type NewWorkspaceApiKey = typeof workspaceApiKeys.$inferInsert;
