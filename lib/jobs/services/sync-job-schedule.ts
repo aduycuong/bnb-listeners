@@ -16,6 +16,14 @@ import { getJobScheduleId } from "../utils/get-job-schedule-id";
 export async function syncJobSchedule(
   params: SyncJobScheduleParams,
 ): Promise<void> {
+  if (process.env.NODE_ENV !== "production") {
+    console.log(
+      "Skipping sync job schedule in non-production environment",
+      params,
+    );
+    return;
+  }
+
   const [job] = await db
     .select()
     .from(jobs)
