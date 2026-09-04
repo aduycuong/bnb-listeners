@@ -34,14 +34,14 @@ type SystemSchedule = {
 
 const SYSTEM_SCHEDULES: SystemSchedule[] = [
   {
-    scheduleId: "system:recompute-topic-digests",
+    scheduleId: "system-recompute-topic-digests",
     jobName: RECOMPUTE_JOB_NAME,
     cron: "*/15 * * * *",
     description:
       "Recompute daily digest metrics for normal-stale topic rows every 15 min.",
   },
   {
-    scheduleId: "system:bulk-drain-topic-digests",
+    scheduleId: "system-bulk-drain-topic-digests",
     jobName: BULK_DRAIN_JOB_NAME,
     cron: "*/15 * * * *",
     description:
