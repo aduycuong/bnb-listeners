@@ -1,0 +1,4 @@
+DROP INDEX "idx_topic_digest_daily_stale";--> statement-breakpoint
+ALTER TABLE "topic_digest_daily" ADD COLUMN "is_bulk_stale" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE INDEX "idx_topic_digest_daily_bulk_stale" ON "topic_digest_daily" USING btree ("recompute_after") WHERE "topic_digest_daily"."is_stale" = true AND "topic_digest_daily"."is_bulk_stale" = true AND "topic_digest_daily"."processing" = false;--> statement-breakpoint
+CREATE INDEX "idx_topic_digest_daily_stale" ON "topic_digest_daily" USING btree ("recompute_after") WHERE "topic_digest_daily"."is_stale" = true AND "topic_digest_daily"."is_bulk_stale" = false AND "topic_digest_daily"."processing" = false;

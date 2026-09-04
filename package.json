@@ -14,7 +14,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:drop": "drizzle-kit drop",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:seed-dim-dates": "tsx scripts/seed-dim-dates.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

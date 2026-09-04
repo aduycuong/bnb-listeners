@@ -6,6 +6,7 @@ import {
 } from "@/db/pgvector";
 import {
   boolean,
+  date,
   foreignKey,
   index,
   integer,
@@ -290,38 +291,125 @@ export const documentTopics = pgTable(
 export type DocumentTopic = typeof documentTopics.$inferSelect;
 export type NewDocumentTopic = typeof documentTopics.$inferInsert;
 
-export const topicDigests = pgTable(
-  "topic_digests",
+// ---------------------------------------------------------------------------
+// Date dimension — static calendar table, seeded once for ~10–20 years.
+// Pre-computes week_start / month_start / quarter_start / year_start so
+// rollup GROUP BY never needs runtime date_trunc calls.
+// ---------------------------------------------------------------------------
+
+export const dimDates = pgTable("dim_dates", {
+  dateKey: date("date_key").primaryKey().notNull(),
+  year: integer("year").notNull(),
+  quarter: integer("quarter").notNull(),       // 1–4
+  month: integer("month").notNull(),           // 1–12
+  week: integer("week").notNull(),             // ISO week 1–53
+  dayOfWeek: integer("day_of_week").notNull(), // 1=Mon … 7=Sun
+  dayOfYear: integer("day_of_year").notNull(), // 1–366
+  isWeekend: boolean("is_weekend").notNull(),
+  weekStart: date("week_start").notNull(),       // Monday of ISO week
+  monthStart: date("month_start").notNull(),     // first day of month
+  quarterStart: date("quarter_start").notNull(), // first day of quarter
+  yearStart: date("year_start").notNull(),       // first day of year
+});
+
+export type DimDate = typeof dimDates.$inferSelect;
+export type NewDimDate = typeof dimDates.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Daily fact table — one row per (topic, date).
+// Source of truth for all digest metrics.
+// Arbitrary-range queries (e.g. Aug 15 – Sep 30) run directly against this.
+// ---------------------------------------------------------------------------
+
+export const topicDigestDaily = pgTable(
+  "topic_digest_daily",
   {
-    id: uuid("id").primaryKey().defaultRandom().notNull(),
     topicId: uuid("topic_id")
       .notNull()
       .references(() => topics.id, { onDelete: "cascade" }),
-    periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
-    periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
-    summary: text("summary"),
-    sourceChunkIds: uuid("source_chunk_ids").array(),
-    generatedAt: timestamp("generated_at", { withTimezone: true }),
-    docCount: integer("doc_count"),
-    avgQualityScore: real("avg_quality_score"),
-    trendScore: real("trend_score"),
-    trendRank: integer("trend_rank"),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
+    dateKey: date("date_key")
       .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
+      .references(() => dimDates.dateKey),
+
+    // Metrics
+    docCount: integer("doc_count").notNull().default(0),
+    avgQualityScore: real("avg_quality_score"),
+    trendScore: real("trend_score"), // doc_count × avg_quality × recency_weight(day)
+
+    // Processing / cache state
+    isStale: boolean("is_stale").notNull().default(true),
+    // true when row was invalidated by a bulk taxonomy op (merge/split topics).
+    // Normal recompute job skips these; a separate low-priority bulk drain job
+    // processes them with a smaller LIMIT so burst traffic doesn't crowd out
+    // day-to-day invalidations.
+    isBulkStale: boolean("is_bulk_stale").notNull().default(false),
+    recomputeAfter: timestamp("recompute_after", { withTimezone: true }),
+    processing: boolean("processing").notNull().default(false),
+    processingStartedAt: timestamp("processing_started_at", {
+      withTimezone: true,
+    }),
+    computedAt: timestamp("computed_at", { withTimezone: true }),
   },
   (table) => [
-    index("idx_topic_digests_topic").on(table.topicId, table.periodEnd.desc()),
-    index("idx_topic_digests_trend").on(
+    primaryKey({ columns: [table.topicId, table.dateKey] }),
+    // "all topics on a date" — used by ranking after daily recompute
+    index("idx_topic_digest_daily_date").on(table.dateKey, table.topicId),
+    // normal recompute job queue — excludes bulk-stale rows
+    index("idx_topic_digest_daily_stale")
+      .on(table.recomputeAfter)
+      .where(
+        sql`${table.isStale} = true AND ${table.isBulkStale} = false AND ${table.processing} = false`,
+      ),
+    // bulk drain job queue — only rows flagged by taxonomy ops
+    index("idx_topic_digest_daily_bulk_stale")
+      .on(table.recomputeAfter)
+      .where(
+        sql`${table.isStale} = true AND ${table.isBulkStale} = true AND ${table.processing} = false`,
+      ),
+  ],
+);
+
+export type TopicDigestDaily = typeof topicDigestDaily.$inferSelect;
+export type NewTopicDigestDaily = typeof topicDigestDaily.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Rollup table — pre-aggregated from daily grain.
+// One row per (topic, period_grain, period_start).
+// Supports: week | month | quarter | year.
+// trend_rank is pre-computed within workspace after each rollup rebuild.
+// ---------------------------------------------------------------------------
+
+export const topicDigestRollup = pgTable(
+  "topic_digest_rollup",
+  {
+    topicId: uuid("topic_id")
+      .notNull()
+      .references(() => topics.id, { onDelete: "cascade" }),
+    periodGrain: text("period_grain").notNull(), // 'week' | 'month' | 'quarter' | 'year'
+    periodStart: date("period_start").notNull(),
+    periodEnd: date("period_end").notNull(),
+
+    docCount: integer("doc_count").notNull().default(0),
+    avgQualityScore: real("avg_quality_score"),
+    trendScore: real("trend_score"), // recomputed with grain-specific recency_weight
+    trendRank: integer("trend_rank"), // RANK() OVER (PARTITION BY workspace_id ORDER BY trend_score DESC)
+    computedAt: timestamp("computed_at", { withTimezone: true }),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.topicId, table.periodGrain, table.periodStart],
+    }),
+    // "top N topics for grain+period" — used by API and MCP
+    index("idx_topic_digest_rollup_grain_period").on(
+      table.periodGrain,
       table.periodStart,
-      table.trendScore,
+      table.trendScore.desc(),
     ),
   ],
 );
 
-export type TopicDigest = typeof topicDigests.$inferSelect;
-export type NewTopicDigest = typeof topicDigests.$inferInsert;
+export type TopicDigestRollup = typeof topicDigestRollup.$inferSelect;
+export type NewTopicDigestRollup = typeof topicDigestRollup.$inferInsert;
 
 export const jobs = pgTable(
   "jobs",

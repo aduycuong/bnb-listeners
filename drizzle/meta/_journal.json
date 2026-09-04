@@ -43,6 +43,20 @@
       "when": 1787736026697,
       "tag": "0005_bent_maggott",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788504438925,
+      "tag": "0006_stiff_big_bertha",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788509640050,
+      "tag": "0007_superb_hobgoblin",
+      "breakpoints": true
     }
   ]
 }

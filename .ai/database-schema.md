@@ -303,26 +303,91 @@ Document and topic must belong to the same workspace (enforced by application lo
 
 ---
 
-### `topic_digests`
+### `dim_dates`
 
-Precomputed LLM summaries and trend metrics per topic and time period.
+Static calendar dimension table. Pre-populated for 10–20 years (~3 650–7 300 rows). Never updated after initial seed. Pre-computes period-start anchors so rollup GROUP BY avoids runtime `date_trunc` calls.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
-| id | uuid | NO | `gen_random_uuid()` | Primary key |
-| topic_id | uuid | NO | — | FK → `topics.id` ON DELETE CASCADE |
-| period_start | timestamptz | NO | — | Period start |
-| period_end | timestamptz | NO | — | Period end |
-| summary | text | YES | — | LLM-generated summary |
-| source_chunk_ids | uuid[] | YES | — | Chunks used for the summary |
-| generated_at | timestamptz | YES | — | When summary was generated |
-| doc_count | integer | YES | — | Non-duplicate documents in period |
-| avg_quality_score | real | YES | — | Average `quality_score` in period |
-| trend_score | real | YES | — | `doc_count × avg_quality_score × recency_weight` |
-| trend_rank | integer | YES | — | Rank within period (1 = hottest) |
-| updated_at | timestamptz | NO | `now()` | Last update time |
+| date_key | date | NO | — | Primary key (YYYY-MM-DD) |
+| year | integer | NO | — | Calendar year |
+| quarter | integer | NO | — | Quarter 1–4 |
+| month | integer | NO | — | Month 1–12 |
+| week | integer | NO | — | ISO week number 1–53 |
+| day_of_week | integer | NO | — | 1 = Mon … 7 = Sun |
+| day_of_year | integer | NO | — | 1–366 |
+| is_weekend | boolean | NO | — | Sat or Sun |
+| week_start | date | NO | — | Monday of the ISO week |
+| month_start | date | NO | — | First day of the month |
+| quarter_start | date | NO | — | First day of the quarter |
+| year_start | date | NO | — | First day of the year |
 
-**Indexes:** `(topic_id, period_end DESC)`, `(period_start, trend_score)`
+---
+
+### `topic_digest_daily`
+
+Daily-grain fact table. One row per `(topic_id, date_key)`. Source of truth for all digest metrics. Arbitrary-range queries (e.g. Aug 15 – Sep 30) run directly against this table.
+
+Rows are created on-demand when a document is first assigned to a topic. The debounce constant `DIGEST_DEBOUNCE_MS` (default 1 hour) is defined in `lib/topic-digests/constants.ts`.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| topic_id | uuid | NO | — | FK → `topics.id` ON DELETE CASCADE |
+| date_key | date | NO | — | FK → `dim_dates.date_key` — day of the document's `published_at` |
+| doc_count | integer | NO | `0` | Non-duplicate documents with `published_at` on this date |
+| avg_quality_score | real | YES | — | Average `quality_score` for those documents |
+| trend_score | real | YES | — | `doc_count × avg_quality_score × recency_weight('day')` |
+| is_stale | boolean | NO | `true` | `true` = metrics need recompute |
+| is_bulk_stale | boolean | NO | `false` | `true` when invalidated by a bulk taxonomy op (merge/split). Normal recompute job skips these; a separate low-priority bulk drain job handles them with a smaller `LIMIT`. |
+| recompute_after | timestamptz | YES | — | Debounce gate: job only picks up when `<= now()` |
+| processing | boolean | NO | `false` | `true` while a worker holds the lease |
+| processing_started_at | timestamptz | YES | — | Lease start time; used to detect stuck workers |
+| computed_at | timestamptz | YES | — | Timestamp of last successful compute |
+
+**Primary key:** `(topic_id, date_key)`
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| `idx_topic_digest_daily_date` | `(date_key, topic_id)` | All topics for a given day (ranking) |
+| `idx_topic_digest_daily_stale` | `(recompute_after)` WHERE `is_stale = true AND is_bulk_stale = false AND processing = false` | Normal recompute job queue (excludes bulk-stale rows) |
+| `idx_topic_digest_daily_bulk_stale` | `(recompute_after)` WHERE `is_stale = true AND is_bulk_stale = true AND processing = false` | Bulk drain job queue — only rows from taxonomy ops |
+
+---
+
+### `topic_digest_rollup`
+
+Pre-aggregated rollup from the daily grain. One row per `(topic_id, period_grain, period_start)`. Supports `week`, `month`, `quarter`, `year`. `trend_rank` is pre-computed per workspace after each rollup rebuild.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| topic_id | uuid | NO | — | FK → `topics.id` ON DELETE CASCADE |
+| period_grain | text | NO | — | `'week'` \| `'month'` \| `'quarter'` \| `'year'` |
+| period_start | date | NO | — | First day of the period |
+| period_end | date | NO | — | Last day of the period |
+| doc_count | integer | NO | `0` | Sum of `doc_count` from daily rows in the period |
+| avg_quality_score | real | YES | — | Weighted average `quality_score` across the period |
+| trend_score | real | YES | — | `doc_count × avg_quality_score × recency_weight(grain)` |
+| trend_rank | integer | YES | — | `RANK()` within workspace for this grain + period (1 = hottest) |
+| computed_at | timestamptz | YES | — | Timestamp of last rollup compute |
+
+**Primary key:** `(topic_id, period_grain, period_start)`
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| `idx_topic_digest_rollup_grain_period` | `(period_grain, period_start, trend_score DESC)` | Top-N hot topics for a grain/period |
+
+**`recency_weight` by grain** (defined in `lib/topic-digests/constants.ts`):
+
+| `period_grain` | weight |
+| -------------- | ------ |
+| `week` | `1.2` |
+| `month` | `1.0` |
+| `quarter` | `0.9` |
+| `year` | `0.8` |
 
 ---
 
