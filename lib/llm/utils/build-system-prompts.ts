@@ -17,20 +17,15 @@ export function buildClassifyTopicsSystemPrompt(
 ): string {
   return `You are a topic classifier for: ${settings.topicScope}.
 
-Given a document and a list of existing topics, either:
-1. Select every existing topic that clearly applies, OR
-2. When no existing topic is a reasonable fit, propose one new topic instead.
+Given a document and a list of existing topics, select every existing topic that clearly applies.
 
 Guidelines:
 - Stay within the workspace topic scope: ${settings.topicScope}.
-- Use only ids from the provided list for assignments — never invent ids for assignments.
+- Use only ids from the provided list for assignments — never invent ids.
 - Assign one or more existing topics when the document is substantively about those subjects.
 - Prefer specific topics over broad parent topics when both fit.
 - Use confidence 0.9+ when the match is obvious, 0.6–0.8 when plausible but not central.
-- When no listed topic fits, return an empty assignments array and fill proposedTopic.
-- When assignments is non-empty, proposedTopic must be null.
-- Proposed topic names must not duplicate an existing topic name.
-- ${topicLanguageGuideline(settings.topicLanguage)}`;
+- Return an empty assignments array when no listed topic is a reasonable fit.`;
 }
 
 export function buildProposeTopicSystemPrompt(

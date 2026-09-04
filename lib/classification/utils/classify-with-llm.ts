@@ -9,8 +9,7 @@ import {
   CLASSIFIER_CONTENT_MAX_CHARS,
   DEFAULT_CLASSIFIER_MODEL,
 } from "../config";
-import type { ClassifierTopic, ProposedTopic } from "../types";
-import { proposedTopicSchema } from "./propose-topic-with-llm";
+import type { ClassifierTopic } from "../types";
 
 const assignmentSchema = z.object({
   id: z.uuid().describe("Topic id from the provided list"),
@@ -27,18 +26,12 @@ const classificationResponseSchema = z.object({
     .describe(
       "Matching topics from the provided list. Empty when none apply.",
     ),
-  proposedTopic: proposedTopicSchema
-    .nullable()
-    .describe(
-      "Propose a new topic only when no existing topic fits. Must be null when assignments is non-empty.",
-    ),
 });
 
 export type LlmTopicAssignment = z.infer<typeof assignmentSchema>;
 
 export type ClassifyWithLlmResult = {
   assignments: LlmTopicAssignment[];
-  proposedTopic: ProposedTopic | null;
 };
 
 function formatTopicsForPrompt(classifierTopics: ClassifierTopic[]): string {
@@ -80,7 +73,7 @@ function buildUserMessage(
 }
 
 /**
- * Calls the LLM classifier against existing topics, optionally proposing a new topic.
+ * Calls the LLM classifier to match a document against existing topics.
  */
 export async function classifyWithLlm(
   doc: {
@@ -100,12 +93,5 @@ export async function classifyWithLlm(
     new HumanMessage(buildUserMessage(doc, classifierTopics)),
   ]);
 
-  if (response.assignments.length > 0) {
-    return { assignments: response.assignments, proposedTopic: null };
-  }
-
-  return {
-    assignments: [],
-    proposedTopic: response.proposedTopic,
-  };
+  return { assignments: response.assignments };
 }
