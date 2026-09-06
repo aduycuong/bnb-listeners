@@ -4,6 +4,7 @@ import { documentTopics, documents } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { invalidateTopicDigest } from "@/lib/topic-digests/services/invalidate-topic-digest";
+import { ALL_GROUPS_SENTINEL } from "@/lib/source-groups/constants";
 import { findTopicByName } from "@/lib/topics/utils/find-topic-by-name";
 import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace-llm-settings";
 
@@ -39,12 +40,26 @@ async function fetchLlmTopicIds(documentId: string): Promise<string[]> {
 async function invalidateAffectedDigests(
   topicIds: string[],
   publishedAt: Date | null,
+  documentGroupId: string | null,
 ): Promise<void> {
   if (!publishedAt || topicIds.length === 0) return;
   const dateKey = toDateKey(publishedAt);
-  await Promise.all(
-    topicIds.map((topicId) => invalidateTopicDigest({ topicId, dateKey })),
-  );
+
+  const invalidations = topicIds.flatMap((topicId) => {
+    const targets = [
+      invalidateTopicDigest({ topicId, dateKey, groupId: ALL_GROUPS_SENTINEL }),
+    ];
+
+    if (documentGroupId) {
+      targets.push(
+        invalidateTopicDigest({ topicId, dateKey, groupId: documentGroupId }),
+      );
+    }
+
+    return targets;
+  });
+
+  await Promise.all(invalidations);
 }
 
 async function clearLlmAssignments(documentId: string): Promise<void> {
@@ -187,7 +202,7 @@ export async function classifyDocument(
     ...result.createdTopics.map((t) => t.id),
   ];
   const affectedTopicIds = [...new Set([...oldTopicIds, ...newTopicIds])];
-  await invalidateAffectedDigests(affectedTopicIds, doc.publishedAt);
+  await invalidateAffectedDigests(affectedTopicIds, doc.publishedAt, doc.groupId);
 
   return result;
 }

@@ -11,10 +11,12 @@ export type InvalidateTopicDigestParams = {
    * Only this specific daily row is invalidated — not the entire topic history.
    */
   dateKey: string;
+  /** ALL_GROUPS_SENTINEL for global partition, or a source_groups.id. */
+  groupId: string;
 };
 
 /**
- * Mark the (topic, date) daily row as stale so the recompute job will pick
+ * Mark the (topic, date, group) daily row as stale so the recompute job will pick
  * it up on its next run.
  *
  * Uses an upsert with a debounce: if a row already has a future
@@ -26,7 +28,7 @@ export type InvalidateTopicDigestParams = {
 export async function invalidateTopicDigest(
   params: InvalidateTopicDigestParams,
 ): Promise<void> {
-  const { topicId, dateKey } = params;
+  const { topicId, dateKey, groupId } = params;
   const debounceMs = DIGEST_DEBOUNCE_MS;
   const recomputeAfter = new Date(Date.now() + debounceMs);
 
@@ -35,12 +37,17 @@ export async function invalidateTopicDigest(
     .values({
       topicId,
       dateKey,
+      groupId,
       isStale: true,
       isBulkStale: false,
       recomputeAfter,
     })
     .onConflictDoUpdate({
-      target: [topicDigestDaily.topicId, topicDigestDaily.dateKey],
+      target: [
+        topicDigestDaily.topicId,
+        topicDigestDaily.dateKey,
+        topicDigestDaily.groupId,
+      ],
       set: {
         isStale: true,
         // Preserve the later timestamp — never pull recompute_after forward.

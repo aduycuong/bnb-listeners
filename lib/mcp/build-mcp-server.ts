@@ -46,6 +46,11 @@ export function buildMcpServer(ctx: WorkspaceContext): McpServer {
         title: z.string().optional().describe("Human-readable title"),
         metadata: z.record(z.string(), z.unknown()).optional().describe("Arbitrary key-value metadata"),
         publishedAt: z.iso.datetime().optional().describe("ISO 8601 publish datetime from the source"),
+        groupId: z
+          .uuid()
+          .optional()
+          .nullable()
+          .describe("Optional source group UUID for this document"),
       },
     },
     async (params) => {

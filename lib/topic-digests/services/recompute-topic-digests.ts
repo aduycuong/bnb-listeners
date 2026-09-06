@@ -1,8 +1,27 @@
 import { RECOMPUTE_BATCH_SIZE } from "../constants";
+import type { AffectedDigestPartition } from "../types";
 import { claimDigestRows } from "../utils/claim-digest-rows";
 import { computeDailyMetrics } from "../utils/compute-daily-metrics";
 import { rebuildRollupPeriods } from "../utils/rebuild-rollup-periods";
 import { resetStuckWorkers } from "../utils/reset-stuck-workers";
+
+function dedupeAffectedPartitions(
+  partitions: AffectedDigestPartition[],
+): AffectedDigestPartition[] {
+  const seen = new Set<string>();
+  const result: AffectedDigestPartition[] = [];
+
+  for (const partition of partitions) {
+    const key = `${partition.dateKey}:${partition.groupId}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(partition);
+  }
+
+  return result;
+}
 
 /**
  * QStash handler — runs every 15 minutes via a system schedule.
@@ -15,10 +34,8 @@ import { resetStuckWorkers } from "../utils/reset-stuck-workers";
  * here — they are handled by bulk-drain-topic-digests with a smaller LIMIT.
  */
 export async function recomputeTopicDigests(): Promise<void> {
-  // 1. Release any rows stuck in processing by a crashed worker.
   await resetStuckWorkers();
 
-  // 2. Atomically claim a batch of eligible rows.
   const claimed = await claimDigestRows({
     batchSize: RECOMPUTE_BATCH_SIZE,
     bulkOnly: false,
@@ -28,20 +45,19 @@ export async function recomputeTopicDigests(): Promise<void> {
     return;
   }
 
-  // 3. Compute metrics for each claimed row.
-  const computedDateKeys: string[] = [];
+  const affected: AffectedDigestPartition[] = [];
 
   await Promise.all(
-    claimed.map(async ({ topicId, dateKey }) => {
+    claimed.map(async ({ topicId, dateKey, groupId }) => {
       await computeDailyMetrics({
         topicId,
         dateKey,
-        clearBulkStale: false, // normal job does not touch is_bulk_stale
+        groupId,
+        clearBulkStale: false,
       });
-      computedDateKeys.push(dateKey);
+      affected.push({ dateKey, groupId });
     }),
   );
 
-  // 4. Rebuild rollup periods affected by the computed date_keys.
-  await rebuildRollupPeriods(computedDateKeys);
+  await rebuildRollupPeriods(dedupeAffectedPartitions(affected));
 }

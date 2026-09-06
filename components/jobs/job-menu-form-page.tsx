@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { jobsQueryKey, jobRunsQueryKey } from "@/components/jobs/job-query-keys";
+import { sourceGroupsQueryKey } from "@/components/topics/topic-query-keys";
 import { FormFieldCron } from "@/components/jobs/form-field-cron";
 import { JobParamsFields } from "@/components/jobs/job-params-fields";
 import { JobRunsSection } from "@/components/jobs/job-runs-section";
@@ -40,6 +41,13 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
 import type { Job } from "@/db/schema";
@@ -51,6 +59,7 @@ import {
 import { getDefaultJobParams } from "@/lib/jobs/handlers/registry";
 import { jobFormSchema } from "@/lib/jobs/schema";
 import type { JobFormValues } from "@/lib/jobs/types";
+import type { ListSourceGroupsResult } from "@/lib/source-groups/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
@@ -62,6 +71,26 @@ type JobMenuFormPageProps = {
   job?: Job;
 };
 
+const NO_SOURCE_GROUP_VALUE = "none";
+
+async function fetchSourceGroups(
+  workspaceId: string,
+): Promise<ListSourceGroupsResult> {
+  const res = await workspaceFetch(workspaceId, "/api/source-groups");
+  const data = (await res.json()) as ListSourceGroupsResult & {
+    error?: string;
+    message?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(
+      data.message ?? data.error ?? "Could not load source groups.",
+    );
+  }
+
+  return data;
+}
+
 function jobToFormValues(menu: JobMenuConfig, job: Job): JobFormValues {
   return {
     name: job.name,
@@ -69,6 +98,7 @@ function jobToFormValues(menu: JobMenuConfig, job: Job): JobFormValues {
     cronConfig: job.cronConfig ?? EMPTY_CRON_SCHEDULE,
     enabled: job.enabled,
     params: (job.params ?? {}) as Record<string, unknown>,
+    groupId: job.groupId ?? NO_SOURCE_GROUP_VALUE,
   };
 }
 
@@ -96,8 +126,15 @@ export function JobMenuFormPage({
           cronConfig: { ...EMPTY_CRON_SCHEDULE, cron: "0 9 * * *" },
           enabled: true,
           params: getDefaultJobParams(menu.jobType),
+          groupId: NO_SOURCE_GROUP_VALUE,
         },
   });
+
+  const sourceGroupsQuery = useQuery({
+    queryKey: sourceGroupsQueryKey(workspace.id),
+    queryFn: () => fetchSourceGroups(workspace.id),
+  });
+  const sourceGroups = sourceGroupsQuery.data?.items ?? [];
 
   useEffect(() => {
     if (job) {
@@ -112,6 +149,8 @@ export function JobMenuFormPage({
       cronConfig: values.cronConfig,
       enabled: values.enabled,
       params: values.params,
+      groupId:
+        values.groupId === NO_SOURCE_GROUP_VALUE ? null : values.groupId,
     };
 
     const url = mode === "create" ? "/api/jobs" : `/api/jobs/${job?.id}`;
@@ -247,6 +286,44 @@ export function JobMenuFormPage({
                     {...form.register("name")}
                   />
                   <FieldError errors={[nameError]} />
+                </Field>
+
+                <Field data-invalid={!!form.formState.errors.groupId || undefined}>
+                  <FieldLabel htmlFor="job-source-group">Source group</FieldLabel>
+                  <Controller
+                    name="groupId"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={!canEdit || isSubmitting}
+                      >
+                        <SelectTrigger
+                          id="job-source-group"
+                          className="w-full"
+                          aria-invalid={!!form.formState.errors.groupId}
+                        >
+                          <SelectValue placeholder="No group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NO_SOURCE_GROUP_VALUE}>
+                            No group
+                          </SelectItem>
+                          {sourceGroups.map((group) => (
+                            <SelectItem key={group.id} value={group.id}>
+                              {group.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <FieldDescription>
+                    New documents from this job receive this source group.
+                    Changing it does not update existing documents.
+                  </FieldDescription>
+                  <FieldError errors={[form.formState.errors.groupId]} />
                 </Field>
 
                 <Field>

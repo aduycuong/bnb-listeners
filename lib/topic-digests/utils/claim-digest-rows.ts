@@ -16,7 +16,7 @@ export type ClaimDigestRowsParams = {
  * - Normal recompute job: bulkOnly = false → picks rows where is_bulk_stale = false
  * - Bulk drain job:       bulkOnly = true  → picks rows where is_bulk_stale = true
  *
- * Returns the list of (topicId, dateKey) pairs that were claimed.
+ * Returns the list of (topicId, dateKey, groupId) triples that were claimed.
  */
 export async function claimDigestRows(
   params: ClaimDigestRowsParams,
@@ -27,11 +27,15 @@ export async function claimDigestRows(
     ? sql`AND is_bulk_stale = true`
     : sql`AND is_bulk_stale = false`;
 
-  const rows = await db.execute<{ topic_id: string; date_key: string }>(sql`
+  const rows = await db.execute<{
+    topic_id: string;
+    date_key: string;
+    group_id: string;
+  }>(sql`
     UPDATE topic_digest_daily
     SET processing = true, processing_started_at = now()
-    WHERE (topic_id, date_key) IN (
-      SELECT topic_id, date_key
+    WHERE (topic_id, date_key, group_id) IN (
+      SELECT topic_id, date_key, group_id
       FROM topic_digest_daily
       WHERE is_stale = true
         AND processing = false
@@ -40,11 +44,12 @@ export async function claimDigestRows(
       LIMIT ${batchSize}
       FOR UPDATE SKIP LOCKED
     )
-    RETURNING topic_id, date_key
+    RETURNING topic_id, date_key, group_id
   `);
 
   return rows.rows.map((r) => ({
     topicId: r.topic_id,
     dateKey: r.date_key,
+    groupId: r.group_id,
   }));
 }

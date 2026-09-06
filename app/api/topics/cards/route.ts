@@ -25,6 +25,7 @@ const listTopicCardsQuerySchema = z
       .min(1)
       .max(TOPIC_CARD_PAGE_SIZE)
       .default(TOPIC_CARD_PAGE_SIZE),
+    groupId: z.uuid().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.period !== "custom") {

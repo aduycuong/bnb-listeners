@@ -107,6 +107,7 @@ Tenant container for documents, topics, and members.
 - ← `documents.workspace_id`
 - ← `topics.workspace_id`
 - ← `jobs.workspace_id`
+- ← `source_groups.workspace_id`
 
 A default workspace is created for each user on first sign-in.
 
@@ -169,6 +170,37 @@ Dedup is scoped per workspace: unique `(workspace_id, doc_type, source_key, sour
 
 ---
 
+---
+
+### `source_groups`
+
+Workspace-scoped labels for grouping scrape jobs and documents (e.g. Facebook KOL, Tiktoker). Used to filter trending topic metrics.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
+| name | text | NO | — | Display name, unique per workspace |
+| description | text | YES | — | Optional notes |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| `idx_source_groups_workspace_name` | UNIQUE `(workspace_id, name)` | One name per workspace |
+| `idx_source_groups_workspace_id` | `(workspace_id)` | List groups in a workspace |
+
+**Relations**
+
+- ← `jobs.group_id` ON DELETE SET NULL
+- ← `documents.group_id` ON DELETE SET NULL
+
+**Digest sentinel:** `ALL_GROUPS_SENTINEL` (`00000000-0000-0000-0000-000000000000`) in `lib/source-groups/constants.ts` — used in digest tables for the global (all documents) partition. Not a row in this table.
+
+---
+
 ### `documents`
 
 One row per ingested item within a workspace. Topic assignment is in `document_topics`.
@@ -189,6 +221,7 @@ One row per ingested item within a workspace. Topic assignment is in `document_t
 | is_duplicate | boolean | NO | `false` | True when near-duplicate of another document |
 | canonical_id | uuid | YES | — | FK → `documents.id` — original when `is_duplicate` is true |
 | job_run_id | uuid | YES | — | FK → `job_runs.id` ON DELETE SET NULL — job run that first created this document; null when created manually |
+| group_id | uuid | YES | — | FK → `source_groups.id` ON DELETE SET NULL — set on insert only; upsert does not overwrite |
 | published_at | timestamptz | YES | — | Source publish date; used for freshness scoring and canonical ordering |
 | created_at | timestamptz | NO | `now()` | Ingestion time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
@@ -208,12 +241,14 @@ One row per ingested item within a workspace. Topic assignment is in `document_t
 | `idx_documents_quality_score` | `(quality_score)` | Filter/sort by quality |
 | `idx_documents_is_duplicate` | `(is_duplicate)` | Exclude duplicates from aggregates |
 | `idx_documents_job_run_id` | `(job_run_id)` | Documents created by a job run |
+| `idx_documents_workspace_group` | `(workspace_id, group_id)` | Filter/list documents by source group |
 
-Near-duplicate detection is scoped to the same workspace. `job_run_id` is set only when a scrape (or other) job first inserts the document; later upserts do not overwrite it.
+Near-duplicate detection is scoped to the same workspace. `job_run_id` and `group_id` are set only when a scrape (or other) job first inserts the document; later upserts do not overwrite them.
 
 **Relations**
 
 - → `job_runs.id` (`job_run_id`)
+- → `source_groups.id` (`group_id`)
 
 ---
 
@@ -326,7 +361,7 @@ Static calendar dimension table. Pre-populated for 10–20 years (~3 650–7 300
 
 ### `topic_digest_daily`
 
-Daily-grain fact table. One row per `(topic_id, date_key)`. Source of truth for all digest metrics. Arbitrary-range queries (e.g. Aug 15 – Sep 30) run directly against this table.
+Daily-grain fact table. One row per `(topic_id, date_key, group_id)`. Source of truth for all digest metrics. Arbitrary-range queries (e.g. Aug 15 – Sep 30) run directly against this table.
 
 Rows are created on-demand when a document is first assigned to a topic. The debounce constant `DIGEST_DEBOUNCE_MS` (default 1 hour) is defined in `lib/topic-digests/constants.ts`.
 
@@ -334,6 +369,7 @@ Rows are created on-demand when a document is first assigned to a topic. The deb
 | ------ | ---- | -------- | ------- | ----------- |
 | topic_id | uuid | NO | — | FK → `topics.id` ON DELETE CASCADE |
 | date_key | date | NO | — | FK → `dim_dates.date_key` — day of the document's `published_at` |
+| group_id | uuid | NO | `ALL_GROUPS_SENTINEL` | Partition: sentinel = all documents; otherwise FK-aligned `source_groups.id` |
 | doc_count | integer | NO | `0` | Non-duplicate documents with `published_at` on this date |
 | avg_quality_score | real | YES | — | Average `quality_score` for those documents |
 | trend_score | real | YES | — | `doc_count × avg_quality_score × recency_weight('day')` |
@@ -344,12 +380,13 @@ Rows are created on-demand when a document is first assigned to a topic. The deb
 | processing_started_at | timestamptz | YES | — | Lease start time; used to detect stuck workers |
 | computed_at | timestamptz | YES | — | Timestamp of last successful compute |
 
-**Primary key:** `(topic_id, date_key)`
+**Primary key:** `(topic_id, date_key, group_id)`
 
 **Indexes**
 
 | Index | Columns | Purpose |
 | ----- | ------- | ------- |
+| `idx_topic_digest_daily_group_date` | `(group_id, date_key, topic_id)` | Rolling-window topic cards + sparkline |
 | `idx_topic_digest_daily_date` | `(date_key, topic_id)` | All topics for a given day (ranking) |
 | `idx_topic_digest_daily_stale` | `(recompute_after)` WHERE `is_stale = true AND is_bulk_stale = false AND processing = false` | Normal recompute job queue (excludes bulk-stale rows) |
 | `idx_topic_digest_daily_bulk_stale` | `(recompute_after)` WHERE `is_stale = true AND is_bulk_stale = true AND processing = false` | Bulk drain job queue — only rows from taxonomy ops |
@@ -358,7 +395,7 @@ Rows are created on-demand when a document is first assigned to a topic. The deb
 
 ### `topic_digest_rollup`
 
-Pre-aggregated rollup from the daily grain. One row per `(topic_id, period_grain, period_start)`. Supports `week`, `month`, `quarter`, `year`. `trend_rank` is pre-computed per workspace after each rollup rebuild.
+Pre-aggregated rollup from the daily grain. One row per `(topic_id, period_grain, period_start, group_id)`. Supports `week`, `month`, `quarter`, `year`. `trend_rank` is pre-computed per `(workspace_id, group_id)` after each rollup rebuild.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -366,19 +403,20 @@ Pre-aggregated rollup from the daily grain. One row per `(topic_id, period_grain
 | period_grain | text | NO | — | `'week'` \| `'month'` \| `'quarter'` \| `'year'` |
 | period_start | date | NO | — | First day of the period |
 | period_end | date | NO | — | Last day of the period |
+| group_id | uuid | NO | `ALL_GROUPS_SENTINEL` | Partition: sentinel = all documents; otherwise group-specific metrics |
 | doc_count | integer | NO | `0` | Sum of `doc_count` from daily rows in the period |
 | avg_quality_score | real | YES | — | Weighted average `quality_score` across the period |
 | trend_score | real | YES | — | `doc_count × avg_quality_score × recency_weight(grain)` |
-| trend_rank | integer | YES | — | `RANK()` within workspace for this grain + period (1 = hottest) |
+| trend_rank | integer | YES | — | `RANK()` within `(workspace_id, group_id)` for this grain + period (1 = hottest) |
 | computed_at | timestamptz | YES | — | Timestamp of last rollup compute |
 
-**Primary key:** `(topic_id, period_grain, period_start)`
+**Primary key:** `(topic_id, period_grain, period_start, group_id)`
 
 **Indexes**
 
 | Index | Columns | Purpose |
 | ----- | ------- | ------- |
-| `idx_topic_digest_rollup_grain_period` | `(period_grain, period_start, trend_score DESC)` | Top-N hot topics for a grain/period |
+| `idx_topic_digest_rollup_group_grain_period` | `(group_id, period_grain, period_start, trend_score DESC)` | Top-N topic cards for calendar period + group filter |
 
 **`recency_weight` by grain** (defined in `lib/topic-digests/constants.ts`):
 
@@ -418,6 +456,7 @@ Workspace-scoped job definition for QStash scheduling.
 | cron_config | jsonb | NO | `{ "cron": "", "timezone": "UTC" }` | Schedule: `{ cron, timezone }` — empty `cron` means no schedule |
 | enabled | boolean | NO | `true` | When false, QStash schedule should be removed |
 | params | jsonb | NO | `{}` | Type-specific config (source, doc_type, scrape targets, …) |
+| group_id | uuid | YES | — | FK → `source_groups.id` ON DELETE SET NULL — assigned to new documents from this job |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 

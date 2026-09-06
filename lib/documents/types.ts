@@ -51,6 +51,8 @@ export type DocumentFormValues = z.infer<typeof documentFormSchema>;
 export type UpsertDocumentParams = CreateDocumentParams & {
   /** Set only on insert; later upserts leave the original job run in place. */
   jobRunId?: string;
+  /** Set only on insert; upsert/update does not overwrite an existing group. */
+  groupId?: string | null;
 };
 
 /** Result of an upsert-document operation. */

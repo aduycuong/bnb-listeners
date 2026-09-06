@@ -47,6 +47,7 @@ export const createJobBodySchema = z
     cronConfig: cronScheduleSchema,
     enabled: z.boolean().default(true),
     params: jobParamsSchema.default({}),
+    groupId: z.uuid().nullable().optional(),
   })
   .superRefine((data, ctx) => {
     addJobParamsIssues(ctx, data.jobType, data.params);
@@ -59,6 +60,7 @@ export const updateJobBodySchema = z
     cronConfig: cronScheduleSchema.optional(),
     enabled: z.boolean().optional(),
     params: jobParamsSchema.optional(),
+    groupId: z.uuid().nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     error: "At least one field must be provided",
@@ -76,6 +78,7 @@ export const jobFormSchema = z
     cronConfig: cronScheduleSchema,
     enabled: z.boolean(),
     params: jobParamsSchema,
+    groupId: z.string(),
   })
   .superRefine((data, ctx) => {
     addJobParamsIssues(ctx, data.jobType, data.params);

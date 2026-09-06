@@ -21,6 +21,8 @@ export const createDocumentBodySchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
   /** ISO 8601 datetime: when the content was originally published by the source. */
   publishedAt: z.iso.datetime().optional(),
+  /** Optional source group UUID — must belong to the workspace. */
+  groupId: z.uuid().optional().nullable(),
 });
 
 export const updateDocumentBodySchema = z
@@ -60,4 +62,5 @@ export const documentFormSchema = z.object({
     }
   }),
   publishedAt: z.string(),
+  groupId: z.string(),
 });

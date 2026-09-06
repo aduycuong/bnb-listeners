@@ -99,6 +99,38 @@ export const workspaceMembers = pgTable(
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 export type NewWorkspaceMember = typeof workspaceMembers.$inferInsert;
 
+/** Sentinel UUID for global digest partitions — not a row in source_groups. */
+const ALL_GROUPS_SENTINEL = "00000000-0000-0000-0000-000000000000";
+
+export const sourceGroups = pgTable(
+  "source_groups",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("idx_source_groups_workspace_name").on(
+      table.workspaceId,
+      table.name,
+    ),
+    index("idx_source_groups_workspace_id").on(table.workspaceId),
+  ],
+);
+
+export type SourceGroup = typeof sourceGroups.$inferSelect;
+export type NewSourceGroup = typeof sourceGroups.$inferInsert;
+
 export const documents = pgTable(
   "documents",
   {
@@ -121,6 +153,9 @@ export const documents = pgTable(
     isDuplicate: boolean("is_duplicate").notNull().default(false),
     canonicalId: uuid("canonical_id"),
     jobRunId: uuid("job_run_id").references(() => jobRuns.id, {
+      onDelete: "set null",
+    }),
+    groupId: uuid("group_id").references(() => sourceGroups.id, {
       onDelete: "set null",
     }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
@@ -154,6 +189,7 @@ export const documents = pgTable(
     index("idx_documents_quality_score").on(table.qualityScore),
     index("idx_documents_is_duplicate").on(table.isDuplicate),
     index("idx_documents_job_run_id").on(table.jobRunId),
+    index("idx_documents_workspace_group").on(table.workspaceId, table.groupId),
     foreignKey({
       columns: [table.canonicalId],
       foreignColumns: [table.id],
@@ -330,6 +366,7 @@ export const topicDigestDaily = pgTable(
     dateKey: date("date_key")
       .notNull()
       .references(() => dimDates.dateKey),
+    groupId: uuid("group_id").notNull().default(ALL_GROUPS_SENTINEL),
 
     // Metrics
     docCount: integer("doc_count").notNull().default(0),
@@ -351,7 +388,13 @@ export const topicDigestDaily = pgTable(
     computedAt: timestamp("computed_at", { withTimezone: true }),
   },
   (table) => [
-    primaryKey({ columns: [table.topicId, table.dateKey] }),
+    primaryKey({ columns: [table.topicId, table.dateKey, table.groupId] }),
+    // rolling-window topic cards + sparkline
+    index("idx_topic_digest_daily_group_date").on(
+      table.groupId,
+      table.dateKey,
+      table.topicId,
+    ),
     // "all topics on a date" — used by ranking after daily recompute
     index("idx_topic_digest_daily_date").on(table.dateKey, table.topicId),
     // normal recompute job queue — excludes bulk-stale rows
@@ -388,6 +431,7 @@ export const topicDigestRollup = pgTable(
     periodGrain: text("period_grain").notNull(), // 'week' | 'month' | 'quarter' | 'year'
     periodStart: date("period_start").notNull(),
     periodEnd: date("period_end").notNull(),
+    groupId: uuid("group_id").notNull().default(ALL_GROUPS_SENTINEL),
 
     docCount: integer("doc_count").notNull().default(0),
     avgQualityScore: real("avg_quality_score"),
@@ -397,10 +441,16 @@ export const topicDigestRollup = pgTable(
   },
   (table) => [
     primaryKey({
-      columns: [table.topicId, table.periodGrain, table.periodStart],
+      columns: [
+        table.topicId,
+        table.periodGrain,
+        table.periodStart,
+        table.groupId,
+      ],
     }),
-    // "top N topics for grain+period" — used by API and MCP
-    index("idx_topic_digest_rollup_grain_period").on(
+    // top-N topic cards for calendar period + group filter
+    index("idx_topic_digest_rollup_group_grain_period").on(
+      table.groupId,
       table.periodGrain,
       table.periodStart,
       table.trendScore.desc(),
@@ -429,6 +479,9 @@ export const jobs = pgTable(
       .$type<Record<string, unknown>>()
       .notNull()
       .default({}),
+    groupId: uuid("group_id").references(() => sourceGroups.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

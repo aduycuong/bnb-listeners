@@ -1,20 +1,27 @@
 import { and, eq, sql } from "drizzle-orm";
 
 import { documents, documentTopics, topicDigestDaily } from "@/db/schema";
+import { ALL_GROUPS_SENTINEL } from "@/lib/source-groups/constants";
 import { db } from "@/lib/db";
 import { DAILY_RECENCY_WEIGHT } from "../constants";
 import type { DigestMetrics } from "../types";
 
 /**
  * Compute doc_count, avg_quality_score, and trend_score for a single
- * (topicId, dateKey) pair by aggregating the documents table.
+ * (topicId, dateKey, groupId) partition by aggregating the documents table.
  *
  * Only documents whose published_at falls on dateKey are counted.
  */
 async function fetchMetrics(
   topicId: string,
   dateKey: string,
+  groupId: string,
 ): Promise<DigestMetrics> {
+  const groupFilter =
+    groupId === ALL_GROUPS_SENTINEL
+      ? undefined
+      : eq(documents.groupId, groupId);
+
   const [row] = await db
     .select({
       docCount: sql<number>`COUNT(*)::int`,
@@ -26,6 +33,7 @@ async function fetchMetrics(
       and(
         eq(documentTopics.topicId, topicId),
         sql`${documents.publishedAt}::date = ${dateKey}::date`,
+        groupFilter,
       ),
     );
 
@@ -42,6 +50,7 @@ async function fetchMetrics(
 export type ComputeDailyMetricsParams = {
   topicId: string;
   dateKey: string;
+  groupId: string;
   /** When true, also resets is_bulk_stale so bulk drain doesn't re-claim the row. */
   clearBulkStale: boolean;
 };
@@ -53,8 +62,8 @@ export type ComputeDailyMetricsParams = {
 export async function computeDailyMetrics(
   params: ComputeDailyMetricsParams,
 ): Promise<DigestMetrics> {
-  const { topicId, dateKey, clearBulkStale } = params;
-  const metrics = await fetchMetrics(topicId, dateKey);
+  const { topicId, dateKey, groupId, clearBulkStale } = params;
+  const metrics = await fetchMetrics(topicId, dateKey, groupId);
 
   await db
     .update(topicDigestDaily)
@@ -72,6 +81,7 @@ export async function computeDailyMetrics(
       and(
         eq(topicDigestDaily.topicId, topicId),
         eq(topicDigestDaily.dateKey, dateKey),
+        eq(topicDigestDaily.groupId, groupId),
       ),
     );
 

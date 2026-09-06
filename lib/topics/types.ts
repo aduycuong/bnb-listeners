@@ -78,6 +78,8 @@ export type ListTopicCardsParams = {
   sort: TopicCardSort;
   offset?: number;
   limit?: number;
+  /** Omit or ALL_GROUPS_SENTINEL for all sources. */
+  groupId?: string;
 };
 
 export type ListTopicCardsResult = {

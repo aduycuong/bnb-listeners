@@ -4,7 +4,7 @@ import type { RollupGrain } from "./constants";
 // Shared types for the topic-digest subsystem.
 // ---------------------------------------------------------------------------
 
-/** Computed metric values for a single (topic, date) pair. */
+/** Computed metric values for a single (topic, date, group) partition. */
 export type DigestMetrics = {
   docCount: number;
   avgQualityScore: number | null;
@@ -19,8 +19,15 @@ export type AffectedPeriod = {
   periodStart: string;
 };
 
+/** A daily partition affected by a recompute batch. */
+export type AffectedDigestPartition = {
+  dateKey: string;
+  groupId: string;
+};
+
 /** A claimed daily row returned by the claim query. */
 export type ClaimedRow = {
   topicId: string;
   dateKey: string;
+  groupId: string;
 };

@@ -9,6 +9,7 @@ import { TopicCard } from "@/components/topics/topic-card";
 import { TopicDeleteDialog } from "@/components/topics/topic-delete-dialog";
 import { TopicFormDialog } from "@/components/topics/topic-form-dialog";
 import {
+  sourceGroupsQueryKey,
   topicCardsQueryKey,
   topicsQueryKey,
   type TopicCardsQueryFilters,
@@ -22,6 +23,8 @@ import {
   type TopicCardSort,
 } from "@/lib/topics/topic-card-config";
 import { TOPIC_CONFIG } from "@/lib/topics/topic-config";
+import { ALL_SOURCE_GROUPS_VALUE } from "@/lib/source-groups/source-group-filter-config";
+import type { ListSourceGroupsResult } from "@/lib/source-groups/types";
 import type {
   ListTopicCardsResult,
   ListTopicsResult,
@@ -56,6 +59,10 @@ async function fetchTopicCards(
     }
   }
 
+  if (filters.groupId && filters.groupId !== ALL_SOURCE_GROUPS_VALUE) {
+    params.set("groupId", filters.groupId);
+  }
+
   const res = await workspaceFetch(
     workspaceId,
     `/api/topics/cards?${params.toString()}`,
@@ -67,6 +74,24 @@ async function fetchTopicCards(
 
   if (!res.ok) {
     throw new Error(data.message ?? data.error ?? "Could not load topics.");
+  }
+
+  return data;
+}
+
+async function fetchSourceGroups(
+  workspaceId: string,
+): Promise<ListSourceGroupsResult> {
+  const res = await workspaceFetch(workspaceId, "/api/source-groups");
+  const data = (await res.json()) as ListSourceGroupsResult & {
+    error?: string;
+    message?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(
+      data.message ?? data.error ?? "Could not load source groups.",
+    );
   }
 
   return data;
@@ -97,6 +122,7 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
 
   const [period, setPeriod] = useState<TopicCardPeriodPreset>("last_7_days");
   const [sort, setSort] = useState<TopicCardSort>("trend");
+  const [groupId, setGroupId] = useState(ALL_SOURCE_GROUPS_VALUE);
   const [customStartDate, setCustomStartDate] = useState<string>();
   const [customEndDate, setCustomEndDate] = useState<string>();
 
@@ -111,10 +137,11 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
     () => ({
       period,
       sort,
+      groupId,
       startDate: period === "custom" ? customStartDate : undefined,
       endDate: period === "custom" ? customEndDate : undefined,
     }),
-    [customEndDate, customStartDate, period, sort],
+    [customEndDate, customStartDate, groupId, period, sort],
   );
 
   const cardsQuery = useInfiniteQuery({
@@ -133,7 +160,13 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
     enabled: formOpen || deleteOpen,
   });
 
+  const sourceGroupsQuery = useQuery({
+    queryKey: sourceGroupsQueryKey(workspace.id),
+    queryFn: () => fetchSourceGroups(workspace.id),
+  });
+
   const topics = topicsQuery.data?.items ?? [];
+  const sourceGroups = sourceGroupsQuery.data?.items ?? [];
   const cards = useMemo(
     () => cardsQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [cardsQuery.data?.pages],
@@ -255,10 +288,13 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
           <TopicListToolbar
             period={period}
             sort={sort}
+            groupId={groupId}
+            sourceGroups={sourceGroups}
             customStartDate={customStartDate}
             customEndDate={customEndDate}
             onPeriodChange={handlePeriodChange}
             onSortChange={setSort}
+            onGroupChange={setGroupId}
             onCustomRangeApply={handleCustomRangeApply}
             disabled={isInitialLoading}
           />

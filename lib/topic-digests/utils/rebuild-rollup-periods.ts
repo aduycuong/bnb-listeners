@@ -9,23 +9,46 @@ import {
   ROLLUP_RECENCY_WEIGHTS,
   type RollupGrain,
 } from "../constants";
-import type { AffectedPeriod } from "../types";
+import type { AffectedDigestPartition } from "../types";
 
-// ---------------------------------------------------------------------------
-// Step 1 — derive affected periods from computed date_keys
-// ---------------------------------------------------------------------------
+type RollupRebuildTarget = {
+  grain: RollupGrain;
+  periodStart: string;
+  groupId: string;
+};
+
+function dedupeRebuildTargets(
+  targets: RollupRebuildTarget[],
+): RollupRebuildTarget[] {
+  const seen = new Set<string>();
+  const result: RollupRebuildTarget[] = [];
+
+  for (const target of targets) {
+    const key = `${target.grain}:${target.periodStart}:${target.groupId}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(target);
+  }
+
+  return result;
+}
 
 /**
- * Look up dim_dates for all computed date_keys and collect the unique
- * (grain, period_start) pairs that must be rebuilt.
+ * Derive unique (grain, period_start, group_id) triples from affected daily
+ * partitions.
  */
-export async function deriveAffectedPeriods(
-  dateKeys: string[],
-): Promise<AffectedPeriod[]> {
-  if (dateKeys.length === 0) return [];
+export async function deriveAffectedRollupTargets(
+  affected: AffectedDigestPartition[],
+): Promise<RollupRebuildTarget[]> {
+  if (affected.length === 0) return [];
+
+  const dateKeys = [...new Set(affected.map((row) => row.dateKey))];
 
   const dimRows = await db
     .select({
+      dateKey: dimDates.dateKey,
       weekStart: dimDates.weekStart,
       monthStart: dimDates.monthStart,
       quarterStart: dimDates.quarterStart,
@@ -34,56 +57,57 @@ export async function deriveAffectedPeriods(
     .from(dimDates)
     .where(inArray(dimDates.dateKey, dateKeys));
 
-  // Collect unique period starts per grain using a Set for dedup.
-  const seen = new Map<RollupGrain, Set<string>>();
-  for (const grain of ROLLUP_GRAINS) {
-    seen.set(grain, new Set());
-  }
+  const dimByDateKey = new Map(dimRows.map((row) => [row.dateKey, row]));
+  const targets: RollupRebuildTarget[] = [];
 
-  for (const row of dimRows) {
-    seen.get("week")!.add(row.weekStart);
-    seen.get("month")!.add(row.monthStart);
-    seen.get("quarter")!.add(row.quarterStart);
-    seen.get("year")!.add(row.yearStart);
-  }
+  for (const { dateKey, groupId } of affected) {
+    const dim = dimByDateKey.get(dateKey);
+    if (!dim) {
+      continue;
+    }
 
-  const periods: AffectedPeriod[] = [];
-  for (const grain of ROLLUP_GRAINS) {
-    for (const periodStart of seen.get(grain)!) {
-      periods.push({ grain, periodStart });
+    for (const grain of ROLLUP_GRAINS) {
+      const periodStart =
+        grain === "week"
+          ? dim.weekStart
+          : grain === "month"
+            ? dim.monthStart
+            : grain === "quarter"
+              ? dim.quarterStart
+              : dim.yearStart;
+
+      targets.push({ grain, periodStart, groupId });
     }
   }
-  return periods;
+
+  return dedupeRebuildTargets(targets);
 }
 
-// ---------------------------------------------------------------------------
-// Step 2 — upsert rollup rows and re-rank within workspace
-// ---------------------------------------------------------------------------
-
 /**
- * Rebuild one (grain, period_start) rollup row:
+ * Rebuild one (grain, period_start, group_id) rollup row:
  * 1. Aggregate topic_digest_daily for the period (only non-stale rows).
  * 2. Upsert into topic_digest_rollup.
- * 3. Re-rank trend_rank PARTITION BY workspace_id.
+ * 3. Re-rank trend_rank PARTITION BY (workspace_id, group_id).
  */
 async function rebuildOnePeriod(
   grain: RollupGrain,
   periodStart: string,
+  groupId: string,
 ): Promise<void> {
   const recencyWeight = ROLLUP_RECENCY_WEIGHTS[grain];
   const dimColumn = GRAIN_DIM_COLUMN[grain];
   const periodInterval = GRAIN_PERIOD_INTERVAL[grain];
 
-  // Upsert aggregated rollup row for the period.
   await db.execute(sql`
     INSERT INTO topic_digest_rollup
-      (topic_id, period_grain, period_start, period_end,
+      (topic_id, period_grain, period_start, period_end, group_id,
        doc_count, avg_quality_score, trend_score, computed_at)
     SELECT
       tdd.topic_id,
       ${grain},
       ${periodStart}::date,
       (${periodStart}::date + ${periodInterval}::interval)::date,
+      ${groupId}::uuid,
       SUM(tdd.doc_count),
       CASE
         WHEN COUNT(*) FILTER (WHERE tdd.avg_quality_score IS NOT NULL) > 0
@@ -104,9 +128,10 @@ async function rebuildOnePeriod(
     FROM topic_digest_daily tdd
     JOIN dim_dates d ON d.date_key = tdd.date_key
     WHERE d.${sql.raw(dimColumn)} = ${periodStart}::date
+      AND tdd.group_id = ${groupId}::uuid
       AND tdd.is_stale = false
     GROUP BY tdd.topic_id
-    ON CONFLICT (topic_id, period_grain, period_start) DO UPDATE SET
+    ON CONFLICT (topic_id, period_grain, period_start, group_id) DO UPDATE SET
       period_end        = EXCLUDED.period_end,
       doc_count         = EXCLUDED.doc_count,
       avg_quality_score = EXCLUDED.avg_quality_score,
@@ -114,7 +139,6 @@ async function rebuildOnePeriod(
       computed_at       = EXCLUDED.computed_at
   `);
 
-  // Re-rank within workspace for this grain + period.
   await db.execute(sql`
     UPDATE topic_digest_rollup tdr
     SET trend_rank = ranked.new_rank
@@ -122,27 +146,30 @@ async function rebuildOnePeriod(
       SELECT
         tdr2.topic_id,
         RANK() OVER (
-          PARTITION BY t.workspace_id
+          PARTITION BY t.workspace_id, tdr2.group_id
           ORDER BY tdr2.trend_score DESC NULLS LAST
         ) AS new_rank
       FROM topic_digest_rollup tdr2
       JOIN topics t ON t.id = tdr2.topic_id
       WHERE tdr2.period_grain = ${grain}
         AND tdr2.period_start = ${periodStart}::date
+        AND tdr2.group_id = ${groupId}::uuid
     ) ranked
-    WHERE tdr.topic_id    = ranked.topic_id
+    WHERE tdr.topic_id     = ranked.topic_id
       AND tdr.period_grain = ${grain}
       AND tdr.period_start = ${periodStart}::date
+      AND tdr.group_id     = ${groupId}::uuid
   `);
 }
 
 /**
- * Rebuild all rollup periods affected by the given set of computed date_keys.
- * Processes each (grain, period_start) pair independently.
+ * Rebuild all rollup periods affected by the given daily partitions.
  */
-export async function rebuildRollupPeriods(dateKeys: string[]): Promise<void> {
-  const periods = await deriveAffectedPeriods(dateKeys);
-  for (const { grain, periodStart } of periods) {
-    await rebuildOnePeriod(grain, periodStart);
+export async function rebuildRollupPeriods(
+  affected: AffectedDigestPartition[],
+): Promise<void> {
+  const targets = await deriveAffectedRollupTargets(affected);
+  for (const { grain, periodStart, groupId } of targets) {
+    await rebuildOnePeriod(grain, periodStart, groupId);
   }
 }

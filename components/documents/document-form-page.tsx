@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,6 +12,7 @@ import {
   documentQueryKey,
   documentsQueryKey,
 } from "@/components/documents/document-query-keys";
+import { sourceGroupsQueryKey } from "@/components/topics/topic-query-keys";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,6 +61,7 @@ import type {
   DocumentFormValues,
   GetDocumentResult,
 } from "@/lib/documents/types";
+import type { ListSourceGroupsResult } from "@/lib/source-groups/types";
 import { isSchedulableJobType } from "@/lib/jobs/constants";
 import {
   getJobMenuConfigByJobType,
@@ -74,6 +76,26 @@ type DocumentFormPageProps = {
   mode: "create" | "edit";
   document?: GetDocumentResult;
 };
+
+const NO_SOURCE_GROUP_VALUE = "none";
+
+async function fetchSourceGroups(
+  workspaceId: string,
+): Promise<ListSourceGroupsResult> {
+  const res = await workspaceFetch(workspaceId, "/api/source-groups");
+  const data = (await res.json()) as ListSourceGroupsResult & {
+    error?: string;
+    message?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(
+      data.message ?? data.error ?? "Could not load source groups.",
+    );
+  }
+
+  return data;
+}
 
 function toDatetimeLocal(value: string | Date | null | undefined) {
   if (!value) {
@@ -103,6 +125,7 @@ function documentToFormValues(document: GetDocumentResult): DocumentFormValues {
         ? JSON.stringify(document.metadata, null, 2)
         : "",
     publishedAt: toDatetimeLocal(document.publishedAt),
+    groupId: NO_SOURCE_GROUP_VALUE,
   };
 }
 
@@ -135,7 +158,7 @@ function parseMetadataJson(metadataJson: string) {
   return JSON.parse(trimmed) as Record<string, unknown>;
 }
 
-function buildDocumentBody(values: DocumentFormValues) {
+function buildDocumentBody(values: DocumentFormValues, includeGroup: boolean) {
   const metadata = parseMetadataJson(values.metadataJson);
   const title = values.title.trim() || undefined;
   const publishedAt = values.publishedAt.trim()
@@ -151,6 +174,12 @@ function buildDocumentBody(values: DocumentFormValues) {
     rawContent: values.rawContent,
     metadata,
     publishedAt,
+    ...(includeGroup
+      ? {
+          groupId:
+            values.groupId === NO_SOURCE_GROUP_VALUE ? null : values.groupId,
+        }
+      : {}),
   };
 }
 
@@ -183,8 +212,16 @@ export function DocumentFormPage({
           rawContent: "",
           metadataJson: "",
           publishedAt: "",
+          groupId: NO_SOURCE_GROUP_VALUE,
         },
   });
+
+  const sourceGroupsQuery = useQuery({
+    queryKey: sourceGroupsQueryKey(workspace.id),
+    queryFn: () => fetchSourceGroups(workspace.id),
+    enabled: mode === "create",
+  });
+  const sourceGroups = sourceGroupsQuery.data?.items ?? [];
 
   useEffect(() => {
     if (document) {
@@ -196,7 +233,7 @@ export function DocumentFormPage({
     let body: ReturnType<typeof buildDocumentBody>;
 
     try {
-      body = buildDocumentBody(values);
+      body = buildDocumentBody(values, mode === "create");
     } catch {
       toast.add({
         title: "Metadata must be valid JSON.",
@@ -424,6 +461,47 @@ export function DocumentFormPage({
                 </FieldDescription>
                 <FieldError errors={[form.formState.errors.sourceId]} />
               </Field>
+
+              {mode === "create" ? (
+                <Field data-invalid={!!form.formState.errors.groupId || undefined}>
+                  <FieldLabel htmlFor="document-source-group">
+                    Source group
+                  </FieldLabel>
+                  <Controller
+                    name="groupId"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={!canEdit || isSubmitting}
+                      >
+                        <SelectTrigger
+                          id="document-source-group"
+                          className="w-full"
+                          aria-invalid={!!form.formState.errors.groupId}
+                        >
+                          <SelectValue placeholder="No group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NO_SOURCE_GROUP_VALUE}>
+                            No group
+                          </SelectItem>
+                          {sourceGroups.map((group) => (
+                            <SelectItem key={group.id} value={group.id}>
+                              {group.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <FieldDescription>
+                    Optional group for filtering trending topics.
+                  </FieldDescription>
+                  <FieldError errors={[form.formState.errors.groupId]} />
+                </Field>
+              ) : null}
 
               {mode === "edit" && document ? (
                 <Field>

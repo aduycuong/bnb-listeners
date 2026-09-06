@@ -24,6 +24,7 @@ async function upsertFacebookPostDocuments(
   sourceKey: string,
   workspaceId: string,
   jobRunId: string,
+  groupId: string | null,
 ): Promise<UpsertSummary> {
   const posts = parseFacebookPosts(output);
   const summary: UpsertSummary = { inserted: 0, updated: 0, unchanged: 0 };
@@ -32,7 +33,7 @@ async function upsertFacebookPostDocuments(
     posts.map(async (post) => {
       const params = mapPostToDocument({ sourceKey, post });
       const { outcome } = await upsertDocument(
-        { ...params, jobRunId },
+        { ...params, jobRunId, groupId },
         workspaceId,
       );
       summary[outcome]++;
@@ -63,6 +64,7 @@ export async function handleBrightDataJobWebhook(
       workspaceId: jobs.workspaceId,
       jobType: jobs.jobType,
       jobParams: jobs.params,
+      groupId: jobs.groupId,
     })
     .from(jobRuns)
     .innerJoin(jobs, eq(jobRuns.jobId, jobs.id))
@@ -107,6 +109,7 @@ export async function handleBrightDataJobWebhook(
         facebookUrl,
         run.workspaceId,
         run.id,
+        run.groupId,
       );
 
       console.log("[jobs] scrape-facebook upsert complete", {

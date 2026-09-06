@@ -6,6 +6,7 @@ import {
   DuplicateError,
 } from "@/lib/common/service-errors";
 import { addJob } from "@/lib/qstash/services/add-job-service";
+import { assertSourceGroupInWorkspace } from "@/lib/source-groups/utils/assert-source-group-in-workspace";
 import type { CreateDocumentParams, CreateDocumentResult } from "@/lib/documents/types";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
@@ -13,6 +14,10 @@ export async function createDocument(
   params: CreateDocumentParams,
   ctx: WorkspaceContext,
 ): Promise<CreateDocumentResult> {
+  if (params.groupId) {
+    await assertSourceGroupInWorkspace(ctx.workspaceId, params.groupId);
+  }
+
   const [existing] = await db
     .select({ id: documents.id })
     .from(documents)
@@ -42,6 +47,7 @@ export async function createDocument(
       rawContent: params.rawContent,
       metadata: params.metadata ?? {},
       publishedAt: params.publishedAt ? new Date(params.publishedAt) : null,
+      groupId: params.groupId ?? null,
     })
     .returning();
 
