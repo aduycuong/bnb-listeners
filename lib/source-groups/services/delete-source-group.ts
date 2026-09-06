@@ -6,23 +6,22 @@ import { db } from "@/lib/db";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type { DeleteSourceGroupParams, DeleteSourceGroupResult } from "../types";
-import { getUnassignedGroupId } from "../utils/get-unassigned-group-id";
-import { findOrCreateUnassignedGroup } from "./find-or-create-unassigned-group";
+import { createNoGroupSourceGroup } from "./create-no-group-source-group";
+import { getNoGroupId } from "../utils/get-no-group-id";
 
 /**
  * Delete a source group.
  *
  * Before deleting, all jobs and documents that reference the group are moved:
  *  - to `moveToGroupId` when specified, or
- *  - to the workspace-scoped "Unassigned" group (created on demand) otherwise.
+ *  - to the workspace-scoped "No group" group otherwise.
  *
- * The unassigned group itself cannot be deleted.
+ * The "No group" row itself cannot be deleted.
  */
 export async function deleteSourceGroup(
   params: DeleteSourceGroupParams,
   ctx: WorkspaceContext,
 ): Promise<DeleteSourceGroupResult> {
-  // 1. Load the group to be deleted.
   const [target] = await db
     .select()
     .from(sourceGroups)
@@ -38,11 +37,10 @@ export async function deleteSourceGroup(
     throw new NotFoundError("source group", params.id);
   }
 
-  if (params.id === getUnassignedGroupId(ctx.workspaceId)) {
-    throw new ServiceError("DELETE_FAILED", "The unassigned group cannot be deleted.");
+  if (params.id === getNoGroupId(ctx.workspaceId)) {
+    throw new ServiceError("DELETE_FAILED", "The No group source group cannot be deleted.");
   }
 
-  // 2. Resolve the move-to group.
   let moveToGroupId: string;
 
   if (params.moveToGroupId) {
@@ -63,11 +61,10 @@ export async function deleteSourceGroup(
 
     moveToGroupId = moveTarget.id;
   } else {
-    const unassigned = await findOrCreateUnassignedGroup(ctx.workspaceId);
-    moveToGroupId = unassigned.id;
+    const noGroup = await createNoGroupSourceGroup(ctx.workspaceId);
+    moveToGroupId = noGroup.id;
   }
 
-  // 3. Reassign jobs and documents to the move-to group.
   await db
     .update(jobs)
     .set({ groupId: moveToGroupId })
@@ -78,7 +75,6 @@ export async function deleteSourceGroup(
     .set({ groupId: moveToGroupId })
     .where(eq(documents.groupId, params.id));
 
-  // 4. Delete the group — topic_digest_daily rows cascade via FK.
   await db
     .delete(sourceGroups)
     .where(
@@ -88,8 +84,14 @@ export async function deleteSourceGroup(
       ),
     );
 
+  const [moveTargetName] = await db
+    .select({ name: sourceGroups.name })
+    .from(sourceGroups)
+    .where(eq(sourceGroups.id, moveToGroupId))
+    .limit(1);
+
   return {
     id: params.id,
-    message: `Source group deleted. Jobs and documents moved to group "${moveToGroupId}".`,
+    message: `Source group deleted. Jobs and documents moved to group "${moveTargetName?.name ?? moveToGroupId}".`,
   };
 }

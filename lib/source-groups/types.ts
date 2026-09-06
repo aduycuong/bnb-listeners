@@ -29,11 +29,11 @@ export type SourceGroupListItem = {
   name: string;
   description: string | null;
   /**
-   * True when this is the auto-created workspace-scoped "Unassigned" group.
-   * This group is excluded from the normal management list but shown in
-   * filter dropdowns so users can see topics from unassigned documents.
+   * True when this is the auto-created workspace-scoped "No group" source group.
+   * Shown in filter dropdowns and assignment selects, but excluded from the
+   * normal management list (edit/delete).
    */
-  isUnassigned: boolean;
+  isNoGroup: boolean;
   createdAt: string;
   updatedAt: string;
 };

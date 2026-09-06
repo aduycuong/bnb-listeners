@@ -114,9 +114,9 @@ export function WorkspaceSourceGroupsCard({
     defaultValues: toFormValues(),
   });
 
-  // Non-unassigned groups available as move targets (excludes the group being deleted).
+  // User-managed groups (excludes the auto-created "No group" row).
   const allGroups = groupsQuery.data?.items ?? [];
-  const groups = allGroups.filter((g) => !g.isUnassigned);
+  const groups = allGroups.filter((group) => !group.isNoGroup);
   const moveTargetGroups = deleteTarget
     ? groups.filter((g) => g.id !== deleteTarget.id)
     : groups;
@@ -380,8 +380,8 @@ export function WorkspaceSourceGroupsCard({
             <AlertDialogTitle>Delete &ldquo;{deleteTarget?.name}&rdquo;?</AlertDialogTitle>
             <AlertDialogDescription>
               All jobs and documents currently in this group will be moved.
-              Choose a destination below, or leave blank to move them to the
-              auto-created <strong>Unassigned</strong> group.
+              Choose a destination below, or leave blank to move them to{" "}
+              <strong>No group</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -391,11 +391,15 @@ export function WorkspaceSourceGroupsCard({
                 Move to group <span className="text-muted-foreground">(optional)</span>
               </label>
               <Select
+                items={moveTargetGroups.map((group) => ({
+                  value: group.id,
+                  label: group.name,
+                }))}
                 value={moveToGroupId || null}
                 onValueChange={(value) => setMoveToGroupId(value ?? "")}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Unassigned (auto-created)" />
+                  <SelectValue placeholder="No group" />
                 </SelectTrigger>
                 <SelectContent>
                   {moveTargetGroups.map((group) => (

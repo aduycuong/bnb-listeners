@@ -10,7 +10,7 @@ import { Controller, useForm } from "react-hook-form";
 
 import { jobsQueryKey, jobRunsQueryKey } from "@/components/jobs/job-query-keys";
 import { sourceGroupsQueryKey } from "@/components/topics/topic-query-keys";
-import { FormFieldCron } from "@/components/jobs/form-field-cron";
+import { FormFieldCron } from "@/components/forms/form-field-cron";
 import { JobParamsFields } from "@/components/jobs/job-params-fields";
 import { JobRunsSection } from "@/components/jobs/job-runs-section";
 import {
@@ -41,13 +41,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SourceGroupSelect } from "@/components/source-groups/source-group-select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
 import type { Job } from "@/db/schema";
@@ -59,6 +53,7 @@ import {
 import { getDefaultJobParams } from "@/lib/jobs/handlers/registry";
 import { jobFormSchema } from "@/lib/jobs/schema";
 import type { JobFormValues } from "@/lib/jobs/types";
+import { resolveSourceGroupFormValue } from "@/lib/source-groups/source-group-select-config";
 import type { ListSourceGroupsResult } from "@/lib/source-groups/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
@@ -70,8 +65,6 @@ type JobMenuFormPageProps = {
   mode: "create" | "edit";
   job?: Job;
 };
-
-const NO_SOURCE_GROUP_VALUE = "none";
 
 async function fetchSourceGroups(
   workspaceId: string,
@@ -91,14 +84,18 @@ async function fetchSourceGroups(
   return data;
 }
 
-function jobToFormValues(menu: JobMenuConfig, job: Job): JobFormValues {
+function jobToFormValues(
+  menu: JobMenuConfig,
+  job: Job,
+  sourceGroups: ListSourceGroupsResult["items"],
+): JobFormValues {
   return {
     name: job.name,
     jobType: menu.jobType,
     cronConfig: job.cronConfig ?? EMPTY_CRON_SCHEDULE,
     enabled: job.enabled,
     params: (job.params ?? {}) as Record<string, unknown>,
-    groupId: job.groupId ?? NO_SOURCE_GROUP_VALUE,
+    groupId: resolveSourceGroupFormValue(job.groupId, sourceGroups),
   };
 }
 
@@ -116,31 +113,41 @@ export function JobMenuFormPage({
   const [deleting, setDeleting] = useState(false);
   const listHref = getJobMenuHref(workspaceIndex, menu);
 
-  const form = useForm<JobFormValues>({
-    resolver: zodResolver(jobFormSchema),
-    defaultValues: job
-      ? jobToFormValues(menu, job)
-      : {
-          name: "",
-          jobType: menu.jobType,
-          cronConfig: { ...EMPTY_CRON_SCHEDULE, cron: "0 9 * * *" },
-          enabled: true,
-          params: getDefaultJobParams(menu.jobType),
-          groupId: NO_SOURCE_GROUP_VALUE,
-        },
-  });
-
   const sourceGroupsQuery = useQuery({
     queryKey: sourceGroupsQueryKey(workspace.id),
     queryFn: () => fetchSourceGroups(workspace.id),
   });
   const sourceGroups = sourceGroupsQuery.data?.items ?? [];
 
+  const form = useForm<JobFormValues>({
+    resolver: zodResolver(jobFormSchema),
+    defaultValues: job
+      ? jobToFormValues(menu, job, sourceGroups)
+      : {
+          name: "",
+          jobType: menu.jobType,
+          cronConfig: { ...EMPTY_CRON_SCHEDULE, cron: "0 9 * * *" },
+          enabled: true,
+          params: getDefaultJobParams(menu.jobType),
+          groupId: resolveSourceGroupFormValue(null, sourceGroups),
+        },
+  });
+
   useEffect(() => {
     if (job) {
-      form.reset(jobToFormValues(menu, job));
+      form.reset(jobToFormValues(menu, job, sourceGroups));
     }
-  }, [job, form, menu]);
+  }, [job?.id, form, menu]);
+
+  useEffect(() => {
+    const nextGroupId = resolveSourceGroupFormValue(
+      form.getValues("groupId"),
+      sourceGroups,
+    );
+    if (form.getValues("groupId") !== nextGroupId) {
+      form.setValue("groupId", nextGroupId);
+    }
+  }, [sourceGroups, form]);
 
   async function onSubmit(values: JobFormValues) {
     const body = {
@@ -149,8 +156,7 @@ export function JobMenuFormPage({
       cronConfig: values.cronConfig,
       enabled: values.enabled,
       params: values.params,
-      groupId:
-        values.groupId === NO_SOURCE_GROUP_VALUE ? null : values.groupId,
+      groupId: values.groupId,
     };
 
     const url = mode === "create" ? "/api/jobs" : `/api/jobs/${job?.id}`;
@@ -237,8 +243,6 @@ export function JobMenuFormPage({
   const isSubmitting = form.formState.isSubmitting;
   const nameError = form.formState.errors.name;
   const paramsErrors = form.formState.errors.params;
-  const cronConfigErrors = form.formState.errors.cronConfig;
-
   const title =
     mode === "create" ? menu.formCreateTitle : (job?.name ?? menu.listTitle);
   const description =
@@ -294,29 +298,16 @@ export function JobMenuFormPage({
                     name="groupId"
                     control={form.control}
                     render={({ field }) => (
-                      <Select
+                      <SourceGroupSelect
+                        id="job-source-group"
+                        className="w-full"
                         value={field.value}
                         onValueChange={field.onChange}
+                        sourceGroups={sourceGroups}
                         disabled={!canEdit || isSubmitting}
-                      >
-                        <SelectTrigger
-                          id="job-source-group"
-                          className="w-full"
-                          aria-invalid={!!form.formState.errors.groupId}
-                        >
-                          <SelectValue placeholder="No group" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={NO_SOURCE_GROUP_VALUE}>
-                            No group
-                          </SelectItem>
-                          {sourceGroups.map((group) => (
-                            <SelectItem key={group.id} value={group.id}>
-                              {group.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        aria-invalid={!!form.formState.errors.groupId}
+                        placeholder="Select source group"
+                      />
                     )}
                   />
                   <FieldDescription>
@@ -333,7 +324,9 @@ export function JobMenuFormPage({
 
                 <FormFieldCron
                   control={form.control}
-                  errors={cronConfigErrors}
+                  name="cronConfig"
+                  label="Schedule"
+                  description="Leave the cron pattern empty to save the job without a QStash schedule."
                   disabled={!canEdit || isSubmitting}
                 />
 

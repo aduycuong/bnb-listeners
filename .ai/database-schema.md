@@ -185,7 +185,7 @@ Workspace-scoped labels for grouping scrape jobs and documents (e.g. Facebook KO
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
-**Unassigned group:** Each workspace may have an auto-created "Unassigned" group whose `id` is derived deterministically via UUID v5 — `uuid5(DNS_NAMESPACE, workspace_id)` — computed by `lib/source-groups/utils/get-unassigned-group-id.ts`. No extra column is needed. The group is created on demand when a group is deleted without a move target. It cannot be deleted. The `isUnassigned` field on `SourceGroupListItem` is derived at the application layer by comparing `id === getUnassignedGroupId(workspace_id)`.
+**No group source group:** Each workspace has an auto-created "No group" row whose `id` is derived deterministically via UUID v5 — `uuid5(DNS_NAMESPACE, workspace_id)` — computed by `lib/source-groups/utils/get-no-group-id.ts`. No extra column is needed. The group is created when the workspace is created (and reused on demand when a group is deleted without a move target). It cannot be deleted. The `isNoGroup` field on `SourceGroupListItem` is derived at the application layer by comparing `id === getNoGroupId(workspace_id)`.
 
 **Indexes**
 

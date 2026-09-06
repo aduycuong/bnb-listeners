@@ -34,8 +34,8 @@ export const updateSourceGroupBodySchema = z
 
 /**
  * When deleting a source group the caller may optionally specify a group to
- * move all jobs and documents to.  If omitted the service creates (or reuses)
- * the workspace-scoped "Unassigned" group and moves everything there.
+ * move all jobs and documents to.  If omitted the service moves everything to
+ * the workspace-scoped "No group" source group.
  */
 export const deleteSourceGroupBodySchema = z.object({
   moveToGroupId: z.uuid().optional(),

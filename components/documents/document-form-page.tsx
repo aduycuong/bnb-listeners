@@ -48,6 +48,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SourceGroupSelect } from "@/components/source-groups/source-group-select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import type { Document } from "@/db/schema";
@@ -61,6 +62,7 @@ import type {
   DocumentFormValues,
   GetDocumentResult,
 } from "@/lib/documents/types";
+import { resolveSourceGroupFormValue } from "@/lib/source-groups/source-group-select-config";
 import type { ListSourceGroupsResult } from "@/lib/source-groups/types";
 import { isSchedulableJobType } from "@/lib/jobs/constants";
 import {
@@ -76,8 +78,6 @@ type DocumentFormPageProps = {
   mode: "create" | "edit";
   document?: GetDocumentResult;
 };
-
-const NO_SOURCE_GROUP_VALUE = "none";
 
 async function fetchSourceGroups(
   workspaceId: string,
@@ -125,7 +125,7 @@ function documentToFormValues(document: GetDocumentResult): DocumentFormValues {
         ? JSON.stringify(document.metadata, null, 2)
         : "",
     publishedAt: toDatetimeLocal(document.publishedAt),
-    groupId: NO_SOURCE_GROUP_VALUE,
+    groupId: "",
   };
 }
 
@@ -176,8 +176,7 @@ function buildDocumentBody(values: DocumentFormValues, includeGroup: boolean) {
     publishedAt,
     ...(includeGroup
       ? {
-          groupId:
-            values.groupId === NO_SOURCE_GROUP_VALUE ? null : values.groupId,
+          groupId: values.groupId,
         }
       : {}),
   };
@@ -199,6 +198,13 @@ export function DocumentFormPage({
     ? getDocumentJobHref(workspaceIndex, document)
     : null;
 
+  const sourceGroupsQuery = useQuery({
+    queryKey: sourceGroupsQueryKey(workspace.id),
+    queryFn: () => fetchSourceGroups(workspace.id),
+    enabled: mode === "create",
+  });
+  const sourceGroups = sourceGroupsQuery.data?.items ?? [];
+
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentFormSchema),
     defaultValues: document
@@ -212,22 +218,28 @@ export function DocumentFormPage({
           rawContent: "",
           metadataJson: "",
           publishedAt: "",
-          groupId: NO_SOURCE_GROUP_VALUE,
+          groupId: resolveSourceGroupFormValue(null, sourceGroups),
         },
   });
-
-  const sourceGroupsQuery = useQuery({
-    queryKey: sourceGroupsQueryKey(workspace.id),
-    queryFn: () => fetchSourceGroups(workspace.id),
-    enabled: mode === "create",
-  });
-  const sourceGroups = sourceGroupsQuery.data?.items ?? [];
 
   useEffect(() => {
     if (document) {
       form.reset(documentToFormValues(document));
+      return;
     }
-  }, [document, form]);
+
+    if (mode !== "create") {
+      return;
+    }
+
+    const nextGroupId = resolveSourceGroupFormValue(
+      form.getValues("groupId"),
+      sourceGroups,
+    );
+    if (form.getValues("groupId") !== nextGroupId) {
+      form.setValue("groupId", nextGroupId);
+    }
+  }, [document, form, mode, sourceGroups]);
 
   async function onSubmit(values: DocumentFormValues) {
     let body: ReturnType<typeof buildDocumentBody>;
@@ -471,33 +483,21 @@ export function DocumentFormPage({
                     name="groupId"
                     control={form.control}
                     render={({ field }) => (
-                      <Select
+                      <SourceGroupSelect
+                        id="document-source-group"
+                        className="w-full"
                         value={field.value}
                         onValueChange={field.onChange}
+                        sourceGroups={sourceGroups}
                         disabled={!canEdit || isSubmitting}
-                      >
-                        <SelectTrigger
-                          id="document-source-group"
-                          className="w-full"
-                          aria-invalid={!!form.formState.errors.groupId}
-                        >
-                          <SelectValue placeholder="No group" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={NO_SOURCE_GROUP_VALUE}>
-                            No group
-                          </SelectItem>
-                          {sourceGroups.map((group) => (
-                            <SelectItem key={group.id} value={group.id}>
-                              {group.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        aria-invalid={!!form.formState.errors.groupId}
+                        placeholder="Select source group"
+                      />
                     )}
                   />
                   <FieldDescription>
-                    Optional group for filtering trending topics.
+                    Documents are assigned to this group for trending topic
+                    filters.
                   </FieldDescription>
                   <FieldError errors={[form.formState.errors.groupId]} />
                 </Field>
