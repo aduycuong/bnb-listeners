@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { createApiHandler } from "@/lib/exposers/create-api-handler";
-import { listTopicCards } from "@/lib/topics/services/list-topic-cards";
+import { cachedListTopicCards } from "@/lib/topics/services/cached-list-topic-cards";
 import {
   TOPIC_CARD_PAGE_SIZE,
   TOPIC_CARD_PERIOD_PRESETS,
@@ -25,7 +25,20 @@ const listTopicCardsQuerySchema = z
       .min(1)
       .max(TOPIC_CARD_PAGE_SIZE)
       .default(TOPIC_CARD_PAGE_SIZE),
-    groupId: z.uuid().optional(),
+    groupIds: z
+      .preprocess(
+        (value) => {
+          if (typeof value !== "string" || value.length === 0) {
+            return undefined;
+          }
+
+          return value
+            .split(",")
+            .map((part) => part.trim())
+            .filter(Boolean);
+        },
+        z.array(z.uuid()).optional(),
+      ),
   })
   .superRefine((value, ctx) => {
     if (value.period !== "custom") {
@@ -51,7 +64,7 @@ const listTopicCardsQuerySchema = z
 
 export const GET = createApiHandler(
   { queryParams: listTopicCardsQuerySchema },
-  (params, ctx) => listTopicCards(params, ctx),
+  (params, ctx) => cachedListTopicCards(params, ctx),
   {
     allowedRoles: [],
     minWorkspacePermission: "read",

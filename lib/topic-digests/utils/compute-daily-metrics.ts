@@ -1,7 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 
 import { documents, documentTopics, topicDigestDaily } from "@/db/schema";
-import { ALL_GROUPS_SENTINEL } from "@/lib/source-groups/constants";
 import { db } from "@/lib/db";
 import { DAILY_RECENCY_WEIGHT } from "../constants";
 import type { DigestMetrics } from "../types";
@@ -10,18 +9,14 @@ import type { DigestMetrics } from "../types";
  * Compute doc_count, avg_quality_score, and trend_score for a single
  * (topicId, dateKey, groupId) partition by aggregating the documents table.
  *
- * Only documents whose published_at falls on dateKey are counted.
+ * Only documents whose published_at falls on dateKey and whose group_id
+ * matches groupId are counted.
  */
 async function fetchMetrics(
   topicId: string,
   dateKey: string,
   groupId: string,
 ): Promise<DigestMetrics> {
-  const groupFilter =
-    groupId === ALL_GROUPS_SENTINEL
-      ? undefined
-      : eq(documents.groupId, groupId);
-
   const [row] = await db
     .select({
       docCount: sql<number>`COUNT(*)::int`,
@@ -33,7 +28,7 @@ async function fetchMetrics(
       and(
         eq(documentTopics.topicId, topicId),
         sql`${documents.publishedAt}::date = ${dateKey}::date`,
-        groupFilter,
+        eq(documents.groupId, groupId),
       ),
     );
 

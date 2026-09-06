@@ -20,7 +20,7 @@ import {
   resolveTopicCardPeriod,
 } from "../utils/resolve-topic-card-period";
 import {
-  resolveTopicCardGroupId,
+  resolveTopicCardGroupIds,
   resolveTopicCardQuerySource,
 } from "../utils/resolve-topic-card-query-source";
 import { toDateKey } from "../utils/to-date-key";
@@ -107,7 +107,16 @@ export async function listTopicCards(
     startDate: params.startDate,
     endDate: params.endDate,
   });
-  const resolvedGroupId = resolveTopicCardGroupId(params.groupId);
+  const resolvedGroupIds = resolveTopicCardGroupIds(params.groupIds);
+
+  // Build an optional group filter fragment. When resolvedGroupIds is null the
+  // query aggregates across all source groups (no WHERE on group_id).
+  const groupFilter = resolvedGroupIds
+    ? sql`AND tdd.group_id = ANY(ARRAY[${sql.join(
+        resolvedGroupIds.map((id) => sql`${id}::uuid`),
+        sql`, `,
+      )}])`
+    : sql``;
 
   const sparklineDateKeys = buildSparklineDateKeys(
     toDateKey(new Date()),
@@ -116,71 +125,53 @@ export async function listTopicCards(
   const sparklineStart = sparklineDateKeys[0]!;
   const sparklineEnd = sparklineDateKeys[sparklineDateKeys.length - 1]!;
 
-  const result =
-    querySource.source === "rollup"
-      ? await db.execute<TopicCardRow>(sql`
-          SELECT
-            t.id,
-            t.name,
-            parent.name AS parent_name,
-            t.description,
-            t.verified,
-            t.created_by,
-            t.created_at,
-            COALESCE(tdr.doc_count, 0)::int AS doc_count,
-            tdr.avg_quality_score,
-            tdr.trend_score,
-            false AS is_stale
-          FROM topics t
-          LEFT JOIN topics parent ON parent.id = t.parent_id
-          LEFT JOIN topic_digest_rollup tdr
-            ON tdr.topic_id = t.id
-           AND tdr.group_id = ${resolvedGroupId}::uuid
-           AND tdr.period_grain = ${querySource.grain}
-           AND tdr.period_start = ${querySource.periodStart}::date
-          WHERE t.workspace_id = ${ctx.workspaceId}::uuid
-          ORDER BY ${getOrderClause(params.sort)}
-          LIMIT ${limit + 1}
-          OFFSET ${offset}
-        `)
-      : await db.execute<TopicCardRow>(sql`
-          SELECT
-            t.id,
-            t.name,
-            parent.name AS parent_name,
-            t.description,
-            t.verified,
-            t.created_by,
-            t.created_at,
-            COALESCE(SUM(tdd.doc_count), 0)::int AS doc_count,
-            AVG(tdd.avg_quality_score) AS avg_quality_score,
-            SUM(tdd.trend_score) AS trend_score,
-            COALESCE(BOOL_OR(tdd.is_stale), false) AS is_stale
-          FROM topics t
-          LEFT JOIN topics parent ON parent.id = t.parent_id
-          LEFT JOIN topic_digest_daily tdd
-            ON tdd.topic_id = t.id
-           AND tdd.group_id = ${resolvedGroupId}::uuid
-           AND tdd.date_key >= ${querySource.startDate}::date
-           AND tdd.date_key <= ${querySource.endDate}::date
-          WHERE t.workspace_id = ${ctx.workspaceId}::uuid
-          GROUP BY
-            t.id,
-            t.name,
-            parent.name,
-            t.description,
-            t.verified,
-            t.created_by,
-            t.created_at
-          ORDER BY ${getOrderClause(params.sort)}
-          LIMIT ${limit + 1}
-          OFFSET ${offset}
-        `);
+  // All period presets use the daily table; the group filter is optional.
+  const result = await db.execute<TopicCardRow>(sql`
+    SELECT
+      t.id,
+      t.name,
+      parent.name AS parent_name,
+      t.description,
+      t.verified,
+      t.created_by,
+      t.created_at,
+      COALESCE(SUM(tdd.doc_count), 0)::int AS doc_count,
+      AVG(tdd.avg_quality_score) AS avg_quality_score,
+      SUM(tdd.trend_score) AS trend_score,
+      COALESCE(BOOL_OR(tdd.is_stale), false) AS is_stale
+    FROM topics t
+    LEFT JOIN topics parent ON parent.id = t.parent_id
+    LEFT JOIN topic_digest_daily tdd
+      ON tdd.topic_id = t.id
+      AND tdd.date_key >= ${querySource.startDate}::date
+      AND tdd.date_key <= ${querySource.endDate}::date
+      ${groupFilter}
+    WHERE t.workspace_id = ${ctx.workspaceId}::uuid
+    GROUP BY
+      t.id,
+      t.name,
+      parent.name,
+      t.description,
+      t.verified,
+      t.created_by,
+      t.created_at
+    ORDER BY ${getOrderClause(params.sort)}
+    LIMIT ${limit + 1}
+    OFFSET ${offset}
+  `);
 
   const rows = result.rows;
   const pageRows = rows.slice(0, limit);
   const hasMore = rows.length > limit;
   const topicIds = pageRows.map((row) => row.id);
+
+  // Sparkline filter: same group filter applied to the 7-day sparkline.
+  const sparklineGroupFilter = resolvedGroupIds
+    ? sql`AND tdd.group_id = ANY(ARRAY[${sql.join(
+        resolvedGroupIds.map((id) => sql`${id}::uuid`),
+        sql`, `,
+      )}])`
+    : sql``;
 
   let sparklineRows: SparklineRow[] = [];
   if (topicIds.length > 0) {
@@ -194,9 +185,9 @@ export async function listTopicCards(
         topicIds.map((id) => sql`${id}::uuid`),
         sql`, `,
       )}])
-        AND tdd.group_id = ${resolvedGroupId}::uuid
         AND tdd.date_key >= ${sparklineStart}::date
         AND tdd.date_key <= ${sparklineEnd}::date
+        ${sparklineGroupFilter}
       ORDER BY tdd.topic_id, tdd.date_key
     `);
     sparklineRows = sparklineResult.rows;

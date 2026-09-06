@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 import { createApiHandler } from "@/lib/exposers/create-api-handler";
-import { updateSourceGroupBodySchema } from "@/lib/source-groups/schema";
+import {
+  deleteSourceGroupBodySchema,
+  updateSourceGroupBodySchema,
+} from "@/lib/source-groups/schema";
 import { deleteSourceGroup } from "@/lib/source-groups/services/delete-source-group";
 import { updateSourceGroup } from "@/lib/source-groups/services/update-source-group";
 
@@ -14,7 +17,7 @@ export const PATCH = createApiHandler(
 );
 
 export const DELETE = createApiHandler(
-  { parameters: sourceGroupIdSchema },
+  { parameters: sourceGroupIdSchema, requestBody: deleteSourceGroupBodySchema },
   deleteSourceGroup,
   { allowedRoles: [], minWorkspacePermission: "edit" },
 );

@@ -11,7 +11,7 @@ export type InvalidateTopicDigestParams = {
    * Only this specific daily row is invalidated — not the entire topic history.
    */
   dateKey: string;
-  /** ALL_GROUPS_SENTINEL for global partition, or a source_groups.id. */
+  /** A source_groups.id — the group the document belongs to. */
   groupId: string;
 };
 

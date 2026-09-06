@@ -32,6 +32,15 @@ export const updateSourceGroupBodySchema = z
     error: "At least one field must be provided",
   });
 
+/**
+ * When deleting a source group the caller may optionally specify a group to
+ * move all jobs and documents to.  If omitted the service creates (or reuses)
+ * the workspace-scoped "Unassigned" group and moves everything there.
+ */
+export const deleteSourceGroupBodySchema = z.object({
+  moveToGroupId: z.uuid().optional(),
+});
+
 export const sourceGroupFormSchema = z.object({
   name: z
     .string()
@@ -42,3 +51,4 @@ export const sourceGroupFormSchema = z.object({
     .string()
     .max(500, { error: "Description must be 500 characters or fewer." }),
 });
+

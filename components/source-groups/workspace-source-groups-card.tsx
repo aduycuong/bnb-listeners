@@ -41,6 +41,13 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { SOURCE_GROUP_CONFIG } from "@/lib/source-groups/source-group-config";
@@ -94,6 +101,7 @@ export function WorkspaceSourceGroupsCard({
   const [deleteTarget, setDeleteTarget] = useState<
     SourceGroupListItem | undefined
   >();
+  const [moveToGroupId, setMoveToGroupId] = useState<string>("");
   const [deleting, setDeleting] = useState(false);
 
   const groupsQuery = useQuery({
@@ -106,7 +114,13 @@ export function WorkspaceSourceGroupsCard({
     defaultValues: toFormValues(),
   });
 
-  const groups = groupsQuery.data?.items ?? [];
+  // Non-unassigned groups available as move targets (excludes the group being deleted).
+  const allGroups = groupsQuery.data?.items ?? [];
+  const groups = allGroups.filter((g) => !g.isUnassigned);
+  const moveTargetGroups = deleteTarget
+    ? groups.filter((g) => g.id !== deleteTarget.id)
+    : groups;
+
   const isSubmitting = form.formState.isSubmitting;
   const nameError = form.formState.errors.name;
   const descriptionError = form.formState.errors.description;
@@ -121,6 +135,11 @@ export function WorkspaceSourceGroupsCard({
     setEditingGroup(group);
     form.reset(toFormValues(group));
     setDialogOpen(true);
+  }
+
+  function openDelete(group: SourceGroupListItem) {
+    setDeleteTarget(group);
+    setMoveToGroupId("");
   }
 
   async function onSubmit(values: SourceGroupFormValues) {
@@ -167,10 +186,19 @@ export function WorkspaceSourceGroupsCard({
     setDeleting(true);
 
     try {
+      const body: Record<string, string> = {};
+      if (moveToGroupId) {
+        body.moveToGroupId = moveToGroupId;
+      }
+
       const res = await workspaceFetch(
         workspace.id,
         `/api/source-groups/${deleteTarget.id}`,
-        { method: "DELETE" },
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
       );
       const data = (await res.json()) as { message?: string; error?: string };
 
@@ -183,10 +211,11 @@ export function WorkspaceSourceGroupsCard({
       }
 
       toast.add({
-        title: data.message ?? "Source group deleted.",
+        title: "Source group deleted.",
         type: "success",
       });
       setDeleteTarget(undefined);
+      setMoveToGroupId("");
       await queryClient.invalidateQueries({
         queryKey: sourceGroupsQueryKey(workspace.id),
       });
@@ -252,7 +281,7 @@ export function WorkspaceSourceGroupsCard({
                         variant="ghost"
                         size="icon-sm"
                         aria-label={`Delete ${group.name}`}
-                        onClick={() => setDeleteTarget(group)}
+                        onClick={() => openDelete(group)}
                       >
                         <Trash2Icon className="size-4" />
                       </Button>
@@ -265,6 +294,7 @@ export function WorkspaceSourceGroupsCard({
         </CardContent>
       </Card>
 
+      {/* Create / Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -335,23 +365,46 @@ export function WorkspaceSourceGroupsCard({
         </DialogContent>
       </Dialog>
 
+      {/* Delete dialog — with optional move-to group selector */}
       <AlertDialog
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => {
           if (!open) {
             setDeleteTarget(undefined);
+            setMoveToGroupId("");
           }
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete source group?</AlertDialogTitle>
+            <AlertDialogTitle>Delete &ldquo;{deleteTarget?.name}&rdquo;?</AlertDialogTitle>
             <AlertDialogDescription>
-              Jobs and documents linked to &ldquo;{deleteTarget?.name}&rdquo;
-              will have their group cleared. Existing digest rows for this group
-              are kept but no longer updated.
+              All jobs and documents currently in this group will be moved.
+              Choose a destination below, or leave blank to move them to the
+              auto-created <strong>Unassigned</strong> group.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {moveTargetGroups.length > 0 ? (
+            <div className="px-1 pb-2">
+              <label className="mb-1.5 block text-sm font-medium">
+                Move to group <span className="text-muted-foreground">(optional)</span>
+              </label>
+              <Select value={moveToGroupId} onValueChange={setMoveToGroupId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Unassigned (auto-created)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {moveTargetGroups.map((group) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction

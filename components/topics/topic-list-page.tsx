@@ -23,7 +23,6 @@ import {
   type TopicCardSort,
 } from "@/lib/topics/topic-card-config";
 import { TOPIC_CONFIG } from "@/lib/topics/topic-config";
-import { ALL_SOURCE_GROUPS_VALUE } from "@/lib/source-groups/source-group-filter-config";
 import type { ListSourceGroupsResult } from "@/lib/source-groups/types";
 import type {
   ListTopicCardsResult,
@@ -59,8 +58,8 @@ async function fetchTopicCards(
     }
   }
 
-  if (filters.groupId && filters.groupId !== ALL_SOURCE_GROUPS_VALUE) {
-    params.set("groupId", filters.groupId);
+  if (filters.groupIds && filters.groupIds.length > 0) {
+    params.set("groupIds", filters.groupIds.join(","));
   }
 
   const res = await workspaceFetch(
@@ -122,7 +121,7 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
 
   const [period, setPeriod] = useState<TopicCardPeriodPreset>("last_7_days");
   const [sort, setSort] = useState<TopicCardSort>("trend");
-  const [groupId, setGroupId] = useState(ALL_SOURCE_GROUPS_VALUE);
+  const [groupIds, setGroupIds] = useState<string[]>([]);
   const [customStartDate, setCustomStartDate] = useState<string>();
   const [customEndDate, setCustomEndDate] = useState<string>();
 
@@ -137,11 +136,11 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
     () => ({
       period,
       sort,
-      groupId,
+      groupIds,
       startDate: period === "custom" ? customStartDate : undefined,
       endDate: period === "custom" ? customEndDate : undefined,
     }),
-    [customEndDate, customStartDate, groupId, period, sort],
+    [customEndDate, customStartDate, groupIds, period, sort],
   );
 
   const cardsQuery = useInfiniteQuery({
@@ -288,13 +287,13 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
           <TopicListToolbar
             period={period}
             sort={sort}
-            groupId={groupId}
+            groupIds={groupIds}
             sourceGroups={sourceGroups}
             customStartDate={customStartDate}
             customEndDate={customEndDate}
             onPeriodChange={handlePeriodChange}
             onSortChange={setSort}
-            onGroupChange={setGroupId}
+            onGroupIdsChange={setGroupIds}
             onCustomRangeApply={handleCustomRangeApply}
             disabled={isInitialLoading}
           />

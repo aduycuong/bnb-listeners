@@ -1,27 +1,7 @@
 import { BULK_DRAIN_BATCH_SIZE } from "../constants";
-import type { AffectedDigestPartition } from "../types";
 import { claimDigestRows } from "../utils/claim-digest-rows";
 import { computeDailyMetrics } from "../utils/compute-daily-metrics";
-import { rebuildRollupPeriods } from "../utils/rebuild-rollup-periods";
 import { resetStuckWorkers } from "../utils/reset-stuck-workers";
-
-function dedupeAffectedPartitions(
-  partitions: AffectedDigestPartition[],
-): AffectedDigestPartition[] {
-  const seen = new Set<string>();
-  const result: AffectedDigestPartition[] = [];
-
-  for (const partition of partitions) {
-    const key = `${partition.dateKey}:${partition.groupId}`;
-    if (seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    result.push(partition);
-  }
-
-  return result;
-}
 
 /**
  * QStash handler — runs every 15 minutes via a system schedule.
@@ -47,19 +27,14 @@ export async function bulkDrainTopicDigests(): Promise<void> {
     return;
   }
 
-  const affected: AffectedDigestPartition[] = [];
-
   await Promise.all(
-    claimed.map(async ({ topicId, dateKey, groupId }) => {
-      await computeDailyMetrics({
+    claimed.map(({ topicId, dateKey, groupId }) =>
+      computeDailyMetrics({
         topicId,
         dateKey,
         groupId,
         clearBulkStale: true,
-      });
-      affected.push({ dateKey, groupId });
-    }),
+      }),
+    ),
   );
-
-  await rebuildRollupPeriods(dedupeAffectedPartitions(affected));
 }

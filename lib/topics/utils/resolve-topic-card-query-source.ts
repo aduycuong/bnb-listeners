@@ -1,20 +1,11 @@
-import type { RollupGrain } from "@/lib/topic-digests/constants";
-import { ALL_GROUPS_SENTINEL } from "@/lib/source-groups/constants";
-
 import type { TopicCardPeriodPreset } from "../topic-card-config";
 import { resolveTopicCardPeriod } from "./resolve-topic-card-period";
 
-export type TopicCardQuerySource =
-  | {
-      source: "daily";
-      startDate: string;
-      endDate: string;
-    }
-  | {
-      source: "rollup";
-      grain: RollupGrain;
-      periodStart: string;
-    };
+export type TopicCardQuerySource = {
+  source: "daily";
+  startDate: string;
+  endDate: string;
+};
 
 type ResolveTopicCardQuerySourceParams = {
   preset: TopicCardPeriodPreset;
@@ -23,28 +14,15 @@ type ResolveTopicCardQuerySourceParams = {
   now?: Date;
 };
 
-const ROLLUP_PRESET_CONFIG: Partial<
-  Record<TopicCardPeriodPreset, RollupGrain>
-> = {
-  this_week: "week",
-  last_week: "week",
-  this_month: "month",
-  last_month: "month",
-};
-
+/**
+ * All period presets are served from topic_digest_daily via SUM aggregation.
+ * Calendar presets (this_week, this_month, …) use the full calendar date range
+ * so query results should be cached at the API layer.
+ */
 export function resolveTopicCardQuerySource(
   params: ResolveTopicCardQuerySourceParams,
 ): TopicCardQuerySource {
   const period = resolveTopicCardPeriod(params);
-  const rollupGrain = ROLLUP_PRESET_CONFIG[params.preset];
-
-  if (rollupGrain) {
-    return {
-      source: "rollup",
-      grain: rollupGrain,
-      periodStart: period.startDate,
-    };
-  }
 
   return {
     source: "daily",
@@ -53,10 +31,14 @@ export function resolveTopicCardQuerySource(
   };
 }
 
-export function resolveTopicCardGroupId(groupId?: string): string {
-  if (!groupId || groupId === ALL_GROUPS_SENTINEL) {
-    return ALL_GROUPS_SENTINEL;
+/**
+ * Returns sorted group UUIDs to filter by, or null when no filter should be applied
+ * (i.e. the query aggregates across all source groups).
+ */
+export function resolveTopicCardGroupIds(groupIds?: string[]): string[] | null {
+  if (!groupIds || groupIds.length === 0) {
+    return null;
   }
 
-  return groupId;
+  return [...groupIds].sort();
 }

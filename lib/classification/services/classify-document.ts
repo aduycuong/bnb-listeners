@@ -4,7 +4,6 @@ import { documentTopics, documents } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { invalidateTopicDigest } from "@/lib/topic-digests/services/invalidate-topic-digest";
-import { ALL_GROUPS_SENTINEL } from "@/lib/source-groups/constants";
 import { findTopicByName } from "@/lib/topics/utils/find-topic-by-name";
 import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace-llm-settings";
 
@@ -37,29 +36,25 @@ async function fetchLlmTopicIds(documentId: string): Promise<string[]> {
   return rows.map((r) => r.topicId);
 }
 
+/**
+ * Invalidate the daily digest partition for every affected topic.
+ *
+ * Only documents with a non-null group_id contribute to a digest partition.
+ * Documents without a group are not counted in any digest and are skipped.
+ */
 async function invalidateAffectedDigests(
   topicIds: string[],
   publishedAt: Date | null,
   documentGroupId: string | null,
 ): Promise<void> {
-  if (!publishedAt || topicIds.length === 0) return;
+  if (!publishedAt || !documentGroupId || topicIds.length === 0) return;
   const dateKey = toDateKey(publishedAt);
 
-  const invalidations = topicIds.flatMap((topicId) => {
-    const targets = [
-      invalidateTopicDigest({ topicId, dateKey, groupId: ALL_GROUPS_SENTINEL }),
-    ];
-
-    if (documentGroupId) {
-      targets.push(
-        invalidateTopicDigest({ topicId, dateKey, groupId: documentGroupId }),
-      );
-    }
-
-    return targets;
-  });
-
-  await Promise.all(invalidations);
+  await Promise.all(
+    topicIds.map((topicId) =>
+      invalidateTopicDigest({ topicId, dateKey, groupId: documentGroupId }),
+    ),
+  );
 }
 
 async function clearLlmAssignments(documentId: string): Promise<void> {
@@ -132,6 +127,9 @@ async function assignProposedTopic(
  *      If the proposed name already exists, assign that topic instead.
  *
  * Only prior LLM assignments are replaced; admin assignments are preserved.
+ *
+ * Digest invalidation is skipped for documents without a group_id — such
+ * documents are not counted in any partition until they are assigned a group.
  */
 export async function classifyDocument(
   params: ClassifyDocumentParams,

@@ -99,9 +99,6 @@ export const workspaceMembers = pgTable(
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 export type NewWorkspaceMember = typeof workspaceMembers.$inferInsert;
 
-/** Sentinel UUID for global digest partitions — not a row in source_groups. */
-const ALL_GROUPS_SENTINEL = "00000000-0000-0000-0000-000000000000";
-
 export const sourceGroups = pgTable(
   "source_groups",
   {
@@ -156,7 +153,7 @@ export const documents = pgTable(
       onDelete: "set null",
     }),
     groupId: uuid("group_id").references(() => sourceGroups.id, {
-      onDelete: "set null",
+      onDelete: "restrict",
     }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -366,7 +363,9 @@ export const topicDigestDaily = pgTable(
     dateKey: date("date_key")
       .notNull()
       .references(() => dimDates.dateKey),
-    groupId: uuid("group_id").notNull().default(ALL_GROUPS_SENTINEL),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => sourceGroups.id, { onDelete: "cascade" }),
 
     // Metrics
     docCount: integer("doc_count").notNull().default(0),
@@ -415,52 +414,6 @@ export const topicDigestDaily = pgTable(
 export type TopicDigestDaily = typeof topicDigestDaily.$inferSelect;
 export type NewTopicDigestDaily = typeof topicDigestDaily.$inferInsert;
 
-// ---------------------------------------------------------------------------
-// Rollup table — pre-aggregated from daily grain.
-// One row per (topic, period_grain, period_start).
-// Supports: week | month | quarter | year.
-// trend_rank is pre-computed within workspace after each rollup rebuild.
-// ---------------------------------------------------------------------------
-
-export const topicDigestRollup = pgTable(
-  "topic_digest_rollup",
-  {
-    topicId: uuid("topic_id")
-      .notNull()
-      .references(() => topics.id, { onDelete: "cascade" }),
-    periodGrain: text("period_grain").notNull(), // 'week' | 'month' | 'quarter' | 'year'
-    periodStart: date("period_start").notNull(),
-    periodEnd: date("period_end").notNull(),
-    groupId: uuid("group_id").notNull().default(ALL_GROUPS_SENTINEL),
-
-    docCount: integer("doc_count").notNull().default(0),
-    avgQualityScore: real("avg_quality_score"),
-    trendScore: real("trend_score"), // recomputed with grain-specific recency_weight
-    trendRank: integer("trend_rank"), // RANK() OVER (PARTITION BY workspace_id ORDER BY trend_score DESC)
-    computedAt: timestamp("computed_at", { withTimezone: true }),
-  },
-  (table) => [
-    primaryKey({
-      columns: [
-        table.topicId,
-        table.periodGrain,
-        table.periodStart,
-        table.groupId,
-      ],
-    }),
-    // top-N topic cards for calendar period + group filter
-    index("idx_topic_digest_rollup_group_grain_period").on(
-      table.groupId,
-      table.periodGrain,
-      table.periodStart,
-      table.trendScore.desc(),
-    ),
-  ],
-);
-
-export type TopicDigestRollup = typeof topicDigestRollup.$inferSelect;
-export type NewTopicDigestRollup = typeof topicDigestRollup.$inferInsert;
-
 export const jobs = pgTable(
   "jobs",
   {
@@ -480,7 +433,7 @@ export const jobs = pgTable(
       .notNull()
       .default({}),
     groupId: uuid("group_id").references(() => sourceGroups.id, {
-      onDelete: "set null",
+      onDelete: "restrict",
     }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
