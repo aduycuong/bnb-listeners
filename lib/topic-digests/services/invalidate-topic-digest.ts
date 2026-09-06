@@ -2,7 +2,6 @@ import { sql } from "drizzle-orm";
 
 import { topicDigestDaily } from "@/db/schema";
 import { db } from "@/lib/db";
-import { DIGEST_DEBOUNCE_MS } from "../constants";
 
 export type InvalidateTopicDigestParams = {
   topicId: string;
@@ -19,9 +18,9 @@ export type InvalidateTopicDigestParams = {
  * Mark the (topic, date, group) daily row as stale so the recompute job will pick
  * it up on its next run.
  *
- * Uses an upsert with a debounce: if a row already has a future
- * recompute_after, GREATEST(...) preserves the later timestamp so a burst of
- * document assignments doesn't trigger premature recomputes.
+ * stale_since is set at the start of a stale episode (COALESCE) so FIFO ordering
+ * is preserved across burst invalidations. When the row is already processing,
+ * stale_since resets to now() so the row re-queues at the back.
  *
  * Call this whenever a document is assigned to or removed from a topic.
  */
@@ -29,8 +28,7 @@ export async function invalidateTopicDigest(
   params: InvalidateTopicDigestParams,
 ): Promise<void> {
   const { topicId, dateKey, groupId } = params;
-  const debounceMs = DIGEST_DEBOUNCE_MS;
-  const recomputeAfter = new Date(Date.now() + debounceMs);
+  const now = new Date();
 
   await db
     .insert(topicDigestDaily)
@@ -40,7 +38,7 @@ export async function invalidateTopicDigest(
       groupId,
       isStale: true,
       isBulkStale: false,
-      recomputeAfter,
+      staleSince: now,
     })
     .onConflictDoUpdate({
       target: [
@@ -50,11 +48,10 @@ export async function invalidateTopicDigest(
       ],
       set: {
         isStale: true,
-        // Preserve the later timestamp — never pull recompute_after forward.
-        recomputeAfter: sql`GREATEST(
-          ${topicDigestDaily.recomputeAfter},
-          ${recomputeAfter.toISOString()}::timestamptz
-        )`,
+        staleSince: sql`CASE
+          WHEN ${topicDigestDaily.processing} THEN now()
+          ELSE COALESCE(${topicDigestDaily.staleSince}, now())
+        END`,
       },
     });
 }

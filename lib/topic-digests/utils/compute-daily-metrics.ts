@@ -42,6 +42,9 @@ async function fetchMetrics(
   return { docCount, avgQualityScore, trendScore };
 }
 
+/** True when stale_since was reset after the worker claimed this row. */
+const invalidatedDuringProcessing = sql`${topicDigestDaily.staleSince} > ${topicDigestDaily.processingStartedAt}`;
+
 export type ComputeDailyMetricsParams = {
   topicId: string;
   dateKey: string;
@@ -52,7 +55,11 @@ export type ComputeDailyMetricsParams = {
 
 /**
  * Compute metrics for one daily row and write them back.
- * Marks the row is_stale = false, processing = false after writing.
+ *
+ * Always writes fresh metrics and clears processing. Clears is_stale (and
+ * stale_since) only when stale_since <= processing_started_at (no invalidate
+ * during processing). When stale_since > processing_started_at, keeps is_stale
+ * and stale_since so the row re-queues at the back.
  */
 export async function computeDailyMetrics(
   params: ComputeDailyMetricsParams,
@@ -66,8 +73,11 @@ export async function computeDailyMetrics(
       docCount: metrics.docCount,
       avgQualityScore: metrics.avgQualityScore,
       trendScore: metrics.trendScore,
-      isStale: false,
-      isBulkStale: clearBulkStale ? false : undefined,
+      isStale: sql`CASE WHEN ${invalidatedDuringProcessing} THEN true ELSE false END`,
+      staleSince: sql`CASE WHEN ${invalidatedDuringProcessing} THEN ${topicDigestDaily.staleSince} ELSE NULL END`,
+      isBulkStale: clearBulkStale
+        ? sql`CASE WHEN ${invalidatedDuringProcessing} THEN ${topicDigestDaily.isBulkStale} ELSE false END`
+        : undefined,
       processing: false,
       processingStartedAt: null,
       computedAt: new Date(),
@@ -77,6 +87,7 @@ export async function computeDailyMetrics(
         eq(topicDigestDaily.topicId, topicId),
         eq(topicDigestDaily.dateKey, dateKey),
         eq(topicDigestDaily.groupId, groupId),
+        eq(topicDigestDaily.processing, true),
       ),
     );
 

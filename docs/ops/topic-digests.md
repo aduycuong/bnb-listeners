@@ -24,8 +24,9 @@ Có thể xem **tất cả sources** (mặc định) hoặc lọc theo **1 hoặ
 Document được classify (gán / bỏ gán topic)
     → nếu document.group_id IS NOT NULL:
         invalidate daily row cho (topic, date, group)
-    → debounce
-    → recompute job tính lại daily metrics (per group)
+        (is_stale = true, stale_since = COALESCE(...) hoặc reset nếu processing)
+    → recompute job (mỗi 15 phút) claim rows stale, FIFO theo stale_since
+    → compute metrics, finalize có điều kiện
     → re-rank trend_rank per (workspace, group)
 ```
 
@@ -49,7 +50,6 @@ Hằng số trong `lib/topic-digests/constants.ts`:
 
 | Hằng số | Mặc định | Ý nghĩa |
 |---------|----------|---------|
-| `DIGEST_DEBOUNCE_MS` | 1 giờ | Chờ sau lần classify cuối trước khi recompute |
 | `RECOMPUTE_BATCH_SIZE` | 200 | Rows xử lý mỗi lần chạy recompute job |
 | `BULK_DRAIN_BATCH_SIZE` | 50 | Rows mỗi lần chạy bulk drain job |
 | `STUCK_WORKER_TIMEOUT_MINUTES` | 30 | Reset row `processing` bị kẹt |
@@ -107,9 +107,40 @@ GET /api/topics/cards?period=this_month&groupId=<source-group-uuid>
 
 ---
 
-## Trạng thái stale
+## Trạng thái stale và queue
 
 Sau invalidate, row có `is_stale = true` và metrics cũ vẫn đọc được cho đến khi recompute xong. API trả `isStale: true` — UI nên báo đang cập nhật.
+
+### Cột queue / lifecycle
+
+| Cột | Vai trò |
+|-----|---------|
+| `stale_since` | Thời điểm vào queue recompute. Set lần đầu episode (`COALESCE`); **reset về `now()`** nếu invalidate khi `processing = true`. So sánh với `processing_started_at` khi finalize. |
+| `processing_started_at` | Set khi worker claim row. |
+
+### Claim (FIFO)
+
+Recompute job claim tối đa `RECOMPUTE_BATCH_SIZE` rows:
+
+```sql
+WHERE is_stale = true AND processing = false
+ORDER BY stale_since ASC NULLS FIRST
+LIMIT 200
+FOR UPDATE SKIP LOCKED
+```
+
+Row stale lâu nhất được xử lý trước. Không còn debounce time gate — row eligible ngay khi `is_stale = true` và không bị worker giữ.
+
+### Finalize có điều kiện (invalidate trong lúc processing)
+
+Worker luôn ghi metrics mới và clear `processing`. Chỉ clear `is_stale` / `stale_since` khi **không** có invalidate mới sau claim:
+
+```
+stale_since <= processing_started_at  →  fresh (is_stale = false, stale_since = NULL)
+stale_since >  processing_started_at  →  vẫn stale, giữ stale_since (xếp hàng lại từ cuối)
+```
+
+Invalidate **không** bị chặn khi `processing = true` — document mới gán vào topic vẫn được ghi nhận.
 
 Partition group mới chưa có row cho đến lần classify/recompute đầu tiên — filter group đó có thể trống tạm thời.
 
@@ -143,7 +174,7 @@ Restructure taxonomy làm thay đổi hàng loạt `document_topics` → cần r
 
 ## Lưu ý vận hành
 
-- **Debounce:** burst classify liên tục trì hoãn recompute — metrics có thể lag tới ~1 giờ sau khi dữ liệu ổn định.
+- **FIFO queue:** row stale lâu nhất được recompute trước; hot partition vẫn được xử lý định kỳ (mỗi 15 phút, trong giới hạn batch).
 - **Fan-out classify:** mỗi classify invalidate đúng 1 daily partition (group của document). Documents không có group không được tính.
 - **Documents không group** (`group_id` null): vẫn tồn tại nhưng không vào bất kỳ digest partition nào.
 - **Stuck worker:** recompute job tự reset row `processing` quá 30 phút ở đầu mỗi run.
@@ -166,3 +197,11 @@ DROP TABLE IF EXISTS topic_digest_rollup;
 ```
 
 Sau migrate, chạy `db:generate` và `db:migrate` như bình thường.
+
+**Migration stale queue refactor:** migration Drizzle sẽ drop `recompute_after`, thêm `stale_since`, và rebuild partial indexes. Rows `is_stale = true` hiện có nên được backfill (trong migration hoặc thủ công):
+
+```sql
+UPDATE topic_digest_daily
+SET stale_since = COALESCE(stale_since, computed_at, now())
+WHERE is_stale = true;
+```

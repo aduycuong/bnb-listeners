@@ -13,6 +13,8 @@ export type ClaimDigestRowsParams = {
  * Atomically claim a batch of stale daily rows using FOR UPDATE SKIP LOCKED
  * so concurrent workers never process the same row twice.
  *
+ * Rows are ordered by stale_since ASC (oldest stale episode first).
+ *
  * - Normal recompute job: bulkOnly = false → picks rows where is_bulk_stale = false
  * - Bulk drain job:       bulkOnly = true  → picks rows where is_bulk_stale = true
  *
@@ -39,8 +41,8 @@ export async function claimDigestRows(
       FROM topic_digest_daily
       WHERE is_stale = true
         AND processing = false
-        AND recompute_after <= now()
         ${bulkFilter}
+      ORDER BY stale_since ASC NULLS FIRST
       LIMIT ${batchSize}
       FOR UPDATE SKIP LOCKED
     )

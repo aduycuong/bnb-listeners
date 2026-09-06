@@ -379,7 +379,8 @@ export const topicDigestDaily = pgTable(
     // processes them with a smaller LIMIT so burst traffic doesn't crowd out
     // day-to-day invalidations.
     isBulkStale: boolean("is_bulk_stale").notNull().default(false),
-    recomputeAfter: timestamp("recompute_after", { withTimezone: true }),
+    /** Queue position for FIFO recompute; compared to processing_started_at at finalize. */
+    staleSince: timestamp("stale_since", { withTimezone: true }),
     processing: boolean("processing").notNull().default(false),
     processingStartedAt: timestamp("processing_started_at", {
       withTimezone: true,
@@ -398,13 +399,13 @@ export const topicDigestDaily = pgTable(
     index("idx_topic_digest_daily_date").on(table.dateKey, table.topicId),
     // normal recompute job queue — excludes bulk-stale rows
     index("idx_topic_digest_daily_stale")
-      .on(table.recomputeAfter)
+      .on(table.staleSince)
       .where(
         sql`${table.isStale} = true AND ${table.isBulkStale} = false AND ${table.processing} = false`,
       ),
     // bulk drain job queue — only rows flagged by taxonomy ops
     index("idx_topic_digest_daily_bulk_stale")
-      .on(table.recomputeAfter)
+      .on(table.staleSince)
       .where(
         sql`${table.isStale} = true AND ${table.isBulkStale} = true AND ${table.processing} = false`,
       ),

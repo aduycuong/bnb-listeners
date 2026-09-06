@@ -1,16 +1,10 @@
 // ---------------------------------------------------------------------------
 // Topic digest system constants.
 //
-// DIGEST_DEBOUNCE_MS — how long after the last document assignment before
-// a recompute is allowed to run. Prevents bursts from triggering many runs.
-//
 // DAILY_RECENCY_WEIGHT — multiplier applied when computing daily trend_score.
 // Kept at 1.5 to emphasise freshness; queries for calendar presets (this_week,
 // this_month, …) SUM the stored daily trend_score values directly.
 // ---------------------------------------------------------------------------
-
-/** Debounce window before a stale daily row becomes eligible for recompute. */
-export const DIGEST_DEBOUNCE_MS = 60 * 60 * 1000; // 1 hour
 
 /** Rows claimed per normal recompute run. */
 export const RECOMPUTE_BATCH_SIZE = 200;

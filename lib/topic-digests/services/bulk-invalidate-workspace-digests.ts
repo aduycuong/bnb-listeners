@@ -1,19 +1,21 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { DIGEST_DEBOUNCE_MS } from "../constants";
 
 // ---------------------------------------------------------------------------
 // Shared helper
 // ---------------------------------------------------------------------------
 
-function buildBulkInvalidateSql(whereClause: ReturnType<typeof sql>, recomputeAfter: Date) {
+function buildBulkInvalidateSql(whereClause: ReturnType<typeof sql>) {
   return sql`
     UPDATE topic_digest_daily
     SET
-      is_stale        = true,
-      is_bulk_stale   = true,
-      recompute_after = GREATEST(recompute_after, ${recomputeAfter.toISOString()}::timestamptz)
+      is_stale             = true,
+      is_bulk_stale        = true,
+      stale_since          = CASE
+                               WHEN processing THEN now()
+                               ELSE COALESCE(stale_since, now())
+                             END
     WHERE ${whereClause}
   `;
 }
@@ -45,12 +47,9 @@ export async function bulkInvalidateTopicDigests(
   const { topicIds } = params;
   if (topicIds.length === 0) return;
 
-  const recomputeAfter = new Date(Date.now() + DIGEST_DEBOUNCE_MS);
-
   await db.execute(
     buildBulkInvalidateSql(
       sql`topic_id = ANY(ARRAY[${sql.join(topicIds.map((id) => sql`${id}::uuid`), sql`, `)}])`,
-      recomputeAfter,
     ),
   );
 }
@@ -75,12 +74,10 @@ export async function bulkInvalidateWorkspaceDigests(
   params: BulkInvalidateWorkspaceDigestsParams,
 ): Promise<void> {
   const { workspaceId } = params;
-  const recomputeAfter = new Date(Date.now() + DIGEST_DEBOUNCE_MS);
 
   await db.execute(
     buildBulkInvalidateSql(
       sql`topic_id IN (SELECT id FROM topics WHERE workspace_id = ${workspaceId}::uuid)`,
-      recomputeAfter,
     ),
   );
 }

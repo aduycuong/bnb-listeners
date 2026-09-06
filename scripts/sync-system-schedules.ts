@@ -6,6 +6,7 @@
 //   npx tsx scripts/sync-system-schedules.ts --dry-run
 //   npx tsx scripts/sync-system-schedules.ts --yes
 //   npx tsx scripts/sync-system-schedules.ts --callback-url https://my-preview.vercel.app/api/qstash/callback --yes
+//   npx tsx scripts/sync-system-schedules.ts --callback-url https://bnb-listeners.bienhinh.vn/api/qstash/callback --yes
 
 import "dotenv/config";
 import { Command } from "commander";

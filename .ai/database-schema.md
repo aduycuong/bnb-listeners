@@ -364,7 +364,7 @@ Static calendar dimension table. Pre-populated for 10–20 years (~3 650–7 300
 
 Daily-grain fact table. One row per `(topic_id, date_key, group_id)`. **Single source of truth for all digest metrics — no rollup table.** All period presets (rolling windows and calendar presets) query this table directly via SUM aggregation.
 
-Rows are created on-demand when a document in a group is first classified for a topic. The debounce constant `DIGEST_DEBOUNCE_MS` (default 1 hour) is defined in `lib/topic-digests/constants.ts`.
+Rows are created on-demand when a document in a group is first classified for a topic. Stale rows are queued for recompute in FIFO order by `stale_since`.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -376,9 +376,9 @@ Rows are created on-demand when a document in a group is first classified for a 
 | trend_score | real | YES | — | `doc_count × avg_quality_score × DAILY_RECENCY_WEIGHT(1.5)` |
 | is_stale | boolean | NO | `true` | `true` = metrics need recompute |
 | is_bulk_stale | boolean | NO | `false` | `true` when invalidated by a bulk taxonomy op (merge/split). Normal recompute job skips these; a separate low-priority bulk drain job handles them with a smaller `LIMIT`. |
-| recompute_after | timestamptz | YES | — | Debounce gate: job only picks up when `<= now()` |
+| stale_since | timestamptz | YES | — | Queue position for FIFO recompute (`ORDER BY stale_since ASC`). Set via `COALESCE(stale_since, now())` on invalidate; reset to `now()` when invalidating while `processing = true`; compared to `processing_started_at` at finalize; cleared when row becomes fresh. |
 | processing | boolean | NO | `false` | `true` while a worker holds the lease |
-| processing_started_at | timestamptz | YES | — | Lease start time; used to detect stuck workers |
+| processing_started_at | timestamptz | YES | — | Lease start time; used to detect stuck workers and invalidations during processing |
 | computed_at | timestamptz | YES | — | Timestamp of last successful compute |
 
 **Query patterns:**
@@ -394,8 +394,8 @@ Rows are created on-demand when a document in a group is first classified for a 
 | ----- | ------- | ------- |
 | `idx_topic_digest_daily_group_date` | `(group_id, date_key, topic_id)` | Rolling-window topic cards + sparkline |
 | `idx_topic_digest_daily_date` | `(date_key, topic_id)` | All topics for a given day (ranking) |
-| `idx_topic_digest_daily_stale` | `(recompute_after)` WHERE `is_stale = true AND is_bulk_stale = false AND processing = false` | Normal recompute job queue (excludes bulk-stale rows) |
-| `idx_topic_digest_daily_bulk_stale` | `(recompute_after)` WHERE `is_stale = true AND is_bulk_stale = true AND processing = false` | Bulk drain job queue — only rows from taxonomy ops |
+| `idx_topic_digest_daily_stale` | `(stale_since)` WHERE `is_stale = true AND is_bulk_stale = false AND processing = false` | Normal recompute job queue (excludes bulk-stale rows) |
+| `idx_topic_digest_daily_bulk_stale` | `(stale_since)` WHERE `is_stale = true AND is_bulk_stale = true AND processing = false` | Bulk drain job queue — only rows from taxonomy ops |
 
 ---
 
