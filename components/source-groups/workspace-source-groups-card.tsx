@@ -390,7 +390,10 @@ export function WorkspaceSourceGroupsCard({
               <label className="mb-1.5 block text-sm font-medium">
                 Move to group <span className="text-muted-foreground">(optional)</span>
               </label>
-              <Select value={moveToGroupId} onValueChange={setMoveToGroupId}>
+              <Select
+                value={moveToGroupId || null}
+                onValueChange={(value) => setMoveToGroupId(value ?? "")}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Unassigned (auto-created)" />
                 </SelectTrigger>
