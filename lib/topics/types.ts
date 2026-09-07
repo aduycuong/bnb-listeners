@@ -78,8 +78,8 @@ export type ListTopicCardsParams = {
   sort: TopicCardSort;
   offset?: number;
   limit?: number;
-  /** Omit or empty for all sources; pass UUIDs to filter to those groups. */
-  groupIds?: string[];
+  /** Omit or empty for all jobs; pass UUIDs to filter to those jobs. */
+  jobIds?: string[];
 };
 
 export type ListTopicCardsResult = {

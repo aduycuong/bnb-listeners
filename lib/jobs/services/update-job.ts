@@ -5,7 +5,6 @@ import { DuplicateError, NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import type { SchedulableJobType } from "@/lib/jobs/constants";
 import { parseJobParams } from "@/lib/jobs/handlers/registry";
-import { assertSourceGroupInWorkspace } from "@/lib/source-groups/utils/assert-source-group-in-workspace";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type { UpdateJobParams, UpdateJobResult } from "../types";
@@ -25,10 +24,6 @@ export async function updateJob(
 
   if (!existingJob) {
     throw new NotFoundError("job", id);
-  }
-
-  if (updates.groupId) {
-    await assertSourceGroupInWorkspace(ctx.workspaceId, updates.groupId);
   }
 
   if (updates.name) {

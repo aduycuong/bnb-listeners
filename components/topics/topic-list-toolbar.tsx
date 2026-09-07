@@ -11,8 +11,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ALL_SOURCE_GROUPS_LABEL } from "@/lib/source-groups/source-group-filter-config";
-import type { SourceGroupListItem } from "@/lib/source-groups/types";
+import type { JobListItem } from "@/lib/jobs/types";
 import {
   TOPIC_CARD_PERIOD_LABELS,
   TOPIC_CARD_PERIOD_PRESETS,
@@ -23,16 +22,18 @@ import {
 } from "@/lib/topics/topic-card-config";
 import { cn } from "@/lib/utils";
 
+const ALL_JOBS_LABEL = "All jobs";
+
 type TopicListToolbarProps = {
   period: TopicCardPeriodPreset;
   sort: TopicCardSort;
-  groupIds: string[];
-  sourceGroups: SourceGroupListItem[];
+  jobIds: string[];
+  jobs: JobListItem[];
   customStartDate?: string;
   customEndDate?: string;
   onPeriodChange: (period: TopicCardPeriodPreset) => void;
   onSortChange: (sort: TopicCardSort) => void;
-  onGroupIdsChange: (groupIds: string[]) => void;
+  onJobIdsChange: (jobIds: string[]) => void;
   onCustomRangeApply: (range: { startDate: string; endDate: string }) => void;
   disabled?: boolean;
 };
@@ -49,34 +50,31 @@ function getPeriodLabel(
   return TOPIC_CARD_PERIOD_LABELS[period];
 }
 
-function isAllSourcesSelected(groupIds: string[]) {
-  return groupIds.length === 0;
+function isAllJobsSelected(jobIds: string[]) {
+  return jobIds.length === 0;
 }
 
-function isGroupSelected(groupIds: string[], groupId: string) {
-  return isAllSourcesSelected(groupIds) || groupIds.includes(groupId);
+function isJobSelected(jobIds: string[], jobId: string) {
+  return isAllJobsSelected(jobIds) || jobIds.includes(jobId);
 }
 
-function toggleSourceGroup(
+function toggleJob(
   selectedIds: string[],
-  groupId: string,
-  allGroupIds: string[],
+  jobId: string,
+  allJobIds: string[],
 ) {
-  if (isAllSourcesSelected(selectedIds)) {
-    return [groupId];
+  if (isAllJobsSelected(selectedIds)) {
+    return [jobId];
   }
 
-  const isSelected = selectedIds.includes(groupId);
+  const isSelected = selectedIds.includes(jobId);
   if (isSelected) {
-    const next = selectedIds.filter((id) => id !== groupId);
+    const next = selectedIds.filter((id) => id !== jobId);
     return next.length === 0 ? [] : next;
   }
 
-  const next = [...selectedIds, groupId];
-  if (
-    allGroupIds.length > 0 &&
-    allGroupIds.every((id) => next.includes(id))
-  ) {
+  const next = [...selectedIds, jobId];
+  if (allJobIds.length > 0 && allJobIds.every((id) => next.includes(id))) {
     return [];
   }
 
@@ -92,20 +90,20 @@ const selectedSourceTagClassName =
 export function TopicListToolbar({
   period,
   sort,
-  groupIds,
-  sourceGroups,
+  jobIds,
+  jobs,
   customStartDate,
   customEndDate,
   onPeriodChange,
   onSortChange,
-  onGroupIdsChange,
+  onJobIdsChange,
   onCustomRangeApply,
   disabled = false,
 }: TopicListToolbarProps) {
   const periodLabel = getPeriodLabel(period, customStartDate, customEndDate);
   const sortLabel = TOPIC_CARD_SORT_LABELS[sort];
-  const allGroupIds = sourceGroups.map((group) => group.id);
-  const allSourcesSelected = isAllSourcesSelected(groupIds);
+  const allJobIds = jobs.map((job) => job.id);
+  const allJobsSelected = isAllJobsSelected(jobIds);
 
   return (
     <>
@@ -173,7 +171,7 @@ export function TopicListToolbar({
           </DropdownMenu>
         </div>
 
-        {sourceGroups.length > 0 ? (
+        {jobs.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -181,22 +179,22 @@ export function TopicListToolbar({
               variant="outline"
               className={cn(
                 "rounded-full",
-                allSourcesSelected
+                allJobsSelected
                   ? selectedSourceTagClassName
                   : unselectedSourceTagClassName,
               )}
               disabled={disabled}
-              onClick={() => onGroupIdsChange([])}
+              onClick={() => onJobIdsChange([])}
             >
-              {ALL_SOURCE_GROUPS_LABEL}
+              {ALL_JOBS_LABEL}
             </Button>
 
-            {sourceGroups.map((group) => {
-              const selected = isGroupSelected(groupIds, group.id);
+            {jobs.map((job) => {
+              const selected = isJobSelected(jobIds, job.id);
 
               return (
                 <Button
-                  key={group.id}
+                  key={job.id}
                   type="button"
                   size="sm"
                   variant="outline"
@@ -208,12 +206,10 @@ export function TopicListToolbar({
                   )}
                   disabled={disabled}
                   onClick={() =>
-                    onGroupIdsChange(
-                      toggleSourceGroup(groupIds, group.id, allGroupIds),
-                    )
+                    onJobIdsChange(toggleJob(jobIds, job.id, allJobIds))
                   }
                 >
-                  {group.name}
+                  {job.name}
                 </Button>
               );
             })}

@@ -1,7 +1,6 @@
 "use client";
 
 import { ChevronDownIcon } from "lucide-react";
-import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,19 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  buildJobSourceFilterTree,
-  summarizeJobSourceFilter,
-} from "@/lib/documents/utils/build-job-source-filter-tree";
 import type { JobListItem } from "@/lib/jobs/types";
-import type { SourceGroupListItem } from "@/lib/source-groups/types";
+import { summarizeJobFilter } from "@/lib/documents/utils/summarize-job-filter";
 
 type DocumentJobSourceFilterProps = {
-  sourceGroups: SourceGroupListItem[];
   jobs: JobListItem[];
-  groupIds: string[];
   jobIds: string[];
-  onGroupIdsChange: (groupIds: string[]) => void;
   onJobIdsChange: (jobIds: string[]) => void;
   disabled?: boolean;
 };
@@ -37,20 +29,13 @@ function toggleId(selectedIds: string[], id: string) {
 }
 
 export function DocumentJobSourceFilter({
-  sourceGroups,
   jobs,
-  groupIds,
   jobIds,
-  onGroupIdsChange,
   onJobIdsChange,
   disabled = false,
 }: DocumentJobSourceFilterProps) {
-  const tree = useMemo(
-    () => buildJobSourceFilterTree(sourceGroups, jobs),
-    [jobs, sourceGroups],
-  );
-  const label = summarizeJobSourceFilter(groupIds, jobIds, tree);
-  const hasFilters = groupIds.length > 0 || jobIds.length > 0;
+  const label = summarizeJobFilter(jobIds, jobs);
+  const hasFilters = jobIds.length > 0;
 
   return (
     <DropdownMenu>
@@ -68,51 +53,36 @@ export function DocumentJobSourceFilter({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-80 w-72 overflow-y-auto">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Source group & job</DropdownMenuLabel>
+          <DropdownMenuLabel>Job</DropdownMenuLabel>
           <DropdownMenuCheckboxItem
             checked={!hasFilters}
-            onCheckedChange={() => {
-              onGroupIdsChange([]);
-              onJobIdsChange([]);
-            }}
+            onCheckedChange={() => onJobIdsChange([])}
           >
-            All sources & jobs
+            All jobs
           </DropdownMenuCheckboxItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
 
-        {tree.length === 0 ? (
+        {jobs.length === 0 ? (
           <DropdownMenuGroup>
             <DropdownMenuLabel className="font-normal text-muted-foreground">
               No jobs configured yet.
             </DropdownMenuLabel>
           </DropdownMenuGroup>
         ) : (
-          tree.map((group) => (
-            <DropdownMenuGroup key={group.id}>
+          <DropdownMenuGroup>
+            {jobs.map((job) => (
               <DropdownMenuCheckboxItem
-                checked={groupIds.includes(group.id)}
+                key={job.id}
+                checked={jobIds.includes(job.id)}
                 onCheckedChange={() =>
-                  onGroupIdsChange(toggleId(groupIds, group.id))
+                  onJobIdsChange(toggleId(jobIds, job.id))
                 }
               >
-                {group.name}
+                {job.name}
               </DropdownMenuCheckboxItem>
-
-              {group.jobs.map((job) => (
-                <DropdownMenuCheckboxItem
-                  key={job.id}
-                  checked={jobIds.includes(job.id)}
-                  className="pl-7"
-                  onCheckedChange={() =>
-                    onJobIdsChange(toggleId(jobIds, job.id))
-                  }
-                >
-                  {job.name}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuGroup>
-          ))
+            ))}
+          </DropdownMenuGroup>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

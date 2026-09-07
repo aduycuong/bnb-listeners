@@ -1,4 +1,4 @@
-import type { CreateDocumentParams } from "@/lib/documents/types";
+import type { UpsertDocumentParams } from "@/lib/documents/types";
 
 import type { BrightDataFacebookPost } from "../types";
 import { buildPostMetadata } from "./build-post-metadata";
@@ -15,8 +15,7 @@ type MapPostToDocumentOptions = {
 };
 
 /**
- * Maps a parsed Bright Data Facebook post to a CreateDocumentParams object
- * ready to be passed to createDocument().
+ * Maps a parsed Bright Data Facebook post to upsert params (jobId/jobRunId added by caller).
  *
  * Mapping decisions:
  *   docType   = "post"          — matches chunk_recursive_by_token strategy
@@ -27,7 +26,7 @@ type MapPostToDocumentOptions = {
 export function mapPostToDocument({
   sourceKey,
   post,
-}: MapPostToDocumentOptions): CreateDocumentParams {
+}: MapPostToDocumentOptions): Omit<UpsertDocumentParams, "jobId" | "jobRunId"> {
   const sourceName = post.group_name?.trim() || "Facebook";
 
   return {

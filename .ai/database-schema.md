@@ -107,7 +107,6 @@ Tenant container for documents, topics, and members.
 - ← `documents.workspace_id`
 - ← `topics.workspace_id`
 - ← `jobs.workspace_id`
-- ← `source_groups.workspace_id`
 
 A default workspace is created for each user on first sign-in.
 
@@ -172,36 +171,6 @@ Dedup is scoped per workspace: unique `(workspace_id, doc_type, source_key, sour
 
 ---
 
-### `source_groups`
-
-Workspace-scoped labels for grouping scrape jobs and documents (e.g. Facebook KOL, Tiktoker). Used to filter trending topic metrics.
-
-| Column | Type | Nullable | Default | Description |
-| ------ | ---- | -------- | ------- | ----------- |
-| id | uuid | NO | `gen_random_uuid()` | Primary key |
-| workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
-| name | text | NO | — | Display name, unique per workspace |
-| description | text | YES | — | Optional notes |
-| created_at | timestamptz | NO | `now()` | Row creation time |
-| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
-
-**No group source group:** Each workspace has an auto-created "No group" row whose `id` is derived deterministically via UUID v5 — `uuid5(DNS_NAMESPACE, workspace_id)` — computed by `lib/source-groups/utils/get-no-group-id.ts`. No extra column is needed. The group is created when the workspace is created (and reused on demand when a group is deleted without a move target). It cannot be deleted. The `isNoGroup` field on `SourceGroupListItem` is derived at the application layer by comparing `id === getNoGroupId(workspace_id)`.
-
-**Indexes**
-
-| Index | Columns | Purpose |
-| ----- | ------- | ------- |
-| `idx_source_groups_workspace_name` | UNIQUE `(workspace_id, name)` | One name per workspace |
-| `idx_source_groups_workspace_id` | `(workspace_id)` | List groups in a workspace |
-
-**Relations**
-
-- ← `jobs.group_id` ON DELETE RESTRICT (app reassigns before deleting group)
-- ← `documents.group_id` ON DELETE RESTRICT (app reassigns before deleting group)
-- ← `topic_digest_daily.group_id` ON DELETE CASCADE (digest rows auto-deleted with group)
-
----
-
 ### `documents`
 
 One row per ingested item within a workspace. Topic assignment is in `document_topics`.
@@ -221,8 +190,8 @@ One row per ingested item within a workspace. Topic assignment is in `document_t
 | quality_score | real | YES | — | Weighted average of scoring dimensions (0–1). Null until scored. |
 | is_duplicate | boolean | NO | `false` | True when near-duplicate of another document |
 | canonical_id | uuid | YES | — | FK → `documents.id` — original when `is_duplicate` is true |
-| job_run_id | uuid | YES | — | FK → `job_runs.id` ON DELETE SET NULL — job run that first created this document; null when created manually |
-| group_id | uuid | YES | — | FK → `source_groups.id` ON DELETE RESTRICT — set on insert only; upsert does not overwrite. App reassigns to another group before deleting the referenced group. |
+| job_run_id | uuid | YES | — | FK → `job_runs.id` ON DELETE SET NULL — job run that first created this document |
+| job_id | uuid | NO | — | FK → `jobs.id` ON DELETE CASCADE — scrape job that owns this document; set on insert only |
 | published_at | timestamptz | YES | — | Source publish date; used for freshness scoring and canonical ordering |
 | created_at | timestamptz | NO | `now()` | Ingestion time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
@@ -242,14 +211,15 @@ One row per ingested item within a workspace. Topic assignment is in `document_t
 | `idx_documents_quality_score` | `(quality_score)` | Filter/sort by quality |
 | `idx_documents_is_duplicate` | `(is_duplicate)` | Exclude duplicates from aggregates |
 | `idx_documents_job_run_id` | `(job_run_id)` | Documents created by a job run |
-| `idx_documents_workspace_group` | `(workspace_id, group_id)` | Filter/list documents by source group |
+| `idx_documents_job_id` | `(job_id)` | Documents by owning job |
+| `idx_documents_workspace_job` | `(workspace_id, job_id)` | Filter/list documents by job |
 
-Near-duplicate detection is scoped to the same workspace. `job_run_id` and `group_id` are set only when a scrape (or other) job first inserts the document; later upserts do not overwrite them.
+Near-duplicate detection is scoped to the same workspace. `job_run_id` and `job_id` are set only when a scrape job first inserts the document; later upserts do not overwrite them. Deleting a job cascades to its documents (and chunks).
 
 **Relations**
 
 - → `job_runs.id` (`job_run_id`)
-- → `source_groups.id` (`group_id`)
+- → `jobs.id` (`job_id`)
 
 ---
 
@@ -362,15 +332,15 @@ Static calendar dimension table. Pre-populated for 10–20 years (~3 650–7 300
 
 ### `topic_digest_daily`
 
-Daily-grain fact table. One row per `(topic_id, date_key, group_id)`. **Single source of truth for all digest metrics — no rollup table.** All period presets (rolling windows and calendar presets) query this table directly via SUM aggregation.
+Daily-grain fact table. One row per `(topic_id, date_key, job_id)`. **Single source of truth for all digest metrics — no rollup table.** All period presets (rolling windows and calendar presets) query this table directly via SUM aggregation.
 
-Rows are created on-demand when a document in a group is first classified for a topic. Stale rows are queued for recompute in FIFO order by `stale_since`.
+Rows are created on-demand when a document from a job is first classified for a topic. Stale rows are queued for recompute in FIFO order by `stale_since`.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | topic_id | uuid | NO | — | FK → `topics.id` ON DELETE CASCADE |
 | date_key | date | NO | — | FK → `dim_dates.date_key` — day of the document's `published_at` |
-| group_id | uuid | NO | — | FK → `source_groups.id` ON DELETE CASCADE — partition key. Each row holds metrics for documents in a specific group. |
+| job_id | uuid | NO | — | FK → `jobs.id` ON DELETE CASCADE — partition key. Each row holds metrics for documents from a specific scrape job. |
 | doc_count | integer | NO | `0` | Non-duplicate documents with `published_at` on this date |
 | avg_quality_score | real | YES | — | Average `quality_score` for those documents |
 | trend_score | real | YES | — | `doc_count × avg_quality_score × DAILY_RECENCY_WEIGHT(1.5)` |
@@ -383,16 +353,16 @@ Rows are created on-demand when a document in a group is first classified for a 
 
 **Query patterns:**
 
-- **Group-filtered query:** `WHERE group_id = $groupId AND date_key BETWEEN $start AND $end` — uses index `(group_id, date_key, topic_id)`
-- **All-groups query:** `WHERE date_key BETWEEN $start AND $end` (no group filter) — uses index `(date_key, topic_id)`. Aggregates across all groups; correct because each document belongs to exactly one group.
+- **Job-filtered query:** `WHERE job_id = $jobId AND date_key BETWEEN $start AND $end` — uses index `(job_id, date_key, topic_id)`
+- **All-jobs query:** `WHERE date_key BETWEEN $start AND $end` (no job filter) — uses index `(date_key, topic_id)`. Aggregates across all jobs.
 
-**Primary key:** `(topic_id, date_key, group_id)`
+**Primary key:** `(topic_id, date_key, job_id)`
 
 **Indexes**
 
 | Index | Columns | Purpose |
 | ----- | ------- | ------- |
-| `idx_topic_digest_daily_group_date` | `(group_id, date_key, topic_id)` | Rolling-window topic cards + sparkline |
+| `idx_topic_digest_daily_job_date` | `(job_id, date_key, topic_id)` | Rolling-window topic cards + sparkline |
 | `idx_topic_digest_daily_date` | `(date_key, topic_id)` | All topics for a given day (ranking) |
 | `idx_topic_digest_daily_stale` | `(stale_since)` WHERE `is_stale = true AND is_bulk_stale = false AND processing = false` | Normal recompute job queue (excludes bulk-stale rows) |
 | `idx_topic_digest_daily_bulk_stale` | `(stale_since)` WHERE `is_stale = true AND is_bulk_stale = true AND processing = false` | Bulk drain job queue — only rows from taxonomy ops |
@@ -426,7 +396,6 @@ Workspace-scoped job definition for QStash scheduling.
 | cron_config | jsonb | NO | `{ "cron": "", "timezone": "UTC" }` | Schedule: `{ cron, timezone }` — empty `cron` means no schedule |
 | enabled | boolean | NO | `true` | When false, QStash schedule should be removed |
 | params | jsonb | NO | `{}` | Type-specific config (source, doc_type, scrape targets, …) |
-| group_id | uuid | YES | — | FK → `source_groups.id` ON DELETE RESTRICT — assigned to new documents from this job. App reassigns before deleting the referenced group. |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 

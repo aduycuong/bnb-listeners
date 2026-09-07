@@ -10,12 +10,12 @@ export type InvalidateTopicDigestParams = {
    * Only this specific daily row is invalidated — not the entire topic history.
    */
   dateKey: string;
-  /** A source_groups.id — the group the document belongs to. */
-  groupId: string;
+  /** The scrape job that produced the document. */
+  jobId: string;
 };
 
 /**
- * Mark the (topic, date, group) daily row as stale so the recompute job will pick
+ * Mark the (topic, date, job) daily row as stale so the recompute job will pick
  * it up on its next run.
  *
  * stale_since is set at the start of a stale episode (COALESCE) so FIFO ordering
@@ -27,7 +27,7 @@ export type InvalidateTopicDigestParams = {
 export async function invalidateTopicDigest(
   params: InvalidateTopicDigestParams,
 ): Promise<void> {
-  const { topicId, dateKey, groupId } = params;
+  const { topicId, dateKey, jobId } = params;
   const now = new Date();
 
   await db
@@ -35,7 +35,7 @@ export async function invalidateTopicDigest(
     .values({
       topicId,
       dateKey,
-      groupId,
+      jobId,
       isStale: true,
       isBulkStale: false,
       staleSince: now,
@@ -44,7 +44,7 @@ export async function invalidateTopicDigest(
       target: [
         topicDigestDaily.topicId,
         topicDigestDaily.dateKey,
-        topicDigestDaily.groupId,
+        topicDigestDaily.jobId,
       ],
       set: {
         isStale: true,

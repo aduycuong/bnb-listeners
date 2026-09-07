@@ -1,11 +1,7 @@
 import type { z } from "zod";
-import type { createDocumentBodySchema, updateDocumentBodySchema } from "./schema";
-import type { Document } from "@/db/schema";
-import type { documentFormSchema } from "./schema";
 
-export type CreateDocumentBody = z.infer<typeof createDocumentBodySchema>;
-export type CreateDocumentParams = CreateDocumentBody;
-export type CreateDocumentResult = Document;
+import type { updateDocumentBodySchema } from "./schema";
+import type { Document } from "@/db/schema";
 
 export type UpdateDocumentBody = z.infer<typeof updateDocumentBodySchema>;
 export type UpdateDocumentParams = { id: string } & UpdateDocumentBody;
@@ -24,7 +20,6 @@ export type GetDocumentResult = Document & {
 export type ListDocumentsParams = {
   docType?: string;
   embeddingStatus?: string;
-  groupIds?: string[];
   jobIds?: string[];
   offset?: number;
   limit?: number;
@@ -42,6 +37,7 @@ export type DocumentListItem = {
   qualityScore: number | null;
   isDuplicate: boolean;
   jobRunId: string | null;
+  jobId: string;
   jobName: string | null;
   publishedAt: string | null;
   createdAt: string;
@@ -55,13 +51,19 @@ export type ListDocumentsResult = {
   limit: number;
 };
 
-export type DocumentFormValues = z.infer<typeof documentFormSchema>;
-
-export type UpsertDocumentParams = CreateDocumentParams & {
+export type UpsertDocumentParams = {
+  docType: string;
+  sourceKey: string;
+  sourceName: string;
+  sourceId: string;
+  title?: string;
+  rawContent: string;
+  metadata?: Record<string, unknown>;
+  publishedAt?: string;
   /** Set only on insert; later upserts leave the original job run in place. */
   jobRunId?: string;
-  /** Set only on insert; upsert/update does not overwrite an existing group. */
-  groupId?: string | null;
+  /** Set only on insert; upsert/update does not overwrite an existing job. */
+  jobId: string;
 };
 
 /** Result of an upsert-document operation. */

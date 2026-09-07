@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 
-import { documents, jobRuns, jobs } from "@/db/schema";
+import { documents, jobs } from "@/db/schema";
 import { db } from "@/lib/db";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
@@ -23,12 +23,8 @@ export async function listDocuments(
     conditions.push(eq(documents.embeddingStatus, params.embeddingStatus));
   }
 
-  if (params.groupIds && params.groupIds.length > 0) {
-    conditions.push(inArray(documents.groupId, params.groupIds));
-  }
-
   if (params.jobIds && params.jobIds.length > 0) {
-    conditions.push(inArray(jobs.id, params.jobIds));
+    conditions.push(inArray(documents.jobId, params.jobIds));
   }
 
   const rows = await db
@@ -44,14 +40,14 @@ export async function listDocuments(
       qualityScore: documents.qualityScore,
       isDuplicate: documents.isDuplicate,
       jobRunId: documents.jobRunId,
+      jobId: documents.jobId,
       jobName: jobs.name,
       publishedAt: documents.publishedAt,
       createdAt: documents.createdAt,
       updatedAt: documents.updatedAt,
     })
     .from(documents)
-    .leftJoin(jobRuns, eq(documents.jobRunId, jobRuns.id))
-    .leftJoin(jobs, eq(jobRuns.jobId, jobs.id))
+    .innerJoin(jobs, eq(documents.jobId, jobs.id))
     .where(and(...conditions))
     .orderBy(desc(documents.createdAt))
     .limit(limit + 1)

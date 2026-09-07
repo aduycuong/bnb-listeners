@@ -7,7 +7,6 @@ import {
 } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { parseJobParams } from "@/lib/jobs/handlers/registry";
-import { assertSourceGroupInWorkspace } from "@/lib/source-groups/utils/assert-source-group-in-workspace";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type { CreateJobParams, CreateJobResult } from "../types";
@@ -17,10 +16,6 @@ export async function createJob(
   params: CreateJobParams,
   ctx: WorkspaceContext,
 ): Promise<CreateJobResult> {
-  if (params.groupId) {
-    await assertSourceGroupInWorkspace(ctx.workspaceId, params.groupId);
-  }
-
   const parsedParams = parseJobParams(params.jobType, params.params);
   const [existing] = await db
     .select({ id: jobs.id })
@@ -46,7 +41,6 @@ export async function createJob(
       cronConfig: params.cronConfig,
       enabled: params.enabled,
       params: parsedParams,
-      groupId: params.groupId ?? null,
     })
     .returning();
 

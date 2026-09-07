@@ -1,5 +1,4 @@
 export type DocumentsQueryFilters = {
-  groupIds: string[];
   jobIds: string[];
 };
 
@@ -13,6 +12,3 @@ export const documentsQueryKey = (
 
 export const documentQueryKey = (workspaceId: string, documentId: string) =>
   ["document", workspaceId, documentId] as const;
-
-export const workspaceJobsQueryKey = (workspaceId: string) =>
-  ["workspace-jobs", workspaceId] as const;

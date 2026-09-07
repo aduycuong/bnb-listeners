@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,6 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { jobsQueryKey, jobRunsQueryKey } from "@/components/jobs/job-query-keys";
-import { sourceGroupsQueryKey } from "@/components/topics/topic-query-keys";
 import { FormFieldCron } from "@/components/forms/form-field-cron";
 import { JobParamsFields } from "@/components/jobs/job-params-fields";
 import { JobRunsSection } from "@/components/jobs/job-runs-section";
@@ -41,7 +40,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { SourceGroupSelect } from "@/components/source-groups/source-group-select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
 import type { Job } from "@/db/schema";
@@ -53,8 +51,6 @@ import {
 import { getDefaultJobParams } from "@/lib/jobs/handlers/registry";
 import { jobFormSchema } from "@/lib/jobs/schema";
 import type { JobFormValues } from "@/lib/jobs/types";
-import { resolveSourceGroupFormValue } from "@/lib/source-groups/source-group-select-config";
-import type { ListSourceGroupsResult } from "@/lib/source-groups/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
@@ -66,36 +62,13 @@ type JobMenuFormPageProps = {
   job?: Job;
 };
 
-async function fetchSourceGroups(
-  workspaceId: string,
-): Promise<ListSourceGroupsResult> {
-  const res = await workspaceFetch(workspaceId, "/api/source-groups");
-  const data = (await res.json()) as ListSourceGroupsResult & {
-    error?: string;
-    message?: string;
-  };
-
-  if (!res.ok) {
-    throw new Error(
-      data.message ?? data.error ?? "Could not load source groups.",
-    );
-  }
-
-  return data;
-}
-
-function jobToFormValues(
-  menu: JobMenuConfig,
-  job: Job,
-  sourceGroups: ListSourceGroupsResult["items"],
-): JobFormValues {
+function jobToFormValues(menu: JobMenuConfig, job: Job): JobFormValues {
   return {
     name: job.name,
     jobType: menu.jobType,
     cronConfig: job.cronConfig ?? EMPTY_CRON_SCHEDULE,
     enabled: job.enabled,
     params: (job.params ?? {}) as Record<string, unknown>,
-    groupId: resolveSourceGroupFormValue(job.groupId, sourceGroups),
   };
 }
 
@@ -113,41 +86,24 @@ export function JobMenuFormPage({
   const [deleting, setDeleting] = useState(false);
   const listHref = getJobMenuHref(workspaceIndex, menu);
 
-  const sourceGroupsQuery = useQuery({
-    queryKey: sourceGroupsQueryKey(workspace.id),
-    queryFn: () => fetchSourceGroups(workspace.id),
-  });
-  const sourceGroups = sourceGroupsQuery.data?.items ?? [];
-
   const form = useForm<JobFormValues>({
     resolver: zodResolver(jobFormSchema),
     defaultValues: job
-      ? jobToFormValues(menu, job, sourceGroups)
+      ? jobToFormValues(menu, job)
       : {
           name: "",
           jobType: menu.jobType,
           cronConfig: { ...EMPTY_CRON_SCHEDULE, cron: "0 9 * * *" },
           enabled: true,
           params: getDefaultJobParams(menu.jobType),
-          groupId: resolveSourceGroupFormValue(null, sourceGroups),
         },
   });
 
   useEffect(() => {
     if (job) {
-      form.reset(jobToFormValues(menu, job, sourceGroups));
+      form.reset(jobToFormValues(menu, job));
     }
-  }, [job?.id, form, menu]);
-
-  useEffect(() => {
-    const nextGroupId = resolveSourceGroupFormValue(
-      form.getValues("groupId"),
-      sourceGroups,
-    );
-    if (form.getValues("groupId") !== nextGroupId) {
-      form.setValue("groupId", nextGroupId);
-    }
-  }, [sourceGroups, form]);
+  }, [job?.id, form, menu, job]);
 
   async function onSubmit(values: JobFormValues) {
     const body = {
@@ -156,7 +112,6 @@ export function JobMenuFormPage({
       cronConfig: values.cronConfig,
       enabled: values.enabled,
       params: values.params,
-      groupId: values.groupId,
     };
 
     const url = mode === "create" ? "/api/jobs" : `/api/jobs/${job?.id}`;
@@ -292,31 +247,6 @@ export function JobMenuFormPage({
                   <FieldError errors={[nameError]} />
                 </Field>
 
-                <Field data-invalid={!!form.formState.errors.groupId || undefined}>
-                  <FieldLabel htmlFor="job-source-group">Source group</FieldLabel>
-                  <Controller
-                    name="groupId"
-                    control={form.control}
-                    render={({ field }) => (
-                      <SourceGroupSelect
-                        id="job-source-group"
-                        className="w-full"
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        sourceGroups={sourceGroups}
-                        disabled={!canEdit || isSubmitting}
-                        aria-invalid={!!form.formState.errors.groupId}
-                        placeholder="Select source group"
-                      />
-                    )}
-                  />
-                  <FieldDescription>
-                    New documents from this job receive this source group.
-                    Changing it does not update existing documents.
-                  </FieldDescription>
-                  <FieldError errors={[form.formState.errors.groupId]} />
-                </Field>
-
                 <Field>
                   <FieldLabel>Job type</FieldLabel>
                   <FieldDescription>{menu.listDescription}</FieldDescription>
@@ -379,8 +309,10 @@ export function JobMenuFormPage({
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete job?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This removes the job, its QStash schedule, and run
-                          history. This action cannot be undone.
+                          This removes the job, its QStash schedule, run
+                          history, all documents it created (and their chunks),
+                          and related topic digest rows. This action cannot be
+                          undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

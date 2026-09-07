@@ -20,7 +20,7 @@ import {
   resolveTopicCardPeriod,
 } from "../utils/resolve-topic-card-period";
 import {
-  resolveTopicCardGroupIds,
+  resolveTopicCardJobIds,
   resolveTopicCardQuerySource,
 } from "../utils/resolve-topic-card-query-source";
 import { toDateKey } from "../utils/to-date-key";
@@ -107,13 +107,13 @@ export async function listTopicCards(
     startDate: params.startDate,
     endDate: params.endDate,
   });
-  const resolvedGroupIds = resolveTopicCardGroupIds(params.groupIds);
+  const resolvedJobIds = resolveTopicCardJobIds(params.jobIds);
 
-  // Build an optional group filter fragment. When resolvedGroupIds is null the
-  // query aggregates across all source groups (no WHERE on group_id).
-  const groupFilter = resolvedGroupIds
-    ? sql`AND tdd.group_id = ANY(ARRAY[${sql.join(
-        resolvedGroupIds.map((id) => sql`${id}::uuid`),
+  // Build an optional job filter fragment. When resolvedJobIds is null the
+  // query aggregates across all jobs (no WHERE on job_id).
+  const jobFilter = resolvedJobIds
+    ? sql`AND tdd.job_id = ANY(ARRAY[${sql.join(
+        resolvedJobIds.map((id) => sql`${id}::uuid`),
         sql`, `,
       )}])`
     : sql``;
@@ -145,7 +145,7 @@ export async function listTopicCards(
       ON tdd.topic_id = t.id
       AND tdd.date_key >= ${querySource.startDate}::date
       AND tdd.date_key <= ${querySource.endDate}::date
-      ${groupFilter}
+      ${jobFilter}
     WHERE t.workspace_id = ${ctx.workspaceId}::uuid
     GROUP BY
       t.id,
@@ -165,10 +165,10 @@ export async function listTopicCards(
   const hasMore = rows.length > limit;
   const topicIds = pageRows.map((row) => row.id);
 
-  // Sparkline filter: same group filter applied to the 7-day sparkline.
-  const sparklineGroupFilter = resolvedGroupIds
-    ? sql`AND tdd.group_id = ANY(ARRAY[${sql.join(
-        resolvedGroupIds.map((id) => sql`${id}::uuid`),
+  // Sparkline filter: same job filter applied to the 7-day sparkline.
+  const sparklineJobFilter = resolvedJobIds
+    ? sql`AND tdd.job_id = ANY(ARRAY[${sql.join(
+        resolvedJobIds.map((id) => sql`${id}::uuid`),
         sql`, `,
       )}])`
     : sql``;
@@ -187,7 +187,7 @@ export async function listTopicCards(
       )}])
         AND tdd.date_key >= ${sparklineStart}::date
         AND tdd.date_key <= ${sparklineEnd}::date
-        ${sparklineGroupFilter}
+        ${sparklineJobFilter}
       ORDER BY tdd.topic_id, tdd.date_key
     `);
     sparklineRows = sparklineResult.rows;

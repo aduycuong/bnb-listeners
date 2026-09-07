@@ -32,13 +32,13 @@ export function resolveTopicCardQuerySource(
 }
 
 /**
- * Returns sorted group UUIDs to filter by, or null when no filter should be applied
- * (i.e. the query aggregates across all source groups).
+ * Returns sorted job UUIDs to filter by, or null when no filter should be applied
+ * (i.e. the query aggregates across all jobs).
  */
-export function resolveTopicCardGroupIds(groupIds?: string[]): string[] | null {
-  if (!groupIds || groupIds.length === 0) {
+export function resolveTopicCardJobIds(jobIds?: string[]): string[] | null {
+  if (!jobIds || jobIds.length === 0) {
     return null;
   }
 
-  return [...groupIds].sort();
+  return [...jobIds].sort();
 }

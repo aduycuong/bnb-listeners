@@ -3,14 +3,14 @@ export type TopicCardsQueryFilters = {
   sort: import("@/lib/topics/topic-card-config").TopicCardSort;
   startDate?: string;
   endDate?: string;
-  groupIds?: string[];
+  jobIds?: string[];
 };
 
 export const topicsQueryKey = (workspaceId: string) =>
   ["topics", workspaceId] as const;
 
-export const sourceGroupsQueryKey = (workspaceId: string) =>
-  ["source-groups", workspaceId] as const;
+export const workspaceJobsQueryKey = (workspaceId: string) =>
+  ["workspace-jobs", workspaceId] as const;
 
 export const topicCardsQueryKey = (
   workspaceId: string,

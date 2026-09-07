@@ -1,9 +1,7 @@
 "use client";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { ChevronDownIcon, PlusIcon, SearchIcon } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { ChevronDownIcon, SearchIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -15,10 +13,9 @@ import { DocumentDetailDialog } from "@/components/documents/document-detail-dia
 import { DocumentJobSourceFilter } from "@/components/documents/document-job-source-filter";
 import {
   documentsQueryKey,
-  workspaceJobsQueryKey,
   type DocumentsQueryFilters,
 } from "@/components/documents/document-query-keys";
-import { sourceGroupsQueryKey } from "@/components/topics/topic-query-keys";
+import { workspaceJobsQueryKey } from "@/components/topics/topic-query-keys";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -36,13 +33,11 @@ import {
 } from "@/lib/dashboard/filter-sort-list-items";
 import {
   DOCUMENT_CONFIG,
-  getDocumentHref,
   getEmbeddingStatusBadge,
 } from "@/lib/documents/document-config";
 import { DOCUMENT_LIST_PAGE_SIZE } from "@/lib/documents/document-list-config";
 import type { DocumentListItem, ListDocumentsResult } from "@/lib/documents/types";
 import type { ListJobsResult } from "@/lib/jobs/types";
-import type { ListSourceGroupsResult } from "@/lib/source-groups/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
@@ -61,10 +56,6 @@ async function fetchDocuments(
     limit: String(DOCUMENT_LIST_PAGE_SIZE),
   });
 
-  if (filters.groupIds.length > 0) {
-    params.set("groupIds", filters.groupIds.join(","));
-  }
-
   if (filters.jobIds.length > 0) {
     params.set("jobIds", filters.jobIds.join(","));
   }
@@ -77,24 +68,6 @@ async function fetchDocuments(
 
   if (!res.ok) {
     throw new Error(data.message ?? data.error ?? "Could not load documents.");
-  }
-
-  return data;
-}
-
-async function fetchSourceGroups(
-  workspaceId: string,
-): Promise<ListSourceGroupsResult> {
-  const res = await workspaceFetch(workspaceId, "/api/source-groups");
-  const data = (await res.json()) as ListSourceGroupsResult & {
-    error?: string;
-    message?: string;
-  };
-
-  if (!res.ok) {
-    throw new Error(
-      data.message ?? data.error ?? "Could not load source groups.",
-    );
   }
 
   return data;
@@ -129,11 +102,7 @@ function toListRowItem(doc: DocumentListItem): ResourceListRowItem {
   return {
     id: doc.id,
     name: doc.title?.trim() || doc.sourceId,
-    subtitle: [
-      doc.sourceName,
-      doc.docType,
-      doc.jobName ? `from ${doc.jobName}` : null,
-    ]
+    subtitle: [doc.sourceName, doc.docType, doc.jobName ? `from ${doc.jobName}` : null]
       .filter(Boolean)
       .join(" · "),
     description: truncateContent(doc.rawContent),
@@ -160,11 +129,8 @@ export function DocumentListPage({
   workspace,
   workspaceIndex,
 }: DocumentListPageProps) {
-  const router = useRouter();
-  const canEdit = workspace.permission !== "read";
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const [groupIds, setGroupIds] = useState<string[]>([]);
   const [jobIds, setJobIds] = useState<string[]>([]);
   const [keyword, setKeyword] = useState("");
   const [sort, setSort] = useState<ListSortOption>("date-desc");
@@ -172,8 +138,8 @@ export function DocumentListPage({
   const [detailOpen, setDetailOpen] = useState(false);
 
   const filters = useMemo<DocumentsQueryFilters>(
-    () => ({ groupIds, jobIds }),
-    [groupIds, jobIds],
+    () => ({ jobIds }),
+    [jobIds],
   );
 
   const documentsQuery = useInfiniteQuery({
@@ -183,11 +149,6 @@ export function DocumentListPage({
     initialPageParam: 0,
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? lastPage.offset + lastPage.items.length : undefined,
-  });
-
-  const sourceGroupsQuery = useQuery({
-    queryKey: sourceGroupsQueryKey(workspace.id),
-    queryFn: () => fetchSourceGroups(workspace.id),
   });
 
   const jobsQuery = useQuery({
@@ -200,17 +161,11 @@ export function DocumentListPage({
     [documentsQuery.data?.pages],
   );
 
-  const documentsById = useMemo(
-    () => new Map(documents.map((doc) => [doc.id, doc])),
-    [documents],
-  );
-
   const listItems = useMemo(
     () => filterSortListItems(documents.map(toListRowItem), keyword, sort),
     [documents, keyword, sort],
   );
 
-  const sourceGroups = sourceGroupsQuery.data?.items ?? [];
   const jobs = jobsQuery.data?.items ?? [];
   const totalLoaded = documents.length;
   const isInitialLoading = documentsQuery.isLoading;
@@ -250,52 +205,26 @@ export function DocumentListPage({
   ]);
 
   function handleItemClick(item: ResourceListRowItem) {
-    const document = documentsById.get(item.id);
-    if (!document) {
-      return;
-    }
-
-    if (document.jobRunId) {
-      setDetailDocumentId(document.id);
-      setDetailOpen(true);
-      return;
-    }
-
-    router.push(getDocumentHref(workspaceIndex, document.id));
+    setDetailDocumentId(item.id);
+    setDetailOpen(true);
   }
 
   return (
     <>
       <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-8">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {DOCUMENT_CONFIG.listTitle}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {DOCUMENT_CONFIG.listDescription}
-            </p>
-          </div>
-
-          {canEdit ? (
-            <Button
-              nativeButton={false}
-              render={<Link href={getDocumentHref(workspaceIndex, "new")} />}
-              className="shrink-0"
-            >
-              <PlusIcon data-icon="inline-start" />
-              {DOCUMENT_CONFIG.createLabel}
-            </Button>
-          ) : null}
+        <div className="mb-6 space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {DOCUMENT_CONFIG.listTitle}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {DOCUMENT_CONFIG.listDescription}
+          </p>
         </div>
 
         <div className="mb-4 flex flex-col gap-3">
           <DocumentJobSourceFilter
-            sourceGroups={sourceGroups}
             jobs={jobs}
-            groupIds={groupIds}
             jobIds={jobIds}
-            onGroupIdsChange={setGroupIds}
             onJobIdsChange={setJobIds}
             disabled={isInitialLoading}
           />
@@ -361,17 +290,7 @@ export function DocumentListPage({
             description={
               hasKeyword
                 ? "Try a different search term or clear the filter."
-                : canEdit
-                  ? DOCUMENT_CONFIG.emptyDescription
-                  : "Documents will appear here once they are added to this workspace."
-            }
-            actionLabel={
-              !hasKeyword && canEdit ? DOCUMENT_CONFIG.createLabel : undefined
-            }
-            actionHref={
-              !hasKeyword && canEdit
-                ? getDocumentHref(workspaceIndex, "new")
-                : undefined
+                : "Documents appear here after a scrape job ingests content."
             }
           />
         ) : (

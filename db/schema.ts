@@ -99,15 +99,24 @@ export const workspaceMembers = pgTable(
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 export type NewWorkspaceMember = typeof workspaceMembers.$inferInsert;
 
-export const sourceGroups = pgTable(
-  "source_groups",
+export const jobs = pgTable(
+  "jobs",
   {
     id: uuid("id").primaryKey().defaultRandom().notNull(),
     workspaceId: uuid("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    description: text("description"),
+    jobType: text("job_type").notNull(),
+    cronConfig: jsonb("cron_config")
+      .$type<{ cron: string; timezone: string }>()
+      .notNull()
+      .default({ cron: "", timezone: "UTC" }),
+    enabled: boolean("enabled").notNull().default(true),
+    params: jsonb("params")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -117,16 +126,41 @@ export const sourceGroups = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    uniqueIndex("idx_source_groups_workspace_name").on(
-      table.workspaceId,
-      table.name,
-    ),
-    index("idx_source_groups_workspace_id").on(table.workspaceId),
+    uniqueIndex("idx_jobs_workspace_name").on(table.workspaceId, table.name),
+    index("idx_jobs_workspace_id").on(table.workspaceId),
+    index("idx_jobs_enabled").on(table.enabled),
+    index("idx_jobs_job_type").on(table.jobType),
   ],
 );
 
-export type SourceGroup = typeof sourceGroups.$inferSelect;
-export type NewSourceGroup = typeof sourceGroups.$inferInsert;
+export type Job = typeof jobs.$inferSelect;
+export type NewJob = typeof jobs.$inferInsert;
+
+export const jobRuns = pgTable(
+  "job_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("running"),
+    result: jsonb("result").$type<Record<string, unknown>>(),
+    error: text("error"),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_job_runs_job_id").on(table.jobId),
+    index("idx_job_runs_started_at").on(table.startedAt.desc()),
+    index("idx_job_runs_status").on(table.status),
+    index("idx_job_runs_job_started").on(table.jobId, table.startedAt.desc()),
+  ],
+);
+
+export type JobRun = typeof jobRuns.$inferSelect;
+export type NewJobRun = typeof jobRuns.$inferInsert;
 
 export const documents = pgTable(
   "documents",
@@ -152,9 +186,9 @@ export const documents = pgTable(
     jobRunId: uuid("job_run_id").references(() => jobRuns.id, {
       onDelete: "set null",
     }),
-    groupId: uuid("group_id").references(() => sourceGroups.id, {
-      onDelete: "restrict",
-    }),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -186,7 +220,8 @@ export const documents = pgTable(
     index("idx_documents_quality_score").on(table.qualityScore),
     index("idx_documents_is_duplicate").on(table.isDuplicate),
     index("idx_documents_job_run_id").on(table.jobRunId),
-    index("idx_documents_workspace_group").on(table.workspaceId, table.groupId),
+    index("idx_documents_job_id").on(table.jobId),
+    index("idx_documents_workspace_job").on(table.workspaceId, table.jobId),
     foreignKey({
       columns: [table.canonicalId],
       foreignColumns: [table.id],
@@ -363,9 +398,9 @@ export const topicDigestDaily = pgTable(
     dateKey: date("date_key")
       .notNull()
       .references(() => dimDates.dateKey),
-    groupId: uuid("group_id")
+    jobId: uuid("job_id")
       .notNull()
-      .references(() => sourceGroups.id, { onDelete: "cascade" }),
+      .references(() => jobs.id, { onDelete: "cascade" }),
 
     // Metrics
     docCount: integer("doc_count").notNull().default(0),
@@ -388,10 +423,10 @@ export const topicDigestDaily = pgTable(
     computedAt: timestamp("computed_at", { withTimezone: true }),
   },
   (table) => [
-    primaryKey({ columns: [table.topicId, table.dateKey, table.groupId] }),
+    primaryKey({ columns: [table.topicId, table.dateKey, table.jobId] }),
     // rolling-window topic cards + sparkline
-    index("idx_topic_digest_daily_group_date").on(
-      table.groupId,
+    index("idx_topic_digest_daily_job_date").on(
+      table.jobId,
       table.dateKey,
       table.topicId,
     ),
@@ -414,72 +449,6 @@ export const topicDigestDaily = pgTable(
 
 export type TopicDigestDaily = typeof topicDigestDaily.$inferSelect;
 export type NewTopicDigestDaily = typeof topicDigestDaily.$inferInsert;
-
-export const jobs = pgTable(
-  "jobs",
-  {
-    id: uuid("id").primaryKey().defaultRandom().notNull(),
-    workspaceId: uuid("workspace_id")
-      .notNull()
-      .references(() => workspaces.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    jobType: text("job_type").notNull(),
-    cronConfig: jsonb("cron_config")
-      .$type<{ cron: string; timezone: string }>()
-      .notNull()
-      .default({ cron: "", timezone: "UTC" }),
-    enabled: boolean("enabled").notNull().default(true),
-    params: jsonb("params")
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default({}),
-    groupId: uuid("group_id").references(() => sourceGroups.id, {
-      onDelete: "restrict",
-    }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [
-    uniqueIndex("idx_jobs_workspace_name").on(table.workspaceId, table.name),
-    index("idx_jobs_workspace_id").on(table.workspaceId),
-    index("idx_jobs_enabled").on(table.enabled),
-    index("idx_jobs_job_type").on(table.jobType),
-  ],
-);
-
-export type Job = typeof jobs.$inferSelect;
-export type NewJob = typeof jobs.$inferInsert;
-
-export const jobRuns = pgTable(
-  "job_runs",
-  {
-    id: uuid("id").primaryKey().defaultRandom().notNull(),
-    jobId: uuid("job_id")
-      .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
-    status: text("status").notNull().default("running"),
-    result: jsonb("result").$type<Record<string, unknown>>(),
-    error: text("error"),
-    startedAt: timestamp("started_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    finishedAt: timestamp("finished_at", { withTimezone: true }),
-  },
-  (table) => [
-    index("idx_job_runs_job_id").on(table.jobId),
-    index("idx_job_runs_started_at").on(table.startedAt.desc()),
-    index("idx_job_runs_status").on(table.status),
-    index("idx_job_runs_job_started").on(table.jobId, table.startedAt.desc()),
-  ],
-);
-
-export type JobRun = typeof jobRuns.$inferSelect;
-export type NewJobRun = typeof jobRuns.$inferInsert;
 
 export const workspaceApiKeys = pgTable(
   "workspace_api_keys",

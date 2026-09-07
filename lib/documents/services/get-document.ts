@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 
-import { documents, jobRuns, jobs } from "@/db/schema";
+import { documents, jobs } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
@@ -19,8 +19,7 @@ export async function getDocument(
       jobType: jobs.jobType,
     })
     .from(documents)
-    .leftJoin(jobRuns, eq(documents.jobRunId, jobRuns.id))
-    .leftJoin(jobs, eq(jobRuns.jobId, jobs.id))
+    .innerJoin(jobs, eq(documents.jobId, jobs.id))
     .where(
       and(
         eq(documents.id, params.id),

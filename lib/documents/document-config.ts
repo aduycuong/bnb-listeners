@@ -6,13 +6,7 @@ export const DOCUMENT_CONFIG = {
   listDescription:
     "Content ingested into this workspace for scoring, classification, and search.",
   emptyTitle: "No documents yet",
-  emptyDescription: "Add a document to start the ingestion pipeline.",
-  createLabel: "Add document",
-  formCreateTitle: "Add document",
-  formCreateDescription:
-    "Create a document manually. Processing starts automatically after save.",
-  formEditDescription:
-    "Update document fields. Changing content re-queues embedding and classification.",
+  emptyDescription: "Documents appear here after a scrape job ingests content.",
 } as const;
 
 export function getDocumentHref(

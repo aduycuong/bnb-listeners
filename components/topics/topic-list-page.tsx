@@ -9,9 +9,9 @@ import { TopicCard } from "@/components/topics/topic-card";
 import { TopicDeleteDialog } from "@/components/topics/topic-delete-dialog";
 import { TopicFormDialog } from "@/components/topics/topic-form-dialog";
 import {
-  sourceGroupsQueryKey,
   topicCardsQueryKey,
   topicsQueryKey,
+  workspaceJobsQueryKey,
   type TopicCardsQueryFilters,
 } from "@/components/topics/topic-query-keys";
 import { TopicListToolbar } from "@/components/topics/topic-list-toolbar";
@@ -23,13 +23,13 @@ import {
   type TopicCardSort,
 } from "@/lib/topics/topic-card-config";
 import { TOPIC_CONFIG } from "@/lib/topics/topic-config";
-import type { ListSourceGroupsResult } from "@/lib/source-groups/types";
 import type {
   ListTopicCardsResult,
   ListTopicsResult,
   TopicCardItem,
   TopicListItem,
 } from "@/lib/topics/types";
+import type { ListJobsResult } from "@/lib/jobs/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
@@ -58,8 +58,8 @@ async function fetchTopicCards(
     }
   }
 
-  if (filters.groupIds && filters.groupIds.length > 0) {
-    params.set("groupIds", filters.groupIds.join(","));
+  if (filters.jobIds && filters.jobIds.length > 0) {
+    params.set("jobIds", filters.jobIds.join(","));
   }
 
   const res = await workspaceFetch(
@@ -78,19 +78,15 @@ async function fetchTopicCards(
   return data;
 }
 
-async function fetchSourceGroups(
-  workspaceId: string,
-): Promise<ListSourceGroupsResult> {
-  const res = await workspaceFetch(workspaceId, "/api/source-groups");
-  const data = (await res.json()) as ListSourceGroupsResult & {
+async function fetchJobs(workspaceId: string): Promise<ListJobsResult> {
+  const res = await workspaceFetch(workspaceId, "/api/jobs");
+  const data = (await res.json()) as ListJobsResult & {
     error?: string;
     message?: string;
   };
 
   if (!res.ok) {
-    throw new Error(
-      data.message ?? data.error ?? "Could not load source groups.",
-    );
+    throw new Error(data.message ?? data.error ?? "Could not load jobs.");
   }
 
   return data;
@@ -121,7 +117,7 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
 
   const [period, setPeriod] = useState<TopicCardPeriodPreset>("last_7_days");
   const [sort, setSort] = useState<TopicCardSort>("trend");
-  const [groupIds, setGroupIds] = useState<string[]>([]);
+  const [jobIds, setJobIds] = useState<string[]>([]);
   const [customStartDate, setCustomStartDate] = useState<string>();
   const [customEndDate, setCustomEndDate] = useState<string>();
 
@@ -136,11 +132,11 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
     () => ({
       period,
       sort,
-      groupIds,
+      jobIds,
       startDate: period === "custom" ? customStartDate : undefined,
       endDate: period === "custom" ? customEndDate : undefined,
     }),
-    [customEndDate, customStartDate, groupIds, period, sort],
+    [customEndDate, customStartDate, jobIds, period, sort],
   );
 
   const cardsQuery = useInfiniteQuery({
@@ -159,13 +155,13 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
     enabled: formOpen || deleteOpen,
   });
 
-  const sourceGroupsQuery = useQuery({
-    queryKey: sourceGroupsQueryKey(workspace.id),
-    queryFn: () => fetchSourceGroups(workspace.id),
+  const jobsQuery = useQuery({
+    queryKey: workspaceJobsQueryKey(workspace.id),
+    queryFn: () => fetchJobs(workspace.id),
   });
 
   const topics = topicsQuery.data?.items ?? [];
-  const sourceGroups = sourceGroupsQuery.data?.items ?? [];
+  const jobs = jobsQuery.data?.items ?? [];
   const cards = useMemo(
     () => cardsQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [cardsQuery.data?.pages],
@@ -287,13 +283,13 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
           <TopicListToolbar
             period={period}
             sort={sort}
-            groupIds={groupIds}
-            sourceGroups={sourceGroups}
+            jobIds={jobIds}
+            jobs={jobs}
             customStartDate={customStartDate}
             customEndDate={customEndDate}
             onPeriodChange={handlePeriodChange}
             onSortChange={setSort}
-            onGroupIdsChange={setGroupIds}
+            onJobIdsChange={setJobIds}
             onCustomRangeApply={handleCustomRangeApply}
             disabled={isInitialLoading}
           />

@@ -54,7 +54,7 @@ export async function upsertDocument(
         publishedAt: newPublishedAt,
         embeddingStatus: "pending",
         jobRunId: params.jobRunId ?? null,
-        groupId: params.groupId ?? null,
+        jobId: params.jobId,
       })
       .returning({ id: documents.id });
 

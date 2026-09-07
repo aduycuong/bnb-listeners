@@ -28,11 +28,11 @@ export async function bulkDrainTopicDigests(): Promise<void> {
   }
 
   await Promise.all(
-    claimed.map(({ topicId, dateKey, groupId }) =>
+    claimed.map(({ topicId, dateKey, jobId }) =>
       computeDailyMetrics({
         topicId,
         dateKey,
-        groupId,
+        jobId,
         clearBulkStale: true,
       }),
     ),

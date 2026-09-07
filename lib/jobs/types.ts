@@ -32,7 +32,6 @@ export type JobListItem = {
   name: string;
   jobType: string;
   enabled: boolean;
-  groupId: string | null;
   cronConfig: { cron: string; timezone: string };
   createdAt: string;
   updatedAt: string;

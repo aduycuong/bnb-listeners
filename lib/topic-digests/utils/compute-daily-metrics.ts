@@ -7,15 +7,15 @@ import type { DigestMetrics } from "../types";
 
 /**
  * Compute doc_count, avg_quality_score, and trend_score for a single
- * (topicId, dateKey, groupId) partition by aggregating the documents table.
+ * (topicId, dateKey, jobId) partition by aggregating the documents table.
  *
- * Only documents whose published_at falls on dateKey and whose group_id
- * matches groupId are counted.
+ * Only documents whose published_at falls on dateKey and whose job_id
+ * matches jobId are counted.
  */
 async function fetchMetrics(
   topicId: string,
   dateKey: string,
-  groupId: string,
+  jobId: string,
 ): Promise<DigestMetrics> {
   const [row] = await db
     .select({
@@ -28,7 +28,7 @@ async function fetchMetrics(
       and(
         eq(documentTopics.topicId, topicId),
         sql`${documents.publishedAt}::date = ${dateKey}::date`,
-        eq(documents.groupId, groupId),
+        eq(documents.jobId, jobId),
       ),
     );
 
@@ -48,7 +48,7 @@ const invalidatedDuringProcessing = sql`${topicDigestDaily.staleSince} > ${topic
 export type ComputeDailyMetricsParams = {
   topicId: string;
   dateKey: string;
-  groupId: string;
+  jobId: string;
   /** When true, also resets is_bulk_stale so bulk drain doesn't re-claim the row. */
   clearBulkStale: boolean;
 };
@@ -64,8 +64,8 @@ export type ComputeDailyMetricsParams = {
 export async function computeDailyMetrics(
   params: ComputeDailyMetricsParams,
 ): Promise<DigestMetrics> {
-  const { topicId, dateKey, groupId, clearBulkStale } = params;
-  const metrics = await fetchMetrics(topicId, dateKey, groupId);
+  const { topicId, dateKey, jobId, clearBulkStale } = params;
+  const metrics = await fetchMetrics(topicId, dateKey, jobId);
 
   await db
     .update(topicDigestDaily)
@@ -86,7 +86,7 @@ export async function computeDailyMetrics(
       and(
         eq(topicDigestDaily.topicId, topicId),
         eq(topicDigestDaily.dateKey, dateKey),
-        eq(topicDigestDaily.groupId, groupId),
+        eq(topicDigestDaily.jobId, jobId),
         eq(topicDigestDaily.processing, true),
       ),
     );

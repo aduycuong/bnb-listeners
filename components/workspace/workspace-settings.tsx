@@ -9,7 +9,6 @@ import { SettingsPageLayout } from "@/components/dashboard/settings-page-layout"
 import { EditWorkspaceGeneralDialog } from "@/components/workspace/edit-workspace-general-dialog";
 import { WorkspaceApiKeysCard } from "@/components/workspace/workspace-api-keys-card";
 import { WorkspaceMembersSection } from "@/components/workspace/workspace-members-section";
-import { WorkspaceSourceGroupsCard } from "@/components/source-groups/workspace-source-groups-card";
 import { WorkspaceTopicSettingsCard } from "@/components/workspace/workspace-topic-settings-card";
 import {
   AlertDialog,
@@ -158,8 +157,6 @@ export function WorkspaceSettings({
       />
 
       <WorkspaceTopicSettingsCard workspace={workspace} />
-
-      <WorkspaceSourceGroupsCard workspace={workspace} />
 
       <WorkspaceApiKeysCard workspace={workspace} />
 

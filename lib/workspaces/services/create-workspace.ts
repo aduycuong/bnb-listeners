@@ -1,6 +1,5 @@
 import { workspaceMembers, workspaces } from "@/db/schema";
 import { db } from "@/lib/db";
-import { createNoGroupSourceGroup } from "@/lib/source-groups/services/create-no-group-source-group";
 
 import type { CreateWorkspaceParams, CreateWorkspaceResult } from "../types";
 import { resolveUniqueWorkspaceSlug } from "../utils/resolve-unique-workspace-slug";
@@ -37,8 +36,6 @@ export async function createWorkspace(
     permission: "owner",
     grantedBy: params.userId,
   });
-
-  await createNoGroupSourceGroup(workspace.id);
 
   return {
     id: workspace.id,

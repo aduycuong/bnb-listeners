@@ -38,21 +38,18 @@ async function fetchLlmTopicIds(documentId: string): Promise<string[]> {
 
 /**
  * Invalidate the daily digest partition for every affected topic.
- *
- * Only documents with a non-null group_id contribute to a digest partition.
- * Documents without a group are not counted in any digest and are skipped.
  */
 async function invalidateAffectedDigests(
   topicIds: string[],
   publishedAt: Date | null,
-  documentGroupId: string | null,
+  documentJobId: string,
 ): Promise<void> {
-  if (!publishedAt || !documentGroupId || topicIds.length === 0) return;
+  if (!publishedAt || topicIds.length === 0) return;
   const dateKey = toDateKey(publishedAt);
 
   await Promise.all(
     topicIds.map((topicId) =>
-      invalidateTopicDigest({ topicId, dateKey, groupId: documentGroupId }),
+      invalidateTopicDigest({ topicId, dateKey, jobId: documentJobId }),
     ),
   );
 }
@@ -128,8 +125,7 @@ async function assignProposedTopic(
  *
  * Only prior LLM assignments are replaced; admin assignments are preserved.
  *
- * Digest invalidation is skipped for documents without a group_id — such
- * documents are not counted in any partition until they are assigned a group.
+ * Digest invalidation runs for every classified document (all documents belong to a job).
  */
 export async function classifyDocument(
   params: ClassifyDocumentParams,
@@ -200,7 +196,7 @@ export async function classifyDocument(
     ...result.createdTopics.map((t) => t.id),
   ];
   const affectedTopicIds = [...new Set([...oldTopicIds, ...newTopicIds])];
-  await invalidateAffectedDigests(affectedTopicIds, doc.publishedAt, doc.groupId);
+  await invalidateAffectedDigests(affectedTopicIds, doc.publishedAt, doc.jobId);
 
   return result;
 }

@@ -25,7 +25,7 @@ const listTopicCardsQuerySchema = z
       .min(1)
       .max(TOPIC_CARD_PAGE_SIZE)
       .default(TOPIC_CARD_PAGE_SIZE),
-    groupIds: z
+    jobIds: z
       .preprocess(
         (value) => {
           if (typeof value !== "string" || value.length === 0) {

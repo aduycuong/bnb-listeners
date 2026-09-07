@@ -2,7 +2,7 @@
 
 Topic digests lưu trend metrics (`doc_count`, `avg_quality_score`, `trend_score`, `is_stale`) theo topic và thời gian — trả lời câu hỏi *topic nào hot trong kỳ này?*
 
-Có thể xem **tất cả sources** (mặc định) hoặc lọc theo **1 hoặc nhiều source group** (Facebook KOL, Tiktoker, …).
+Có thể xem **tất cả jobs** (mặc định) hoặc lọc theo **1 hoặc nhiều scrape job**.
 
 ---
 
@@ -10,11 +10,11 @@ Có thể xem **tất cả sources** (mặc định) hoặc lọc theo **1 hoặ
 
 | Bảng | Vai trò |
 |------|---------|
-| `source_groups` | Nhóm nguồn trong workspace — mỗi job/document thuộc đúng một group |
+| `jobs` | Scrape job trong workspace — mỗi document thuộc đúng một job |
 | `dim_dates` | Lịch tĩnh, seed một lần (~10–20 năm) |
 | `topic_digest_daily` | Metrics theo ngày — **nguồn duy nhất** cho tất cả period presets |
 
-`documents.group_id` và `jobs.group_id` là **NOT NULL** ở tầng application (FK restrict tại DB, reassignment phải xảy ra trước khi xóa group). `topic_digest_daily.group_id` có FK CASCADE → khi group bị xóa, digest rows của group đó bị xóa tự động.
+`documents.job_id` là **NOT NULL**. `topic_digest_daily.job_id` có FK CASCADE → khi job bị xóa, documents/chunks/digest rows của job đó bị xóa theo cascade.
 
 ---
 
@@ -22,23 +22,19 @@ Có thể xem **tất cả sources** (mặc định) hoặc lọc theo **1 hoặ
 
 ```
 Document được classify (gán / bỏ gán topic)
-    → nếu document.group_id IS NOT NULL:
-        invalidate daily row cho (topic, date, group)
+    → invalidate daily row cho (topic, date, job_id)
         (is_stale = true, stale_since = COALESCE(...) hoặc reset nếu processing)
     → recompute job (mỗi 15 phút) claim rows stale, FIFO theo stale_since
     → compute metrics, finalize có điều kiện
-    → re-rank trend_rank per (workspace, group)
 ```
 
-**Partition theo source group** — mỗi row daily là `(topic_id, date_key, group_id)`:
+**Partition theo job** — mỗi row daily là `(topic_id, date_key, job_id)`:
 
-| `group_id` | Ý nghĩa |
-|------------|---------|
-| UUID source group | Chỉ documents có `documents.group_id = UUID` |
+| `job_id` | Ý nghĩa |
+|----------|---------|
+| UUID job | Chỉ documents có `documents.job_id = UUID` |
 
-> Không còn "global partition" hay sentinel UUID. Query "tất cả" = không filter `group_id` — aggregate mọi partitions.
-
-Khi classify một document: chỉ invalidate partition của `document.group_id`. Documents không có group (null) không được tính vào bất kỳ partition nào.
+Query "tất cả" = không filter `job_id` — aggregate mọi partitions.
 
 Digest rows tạo **on-demand** — không pre-fill toàn bộ lịch sử.
 
@@ -75,133 +71,11 @@ Tất cả period presets đều đọc `topic_digest_daily` và SUM trong range
 
 | Period preset | Filter |
 |---------------|--------|
-| `last_7_days`, `last_30_days` | `group_id` + SUM date range |
-| `this_week`, `last_week` | `group_id` + SUM full week dates |
-| `this_month`, `last_month` | `group_id` + SUM full month dates |
-| `custom` (≤90 ngày khuyến nghị) | `group_id` + SUM date range |
-
-**Group filter:**
-
-| Filter UI | Query |
-|-----------|-------|
-| Tất cả (không chọn group) | Không filter `group_id` — aggregate mọi group |
-| Source group X | `group_id = X` |
-
-**Sparkline:** luôn `topic_digest_daily`, 7 ngày, cùng group filter.
+| `last_7_days`, `last_30_days` | optional `jobIds` + SUM date range |
+| `this_week`, `last_week` | optional `jobIds` + SUM full week dates |
+| `this_month`, `last_month` | optional `jobIds` + SUM full month dates |
 
 ```
 GET /api/topics/cards?period=last_7_days
-GET /api/topics/cards?period=last_7_days&groupId=<source-group-uuid>
-GET /api/topics/cards?period=this_month&groupId=<source-group-uuid>
-```
-
----
-
-## Quy mô dữ liệu
-
-**Daily:** rows ≈ topics × days_active × groups_with_activity. Index `(group_id, date_key, topic_id)` cho group-filtered reads; index `(date_key, topic_id)` cho "all groups" reads.
-
-**Rebuild:** mỗi recompute batch xử lý tối đa 200 rows. Không có rollup rebuild nên write path đơn giản hơn nhiều.
-
-**Bulk taxonomy:** invalidate mọi daily partition → bulk drain recompute. Backlog lớn có thể mất vài giờ.
-
----
-
-## Trạng thái stale và queue
-
-Sau invalidate, row có `is_stale = true` và metrics cũ vẫn đọc được cho đến khi recompute xong. API trả `isStale: true` — UI nên báo đang cập nhật.
-
-### Cột queue / lifecycle
-
-| Cột | Vai trò |
-|-----|---------|
-| `stale_since` | Thời điểm vào queue recompute. Set lần đầu episode (`COALESCE`); **reset về `now()`** nếu invalidate khi `processing = true`. So sánh với `processing_started_at` khi finalize. |
-| `processing_started_at` | Set khi worker claim row. |
-
-### Claim (FIFO)
-
-Recompute job claim tối đa `RECOMPUTE_BATCH_SIZE` rows:
-
-```sql
-WHERE is_stale = true AND processing = false
-ORDER BY stale_since ASC NULLS FIRST
-LIMIT 200
-FOR UPDATE SKIP LOCKED
-```
-
-Row stale lâu nhất được xử lý trước. Không còn debounce time gate — row eligible ngay khi `is_stale = true` và không bị worker giữ.
-
-### Finalize có điều kiện (invalidate trong lúc processing)
-
-Worker luôn ghi metrics mới và clear `processing`. Chỉ clear `is_stale` / `stale_since` khi **không** có invalidate mới sau claim:
-
-```
-stale_since <= processing_started_at  →  fresh (is_stale = false, stale_since = NULL)
-stale_since >  processing_started_at  →  vẫn stale, giữ stale_since (xếp hàng lại từ cuối)
-```
-
-Invalidate **không** bị chặn khi `processing = true` — document mới gán vào topic vẫn được ghi nhận.
-
-Partition group mới chưa có row cho đến lần classify/recompute đầu tiên — filter group đó có thể trống tạm thời.
-
----
-
-## Bulk taxonomy (merge / split topics)
-
-Restructure taxonomy làm thay đổi hàng loạt `document_topics` → cần recompute digest. Dùng bulk invalidate workspace (đánh dấu `is_bulk_stale = true` trên **mọi** daily partition) và **bulk drain job** riêng.
-
-| Job | Queue | Batch |
-|-----|-------|-------|
-| Recompute thường | `is_bulk_stale = false` | 200 |
-| Bulk drain | `is_bulk_stale = true` | 50 |
-
----
-
-## Group lifecycle
-
-**Tạo group:** source group mới bắt đầu trống — digest rows populate dần khi documents trong group được classify.
-
-**Xóa group (`DELETE /api/source-groups/:id`):**
-- Tất cả jobs và documents của group bị moved sang group khác.
-- Nếu caller cung cấp `moveToGroupId` trong request body → moved sang đó.
-- Nếu không → moved sang group **Unassigned** (tạo on demand mỗi workspace, đánh dấu `is_unassigned = true`).
-- Sau khi reassign xong, group bị xóa — `topic_digest_daily` rows của group đó cascade delete.
-- Group **Unassigned** không thể bị xóa.
-
-**Group Unassigned:** group đặc biệt per-workspace, tạo lần đầu khi cần. Hiển thị trong filter dropdown (có thể filter topic theo group này) nhưng ẩn trong management UI (không cho sửa/xóa).
-
----
-
-## Lưu ý vận hành
-
-- **FIFO queue:** row stale lâu nhất được recompute trước; hot partition vẫn được xử lý định kỳ (mỗi 15 phút, trong giới hạn batch).
-- **Fan-out classify:** mỗi classify invalidate đúng 1 daily partition (group của document). Documents không có group không được tính.
-- **Documents không group** (`group_id` null): vẫn tồn tại nhưng không vào bất kỳ digest partition nào.
-- **Stuck worker:** recompute job tự reset row `processing` quá 30 phút ở đầu mỗi run.
-- **Calendar queries caching:** queries cho `this_week`, `this_month` nên cache kết quả ~15 phút tại API layer vì SUM nhiều ngày hơn rolling window presets.
-- **Migration:** khi deploy, xóa sentinel rows cũ trước khi chạy migration (xem bên dưới).
-
----
-
-## Migration notes (lần deploy đầu sau refactor)
-
-Chạy SQL sau **trước** khi apply migration Drizzle (để tránh FK constraint violation khi thêm FK vào `topic_digest_daily.group_id`):
-
-```sql
--- Xóa sentinel partition (không có group_id tương ứng trong source_groups)
-DELETE FROM topic_digest_daily
-WHERE group_id = '00000000-0000-0000-0000-000000000000';
-
--- Xóa bảng rollup (đã loại bỏ khỏi schema)
-DROP TABLE IF EXISTS topic_digest_rollup;
-```
-
-Sau migrate, chạy `db:generate` và `db:migrate` như bình thường.
-
-**Migration stale queue refactor:** migration Drizzle sẽ drop `recompute_after`, thêm `stale_since`, và rebuild partial indexes. Rows `is_stale = true` hiện có nên được backfill (trong migration hoặc thủ công):
-
-```sql
-UPDATE topic_digest_daily
-SET stale_since = COALESCE(stale_since, computed_at, now())
-WHERE is_stale = true;
+GET /api/topics/cards?period=last_7_days&jobIds=<job-uuid>,<job-uuid>
 ```
