@@ -6,6 +6,8 @@ import cronstrue from "cronstrue";
  */
 
 export const PRESET_BUTTON_OPTIONS = [
+  { value: "every-15-min", label: "Every 15 min" },
+  { value: "every-hour", label: "Every hour" },
   { value: "daily-9", label: "Daily 9:00" },
   { value: "weekly-mon-9", label: "Weekly Mon 9:00" },
   { value: "monthly-1-9", label: "Monthly 1st 9:00" },
@@ -24,6 +26,8 @@ export const EMPTY_CRON_SCHEDULE: CronScheduleFormValue = {
 };
 
 const PRESET_PATTERNS: Record<PresetValue, string> = {
+  "every-15-min": "*/15 * * * *",
+  "every-hour": "0 * * * *",
   "daily-9": "0 9 * * *",
   "weekly-mon-9": "0 9 * * 1",
   "monthly-1-9": "0 9 1 * *",
