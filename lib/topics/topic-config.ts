@@ -20,6 +20,12 @@ export const TOPIC_CONFIG = {
   formEditDescription: "Update the topic name or description.",
 } as const;
 
+/** Max topics per bulk-delete request (each deleted in its own transaction). */
+export const TOPIC_BULK_DELETE_MAX = 50;
+
+/** Max source topics per merge request. */
+export const TOPIC_MERGE_MAX_SOURCES = 50;
+
 export function getTopicHref(
   workspaceIndex: number,
   ...parts: string[]

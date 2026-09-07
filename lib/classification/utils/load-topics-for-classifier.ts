@@ -16,17 +16,13 @@ export async function loadTopicsForClassifier(
       id: topics.id,
       name: topics.name,
       description: topics.description,
-      parentId: topics.parentId,
     })
     .from(topics)
     .where(eq(topics.workspaceId, workspaceId));
-
-  const nameById = new Map(rows.map((row) => [row.id, row.name]));
 
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
     description: row.description,
-    parentName: row.parentId ? (nameById.get(row.parentId) ?? null) : null,
   }));
 }

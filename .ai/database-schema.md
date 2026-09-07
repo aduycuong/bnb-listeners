@@ -262,14 +262,13 @@ Workspace scope is inherited via `document_id` → `documents.workspace_id`.
 
 ### `topics`
 
-Workspace-scoped subject taxonomy. Optional hierarchy via `parent_id`. The LLM classifier can auto-create topics when no existing topic matches a document.
+Workspace-scoped subject taxonomy. The LLM classifier can auto-create topics when no existing topic matches a document.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
 | name | text | NO | — | Display name, unique per workspace |
-| parent_id | uuid | YES | — | FK → `topics.id` — optional parent |
 | description | text | YES | — | Topic description |
 | created_by | text | NO | `admin` | `admin` or `llm_classifier` |
 | source_document_id | uuid | YES | — | FK → `documents.id` ON DELETE SET NULL — document that triggered auto-creation |
@@ -282,7 +281,6 @@ Workspace-scoped subject taxonomy. Optional hierarchy via `parent_id`. The LLM c
 | ----- | ------- | ------- |
 | `idx_topics_workspace_name` | UNIQUE `(workspace_id, name)` | Name unique within workspace |
 | `idx_topics_workspace_id` | `(workspace_id)` | List topics in a workspace |
-| `idx_topics_parent` | `(parent_id)` | Hierarchy queries |
 | `idx_topics_source_document` | `(source_document_id)` | Trace auto-created topics |
 
 ---

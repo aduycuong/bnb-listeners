@@ -30,5 +30,4 @@ export type ClassifierTopic = {
   id: string;
   name: string;
   description: string | null;
-  parentName: string | null;
 };

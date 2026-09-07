@@ -17,14 +17,7 @@ export async function listTopics(
     .where(eq(topics.workspaceId, ctx.workspaceId))
     .orderBy(desc(topics.createdAt));
 
-  const nameById = new Map(rows.map((row) => [row.id, row.name]));
-
   return {
-    items: rows.map((row) =>
-      toTopicListItem(
-        row,
-        row.parentId ? (nameById.get(row.parentId) ?? null) : null,
-      ),
-    ),
+    items: rows.map((row) => toTopicListItem(row)),
   };
 }

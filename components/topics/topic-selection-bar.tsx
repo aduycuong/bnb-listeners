@@ -9,6 +9,7 @@ type TopicSelectionBarProps = {
   onDelete?: () => void;
   onMerge?: () => void;
   onCancel: () => void;
+  deleteDisabled?: boolean;
 };
 
 export function TopicSelectionBar({
@@ -16,6 +17,7 @@ export function TopicSelectionBar({
   onDelete,
   onMerge,
   onCancel,
+  deleteDisabled = false,
 }: TopicSelectionBarProps) {
   const { isMobile, state } = useSidebar();
 
@@ -39,7 +41,12 @@ export function TopicSelectionBar({
           {count} selected
         </p>
         <div className="flex items-center gap-2">
-          <Button type="button" variant="destructive" onClick={onDelete}>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={deleteDisabled}
+            onClick={onDelete}
+          >
             Delete
           </Button>
           <Button

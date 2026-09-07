@@ -28,7 +28,6 @@ import { toDateKey } from "../utils/to-date-key";
 type TopicCardRow = {
   id: string;
   name: string;
-  parent_name: string | null;
   description: string | null;
   created_by: string;
   created_at: Date | string;
@@ -129,7 +128,6 @@ export async function listTopicCards(
     SELECT
       t.id,
       t.name,
-      parent.name AS parent_name,
       t.description,
       t.created_by,
       t.created_at,
@@ -138,7 +136,6 @@ export async function listTopicCards(
       SUM(tdd.trend_score) AS trend_score,
       COALESCE(BOOL_OR(tdd.is_stale), false) AS is_stale
     FROM topics t
-    LEFT JOIN topics parent ON parent.id = t.parent_id
     LEFT JOIN topic_digest_daily tdd
       ON tdd.topic_id = t.id
       AND tdd.date_key >= ${querySource.startDate}::date
@@ -148,7 +145,6 @@ export async function listTopicCards(
     GROUP BY
       t.id,
       t.name,
-      parent.name,
       t.description,
       t.created_by,
       t.created_at
@@ -193,7 +189,6 @@ export async function listTopicCards(
   const items: TopicCardItem[] = pageRows.map((row) => ({
     id: row.id,
     name: row.name,
-    parentName: row.parent_name,
     description: row.description,
     createdBy: row.created_by,
     createdAt: toIsoTimestamp(row.created_at),

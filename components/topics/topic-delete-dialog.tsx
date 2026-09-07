@@ -13,9 +13,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { deleteTopicRequest } from "@/components/topics/delete-topic-request";
 import { toast } from "@/components/ui/toast";
 import type { TopicListItem } from "@/lib/topics/types";
-import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
 type TopicDeleteDialogProps = {
   open: boolean;
@@ -42,21 +42,18 @@ export function TopicDeleteDialog({
     setDeleting(true);
 
     try {
-      const res = await workspaceFetch(workspaceId, `/api/topics/${topic.id}`, {
-        method: "DELETE",
-      });
-      const data = (await res.json()) as { message?: string; error?: string };
+      const result = await deleteTopicRequest(workspaceId, topic.id);
 
-      if (!res.ok) {
+      if (!result.ok) {
         toast.add({
-          title: data.message ?? data.error ?? "Could not delete topic.",
+          title: result.message ?? "Could not delete topic.",
           type: "error",
         });
         return;
       }
 
       toast.add({
-        title: data.message ?? "Topic deleted.",
+        title: result.message ?? "Topic deleted.",
         type: "success",
       });
       onOpenChange(false);
@@ -73,8 +70,7 @@ export function TopicDeleteDialog({
           <AlertDialogTitle>Delete topic?</AlertDialogTitle>
           <AlertDialogDescription>
             This removes {topic ? `“${topic.name}”` : "this topic"} and its
-            document assignments. Child topics become top-level. This cannot be
-            undone.
+            document assignments. This cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

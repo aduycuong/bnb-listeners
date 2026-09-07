@@ -6,8 +6,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
 import { TopicCard } from "@/components/topics/topic-card";
+import { TopicBulkDeleteDialog } from "@/components/topics/topic-bulk-delete-dialog";
 import { TopicDeleteDialog } from "@/components/topics/topic-delete-dialog";
 import { TopicFormDialog } from "@/components/topics/topic-form-dialog";
+import { TopicMergeDialog } from "@/components/topics/topic-merge-dialog";
 import { TopicListToolbar } from "@/components/topics/topic-list-toolbar";
 import {
   topicCardsQueryKey,
@@ -18,12 +20,13 @@ import { TopicSelectionBar } from "@/components/topics/topic-selection-bar";
 import { useSelectedTopicIds } from "@/components/topics/use-selected-topic-ids";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/toast";
 import {
   TOPIC_CARD_PAGE_SIZE,
   type TopicCardPeriodPreset,
   type TopicCardSort,
 } from "@/lib/topics/topic-card-config";
-import { TOPIC_CONFIG } from "@/lib/topics/topic-config";
+import { TOPIC_BULK_DELETE_MAX, TOPIC_CONFIG, TOPIC_MERGE_MAX_SOURCES } from "@/lib/topics/topic-config";
 import type {
   ListTopicCardsResult,
 } from "@/lib/topics/types";
@@ -111,6 +114,8 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
     { id: string; name: string; description: string | null } | undefined
   >();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
   const [deletingTopic, setDeletingTopic] = useState<
     { id: string; name: string } | undefined
   >();
@@ -119,6 +124,7 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
     selectedCount,
     toggleSelected,
     removeSelected,
+    removeSelectedMany,
     clearSelected,
   } = useSelectedTopicIds(workspace.id);
 
@@ -238,11 +244,70 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
   const waitingForCustomRange =
     period === "custom" && (!customStartDate || !customEndDate);
 
+  const selectedTopics = useMemo(
+    () =>
+      selectedIds.map((id) => {
+        const card = cards.find((item) => item.id === id);
+        return {
+          id,
+          name: card?.name ?? "Unknown topic",
+        };
+      }),
+    [cards, selectedIds],
+  );
+
+  function openBulkDelete() {
+    if (selectedIds.length === 0) {
+      return;
+    }
+
+    if (selectedIds.length > TOPIC_BULK_DELETE_MAX) {
+      toast.add({
+        title: `Select at most ${TOPIC_BULK_DELETE_MAX} topics to delete at once.`,
+        type: "error",
+      });
+      return;
+    }
+
+    setBulkDeleteOpen(true);
+  }
+
+  function openMerge() {
+    if (selectedIds.length < 2) {
+      return;
+    }
+
+    if (selectedIds.length > TOPIC_MERGE_MAX_SOURCES + 1) {
+      toast.add({
+        title: `Select at most ${TOPIC_MERGE_MAX_SOURCES + 1} topics to merge at once.`,
+        type: "error",
+      });
+      return;
+    }
+
+    setMergeOpen(true);
+  }
+
   async function handleDeleted() {
     if (deletingTopic) {
       removeSelected(deletingTopic.id);
     }
 
+    await refreshTopics();
+  }
+
+  async function handleBulkDeleted(deletedIds: string[]) {
+    removeSelectedMany(deletedIds);
+    await refreshTopics();
+  }
+
+  async function handleMerged({
+    deletedIds,
+  }: {
+    targetId: string;
+    deletedIds: string[];
+  }) {
+    removeSelectedMany(deletedIds);
     await refreshTopics();
   }
 
@@ -368,10 +433,29 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
         onDeleted={handleDeleted}
       />
 
+      <TopicBulkDeleteDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        workspaceId={workspace.id}
+        topics={selectedTopics}
+        onDeleted={handleBulkDeleted}
+      />
+
+      <TopicMergeDialog
+        open={mergeOpen}
+        onOpenChange={setMergeOpen}
+        workspaceId={workspace.id}
+        topics={selectedTopics}
+        onMerged={handleMerged}
+      />
+
       {canEdit ? (
         <TopicSelectionBar
           count={selectedCount}
+          onDelete={openBulkDelete}
+          onMerge={openMerge}
           onCancel={clearSelected}
+          deleteDisabled={bulkDeleteOpen}
         />
       ) : null}
     </>

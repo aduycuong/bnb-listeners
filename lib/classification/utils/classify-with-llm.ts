@@ -37,12 +37,11 @@ export type ClassifyWithLlmResult = {
 function formatTopicsForPrompt(classifierTopics: ClassifierTopic[]): string {
   return classifierTopics
     .map((topic) => {
-      const parent = topic.parentName ? ` (parent: ${topic.parentName})` : "";
       const description = topic.description?.trim()
         ? `\n  Description: ${topic.description.trim()}`
         : "";
 
-      return `- id: ${topic.id}\n  Name: ${topic.name}${parent}${description}`;
+      return `- id: ${topic.id}\n  Name: ${topic.name}${description}`;
     })
     .join("\n\n");
 }

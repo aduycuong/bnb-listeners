@@ -14,7 +14,6 @@ import {
   Card,
   CardAction,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -107,11 +106,6 @@ export function TopicCard({
           ) : null}
           <span className="line-clamp-2">{topic.name}</span>
         </CardTitle>
-        {topic.parentName ? (
-          <CardDescription className="truncate">
-            Parent: {topic.parentName}
-          </CardDescription>
-        ) : null}
         {badges.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {badges.map((badge) => (

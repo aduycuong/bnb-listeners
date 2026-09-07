@@ -23,7 +23,7 @@ Guidelines:
 - Stay within the workspace topic scope: ${settings.topicScope}.
 - Use only ids from the provided list for assignments — never invent ids.
 - Assign one or more existing topics when the document is substantively about those subjects.
-- Prefer specific topics over broad parent topics when both fit.
+- Prefer specific topics over broad ones when both fit.
 - Use confidence 0.9+ when the match is obvious, 0.6–0.8 when plausible but not central.
 - Return an empty assignments array when no listed topic is a reasonable fit.`;
 }

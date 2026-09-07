@@ -7,7 +7,6 @@ import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type { UpdateTopicParams, UpdateTopicResult } from "../types";
 import { assertUniqueTopicName } from "../utils/assert-unique-topic-name";
-import { assertValidParent } from "../utils/assert-valid-parent";
 import { normalizeTopicDescription } from "../utils/normalize-topic-description";
 import { toTopicListItem } from "../utils/to-topic-list-item";
 
@@ -39,13 +38,6 @@ export async function updateTopic(
     updates.description = normalizeTopicDescription(rest.description) ?? null;
   }
 
-  if (rest.parentId !== undefined) {
-    if (rest.parentId) {
-      await assertValidParent(ctx.workspaceId, rest.parentId, id);
-    }
-    updates.parentId = rest.parentId;
-  }
-
   const [topic] = await db
     .update(topics)
     .set(updates)
@@ -56,20 +48,5 @@ export async function updateTopic(
     throw new NotFoundError("topic", id);
   }
 
-  let parentName: string | null = null;
-  if (topic.parentId) {
-    const [parent] = await db
-      .select({ name: topics.name })
-      .from(topics)
-      .where(
-        and(
-          eq(topics.id, topic.parentId),
-          eq(topics.workspaceId, ctx.workspaceId),
-        ),
-      )
-      .limit(1);
-    parentName = parent?.name ?? null;
-  }
-
-  return toTopicListItem(topic, parentName);
+  return toTopicListItem(topic);
 }

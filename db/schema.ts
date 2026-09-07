@@ -302,7 +302,6 @@ export const topics = pgTable(
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    parentId: uuid("parent_id"),
     description: text("description"),
     createdBy: text("created_by").notNull().default("admin"),
     sourceDocumentId: uuid("source_document_id").references(
@@ -320,11 +319,6 @@ export const topics = pgTable(
   (table) => [
     uniqueIndex("idx_topics_workspace_name").on(table.workspaceId, table.name),
     index("idx_topics_workspace_id").on(table.workspaceId),
-    foreignKey({
-      columns: [table.parentId],
-      foreignColumns: [table.id],
-    }),
-    index("idx_topics_parent").on(table.parentId),
     index("idx_topics_source_document").on(table.sourceDocumentId),
   ],
 );

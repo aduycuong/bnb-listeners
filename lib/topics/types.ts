@@ -2,6 +2,7 @@ import type { z } from "zod";
 
 import type {
   createTopicBodySchema,
+  mergeTopicsBodySchema,
   topicFormSchema,
   updateTopicBodySchema,
 } from "./schema";
@@ -17,11 +18,28 @@ export type UpdateTopicResult = TopicListItem;
 export type DeleteTopicParams = { id: string };
 export type DeleteTopicResult = { id: string; message: string };
 
+export type BulkDeleteTopicsParams = { ids: string[] };
+export type BulkDeleteTopicsFailure = { id: string; message: string };
+export type BulkDeleteTopicsResult = {
+  deletedIds: string[];
+  failures: BulkDeleteTopicsFailure[];
+  message: string;
+};
+
+export type MergeTopicsParams = z.infer<typeof mergeTopicsBodySchema>;
+export type MergeTopicsFailure = { id: string; message: string };
+export type MergeTopicsResult = {
+  targetId: string;
+  targetName: string;
+  deletedIds: string[];
+  failures: MergeTopicsFailure[];
+  documentsAssigned: number;
+  message: string;
+};
+
 export type TopicListItem = {
   id: string;
   name: string;
-  parentId: string | null;
-  parentName: string | null;
   description: string | null;
   createdBy: string;
   sourceDocumentId: string | null;
@@ -51,7 +69,6 @@ export type TopicCardSparklinePoint = {
 export type TopicCardItem = {
   id: string;
   name: string;
-  parentName: string | null;
   description: string | null;
   createdBy: string;
   createdAt: string;
