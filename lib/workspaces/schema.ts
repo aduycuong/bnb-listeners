@@ -20,6 +20,8 @@ export const updateWorkspaceSettingsSchema = z.object({
 
 export const createWorkspaceFormSchema = workspaceFormSchema.pick({ name: true });
 
+export const updateWorkspaceGeneralSchema = workspaceFormSchema;
+
 export const addWorkspaceMemberFormSchema = z.object({
   email: z
     .email({ error: "Enter a valid email address." })
@@ -30,6 +32,9 @@ export const addWorkspaceMemberFormSchema = z.object({
 
 export type WorkspaceFormValues = z.infer<typeof workspaceFormSchema>;
 export type CreateWorkspaceFormValues = z.infer<typeof createWorkspaceFormSchema>;
+export type UpdateWorkspaceGeneralFormValues = z.infer<
+  typeof updateWorkspaceGeneralSchema
+>;
 export type UpdateWorkspaceSettingsValues = z.infer<
   typeof updateWorkspaceSettingsSchema
 >;

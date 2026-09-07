@@ -1,15 +1,18 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
 import { documents, jobRuns, jobs } from "@/db/schema";
 import { db } from "@/lib/db";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
+import { DOCUMENT_LIST_PAGE_SIZE } from "../document-list-config";
 import type { ListDocumentsParams, ListDocumentsResult } from "../types";
 
 export async function listDocuments(
   params: ListDocumentsParams,
   ctx: WorkspaceContext,
 ): Promise<ListDocumentsResult> {
+  const limit = params.limit ?? DOCUMENT_LIST_PAGE_SIZE;
+  const offset = params.offset ?? 0;
   const conditions = [eq(documents.workspaceId, ctx.workspaceId)];
 
   if (params.docType) {
@@ -18,6 +21,14 @@ export async function listDocuments(
 
   if (params.embeddingStatus) {
     conditions.push(eq(documents.embeddingStatus, params.embeddingStatus));
+  }
+
+  if (params.groupIds && params.groupIds.length > 0) {
+    conditions.push(inArray(documents.groupId, params.groupIds));
+  }
+
+  if (params.jobIds && params.jobIds.length > 0) {
+    conditions.push(inArray(jobs.id, params.jobIds));
   }
 
   const rows = await db
@@ -42,14 +53,22 @@ export async function listDocuments(
     .leftJoin(jobRuns, eq(documents.jobRunId, jobRuns.id))
     .leftJoin(jobs, eq(jobRuns.jobId, jobs.id))
     .where(and(...conditions))
-    .orderBy(desc(documents.createdAt));
+    .orderBy(desc(documents.createdAt))
+    .limit(limit + 1)
+    .offset(offset);
+
+  const pageRows = rows.slice(0, limit);
+  const hasMore = rows.length > limit;
 
   return {
-    items: rows.map((row) => ({
+    items: pageRows.map((row) => ({
       ...row,
       publishedAt: row.publishedAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     })),
+    hasMore,
+    offset,
+    limit,
   };
 }

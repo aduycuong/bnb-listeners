@@ -5,12 +5,11 @@
     "topics": "Topics",
     "facebook-page": "Facebook page",
     "website": "Website",
-    "workspace": "Workspace"
+    "workspace": "Workspace",
+    "settings": "Settings"
   },
   "settingsMenu": {
-    "label": "Settings",
-    "profile": "Profile",
-    "workspace": "Settings"
+    "profile": "Profile"
   },
   "logout": {
     "label": "Log out",

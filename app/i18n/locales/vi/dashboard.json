@@ -5,12 +5,11 @@
     "topics": "Chủ đề",
     "facebook-page": "Trang Facebook",
     "website": "Website",
-    "workspace": "Không gian làm việc"
+    "workspace": "Không gian làm việc",
+    "settings": "Cài đặt"
   },
   "settingsMenu": {
-    "label": "Cài đặt",
-    "profile": "Hồ sơ",
-    "workspace": "Cài đặt"
+    "profile": "Hồ sơ"
   },
   "logout": {
     "label": "Đăng xuất",

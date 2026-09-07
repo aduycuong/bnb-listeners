@@ -1,4 +1,4 @@
-import { FileTextIcon, FilesIcon, TagsIcon } from "lucide-react";
+import { FileTextIcon, FilesIcon, SettingsIcon, TagsIcon } from "lucide-react";
 
 import { DOCUMENT_SEGMENT } from "@/lib/documents/document-config";
 import { JOB_MENU_NAV_ITEMS } from "@/lib/jobs/job-menu-config";
@@ -9,6 +9,7 @@ export const DASHBOARD_NAV_ITEMS = [
   { labelKey: "nav.documents", segment: DOCUMENT_SEGMENT, icon: FilesIcon },
   { labelKey: "nav.topics", segment: TOPIC_SEGMENT, icon: TagsIcon },
   ...JOB_MENU_NAV_ITEMS,
+  { labelKey: "nav.settings", segment: "settings/workspace", icon: SettingsIcon },
 ];
 
 export function getDashboardNavHref(

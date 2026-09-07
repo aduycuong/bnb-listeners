@@ -22,6 +22,7 @@ export async function listJobs(
       name: jobs.name,
       jobType: jobs.jobType,
       enabled: jobs.enabled,
+      groupId: jobs.groupId,
       cronConfig: jobs.cronConfig,
       createdAt: jobs.createdAt,
       updatedAt: jobs.updatedAt,

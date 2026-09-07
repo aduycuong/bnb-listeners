@@ -61,6 +61,20 @@ export type UpdateWorkspaceResult = {
   message: string;
 };
 
+export type UpdateWorkspaceGeneralParams = {
+  workspaceId: string;
+  name: string;
+  slug?: string;
+};
+
+export type UpdateWorkspaceGeneralResult = {
+  id: string;
+  name: string;
+  slug: string | null;
+  updatedAt: string;
+  message: string;
+};
+
 export type DeleteWorkspaceParams = {
   userId: string;
   workspaceId: string;

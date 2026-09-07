@@ -53,7 +53,8 @@ type ResourceListPageProps = {
   createLabel?: string;
   onCreateClick?: () => void;
   headerAction?: ReactNode;
-  getItemHref?: (item: ResourceListRowItem) => string;
+  getItemHref?: (item: ResourceListRowItem) => string | undefined;
+  onItemClick?: (item: ResourceListRowItem) => void;
   renderItemActions?: (item: ResourceListRowItem) => ReactNode;
   isLoading?: boolean;
   errorMessage?: string;
@@ -65,13 +66,15 @@ function formatListDate(value: string) {
   }).format(new Date(value));
 }
 
-function ResourceListRow({
+export function ResourceListRow({
   item,
   href,
+  onClick,
   actions,
 }: {
   item: ResourceListRowItem;
   href?: string;
+  onClick?: () => void;
   actions?: ReactNode;
 }) {
   const content = (
@@ -144,6 +147,14 @@ function ResourceListRow({
     >
       {content}
     </Link>
+  ) : onClick ? (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-w-0 flex-1 items-center gap-3 text-left sm:gap-4"
+    >
+      {content}
+    </button>
   ) : (
     <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
       {content}
@@ -169,6 +180,7 @@ export function ResourceListPage({
   onCreateClick,
   headerAction,
   getItemHref,
+  onItemClick,
   renderItemActions,
   isLoading = false,
   errorMessage,
@@ -299,7 +311,10 @@ export function ResourceListPage({
                 <li key={item.id}>
                   <ResourceListRow
                     item={item}
-                    href={getItemHref?.(item)}
+                    href={onItemClick ? undefined : getItemHref?.(item)}
+                    onClick={
+                      onItemClick ? () => onItemClick(item) : undefined
+                    }
                     actions={renderItemActions?.(item)}
                   />
                 </li>

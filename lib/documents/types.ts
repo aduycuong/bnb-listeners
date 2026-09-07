@@ -24,6 +24,10 @@ export type GetDocumentResult = Document & {
 export type ListDocumentsParams = {
   docType?: string;
   embeddingStatus?: string;
+  groupIds?: string[];
+  jobIds?: string[];
+  offset?: number;
+  limit?: number;
 };
 
 export type DocumentListItem = {
@@ -44,7 +48,12 @@ export type DocumentListItem = {
   updatedAt: string;
 };
 
-export type ListDocumentsResult = { items: DocumentListItem[] };
+export type ListDocumentsResult = {
+  items: DocumentListItem[];
+  hasMore: boolean;
+  offset: number;
+  limit: number;
+};
 
 export type DocumentFormValues = z.infer<typeof documentFormSchema>;
 
