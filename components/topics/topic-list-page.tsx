@@ -8,13 +8,14 @@ import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
 import { TopicCard } from "@/components/topics/topic-card";
 import { TopicDeleteDialog } from "@/components/topics/topic-delete-dialog";
 import { TopicFormDialog } from "@/components/topics/topic-form-dialog";
+import { TopicListToolbar } from "@/components/topics/topic-list-toolbar";
 import {
   topicCardsQueryKey,
-  topicsQueryKey,
   workspaceJobsQueryKey,
   type TopicCardsQueryFilters,
 } from "@/components/topics/topic-query-keys";
-import { TopicListToolbar } from "@/components/topics/topic-list-toolbar";
+import { TopicSelectionBar } from "@/components/topics/topic-selection-bar";
+import { useSelectedTopicIds } from "@/components/topics/use-selected-topic-ids";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -25,12 +26,10 @@ import {
 import { TOPIC_CONFIG } from "@/lib/topics/topic-config";
 import type {
   ListTopicCardsResult,
-  ListTopicsResult,
-  TopicCardItem,
-  TopicListItem,
 } from "@/lib/topics/types";
 import type { ListJobsResult } from "@/lib/jobs/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
+import { cn } from "@/lib/utils";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
 type TopicListPageProps = {
@@ -92,20 +91,6 @@ async function fetchJobs(workspaceId: string): Promise<ListJobsResult> {
   return data;
 }
 
-async function fetchTopics(workspaceId: string): Promise<ListTopicsResult> {
-  const res = await workspaceFetch(workspaceId, "/api/topics");
-  const data = (await res.json()) as ListTopicsResult & {
-    error?: string;
-    message?: string;
-  };
-
-  if (!res.ok) {
-    throw new Error(data.message ?? data.error ?? "Could not load topics.");
-  }
-
-  return data;
-}
-
 function TopicCardSkeleton() {
   return <Skeleton className="h-72 w-full max-w-sm rounded-xl" />;
 }
@@ -122,11 +107,20 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
   const [customEndDate, setCustomEndDate] = useState<string>();
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editingTopic, setEditingTopic] = useState<TopicListItem | undefined>();
+  const [editingTopic, setEditingTopic] = useState<
+    { id: string; name: string; description: string | null } | undefined
+  >();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletingTopic, setDeletingTopic] = useState<
-    TopicListItem | undefined
+    { id: string; name: string } | undefined
   >();
+  const {
+    selectedIds,
+    selectedCount,
+    toggleSelected,
+    removeSelected,
+    clearSelected,
+  } = useSelectedTopicIds(workspace.id);
 
   const filters = useMemo<TopicCardsQueryFilters>(
     () => ({
@@ -149,18 +143,11 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
     enabled: period !== "custom" || Boolean(customStartDate && customEndDate),
   });
 
-  const topicsQuery = useQuery({
-    queryKey: topicsQueryKey(workspace.id),
-    queryFn: () => fetchTopics(workspace.id),
-    enabled: formOpen || deleteOpen,
-  });
-
   const jobsQuery = useQuery({
     queryKey: workspaceJobsQueryKey(workspace.id),
     queryFn: () => fetchJobs(workspace.id),
   });
 
-  const topics = topicsQuery.data?.items ?? [];
   const jobs = jobsQuery.data?.items ?? [];
   const cards = useMemo(
     () => cardsQuery.data?.pages.flatMap((page) => page.items) ?? [],
@@ -196,14 +183,9 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
   ]);
 
   async function refreshTopics() {
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: topicsQueryKey(workspace.id),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: topicCardsQueryKey(workspace.id, filters),
-      }),
-    ]);
+    await queryClient.invalidateQueries({
+      queryKey: topicCardsQueryKey(workspace.id, filters),
+    });
   }
 
   function openCreate() {
@@ -217,7 +199,11 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
       return;
     }
 
-    setEditingTopic(cardToListItem(card, topics));
+    setEditingTopic({
+      id: card.id,
+      name: card.name,
+      description: card.description,
+    });
     setFormOpen(true);
   }
 
@@ -227,7 +213,7 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
       return;
     }
 
-    setDeletingTopic(cardToListItem(card, topics));
+    setDeletingTopic({ id: card.id, name: card.name });
     setDeleteOpen(true);
   }
 
@@ -252,9 +238,22 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
   const waitingForCustomRange =
     period === "custom" && (!customStartDate || !customEndDate);
 
+  async function handleDeleted() {
+    if (deletingTopic) {
+      removeSelected(deletingTopic.id);
+    }
+
+    await refreshTopics();
+  }
+
   return (
     <>
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-8">
+      <div
+        className={cn(
+          "mx-auto w-full max-w-7xl px-4 py-8 md:px-8",
+          selectedCount > 0 && "pb-24",
+        )}
+      >
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight">
@@ -334,7 +333,9 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
                   key={topic.id}
                   topic={topic}
                   canEdit={canEdit}
+                  selected={selectedIds.includes(topic.id)}
                   onEdit={openEdit}
+                  onSelect={toggleSelected}
                   onDelete={openDelete}
                 />
               ))}
@@ -355,7 +356,6 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
         open={formOpen}
         onOpenChange={setFormOpen}
         workspaceId={workspace.id}
-        topics={topics}
         topic={editingTopic}
         onSaved={refreshTopics}
       />
@@ -365,31 +365,15 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
         onOpenChange={setDeleteOpen}
         workspaceId={workspace.id}
         topic={deletingTopic}
-        onDeleted={refreshTopics}
+        onDeleted={handleDeleted}
       />
+
+      {canEdit ? (
+        <TopicSelectionBar
+          count={selectedCount}
+          onCancel={clearSelected}
+        />
+      ) : null}
     </>
   );
-}
-
-function cardToListItem(
-  card: TopicCardItem,
-  topics: TopicListItem[],
-): TopicListItem {
-  const existing = topics.find((topic) => topic.id === card.id);
-  if (existing) {
-    return existing;
-  }
-
-  return {
-    id: card.id,
-    name: card.name,
-    parentId: null,
-    parentName: card.parentName,
-    description: card.description,
-    verified: card.verified,
-    createdBy: card.createdBy,
-    sourceDocumentId: null,
-    createdAt: card.createdAt,
-    updatedAt: card.createdAt,
-  };
 }

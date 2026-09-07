@@ -271,7 +271,6 @@ Workspace-scoped subject taxonomy. Optional hierarchy via `parent_id`. The LLM c
 | name | text | NO | — | Display name, unique per workspace |
 | parent_id | uuid | YES | — | FK → `topics.id` — optional parent |
 | description | text | YES | — | Topic description |
-| verified | boolean | NO | `false` | Admin sets `true` after review |
 | created_by | text | NO | `admin` | `admin` or `llm_classifier` |
 | source_document_id | uuid | YES | — | FK → `documents.id` ON DELETE SET NULL — document that triggered auto-creation |
 | created_at | timestamptz | NO | `now()` | Row creation time |
@@ -284,7 +283,6 @@ Workspace-scoped subject taxonomy. Optional hierarchy via `parent_id`. The LLM c
 | `idx_topics_workspace_name` | UNIQUE `(workspace_id, name)` | Name unique within workspace |
 | `idx_topics_workspace_id` | `(workspace_id)` | List topics in a workspace |
 | `idx_topics_parent` | `(parent_id)` | Hierarchy queries |
-| `idx_topics_verified` | `(verified)` | Filter unverified LLM topics |
 | `idx_topics_source_document` | `(source_document_id)` | Trace auto-created topics |
 
 ---

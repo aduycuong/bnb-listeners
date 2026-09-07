@@ -118,7 +118,7 @@ async function assignProposedTopic(
  * Classifies a document against existing topics using an LLM.
  *
  * Steps:
- *   1. Fetch the document and all topics (including LLM-created, unverified).
+ *   1. Fetch the document and all topics (including LLM-created ones).
  *   2. Ask the LLM to select matching topics; when none fit, propose a new topic.
  *   3. Assign existing topics, or auto-create a proposed topic and assign it immediately.
  *      If the proposed name already exists, assign that topic instead.

@@ -12,7 +12,6 @@ export function toTopicListItem(
     parentId: topic.parentId,
     parentName,
     description: topic.description,
-    verified: topic.verified,
     createdBy: topic.createdBy,
     sourceDocumentId: topic.sourceDocumentId,
     createdAt: topic.createdAt.toISOString(),

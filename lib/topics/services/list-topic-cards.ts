@@ -30,7 +30,6 @@ type TopicCardRow = {
   name: string;
   parent_name: string | null;
   description: string | null;
-  verified: boolean;
   created_by: string;
   created_at: Date | string;
   doc_count: number;
@@ -132,7 +131,6 @@ export async function listTopicCards(
       t.name,
       parent.name AS parent_name,
       t.description,
-      t.verified,
       t.created_by,
       t.created_at,
       COALESCE(SUM(tdd.doc_count), 0)::int AS doc_count,
@@ -152,7 +150,6 @@ export async function listTopicCards(
       t.name,
       parent.name,
       t.description,
-      t.verified,
       t.created_by,
       t.created_at
     ORDER BY ${getOrderClause(params.sort)}
@@ -198,7 +195,6 @@ export async function listTopicCards(
     name: row.name,
     parentName: row.parent_name,
     description: row.description,
-    verified: row.verified,
     createdBy: row.created_by,
     createdAt: toIsoTimestamp(row.created_at),
     digest: toDigest(row),

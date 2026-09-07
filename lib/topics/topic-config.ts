@@ -15,10 +15,9 @@ export const TOPIC_CONFIG = {
   createLabel: "Add topic",
   formCreateTitle: "Add topic",
   formCreateDescription:
-    "Create a topic for classification. New topics are verified by default.",
+    "Create a topic for classification.",
   formEditTitle: "Edit topic",
-  formEditDescription:
-    "Update the topic name, description, parent, or verification.",
+  formEditDescription: "Update the topic name or description.",
 } as const;
 
 export function getTopicHref(

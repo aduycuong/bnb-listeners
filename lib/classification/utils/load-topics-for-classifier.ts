@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import type { ClassifierTopic } from "../types";
 
 /**
- * Loads all topics for classifier matching (including LLM-created, unverified ones).
+ * Loads all topics for classifier matching (including LLM-created topics).
  */
 export async function loadTopicsForClassifier(
   workspaceId: string,

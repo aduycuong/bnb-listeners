@@ -33,7 +33,6 @@ export async function createTopic(
       name,
       description,
       parentId,
-      verified: params.verified ?? true,
       createdBy: TOPIC_CREATED_BY.admin,
     })
     .returning();

@@ -8,7 +8,6 @@ const LLM_ASSIGNED_BY = "llm_classifier";
 
 /**
  * Creates a topic from an LLM proposal and assigns the source document.
- * New topics are usable immediately; admin marks verified when reviewed.
  */
 export async function createAutoTopic(
   workspaceId: string,
@@ -21,7 +20,6 @@ export async function createAutoTopic(
       workspaceId,
       name: proposed.name.trim(),
       description: proposed.description.trim(),
-      verified: false,
       createdBy: LLM_ASSIGNED_BY,
       sourceDocumentId: documentId,
     })

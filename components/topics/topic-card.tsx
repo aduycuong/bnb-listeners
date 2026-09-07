@@ -1,6 +1,12 @@
 "use client";
 
-import { PencilIcon, Trash2Icon } from "lucide-react";
+import {
+  CheckSquareIcon,
+  EllipsisIcon,
+  PencilIcon,
+  SquareIcon,
+  Trash2Icon,
+} from "lucide-react";
 
 import { TopicSparkline } from "@/components/topics/topic-sparkline";
 import { Button } from "@/components/ui/button";
@@ -12,6 +18,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { TOPIC_CREATED_BY } from "@/lib/topics/topic-config";
 import type { TopicCardItem } from "@/lib/topics/types";
 import { cn } from "@/lib/utils";
@@ -19,7 +37,9 @@ import { cn } from "@/lib/utils";
 type TopicCardProps = {
   topic: TopicCardItem;
   canEdit?: boolean;
+  selected?: boolean;
   onEdit?: (topicId: string) => void;
+  onSelect?: (topicId: string) => void;
   onDelete?: (topicId: string) => void;
 };
 
@@ -37,27 +57,16 @@ function formatScore(value: number | null) {
   return value.toFixed(1);
 }
 
-function getVerifiedBadge(verified: boolean) {
-  return verified
-    ? {
-        label: "Verified",
-        className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-      }
-    : {
-        label: "Unverified",
-        className: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-      };
-}
-
 export function TopicCard({
   topic,
   canEdit = false,
+  selected = false,
   onEdit,
+  onSelect,
   onDelete,
 }: TopicCardProps) {
-  const verifiedBadge = getVerifiedBadge(topic.verified);
+  const isUpdating = topic.digest.isStale;
   const badges = [
-    verifiedBadge,
     ...(topic.createdBy === TOPIC_CREATED_BY.llmClassifier
       ? [
           {
@@ -66,60 +75,92 @@ export function TopicCard({
           },
         ]
       : []),
-    ...(topic.digest.isStale
-      ? [
-          {
-            label: "Updating",
-            className: "bg-sky-500/10 text-sky-700 dark:text-sky-400",
-          },
-        ]
-      : []),
   ];
 
   return (
-    <Card className="h-full w-full max-w-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-sm">
+    <Card
+      aria-selected={selected}
+      className={cn(
+        "h-full w-full max-w-sm transition duration-200",
+        selected
+          ? "bg-primary/5 ring-2 ring-primary"
+          : "hover:-translate-y-0.5 hover:shadow-sm",
+      )}
+    >
       <CardHeader className="gap-2">
-        <CardTitle className="line-clamp-2 pr-2">{topic.name}</CardTitle>
+        <CardTitle className="flex items-start gap-2 pr-2">
+          {isUpdating ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <span
+                    className="relative mt-0.5 flex size-4 shrink-0 items-center justify-center"
+                    aria-label="Updating"
+                  >
+                    <span className="absolute size-2 animate-ping rounded-full bg-sky-400 opacity-75" />
+                    <span className="relative size-2 rounded-full bg-sky-500" />
+                  </span>
+                }
+              />
+              <TooltipContent>Updating</TooltipContent>
+            </Tooltip>
+          ) : null}
+          <span className="line-clamp-2">{topic.name}</span>
+        </CardTitle>
         {topic.parentName ? (
           <CardDescription className="truncate">
             Parent: {topic.parentName}
           </CardDescription>
         ) : null}
-        <div className="flex flex-wrap gap-1.5">
-          {badges.map((badge) => (
-            <span
-              key={badge.label}
-              className={cn(
-                "inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium",
-                badge.className,
-              )}
-            >
-              {badge.label}
-            </span>
-          ))}
-        </div>
+        {badges.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {badges.map((badge) => (
+              <span
+                key={badge.label}
+                className={cn(
+                  "inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium",
+                  badge.className,
+                )}
+              >
+                {badge.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
         {canEdit ? (
           <CardAction>
-            <div className="flex items-center gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Edit ${topic.name}`}
-                onClick={() => onEdit?.(topic.id)}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Actions for ${topic.name}`}
+                  />
+                }
               >
-                <PencilIcon />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Delete ${topic.name}`}
-                onClick={() => onDelete?.(topic.id)}
-              >
-                <Trash2Icon />
-              </Button>
-            </div>
+                <EllipsisIcon />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-36">
+                <DropdownMenuItem onClick={() => onEdit?.(topic.id)}>
+                  <PencilIcon />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onSelect?.(topic.id)}>
+                  {selected ? <SquareIcon /> : <CheckSquareIcon />}
+                  {selected ? "Deselect" : "Select"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => onDelete?.(topic.id)}
+                >
+                  <Trash2Icon />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </CardAction>
         ) : null}
       </CardHeader>

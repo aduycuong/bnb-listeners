@@ -304,7 +304,6 @@ export const topics = pgTable(
     name: text("name").notNull(),
     parentId: uuid("parent_id"),
     description: text("description"),
-    verified: boolean("verified").notNull().default(false),
     createdBy: text("created_by").notNull().default("admin"),
     sourceDocumentId: uuid("source_document_id").references(
       () => documents.id,
@@ -326,7 +325,6 @@ export const topics = pgTable(
       foreignColumns: [table.id],
     }),
     index("idx_topics_parent").on(table.parentId),
-    index("idx_topics_verified").on(table.verified),
     index("idx_topics_source_document").on(table.sourceDocumentId),
   ],
 );

@@ -1,26 +1,20 @@
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import { topics } from "@/db/schema";
 import { db } from "@/lib/db";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
-import type { ListTopicsParams, ListTopicsResult } from "../types";
+import type { ListTopicsResult } from "../types";
 import { toTopicListItem } from "../utils/to-topic-list-item";
 
 export async function listTopics(
-  params: ListTopicsParams,
+  _params: Record<string, never>,
   ctx: WorkspaceContext,
 ): Promise<ListTopicsResult> {
-  const conditions = [eq(topics.workspaceId, ctx.workspaceId)];
-
-  if (params.verified !== undefined) {
-    conditions.push(eq(topics.verified, params.verified));
-  }
-
   const rows = await db
     .select()
     .from(topics)
-    .where(and(...conditions))
+    .where(eq(topics.workspaceId, ctx.workspaceId))
     .orderBy(desc(topics.createdAt));
 
   const nameById = new Map(rows.map((row) => [row.id, row.name]));

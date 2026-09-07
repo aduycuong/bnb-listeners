@@ -12,7 +12,6 @@ export const createTopicBodySchema = z.object({
     .max(500, { error: "Description must be 500 characters or fewer." })
     .optional(),
   parentId: z.uuid().nullable().optional(),
-  verified: z.boolean().optional(),
 });
 
 export const updateTopicBodySchema = z
@@ -30,7 +29,6 @@ export const updateTopicBodySchema = z
       .nullable()
       .optional(),
     parentId: z.uuid().nullable().optional(),
-    verified: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     error: "At least one field must be provided",
@@ -45,6 +43,4 @@ export const topicFormSchema = z.object({
   description: z
     .string()
     .max(500, { error: "Description must be 500 characters or fewer." }),
-  parentId: z.string(),
-  verified: z.boolean(),
 });

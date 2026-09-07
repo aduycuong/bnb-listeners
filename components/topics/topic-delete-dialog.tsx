@@ -21,7 +21,7 @@ type TopicDeleteDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceId: string;
-  topic?: TopicListItem;
+  topic?: Pick<TopicListItem, "id" | "name">;
   onDeleted: () => Promise<void>;
 };
 

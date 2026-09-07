@@ -46,10 +46,6 @@ export async function updateTopic(
     updates.parentId = rest.parentId;
   }
 
-  if (rest.verified !== undefined) {
-    updates.verified = rest.verified;
-  }
-
   const [topic] = await db
     .update(topics)
     .set(updates)
