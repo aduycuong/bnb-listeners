@@ -49,6 +49,8 @@ function getOrderClause(sort: TopicCardSort) {
       return sql`doc_count DESC, name ASC`;
     case "quality":
       return sql`avg_quality_score DESC NULLS LAST, name ASC`;
+    case "created_at":
+      return sql`t.created_at DESC, name ASC`;
     case "trend":
     default:
       return sql`trend_score DESC NULLS LAST, name ASC`;

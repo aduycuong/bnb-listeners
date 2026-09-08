@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { createApiHandler } from "@/lib/exposers/create-api-handler";
-import { cachedListTopicCards } from "@/lib/topics/services/cached-list-topic-cards";
+import { listTopicCards } from "@/lib/topics/services/list-topic-cards";
 import {
   TOPIC_CARD_PAGE_SIZE,
   TOPIC_CARD_PERIOD_PRESETS,
@@ -64,7 +64,7 @@ const listTopicCardsQuerySchema = z
 
 export const GET = createApiHandler(
   { queryParams: listTopicCardsQuerySchema },
-  (params, ctx) => cachedListTopicCards(params, ctx),
+  (params, ctx) => listTopicCards(params, ctx),
   {
     allowedRoles: [],
     minWorkspacePermission: "read",
