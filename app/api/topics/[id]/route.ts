@@ -3,9 +3,16 @@ import { z } from "zod";
 import { createApiHandler } from "@/lib/exposers/create-api-handler";
 import { updateTopicBodySchema } from "@/lib/topics/schema";
 import { deleteTopic } from "@/lib/topics/services/delete-topic";
+import { getTopic } from "@/lib/topics/services/get-topic";
 import { updateTopic } from "@/lib/topics/services/update-topic";
 
 const topicIdSchema = z.object({ id: z.uuid() });
+
+export const GET = createApiHandler(
+  { parameters: topicIdSchema },
+  getTopic,
+  { allowedRoles: [], minWorkspacePermission: "read" },
+);
 
 export const PATCH = createApiHandler(
   { parameters: topicIdSchema, requestBody: updateTopicBodySchema },

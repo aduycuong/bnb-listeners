@@ -18,6 +18,15 @@ export const TOPIC_CONFIG = {
     "Create a topic for classification.",
   formEditTitle: "Edit topic",
   formEditDescription: "Update the topic name or description.",
+  detailDocumentsTitle: "Documents",
+  detailDocumentsDescription:
+    "Documents classified under this topic, sorted by publish date.",
+  detailDocumentsEmptyTitle: "No documents for this topic",
+  detailDocumentsEmptyDescription:
+    "Documents appear here once they are classified under this topic.",
+  detailDocumentsSearchEmptyTitle: "No matching documents",
+  detailDocumentsSearchEmptyDescription:
+    "Try a different search term or clear the filter.",
 } as const;
 
 /** Max topics per bulk-delete request (each deleted in its own transaction). */

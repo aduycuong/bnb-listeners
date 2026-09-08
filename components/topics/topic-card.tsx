@@ -7,6 +7,7 @@ import {
   SquareIcon,
   Trash2Icon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { TopicSparkline } from "@/components/topics/topic-sparkline";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ import { cn } from "@/lib/utils";
 
 type TopicCardProps = {
   topic: TopicCardItem;
+  href?: string;
   canEdit?: boolean;
   selected?: boolean;
   onEdit?: (topicId: string) => void;
@@ -58,12 +60,14 @@ function formatScore(value: number | null) {
 
 export function TopicCard({
   topic,
+  href,
   canEdit = false,
   selected = false,
   onEdit,
   onSelect,
   onDelete,
 }: TopicCardProps) {
+  const router = useRouter();
   const isUpdating = topic.digest.isStale;
   const badges = [
     ...(topic.createdBy === TOPIC_CREATED_BY.llmClassifier
@@ -81,10 +85,18 @@ export function TopicCard({
       aria-selected={selected}
       className={cn(
         "h-full w-full max-w-sm transition duration-200",
+        href ? "cursor-pointer" : null,
         selected
           ? "bg-primary/5 ring-2 ring-primary"
           : "hover:-translate-y-0.5 hover:shadow-sm",
       )}
+      onClick={
+        href
+          ? () => {
+              router.push(href);
+            }
+          : undefined
+      }
     >
       <CardHeader className="gap-2">
         <CardTitle className="flex items-start gap-2 pr-2">
@@ -122,7 +134,11 @@ export function TopicCard({
           </div>
         ) : null}
         {canEdit ? (
-          <CardAction>
+          <CardAction
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
@@ -131,6 +147,9 @@ export function TopicCard({
                     variant="ghost"
                     size="icon-sm"
                     aria-label={`Actions for ${topic.name}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                    }}
                   />
                 }
               >

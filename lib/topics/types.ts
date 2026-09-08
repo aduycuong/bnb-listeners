@@ -102,3 +102,74 @@ export type ListTopicCardsResult = {
 };
 
 export type TopicFormValues = z.infer<typeof topicFormSchema>;
+
+export type TopicSourceDocumentSummary = {
+  id: string;
+  title: string | null;
+  sourceName: string;
+  sourceId: string;
+};
+
+export type GetTopicParams = { id: string };
+export type GetTopicResult = TopicListItem & {
+  sourceDocument: TopicSourceDocumentSummary | null;
+};
+
+export type TopicDetailChartDigest = {
+  docCount: number;
+  avgQualityScore: number | null;
+  trendScore: number | null;
+  isStale: boolean;
+};
+
+export type TopicDetailChartPoint = {
+  bucketKey: string;
+  label: string;
+  value: number | null;
+};
+
+export type GetTopicChartParams = {
+  id: string;
+  period: import("./topic-detail-chart-config").TopicDetailChartPeriodPreset;
+  startDate?: string;
+  endDate?: string;
+  metric: import("./topic-detail-chart-config").TopicDetailChartMetric;
+};
+
+export type GetTopicChartResult = {
+  points: TopicDetailChartPoint[];
+  bucket: import("./utils/resolve-topic-detail-chart-period").TopicDetailChartBucket;
+  metric: import("./topic-detail-chart-config").TopicDetailChartMetric;
+  digest: TopicDetailChartDigest;
+  period: {
+    preset: import("./topic-detail-chart-config").TopicDetailChartPeriodPreset;
+    startDate: string;
+    endDate: string;
+  };
+};
+
+export type ListTopicDocumentsParams = {
+  topicId: string;
+  jobIds?: string[];
+  search?: string;
+  offset?: number;
+  limit?: number;
+};
+
+export type TopicDocumentListItem = {
+  id: string;
+  title: string | null;
+  sourceName: string;
+  sourceId: string;
+  jobName: string | null;
+  publishedAt: string | null;
+  confidence: number;
+  qualityScore: number | null;
+};
+
+export type ListTopicDocumentsResult = {
+  items: TopicDocumentListItem[];
+  hasMore: boolean;
+  offset: number;
+  limit: number;
+};

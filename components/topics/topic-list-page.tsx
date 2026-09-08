@@ -26,7 +26,7 @@ import {
   type TopicCardPeriodPreset,
   type TopicCardSort,
 } from "@/lib/topics/topic-card-config";
-import { TOPIC_BULK_DELETE_MAX, TOPIC_CONFIG, TOPIC_MERGE_MAX_SOURCES } from "@/lib/topics/topic-config";
+import { TOPIC_BULK_DELETE_MAX, TOPIC_CONFIG, TOPIC_MERGE_MAX_SOURCES, getTopicHref } from "@/lib/topics/topic-config";
 import type {
   ListTopicCardsResult,
 } from "@/lib/topics/types";
@@ -37,6 +37,7 @@ import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
 type TopicListPageProps = {
   workspace: WorkspaceListItem;
+  workspaceIndex: number;
 };
 
 async function fetchTopicCards(
@@ -98,7 +99,7 @@ function TopicCardSkeleton() {
   return <Skeleton className="h-72 w-full max-w-sm rounded-xl" />;
 }
 
-export function TopicListPage({ workspace }: TopicListPageProps) {
+export function TopicListPage({ workspace, workspaceIndex }: TopicListPageProps) {
   const canEdit = workspace.permission !== "read";
   const queryClient = useQueryClient();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -397,6 +398,7 @@ export function TopicListPage({ workspace }: TopicListPageProps) {
                 <TopicCard
                   key={topic.id}
                   topic={topic}
+                  href={getTopicHref(workspaceIndex, topic.id)}
                   canEdit={canEdit}
                   selected={selectedIds.includes(topic.id)}
                   onEdit={openEdit}
