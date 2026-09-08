@@ -50,6 +50,48 @@ Used by `documents.embedding_status`.
 | `skipped` | Near-duplicate or below quality threshold — no chunks written |
 | `failed` | Processing error |
 
+### `llm_prompt_key`
+
+Used by `workspace_llm_prompts.prompt_key`.
+
+| Value | Description |
+| ----- | ----------- |
+| `classify_topics` | LLM classifier — assign document to existing topics |
+| `propose_topic` | LLM — propose a new topic when none match |
+| `score_relevance` | LLM — score content relevance to workspace topic scope |
+
+### `workspace_task_type`
+
+Used by `workspace_task_runs.task_type`.
+
+| Value | Description |
+| ----- | ----------- |
+| `reclassify_documents` | Re-run topic classification on selected documents |
+| `reprocess_documents` | Re-run full process-document pipeline (score, classify, embed) |
+| `re_embed_documents` | Re-chunk and re-embed documents |
+| `bulk_merge_topics` | Merge topics and invalidate affected digests |
+
+### `workspace_task_status`
+
+Used by `workspace_task_runs.status`.
+
+| Value | Description |
+| ----- | ----------- |
+| `pending` | Created, not yet dispatched |
+| `running` | Work in progress |
+| `success` | Completed without error |
+| `failed` | Completed with error |
+| `cancelled` | Stopped before completion |
+
+### `system_schedule_run_trigger`
+
+Used by `system_schedule_runs.trigger` and `workspace_task_runs.trigger` (task runs use `manual` \| `api` only).
+
+| Value | Description |
+| ----- | ----------- |
+| `scheduled` | Fired by QStash cron |
+| `manual` | Triggered via script or admin action |
+
 ---
 
 ## Auth & workspace
@@ -107,8 +149,32 @@ Tenant container for documents, topics, and members.
 - ← `documents.workspace_id`
 - ← `topics.workspace_id`
 - ← `jobs.workspace_id`
+- ← `workspace_task_runs.workspace_id`
+- ← `workspace_llm_prompts.workspace_id`
 
 A default workspace is created for each user on first sign-in.
+
+---
+
+### `workspace_llm_prompts`
+
+Per-workspace overrides for LLM system prompts. When no row exists (or `is_enabled = false`), application code falls back to built-in templates in `lib/llm/utils/build-system-prompts.ts`.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
+| prompt_key | text | NO | — | `classify_topics` \| `propose_topic` \| `score_relevance` |
+| content | text | NO | — | Prompt text; may include `{{topic_scope}}`, `{{topic_language_guideline}}` |
+| is_enabled | boolean | NO | `true` | When false, use code default |
+| updated_by | uuid | YES | — | FK → `users.id` ON DELETE SET NULL |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
+
+**Primary key:** `(workspace_id, prompt_key)`
+
+**Indexes**
+
+- `idx_workspace_llm_prompts_workspace_id` — on `workspace_id`
 
 ---
 
@@ -438,6 +504,101 @@ One row per job execution — success/failure, result payload, and error message
 **Relations**
 
 - ← `documents.job_run_id` — documents first created by this run; set null if the run is deleted
+
+---
+
+## System schedules (QStash)
+
+Global infrastructure cron jobs (not workspace-scoped). QStash holds the schedule; each execution is recorded in `system_schedule_runs`.
+
+Seed rows (application): `system-recompute-topic-digests`, `system-bulk-drain-topic-digests`.
+
+### `system_schedules`
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| schedule_id | text | NO | — | Stable QStash schedule id (e.g. `system-recompute-topic-digests`) |
+| job_name | text | NO | — | Handler key in `qstashJobHandlers` |
+| cron_config | jsonb | NO | `{ "cron": "", "timezone": "UTC" }` | Schedule: `{ cron, timezone }` |
+| description | text | YES | — | Human-readable description |
+| enabled | boolean | NO | `true` | When false, QStash schedule should be removed |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| `idx_system_schedules_schedule_id` | UNIQUE `(schedule_id)` | Upsert QStash schedule by id |
+| `idx_system_schedules_job_name` | UNIQUE `(job_name)` | One schedule per handler |
+| `idx_system_schedules_enabled` | `(enabled)` | Filter active schedules |
+
+**Relations**
+
+- ← `system_schedule_runs.system_schedule_id`
+
+---
+
+### `system_schedule_runs`
+
+One row per system schedule execution. `workspace_id` is optional — set when logging workspace-partitioned work within a global run.
+
+Uses `job_status` for `status` (`running` \| `success` \| `failed`).
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| system_schedule_id | uuid | NO | — | FK → `system_schedules.id` ON DELETE CASCADE |
+| workspace_id | uuid | YES | — | FK → `workspaces.id` ON DELETE SET NULL — optional partition scope |
+| status | text | NO | `running` | `running` \| `success` \| `failed` |
+| trigger | text | NO | `scheduled` | `scheduled` \| `manual` |
+| result | jsonb | YES | — | Structured outcome (rows claimed, duration, …) |
+| error | text | YES | — | Error message when `status = failed` |
+| qstash_message_id | text | YES | — | QStash message id for trace/debug |
+| started_at | timestamptz | NO | `now()` | Run start time |
+| finished_at | timestamptz | YES | — | Run end time |
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| `idx_system_schedule_runs_schedule_started` | `(system_schedule_id, started_at DESC)` | Recent runs per schedule |
+| `idx_system_schedule_runs_started_at` | `(started_at DESC)` | Recent runs globally |
+| `idx_system_schedule_runs_status` | `(status)` | Filter by outcome |
+| `idx_system_schedule_runs_workspace_id` | `(workspace_id)` | Runs scoped to a workspace |
+
+---
+
+## Workspace tasks
+
+User-triggered background work (reclassify, re-embed, bulk taxonomy ops). Each action creates one row in `workspace_task_runs`. Not stored in `jobs` — scrape job lineage (`documents.job_id`) is unchanged.
+
+### `workspace_task_runs`
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
+| task_type | text | NO | — | See `workspace_task_type` enum |
+| status | text | NO | `pending` | See `workspace_task_status` enum |
+| params | jsonb | NO | `{}` | Task scope: `{ documentIds?, jobIds?, topicIds?, filter? }` |
+| result | jsonb | YES | — | Progress/outcome: `{ total, processed, succeeded, failed, errors? }` |
+| error | text | YES | — | Error message when `status = failed` |
+| triggered_by | uuid | YES | — | FK → `users.id` ON DELETE SET NULL |
+| trigger | text | NO | `manual` | `manual` \| `api` |
+| started_at | timestamptz | NO | `now()` | Run start time |
+| finished_at | timestamptz | YES | — | Run end time |
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| `idx_workspace_task_runs_workspace_started` | `(workspace_id, started_at DESC)` | Task history in workspace |
+| `idx_workspace_task_runs_workspace_status` | `(workspace_id, status)` | Active tasks in workspace |
+| `idx_workspace_task_runs_task_type_started` | `(task_type, started_at DESC)` | Recent runs by task type |
+
+Realtime progress UI uses Firebase RTDB (`jobs/{workspace-task:{runId}}`); Postgres stores durable history.
 
 ---
 

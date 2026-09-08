@@ -1,6 +1,4 @@
-// Manually trigger a topic digest recompute run without waiting for the
-// QStash cron schedule. Runs in-process — useful for local debugging or
-// ops one-offs.
+// Manually trigger a topic digest system schedule job without waiting for QStash.
 //
 // Examples:
 //   npx tsx scripts/trigger-digest-recompute.ts --dry-run
@@ -11,8 +9,8 @@ import "dotenv/config";
 import { Command } from "commander";
 import { z } from "zod";
 
-import { bulkDrainTopicDigests } from "@/lib/topic-digests/services/bulk-drain-topic-digests";
-import { recomputeTopicDigests } from "@/lib/topic-digests/services/recompute-topic-digests";
+import { executeSystemScheduleJob } from "@/lib/system-schedules/services/execute-system-schedule-job";
+import { SYSTEM_SCHEDULE_RUN_TRIGGER } from "@/lib/system-schedules/constants";
 import {
   BULK_DRAIN_BATCH_SIZE,
   BULK_DRAIN_JOB_NAME,
@@ -22,17 +20,13 @@ import {
 
 const SCRIPT = "trigger-digest-recompute";
 
-// ---------------------------------------------------------------------------
-// Arg parsing
-// ---------------------------------------------------------------------------
-
 const optionsSchema = z
   .object({
     bulk: z.boolean(),
     dryRun: z.boolean(),
     yes: z.boolean(),
   })
-  .refine((v) => !(v.dryRun && v.yes), {
+  .refine((value) => !(value.dryRun && value.yes), {
     message: "Choose one: --dry-run or --yes.",
   });
 
@@ -41,7 +35,7 @@ type Options = z.infer<typeof optionsSchema>;
 function parseArgs(): Options {
   const program = new Command()
     .name(SCRIPT)
-    .description("Manually trigger a topic digest recompute run in-process.")
+    .description("Manually trigger a topic digest system schedule job.")
     .option(
       "--bulk",
       "Run the bulk-drain job (is_bulk_stale rows) instead of the normal recompute job.",
@@ -53,10 +47,6 @@ function parseArgs(): Options {
   program.parse();
   return optionsSchema.parse(program.opts());
 }
-
-// ---------------------------------------------------------------------------
-// Main
-// ---------------------------------------------------------------------------
 
 async function main() {
   const options = parseArgs();
@@ -74,13 +64,13 @@ async function main() {
     return;
   }
 
-  if (options.bulk) {
-    await bulkDrainTopicDigests();
-  } else {
-    await recomputeTopicDigests();
-  }
+  const metrics = await executeSystemScheduleJob({
+    jobName,
+    trigger: SYSTEM_SCHEDULE_RUN_TRIGGER.manual,
+    userId: "system",
+  });
 
-  console.log(`[${SCRIPT}] Done.`);
+  console.log(`[${SCRIPT}] Done.`, { metrics });
 }
 
 main().catch((error) => {

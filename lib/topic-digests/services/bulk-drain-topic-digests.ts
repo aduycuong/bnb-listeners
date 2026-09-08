@@ -2,6 +2,7 @@ import { BULK_DRAIN_BATCH_SIZE } from "../constants";
 import { claimDigestRows } from "../utils/claim-digest-rows";
 import { computeDailyMetrics } from "../utils/compute-daily-metrics";
 import { resetStuckWorkers } from "../utils/reset-stuck-workers";
+import type { TopicDigestJobMetrics } from "../types";
 
 /**
  * QStash handler — runs every 15 minutes via a system schedule.
@@ -15,7 +16,8 @@ import { resetStuckWorkers } from "../utils/reset-stuck-workers";
  * After computing a row, is_bulk_stale is reset to false so the row is not
  * picked up again in the next bulk-drain run.
  */
-export async function bulkDrainTopicDigests(): Promise<void> {
+export async function bulkDrainTopicDigests(): Promise<TopicDigestJobMetrics> {
+  const startedAt = Date.now();
   await resetStuckWorkers();
 
   const claimed = await claimDigestRows({
@@ -24,7 +26,12 @@ export async function bulkDrainTopicDigests(): Promise<void> {
   });
 
   if (claimed.length === 0) {
-    return;
+    return {
+      rowsClaimed: 0,
+      rowsProcessed: 0,
+      batchSize: BULK_DRAIN_BATCH_SIZE,
+      durationMs: Date.now() - startedAt,
+    };
   }
 
   await Promise.all(
@@ -37,4 +44,11 @@ export async function bulkDrainTopicDigests(): Promise<void> {
       }),
     ),
   );
+
+  return {
+    rowsClaimed: claimed.length,
+    rowsProcessed: claimed.length,
+    batchSize: BULK_DRAIN_BATCH_SIZE,
+    durationMs: Date.now() - startedAt,
+  };
 }

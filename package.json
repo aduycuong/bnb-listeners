@@ -15,7 +15,9 @@
     "db:drop": "drizzle-kit drop",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed-dim-dates": "tsx scripts/seed-dim-dates.ts"
+    "db:seed-dim-dates": "tsx scripts/seed-dim-dates.ts",
+    "db:seed-system-schedules": "tsx scripts/seed-system-schedules.ts",
+    "firebase:set-user-role": "tsx scripts/set-firebase-user-role.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

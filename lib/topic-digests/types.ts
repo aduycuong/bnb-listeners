@@ -9,3 +9,10 @@ export type ClaimedRow = {
   dateKey: string;
   jobId: string;
 };
+
+export type TopicDigestJobMetrics = {
+  rowsClaimed: number;
+  rowsProcessed: number;
+  batchSize: number;
+  durationMs: number;
+};

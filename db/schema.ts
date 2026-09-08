@@ -99,6 +99,35 @@ export const workspaceMembers = pgTable(
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 export type NewWorkspaceMember = typeof workspaceMembers.$inferInsert;
 
+export const workspaceLlmPrompts = pgTable(
+  "workspace_llm_prompts",
+  {
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    promptKey: text("prompt_key").notNull(),
+    content: text("content").notNull(),
+    isEnabled: boolean("is_enabled").notNull().default(true),
+    updatedBy: uuid("updated_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workspaceId, table.promptKey] }),
+    index("idx_workspace_llm_prompts_workspace_id").on(table.workspaceId),
+  ],
+);
+
+export type WorkspaceLlmPrompt = typeof workspaceLlmPrompts.$inferSelect;
+export type NewWorkspaceLlmPrompt = typeof workspaceLlmPrompts.$inferInsert;
+
 export const jobs = pgTable(
   "jobs",
   {
@@ -161,6 +190,113 @@ export const jobRuns = pgTable(
 
 export type JobRun = typeof jobRuns.$inferSelect;
 export type NewJobRun = typeof jobRuns.$inferInsert;
+
+export const systemSchedules = pgTable(
+  "system_schedules",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    scheduleId: text("schedule_id").notNull(),
+    jobName: text("job_name").notNull(),
+    cronConfig: jsonb("cron_config")
+      .$type<{ cron: string; timezone: string }>()
+      .notNull()
+      .default({ cron: "", timezone: "UTC" }),
+    description: text("description"),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("idx_system_schedules_schedule_id").on(table.scheduleId),
+    uniqueIndex("idx_system_schedules_job_name").on(table.jobName),
+    index("idx_system_schedules_enabled").on(table.enabled),
+  ],
+);
+
+export type SystemSchedule = typeof systemSchedules.$inferSelect;
+export type NewSystemSchedule = typeof systemSchedules.$inferInsert;
+
+export const systemScheduleRuns = pgTable(
+  "system_schedule_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    systemScheduleId: uuid("system_schedule_id")
+      .notNull()
+      .references(() => systemSchedules.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("running"),
+    trigger: text("trigger").notNull().default("scheduled"),
+    result: jsonb("result").$type<Record<string, unknown>>(),
+    error: text("error"),
+    qstashMessageId: text("qstash_message_id"),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_system_schedule_runs_schedule_started").on(
+      table.systemScheduleId,
+      table.startedAt.desc(),
+    ),
+    index("idx_system_schedule_runs_started_at").on(table.startedAt.desc()),
+    index("idx_system_schedule_runs_status").on(table.status),
+    index("idx_system_schedule_runs_workspace_id").on(table.workspaceId),
+  ],
+);
+
+export type SystemScheduleRun = typeof systemScheduleRuns.$inferSelect;
+export type NewSystemScheduleRun = typeof systemScheduleRuns.$inferInsert;
+
+export const workspaceTaskRuns = pgTable(
+  "workspace_task_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    taskType: text("task_type").notNull(),
+    status: text("status").notNull().default("pending"),
+    params: jsonb("params")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    result: jsonb("result").$type<Record<string, unknown>>(),
+    error: text("error"),
+    triggeredBy: uuid("triggered_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    trigger: text("trigger").notNull().default("manual"),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_workspace_task_runs_workspace_started").on(
+      table.workspaceId,
+      table.startedAt.desc(),
+    ),
+    index("idx_workspace_task_runs_workspace_status").on(
+      table.workspaceId,
+      table.status,
+    ),
+    index("idx_workspace_task_runs_task_type_started").on(
+      table.taskType,
+      table.startedAt.desc(),
+    ),
+  ],
+);
+
+export type WorkspaceTaskRun = typeof workspaceTaskRuns.$inferSelect;
+export type NewWorkspaceTaskRun = typeof workspaceTaskRuns.$inferInsert;
 
 export const documents = pgTable(
   "documents",

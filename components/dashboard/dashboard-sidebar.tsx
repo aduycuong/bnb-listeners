@@ -8,6 +8,7 @@ import { LanguageSelector } from "@/components/dashboard/language-selector";
 import { LogoutButton } from "@/components/dashboard/logout-button";
 import { SettingsMenu } from "@/components/dashboard/settings-menu";
 import { ThemeModeToggle } from "@/components/dashboard/theme-mode-toggle";
+import { AdminNavLink } from "@/components/admin/admin-nav-link";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
 import {
   Sidebar,
@@ -83,6 +84,7 @@ export function DashboardSidebar({
 
       <SidebarFooter className="border-t border-sidebar-border p-2">
         <div className="flex items-center justify-center gap-1">
+          <AdminNavLink />
           <SettingsMenu workspaceIndex={workspaceIndex} />
           <LanguageSelector />
           <ThemeModeToggle />

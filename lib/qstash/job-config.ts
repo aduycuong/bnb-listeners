@@ -15,8 +15,8 @@ export type QstashJobHandlerContext = {
 
 export type QstashJobHandler = (
   payload: unknown,
-  context: QstashJobHandlerContext
-) => Promise<void> | void;
+  context: QstashJobHandlerContext,
+) => Promise<Record<string, unknown> | void> | Record<string, unknown> | void;
 
 /**
  * Registry of QStash job handlers keyed by job name.

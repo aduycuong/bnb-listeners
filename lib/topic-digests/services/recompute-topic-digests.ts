@@ -2,6 +2,7 @@ import { RECOMPUTE_BATCH_SIZE } from "../constants";
 import { claimDigestRows } from "../utils/claim-digest-rows";
 import { computeDailyMetrics } from "../utils/compute-daily-metrics";
 import { resetStuckWorkers } from "../utils/reset-stuck-workers";
+import type { TopicDigestJobMetrics } from "../types";
 
 /**
  * QStash handler — runs every 15 minutes via a system schedule.
@@ -12,7 +13,8 @@ import { resetStuckWorkers } from "../utils/reset-stuck-workers";
  * Bulk-stale rows (from taxonomy restructures) are intentionally skipped
  * here — they are handled by bulk-drain-topic-digests with a smaller LIMIT.
  */
-export async function recomputeTopicDigests(): Promise<void> {
+export async function recomputeTopicDigests(): Promise<TopicDigestJobMetrics> {
+  const startedAt = Date.now();
   await resetStuckWorkers();
 
   const claimed = await claimDigestRows({
@@ -21,7 +23,12 @@ export async function recomputeTopicDigests(): Promise<void> {
   });
 
   if (claimed.length === 0) {
-    return;
+    return {
+      rowsClaimed: 0,
+      rowsProcessed: 0,
+      batchSize: RECOMPUTE_BATCH_SIZE,
+      durationMs: Date.now() - startedAt,
+    };
   }
 
   await Promise.all(
@@ -34,4 +41,11 @@ export async function recomputeTopicDigests(): Promise<void> {
       }),
     ),
   );
+
+  return {
+    rowsClaimed: claimed.length,
+    rowsProcessed: claimed.length,
+    batchSize: RECOMPUTE_BATCH_SIZE,
+    durationMs: Date.now() - startedAt,
+  };
 }
