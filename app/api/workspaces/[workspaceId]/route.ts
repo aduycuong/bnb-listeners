@@ -1,11 +1,33 @@
 import { z } from "zod";
 
 import { createApiHandler } from "@/lib/exposers/create-api-handler";
+import { updateWorkspaceLlmSettingsSchema } from "@/lib/workspaces/schema";
 import { deleteWorkspace } from "@/lib/workspaces/services/delete-workspace";
+import { updateWorkspaceLlmSettings } from "@/lib/workspaces/services/update-workspace-llm-settings";
 
 const workspaceIdRouteParamsSchema = z.object({
   workspaceId: z.uuid(),
 });
+
+export const PATCH = createApiHandler(
+  {
+    parameters: workspaceIdRouteParamsSchema,
+    requestBody: updateWorkspaceLlmSettingsSchema,
+  },
+  (params, ctx) =>
+    updateWorkspaceLlmSettings({
+      workspaceId: ctx.workspaceId,
+      dataCollectionScope: params.dataCollectionScope,
+      autoCreateTopics: params.autoCreateTopics,
+      topicLanguage: params.topicLanguage,
+      topicCriteria: params.topicCriteria,
+    }),
+  {
+    allowedRoles: ["user", "admin"],
+    requireWorkspace: true,
+    minWorkspacePermission: "edit",
+  },
+);
 
 export const DELETE = createApiHandler(
   {

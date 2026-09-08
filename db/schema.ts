@@ -50,6 +50,12 @@ export const workspaces = pgTable(
     ownerUserId: uuid("owner_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    dataCollectionScope: text("data_collection_scope")
+      .notNull()
+      .default("tin tức và dữ liệu về bất động sản"),
+    autoCreateTopics: boolean("auto_create_topics").notNull().default(true),
+    topicLanguage: text("topic_language").notNull().default("auto"),
+    topicCriteria: text("topic_criteria").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -94,38 +100,6 @@ export const workspaceMembers = pgTable(
 
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 export type NewWorkspaceMember = typeof workspaceMembers.$inferInsert;
-
-export const workspaceLlmPrompts = pgTable(
-  "workspace_llm_prompts",
-  {
-    workspaceId: uuid("workspace_id")
-      .notNull()
-      .references(() => workspaces.id, { onDelete: "cascade" }),
-    promptKey: text("prompt_key").notNull(),
-    settings: jsonb("settings")
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default({}),
-    isEnabled: boolean("is_enabled").notNull().default(true),
-    updatedBy: uuid("updated_by").references(() => users.id, {
-      onDelete: "set null",
-    }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [
-    primaryKey({ columns: [table.workspaceId, table.promptKey] }),
-    index("idx_workspace_llm_prompts_workspace_id").on(table.workspaceId),
-  ],
-);
-
-export type WorkspaceLlmPrompt = typeof workspaceLlmPrompts.$inferSelect;
-export type NewWorkspaceLlmPrompt = typeof workspaceLlmPrompts.$inferInsert;
 
 export const jobs = pgTable(
   "jobs",

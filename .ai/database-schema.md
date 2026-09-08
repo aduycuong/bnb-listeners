@@ -31,7 +31,7 @@ Used by `workspace_members.permission`.
 
 ### `topic_language`
 
-Used by `workspace_llm_prompts.settings` for `prompt_key = propose_topic` (`settings.topicLanguage`). Language for AI-generated topic names and descriptions.
+Used by `workspaces.topic_language`. Language for AI-generated topic names and descriptions when auto-create topics is enabled.
 
 | Value | Description |
 | ----- | ----------- |
@@ -49,16 +49,6 @@ Used by `documents.embedding_status`.
 | `chunked` | Chunks stored and indexed |
 | `skipped` | Near-duplicate or below quality threshold — no chunks written |
 | `failed` | Processing error |
-
-### `llm_prompt_key`
-
-Used by `workspace_llm_prompts.prompt_key`.
-
-| Value | Description |
-| ----- | ----------- |
-| `classify_topics` | LLM classifier — assign document to existing topics (code default only; not stored per workspace) |
-| `propose_topic` | LLM — propose a new topic when none match |
-| `score_relevance` | LLM — score content relevance using workspace domain description |
 
 ### `workspace_task_type`
 
@@ -133,6 +123,10 @@ Tenant container for documents, topics, and members.
 | name | text | NO | — | Display name |
 | slug | text | YES | — | URL-safe identifier |
 | owner_user_id | uuid | NO | — | Owning user (`users.id`) |
+| data_collection_scope | text | NO | `tin tức và dữ liệu về bất động sản` | Domain for relevance scoring and LLM prompts |
+| auto_create_topics | boolean | NO | `true` | When true, AI may propose new topics for unmatched documents |
+| topic_language | text | NO | `auto` | Language for generated topic names/descriptions (`topic_language` enum) |
+| topic_criteria | text | NO | `''` | Optional multiline guidelines for new topic proposals |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Last update time |
 
@@ -148,42 +142,13 @@ Tenant container for documents, topics, and members.
 - ← `topics.workspace_id`
 - ← `jobs.workspace_id`
 - ← `workspace_task_runs.workspace_id`
-- ← `workspace_llm_prompts.workspace_id`
+- ← `workspace_api_keys.workspace_id`
+
+LLM system prompts (`classify_topics`, `propose_topic`, `score_relevance`) are built in code from the columns above via `lib/llm/utils/build-system-prompt-from-settings.ts`.
 
 A default workspace is created for each user on first sign-in.
 
 ---
-
-### `workspace_llm_prompts`
-
-Per-workspace overrides for LLM prompt settings. Prompt text is built in code from `settings` jsonb via `lib/llm/utils/build-system-prompt-from-settings.ts`. When no row exists (or settings match code defaults), application code uses built-in defaults from `lib/llm/constants.ts`. `classify_topics` is never stored — always uses the code default.
-
-| Column | Type | Nullable | Default | Description |
-| ------ | ---- | -------- | ------- | ----------- |
-| workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
-| prompt_key | text | NO | — | `propose_topic` \| `score_relevance` (editable); `classify_topics` is code-only |
-| settings | jsonb | NO | `{}` | Template variables for prompt construction (shape depends on `prompt_key`) |
-| is_enabled | boolean | NO | `true` | When false, use code default |
-| updated_by | uuid | YES | — | FK → `users.id` ON DELETE SET NULL |
-| created_at | timestamptz | NO | `now()` | Row creation time |
-| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
-
-**Settings shapes**
-
-| `prompt_key` | Fields |
-| ------------ | ------ |
-| `propose_topic` | `topicLanguage`: `vietnamese` \| `english` \| `auto`; `guidelines`: optional multiline string (extra bullet points) |
-| `score_relevance` | `domainDescription`: what content is scored against; `scoringGuide`: optional multiline guide (empty → built-in 0–10 scale) |
-
-**Primary key:** `(workspace_id, prompt_key)`
-
-**Indexes**
-
-- `idx_workspace_llm_prompts_workspace_id` — on `workspace_id`
-
----
-
-### `workspace_members`
 
 Membership and permission for a user within a workspace.
 

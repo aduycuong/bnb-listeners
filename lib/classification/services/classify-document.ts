@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { invalidateTopicDigest } from "@/lib/topic-digests/services/invalidate-topic-digest";
 import { findTopicByName } from "@/lib/topics/utils/find-topic-by-name";
 import { resolveWorkspaceSystemPrompt } from "@/lib/llm/services/resolve-workspace-system-prompt";
+import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace-llm-settings";
 
 import type {
   ClassifyDocumentParams,
@@ -155,17 +156,28 @@ export async function classifyDocument(
 
   await clearLlmAssignments(documentId);
 
-  const classifierTopics = await loadTopicsForClassifier(doc.workspaceId);
-  const [classifyPrompt, proposePrompt] = await Promise.all([
-    resolveWorkspaceSystemPrompt(doc.workspaceId, "classify_topics"),
-    resolveWorkspaceSystemPrompt(doc.workspaceId, "propose_topic"),
+  const [classifierTopics, llmSettings] = await Promise.all([
+    loadTopicsForClassifier(doc.workspaceId),
+    getWorkspaceLlmSettings(doc.workspaceId),
   ]);
+  const classifyPrompt = await resolveWorkspaceSystemPrompt(
+    doc.workspaceId,
+    "classify_topics",
+  );
 
   let result: ClassifyDocumentResult;
 
   if (classifierTopics.length === 0) {
-    const proposed = await proposeTopicWithLlm(docContext, proposePrompt);
-    result = await assignProposedTopic(doc.workspaceId, documentId, proposed);
+    if (!llmSettings.autoCreateTopics) {
+      result = { documentId, assignments: [], createdTopics: [] };
+    } else {
+      const proposePrompt = await resolveWorkspaceSystemPrompt(
+        doc.workspaceId,
+        "propose_topic",
+      );
+      const proposed = await proposeTopicWithLlm(docContext, proposePrompt);
+      result = await assignProposedTopic(doc.workspaceId, documentId, proposed);
+    }
   } else {
     const { assignments: llmAssignments } = await classifyWithLlm(
       docContext,
@@ -187,7 +199,13 @@ export async function classifyDocument(
     if (assignments.length > 0) {
       await assignExistingTopics(documentId, assignments);
       result = { documentId, assignments, createdTopics: [] };
+    } else if (!llmSettings.autoCreateTopics) {
+      result = { documentId, assignments: [], createdTopics: [] };
     } else {
+      const proposePrompt = await resolveWorkspaceSystemPrompt(
+        doc.workspaceId,
+        "propose_topic",
+      );
       const proposed = await proposeTopicWithLlm(docContext, proposePrompt);
       result = await assignProposedTopic(doc.workspaceId, documentId, proposed);
     }

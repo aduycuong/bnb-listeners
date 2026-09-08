@@ -1,6 +1,14 @@
 import type { WorkspacePermission } from "./constants";
+import type { TopicLanguage } from "./constants";
 
-export type { WorkspacePermission };
+export type { WorkspacePermission, TopicLanguage };
+
+export type WorkspaceLlmSettings = {
+  dataCollectionScope: string;
+  autoCreateTopics: boolean;
+  topicLanguage: TopicLanguage;
+  topicCriteria: string;
+};
 
 export type WorkspaceContext = {
   userId: string;
@@ -15,6 +23,10 @@ export type WorkspaceListItem = {
   slug: string | null;
   ownerUserId: string;
   permission: WorkspacePermission;
+  dataCollectionScope: string;
+  autoCreateTopics: boolean;
+  topicLanguage: TopicLanguage;
+  topicCriteria: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -50,6 +62,24 @@ export type UpdateWorkspaceGeneralResult = {
   id: string;
   name: string;
   slug: string | null;
+  updatedAt: string;
+  message: string;
+};
+
+export type UpdateWorkspaceLlmSettingsParams = {
+  workspaceId: string;
+  dataCollectionScope: string;
+  autoCreateTopics: boolean;
+  topicLanguage: TopicLanguage;
+  topicCriteria: string;
+};
+
+export type UpdateWorkspaceLlmSettingsResult = {
+  id: string;
+  dataCollectionScope: string;
+  autoCreateTopics: boolean;
+  topicLanguage: TopicLanguage;
+  topicCriteria: string;
   updatedAt: string;
   message: string;
 };

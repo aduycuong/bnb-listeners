@@ -1,4 +1,4 @@
-import type { TopicLanguage } from "../constants";
+import type { TopicLanguage } from "@/lib/workspaces/constants";
 
 export function buildTopicLanguageGuideline(language: TopicLanguage): string {
   switch (language) {
