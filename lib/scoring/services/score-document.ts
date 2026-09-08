@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { documents } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
-import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace-llm-settings";
+import { resolveWorkspaceSystemPrompt } from "@/lib/llm/services/resolve-workspace-system-prompt";
 
 import { SCORING_WEIGHTS } from "../config";
 import type {
@@ -43,11 +43,14 @@ export async function scoreDocument(
     throw new NotFoundError("document", documentId);
   }
 
-  const llmSettings = await getWorkspaceLlmSettings(doc.workspaceId);
+  const relevancePrompt = await resolveWorkspaceSystemPrompt(
+    doc.workspaceId,
+    "score_relevance",
+  );
   const relevanceScore = await scoreRelevance(
     doc.rawContent,
     doc.title,
-    llmSettings,
+    relevancePrompt,
   );
 
   const dimensions: ScoringDimensions = {

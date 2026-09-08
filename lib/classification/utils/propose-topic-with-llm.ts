@@ -2,8 +2,6 @@ import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { z } from "zod";
 
 import { createChatModel } from "@/lib/langchain";
-import { buildProposeTopicSystemPrompt } from "@/lib/llm/utils/build-system-prompts";
-import type { WorkspaceLlmSettings } from "@/lib/workspaces/types";
 
 import {
   CLASSIFIER_CONTENT_MAX_CHARS,
@@ -54,13 +52,13 @@ export async function proposeTopicWithLlm(
     docType: string;
     sourceName: string;
   },
-  llmSettings: WorkspaceLlmSettings,
+  systemPrompt: string,
 ): Promise<ProposedTopic> {
   const model = createChatModel(DEFAULT_CLASSIFIER_MODEL, { temperature: 0 });
   const structured = model.withStructuredOutput(proposedTopicSchema);
 
   return structured.invoke([
-    new SystemMessage(buildProposeTopicSystemPrompt(llmSettings)),
+    new SystemMessage(systemPrompt),
     new HumanMessage(buildUserMessage(doc)),
   ]);
 }

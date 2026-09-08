@@ -50,10 +50,6 @@ export const workspaces = pgTable(
     ownerUserId: uuid("owner_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    topicScope: text("topic_scope")
-      .notNull()
-      .default("tin tức và dữ liệu về bất động sản"),
-    topicLanguage: text("topic_language").notNull().default("auto"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -106,7 +102,10 @@ export const workspaceLlmPrompts = pgTable(
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
     promptKey: text("prompt_key").notNull(),
-    content: text("content").notNull(),
+    settings: jsonb("settings")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     isEnabled: boolean("is_enabled").notNull().default(true),
     updatedBy: uuid("updated_by").references(() => users.id, {
       onDelete: "set null",

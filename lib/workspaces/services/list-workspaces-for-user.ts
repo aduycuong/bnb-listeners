@@ -4,7 +4,6 @@ import { workspaceMembers, workspaces } from "@/db/schema";
 import { db } from "@/lib/db";
 
 import type { WorkspacePermission } from "../constants";
-import { parseTopicLanguage } from "../utils/parse-topic-language";
 import type {
   ListWorkspacesForUserParams,
   ListWorkspacesForUserResult,
@@ -19,8 +18,6 @@ export async function listWorkspacesForUser(
       name: workspaces.name,
       slug: workspaces.slug,
       ownerUserId: workspaces.ownerUserId,
-      topicScope: workspaces.topicScope,
-      topicLanguage: workspaces.topicLanguage,
       memberPermission: workspaceMembers.permission,
       createdAt: workspaces.createdAt,
       updatedAt: workspaces.updatedAt,
@@ -51,8 +48,6 @@ export async function listWorkspacesForUser(
         row.ownerUserId === params.userId
           ? "owner"
           : ((row.memberPermission as WorkspacePermission | null) ?? "read"),
-      topicScope: row.topicScope,
-      topicLanguage: parseTopicLanguage(row.topicLanguage),
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     })),

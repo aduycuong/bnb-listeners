@@ -2,8 +2,6 @@ import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { z } from "zod";
 
 import { createChatModel } from "@/lib/langchain";
-import { buildScoreRelevanceSystemPrompt } from "@/lib/llm/utils/build-system-prompts";
-import type { WorkspaceLlmSettings } from "@/lib/workspaces/types";
 
 import { DEFAULT_RELEVANCE_MODEL } from "../config";
 
@@ -16,7 +14,7 @@ const relevanceResponseSchema = z.object({
 });
 
 /**
- * Scores content relevance to the workspace topic scope using an LLM.
+ * Scores content relevance using an LLM.
  * Uses structured output to guarantee a valid numeric score.
  * Trims content to 2 000 characters to control token cost.
  *
@@ -25,7 +23,7 @@ const relevanceResponseSchema = z.object({
 export async function scoreRelevance(
   rawContent: string,
   title: string | null | undefined,
-  llmSettings: WorkspaceLlmSettings,
+  systemPrompt: string,
 ): Promise<number> {
   const model = createChatModel(DEFAULT_RELEVANCE_MODEL, { temperature: 0 });
   const structured = model.withStructuredOutput(relevanceResponseSchema);
@@ -39,7 +37,7 @@ export async function scoreRelevance(
     .join("\n\n");
 
   const response = await structured.invoke([
-    new SystemMessage(buildScoreRelevanceSystemPrompt(llmSettings)),
+    new SystemMessage(systemPrompt),
     new HumanMessage(userMessage),
   ]);
 

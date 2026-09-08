@@ -5,7 +5,7 @@ import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { invalidateTopicDigest } from "@/lib/topic-digests/services/invalidate-topic-digest";
 import { findTopicByName } from "@/lib/topics/utils/find-topic-by-name";
-import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace-llm-settings";
+import { resolveWorkspaceSystemPrompt } from "@/lib/llm/services/resolve-workspace-system-prompt";
 
 import type {
   ClassifyDocumentParams,
@@ -156,18 +156,21 @@ export async function classifyDocument(
   await clearLlmAssignments(documentId);
 
   const classifierTopics = await loadTopicsForClassifier(doc.workspaceId);
-  const llmSettings = await getWorkspaceLlmSettings(doc.workspaceId);
+  const [classifyPrompt, proposePrompt] = await Promise.all([
+    resolveWorkspaceSystemPrompt(doc.workspaceId, "classify_topics"),
+    resolveWorkspaceSystemPrompt(doc.workspaceId, "propose_topic"),
+  ]);
 
   let result: ClassifyDocumentResult;
 
   if (classifierTopics.length === 0) {
-    const proposed = await proposeTopicWithLlm(docContext, llmSettings);
+    const proposed = await proposeTopicWithLlm(docContext, proposePrompt);
     result = await assignProposedTopic(doc.workspaceId, documentId, proposed);
   } else {
     const { assignments: llmAssignments } = await classifyWithLlm(
       docContext,
       classifierTopics,
-      llmSettings,
+      classifyPrompt,
     );
 
     const topicById = new Map(
@@ -185,7 +188,7 @@ export async function classifyDocument(
       await assignExistingTopics(documentId, assignments);
       result = { documentId, assignments, createdTopics: [] };
     } else {
-      const proposed = await proposeTopicWithLlm(docContext, llmSettings);
+      const proposed = await proposeTopicWithLlm(docContext, proposePrompt);
       result = await assignProposedTopic(doc.workspaceId, documentId, proposed);
     }
   }

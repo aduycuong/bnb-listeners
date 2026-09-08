@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2Icon, PencilIcon } from "lucide-react";
+import { Loader2Icon, PencilIcon, SparklesIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -9,7 +10,6 @@ import { SettingsPageLayout } from "@/components/dashboard/settings-page-layout"
 import { EditWorkspaceGeneralDialog } from "@/components/workspace/edit-workspace-general-dialog";
 import { WorkspaceApiKeysCard } from "@/components/workspace/workspace-api-keys-card";
 import { WorkspaceMembersSection } from "@/components/workspace/workspace-members-section";
-import { WorkspaceTopicSettingsCard } from "@/components/workspace/workspace-topic-settings-card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -156,7 +156,27 @@ export function WorkspaceSettings({
         workspace={workspace}
       />
 
-      <WorkspaceTopicSettingsCard workspace={workspace} />
+      <Card>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle>LLM settings</CardTitle>
+            <CardDescription>
+              Configure topic proposal language and relevance scoring for this
+              workspace.
+            </CardDescription>
+          </div>
+          <Button
+            className="shrink-0"
+            size="sm"
+            variant="outline"
+            nativeButton={false}
+            render={<Link href={`/w/${workspaceIndex}/settings/llm`} />}
+          >
+            <SparklesIcon data-icon="inline-start" />
+            Open LLM settings
+          </Button>
+        </CardHeader>
+      </Card>
 
       <WorkspaceApiKeysCard workspace={workspace} />
 
