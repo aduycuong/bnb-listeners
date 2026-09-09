@@ -331,6 +331,11 @@ export const documents = pgTable(
     index("idx_documents_job_run_id").on(table.jobRunId),
     index("idx_documents_job_id").on(table.jobId),
     index("idx_documents_workspace_job").on(table.workspaceId, table.jobId),
+    index("idx_documents_backfill_scan")
+      .on(table.workspaceId, table.publishedAt, table.id)
+      .where(
+        sql`${table.isDuplicate} = false AND ${table.publishedAt} IS NOT NULL`,
+      ),
     foreignKey({
       columns: [table.canonicalId],
       foreignColumns: [table.id],
@@ -417,6 +422,12 @@ export const topics = pgTable(
       () => documents.id,
       { onDelete: "set null" },
     ),
+    listeningStartedAt: timestamp("listening_started_at", {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+    activeBackfillRunId: uuid("active_backfill_run_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -429,6 +440,7 @@ export const topics = pgTable(
     uniqueIndex("idx_topics_workspace_name").on(table.workspaceId, table.name),
     index("idx_topics_workspace_id").on(table.workspaceId),
     index("idx_topics_source_document").on(table.sourceDocumentId),
+    index("idx_topics_active_backfill_run").on(table.activeBackfillRunId),
   ],
 );
 
@@ -459,6 +471,83 @@ export const documentTopics = pgTable(
 
 export type DocumentTopic = typeof documentTopics.$inferSelect;
 export type NewDocumentTopic = typeof documentTopics.$inferInsert;
+
+export const topicBackfillRuns = pgTable(
+  "topic_backfill_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    topicId: uuid("topic_id")
+      .notNull()
+      .references(() => topics.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("pending"),
+    newListeningStartedAt: timestamp("new_listening_started_at", {
+      withTimezone: true,
+    }).notNull(),
+    scanEndAt: timestamp("scan_end_at", { withTimezone: true }).notNull(),
+    model: text("model").notNull(),
+    qualityMin: real("quality_min").notNull(),
+    includeAlreadyAssigned: boolean("include_already_assigned")
+      .notNull()
+      .default(false),
+    confidenceMin: real("confidence_min").notNull(),
+    estimate: jsonb("estimate")
+      .$type<{
+        documentCount: number;
+        inputTokens: number;
+        outputTokens: number;
+        costUsd: number;
+      }>()
+      .notNull(),
+    result: jsonb("result")
+      .$type<{
+        documentsScanned: number;
+        documentsMatched: number;
+        documentsSkipped: number;
+        inputTokens: number;
+        outputTokens: number;
+        costUsd: number;
+        cursor: { publishedAt: string; documentId: string } | null;
+        cancelledAt?: string;
+      }>()
+      .notNull()
+      .default({
+        documentsScanned: 0,
+        documentsMatched: 0,
+        documentsSkipped: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        costUsd: 0,
+        cursor: null,
+      }),
+    error: text("error"),
+    triggeredBy: uuid("triggered_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_topic_backfill_runs_topic_started").on(
+      table.topicId,
+      table.startedAt.desc(),
+    ),
+    index("idx_topic_backfill_runs_workspace_started").on(
+      table.workspaceId,
+      table.startedAt.desc(),
+    ),
+    uniqueIndex("idx_topic_backfill_one_active")
+      .on(table.topicId)
+      .where(sql`${table.status} IN ('pending', 'running')`),
+  ],
+);
+
+export type TopicBackfillRun = typeof topicBackfillRuns.$inferSelect;
+export type NewTopicBackfillRun = typeof topicBackfillRuns.$inferInsert;
 
 // ---------------------------------------------------------------------------
 // Date dimension — static calendar table, seeded once for ~10–20 years.

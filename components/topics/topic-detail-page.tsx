@@ -13,6 +13,7 @@ import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
 import { TopicDetailChartSection } from "@/components/topics/topic-detail-chart-section";
 import { TopicDetailDocuments } from "@/components/topics/topic-detail-documents";
 import { TopicDetailGeneral } from "@/components/topics/topic-detail-general";
+import { TopicDetailListeningSection } from "@/components/topics/topic-detail-listening-section";
 import {
   topicChartQueryKey,
   topicDocumentsQueryKey,
@@ -186,6 +187,17 @@ export function TopicDetailPage({
   const topicQuery = useQuery({
     queryKey: topicQueryKey(workspace.id, topicId),
     queryFn: () => fetchTopic(workspace.id, topicId),
+    refetchInterval: (query) => {
+      const activeRun = query.state.data?.activeBackfillRun;
+      if (
+        activeRun &&
+        (activeRun.status === "pending" || activeRun.status === "running")
+      ) {
+        return 3000;
+      }
+
+      return false;
+    },
   });
 
   const chartQuery = useQuery({
@@ -300,6 +312,20 @@ export function TopicDetailPage({
             />
           )}
         </div>
+
+        <TopicDetailListeningSection
+          workspaceId={workspace.id}
+          topic={topic}
+          canEdit={
+            workspace.permission === "edit" ||
+            workspace.permission === "owner"
+          }
+          onTopicUpdated={async () => {
+            await topicQuery.refetch();
+            await chartQuery.refetch();
+            await documentsQuery.refetch();
+          }}
+        />
 
         <TopicDetailDocuments
           documents={documents}

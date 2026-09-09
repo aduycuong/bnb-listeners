@@ -1,0 +1,1 @@
+ALTER TABLE "topic_backfill_runs" ADD COLUMN "include_already_assigned" boolean DEFAULT false NOT NULL;

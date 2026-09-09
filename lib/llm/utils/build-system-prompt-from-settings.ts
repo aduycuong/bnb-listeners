@@ -54,6 +54,27 @@ Guidelines:
 - ${languageGuideline}${formatTopicCriteria(settings.topicCriteria)}`;
 }
 
+export function buildEvaluateTopicPrompt(
+  settings: WorkspaceLlmSettings,
+  topic: { name: string; description: string | null },
+): string {
+  const description = topic.description?.trim()
+    ? `\nTopic description: ${topic.description.trim()}`
+    : "";
+
+  return `You are a topic relevance evaluator for: ${settings.dataCollectionScope}.
+
+Decide whether each document substantively belongs to this single topic:
+- Topic name: ${topic.name.trim()}${description}
+
+Guidelines:
+- Stay within the workspace data collection scope: ${settings.dataCollectionScope}.
+- Return match=true only when the document is clearly about this topic's subject.
+- Use confidence 0.9+ when the match is obvious, 0.7–0.85 when plausible but not central.
+- Return match=false with low confidence when the document is unrelated or only tangentially related.
+- Do not consider other topics — only whether this document fits the given topic.`;
+}
+
 export function buildScoreRelevancePrompt(
   settings: WorkspaceLlmSettings,
 ): string {

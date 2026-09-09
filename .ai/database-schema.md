@@ -241,6 +241,7 @@ One row per ingested item within a workspace. Topic assignment is in `document_t
 | `idx_documents_doc_type` | `(doc_type)` | Filter by content type |
 | `idx_documents_source_key` | `(doc_type, source_key)` | List items from one source |
 | `idx_documents_published_at` | `(published_at DESC)` | Sort/filter by publish date |
+| `idx_documents_backfill_scan` | `(workspace_id, published_at, id)` WHERE `is_duplicate = false AND published_at IS NOT NULL` | Keyset scan for topic backfill |
 | `idx_documents_created_at` | `(created_at DESC)` | Recent-first by ingestion |
 | `idx_documents_metadata` | GIN `metadata jsonb_path_ops` | Filter by metadata |
 | `idx_documents_status` | `(embedding_status)` WHERE `<> 'chunked'` | Embedding job queue |
@@ -308,6 +309,8 @@ Workspace-scoped subject taxonomy. The LLM classifier can auto-create topics whe
 | description | text | YES | — | Topic description |
 | created_by | text | NO | `admin` | `admin` or `llm_classifier` |
 | source_document_id | uuid | YES | — | FK → `documents.id` ON DELETE SET NULL — document that triggered auto-creation |
+| listening_started_at | timestamptz | NO | `now()` | Earliest date the topic listens for documents; updated when a backfill completes |
+| active_backfill_run_id | uuid | YES | — | Points to the in-flight backfill run (application-managed; no FK) |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
@@ -318,6 +321,7 @@ Workspace-scoped subject taxonomy. The LLM classifier can auto-create topics whe
 | `idx_topics_workspace_name` | UNIQUE `(workspace_id, name)` | Name unique within workspace |
 | `idx_topics_workspace_id` | `(workspace_id)` | List topics in a workspace |
 | `idx_topics_source_document` | `(source_document_id)` | Trace auto-created topics |
+| `idx_topics_active_backfill_run` | `(active_backfill_run_id)` | Resolve active backfill from topic |
 
 ---
 
@@ -330,7 +334,7 @@ LLM or admin assignments linking documents to topics.
 | document_id | uuid | NO | — | FK → `documents.id` ON DELETE CASCADE |
 | topic_id | uuid | NO | — | FK → `topics.id` ON DELETE CASCADE |
 | confidence | real | NO | `1` | Assignment confidence (0–1) |
-| assigned_by | text | NO | `llm_classifier` | Who assigned the topic |
+| assigned_by | text | NO | `llm_classifier` | `llm_classifier` \| `admin` \| `admin_merge` \| `topic_backfill` |
 | assigned_at | timestamptz | NO | `now()` | Assignment time |
 
 **Primary key:** `(document_id, topic_id)`
@@ -338,6 +342,41 @@ LLM or admin assignments linking documents to topics.
 **Indexes:** `(topic_id)`, `(document_id)`
 
 Document and topic must belong to the same workspace (enforced by application logic).
+
+---
+
+### `topic_backfill_runs`
+
+Tracks user-triggered backfill jobs that scan older documents and assign matches to a single topic.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
+| topic_id | uuid | NO | — | FK → `topics.id` ON DELETE CASCADE |
+| status | text | NO | `pending` | `pending` \| `running` \| `success` \| `failed` \| `cancelled` |
+| new_listening_started_at | timestamptz | NO | — | Target listening start date chosen by the user |
+| scan_end_at | timestamptz | NO | — | Snapshot of `topics.created_at` when the run started |
+| model | text | NO | — | LLM model id used for evaluation |
+| quality_min | real | NO | — | Minimum `documents.quality_score` for eligibility |
+| include_already_assigned | boolean | NO | `false` | When true, re-evaluate documents already assigned to this topic |
+| confidence_min | real | NO | — | Minimum LLM confidence to create an assignment |
+| estimate | jsonb | NO | — | Pre-run estimate: `{ documentCount, inputTokens, outputTokens, costUsd }` |
+| result | jsonb | NO | `{}` | Progress: `{ documentsScanned, documentsMatched, inputTokens, outputTokens, costUsd, cursor }` |
+| error | text | YES | — | Error message when `status = failed` |
+| triggered_by | uuid | YES | — | FK → `users.id` ON DELETE SET NULL |
+| started_at | timestamptz | NO | `now()` | Run start time |
+| finished_at | timestamptz | YES | — | Run end time |
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| `idx_topic_backfill_runs_topic_started` | `(topic_id, started_at DESC)` | Run history per topic |
+| `idx_topic_backfill_runs_workspace_started` | `(workspace_id, started_at DESC)` | Run history per workspace |
+| `idx_topic_backfill_one_active` | UNIQUE `(topic_id)` WHERE `status IN ('pending','running')` | One active backfill per topic |
+
+QStash job `rebuild-topic-batch` processes documents in chained batches (`flowControl` parallelism 1 per topic).
 
 ---
 

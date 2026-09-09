@@ -1,7 +1,9 @@
 import { processDocument } from "@/lib/documents/services/process-document";
 import { runScheduledJob } from "@/lib/jobs/services/run-scheduled-job";
+import { processTopicBackfillBatch } from "@/lib/topic-backfill/services/process-topic-backfill-batch";
 import { bulkDrainTopicDigests } from "@/lib/topic-digests/services/bulk-drain-topic-digests";
 import { recomputeTopicDigests } from "@/lib/topic-digests/services/recompute-topic-digests";
+import { TOPIC_BACKFILL_QSTASH_JOB_NAME } from "@/lib/topics/topic-backfill-config";
 import {
   BULK_DRAIN_JOB_NAME,
   RECOMPUTE_JOB_NAME,
@@ -55,4 +57,10 @@ export const qstashJobHandlers: Record<string, QstashJobHandler> = {
    * No payload required.
    */
   [BULK_DRAIN_JOB_NAME]: bulkDrainTopicDigests,
+
+  /**
+   * Chained batch worker for topic data backfill.
+   * Payload: { runId: string }
+   */
+  [TOPIC_BACKFILL_QSTASH_JOB_NAME]: processTopicBackfillBatch,
 };

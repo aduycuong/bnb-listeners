@@ -3,6 +3,7 @@ export const DOCUMENT_TOPIC_ASSIGNED_BY = {
   admin: "admin",
   adminMerge: "admin_merge",
   llmClassifier: "llm_classifier",
+  topicBackfill: "topic_backfill",
 } as const;
 
 /** Use disable-trigger bulk insert when at least this many documents are affected. */

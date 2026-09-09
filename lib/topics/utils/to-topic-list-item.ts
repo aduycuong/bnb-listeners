@@ -9,6 +9,8 @@ export function toTopicListItem(topic: Topic): TopicListItem {
     description: topic.description,
     createdBy: topic.createdBy,
     sourceDocumentId: topic.sourceDocumentId,
+    listeningStartedAt: topic.listeningStartedAt.toISOString(),
+    activeBackfillRunId: topic.activeBackfillRunId,
     createdAt: topic.createdAt.toISOString(),
     updatedAt: topic.updatedAt.toISOString(),
   };

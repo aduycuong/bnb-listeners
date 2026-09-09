@@ -43,6 +43,8 @@ export type TopicListItem = {
   description: string | null;
   createdBy: string;
   sourceDocumentId: string | null;
+  listeningStartedAt: string;
+  activeBackfillRunId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -113,6 +115,7 @@ export type TopicSourceDocumentSummary = {
 export type GetTopicParams = { id: string };
 export type GetTopicResult = TopicListItem & {
   sourceDocument: TopicSourceDocumentSummary | null;
+  activeBackfillRun: import("@/lib/topic-backfill/types").TopicBackfillRunItem | null;
 };
 
 export type TopicDetailChartDigest = {

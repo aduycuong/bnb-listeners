@@ -1,8 +1,9 @@
 import { and, eq } from "drizzle-orm";
 
-import { documents, topics } from "@/db/schema";
+import { documents, topicBackfillRuns, topics } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
+import { toTopicBackfillRunItem } from "@/lib/topic-backfill/utils/to-topic-backfill-run-item";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type { GetTopicParams, GetTopicResult } from "../types";
@@ -33,6 +34,20 @@ export async function getTopic(
 
   const item = toTopicListItem(row.topic);
 
+  let activeBackfillRun = null;
+
+  if (row.topic.activeBackfillRunId) {
+    const [run] = await db
+      .select()
+      .from(topicBackfillRuns)
+      .where(eq(topicBackfillRuns.id, row.topic.activeBackfillRunId))
+      .limit(1);
+
+    if (run) {
+      activeBackfillRun = toTopicBackfillRunItem(run);
+    }
+  }
+
   return {
     ...item,
     sourceDocument: row.sourceDocumentId
@@ -43,5 +58,6 @@ export async function getTopic(
           sourceId: row.sourceDocumentSourceId ?? "",
         }
       : null,
+    activeBackfillRun,
   };
 }
