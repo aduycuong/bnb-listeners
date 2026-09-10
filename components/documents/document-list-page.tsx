@@ -111,17 +111,7 @@ function toListRowItem(doc: DocumentListItem): ResourceListRowItem {
       doc.qualityScore != null
         ? `Quality ${Math.round(doc.qualityScore * 100)}%`
         : undefined,
-    badges: [
-      statusBadge,
-      ...(doc.isDuplicate
-        ? [
-            {
-              label: "Duplicate",
-              className: "bg-muted text-muted-foreground",
-            },
-          ]
-        : []),
-    ],
+    badges: [statusBadge],
   };
 }
 

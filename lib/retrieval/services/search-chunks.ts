@@ -58,7 +58,6 @@ export async function searchChunks(params: SearchChunksParams): Promise<Retrieve
       FROM chunks c
       INNER JOIN documents d ON d.id = c.document_id
       WHERE d.workspace_id = ${workspaceId}::uuid
-        AND d.is_duplicate = false
         AND c.quality_score >= ${RETRIEVAL_QUALITY_MIN}
         ${topicFilter}
       ORDER BY c.embedding <=> ${sql.raw(`'${vectorLiteral}'::vector(${CHUNK_EMBEDDING_DIMENSIONS})`)}
@@ -72,7 +71,6 @@ export async function searchChunks(params: SearchChunksParams): Promise<Retrieve
       INNER JOIN documents d ON d.id = c.document_id,
       websearch_to_tsquery('simple', ${normalizedQuery}) query
       WHERE d.workspace_id = ${workspaceId}::uuid
-        AND d.is_duplicate = false
         AND c.quality_score >= ${RETRIEVAL_QUALITY_MIN}
         AND c.content_tsv @@ query
         ${topicFilter}

@@ -24,9 +24,6 @@ import { scoreSourceCredibility } from "../utils/score-source-credibility";
  *   1. Fetch the document.
  *   2. Compute dimension scores (rule-based in parallel with LLM relevance).
  *   3. Combine into a single quality_score and persist to documents.
- *
- * Near-duplicate detection is NOT performed here — it runs in check-near-duplicate
- * after embeddings are generated, before chunks are written to the database.
  */
 export async function scoreDocument(
   params: ScoreDocumentParams,

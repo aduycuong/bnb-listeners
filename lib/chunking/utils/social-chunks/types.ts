@@ -1,3 +1,5 @@
+import type { EngagementCounts } from "@/lib/common/engagement-counts";
+
 import type { SOCIAL_CONTENT_STRATEGY } from "./config";
 
 export type MediaKind = "image" | "video";
@@ -68,4 +70,9 @@ export type CreateChunkRecordsParams = {
   chunks: CreatedChunk[];
   topicIds?: string[];
   qualityScore?: number | null;
+  /**
+   * Seeds the denormalized counters on insert. Later refreshes are handled by
+   * trg_sync_chunk_engagement, which only fires on UPDATE of documents.
+   */
+  engagement?: EngagementCounts;
 };

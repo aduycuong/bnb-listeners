@@ -1,11 +1,19 @@
 import type { BrightDataFacebookPost, FacebookPostMetadata } from "../types";
+import { extractPostMediaUrls } from "./extract-post-media-urls";
 
 /**
  * Extracts structured metadata from a parsed Facebook post.
- * Stored in the document's metadata JSONB column for filtering and display;
- * not embedded — use rawContent for semantic search.
+ * Stored in the document's metadata JSONB column for filtering and display.
+ *
+ * Engagement totals are deliberately absent — they live in real columns so they
+ * can be filtered and sorted on. Media URLs are kept here because chunking
+ * needs them to build image and video chunks.
  */
-export function buildPostMetadata(post: BrightDataFacebookPost): FacebookPostMetadata {
+export function buildPostMetadata(
+  post: BrightDataFacebookPost,
+): FacebookPostMetadata {
+  const { imageUrls, videoUrls } = extractPostMediaUrls(post);
+
   return {
     postId: post.post_id,
     postUrl: post.url,
@@ -17,11 +25,8 @@ export function buildPostMetadata(post: BrightDataFacebookPost): FacebookPostMet
     groupUrl: post.group_url ?? null,
     groupCategory: post.group_category ?? null,
     groupMembers: post.group_members ?? null,
-    likes: post.likes,
-    numComments: post.num_comments,
-    numShares: post.num_shares,
-    videoViewCount: post.video_view_count,
-    hasImage: !!post.post_image,
+    imageUrls,
+    videoUrls,
     isSponsored: post.is_sponsored,
     isPage: !!post.delegate_page_id,
     price: post.price ?? null,

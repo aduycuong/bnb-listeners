@@ -2,6 +2,7 @@ import type { z } from "zod";
 
 import type { updateDocumentBodySchema } from "./schema";
 import type { Document } from "@/db/schema";
+import type { EngagementCounts } from "@/lib/common/engagement-counts";
 
 export type UpdateDocumentBody = z.infer<typeof updateDocumentBodySchema>;
 export type UpdateDocumentParams = { id: string } & UpdateDocumentBody;
@@ -35,7 +36,10 @@ export type DocumentListItem = {
   rawContent: string;
   embeddingStatus: string;
   qualityScore: number | null;
-  isDuplicate: boolean;
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  viewCount: number;
   jobRunId: string | null;
   jobId: string;
   jobName: string | null;
@@ -59,6 +63,8 @@ export type UpsertDocumentParams = {
   title?: string;
   rawContent: string;
   metadata?: Record<string, unknown>;
+  /** Refreshed on every upsert, including the unchanged path — never triggers a re-embed. */
+  engagement?: EngagementCounts;
   publishedAt?: string;
   /** Set only on insert; later upserts leave the original job run in place. */
   jobRunId?: string;

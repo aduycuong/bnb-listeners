@@ -29,7 +29,7 @@ export type QstashJobHandler = (
 export const qstashJobHandlers: Record<string, QstashJobHandler> = {
   /**
    * Triggered after a document is created.
-   * Scores quality dimensions and detects near-duplicates.
+   * Scores quality dimensions, classifies topics, then chunks and embeds.
    * Payload: { documentId: string }
    */
   "process-document": processDocument,

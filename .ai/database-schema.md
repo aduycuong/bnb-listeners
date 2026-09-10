@@ -47,7 +47,7 @@ Used by `documents.embedding_status`.
 | ----- | ----------- |
 | `pending` | Awaiting chunking/embedding |
 | `chunked` | Chunks stored and indexed |
-| `skipped` | Near-duplicate or below quality threshold — no chunks written |
+| `skipped` | Reserved — not currently written by the pipeline |
 | `failed` | Processing error |
 
 ### `workspace_task_type`
@@ -224,8 +224,10 @@ One row per ingested item within a workspace. Topic assignment is in `document_t
 | metadata | jsonb | NO | `{}` | Type-specific fields (url, author, …) |
 | embedding_status | text | NO | `pending` | `pending` \| `chunked` \| `skipped` \| `failed` |
 | quality_score | real | YES | — | Weighted average of scoring dimensions (0–1). Null until scored. |
-| is_duplicate | boolean | NO | `false` | True when near-duplicate of another document |
-| canonical_id | uuid | YES | — | FK → `documents.id` — original when `is_duplicate` is true |
+| like_count | integer | NO | `0` | Likes / hearts / favorites / diggs |
+| comment_count | integer | NO | `0` | Comments / replies |
+| share_count | integer | NO | `0` | Shares / retweets / reposts |
+| view_count | integer | NO | `0` | Views / plays / impressions |
 | job_run_id | uuid | YES | — | FK → `job_runs.id` ON DELETE SET NULL — job run that first created this document |
 | job_id | uuid | NO | — | FK → `jobs.id` ON DELETE CASCADE — scrape job that owns this document; set on insert only |
 | published_at | timestamptz | YES | — | Source publish date; used for freshness scoring and canonical ordering |
@@ -241,17 +243,19 @@ One row per ingested item within a workspace. Topic assignment is in `document_t
 | `idx_documents_doc_type` | `(doc_type)` | Filter by content type |
 | `idx_documents_source_key` | `(doc_type, source_key)` | List items from one source |
 | `idx_documents_published_at` | `(published_at DESC)` | Sort/filter by publish date |
-| `idx_documents_backfill_scan` | `(workspace_id, published_at, id)` WHERE `is_duplicate = false AND published_at IS NOT NULL` | Keyset scan for topic backfill |
+| `idx_documents_backfill_scan` | `(workspace_id, published_at, id)` WHERE `published_at IS NOT NULL` | Keyset scan for topic backfill |
 | `idx_documents_created_at` | `(created_at DESC)` | Recent-first by ingestion |
 | `idx_documents_metadata` | GIN `metadata jsonb_path_ops` | Filter by metadata |
 | `idx_documents_status` | `(embedding_status)` WHERE `<> 'chunked'` | Embedding job queue |
 | `idx_documents_quality_score` | `(quality_score)` | Filter/sort by quality |
-| `idx_documents_is_duplicate` | `(is_duplicate)` | Exclude duplicates from aggregates |
 | `idx_documents_job_run_id` | `(job_run_id)` | Documents created by a job run |
 | `idx_documents_job_id` | `(job_id)` | Documents by owning job |
 | `idx_documents_workspace_job` | `(workspace_id, job_id)` | Filter/list documents by job |
+| `idx_documents_engagement` | `(workspace_id, like_count DESC)` | Rank a workspace's posts by popularity |
 
-Near-duplicate detection is scoped to the same workspace. `job_run_id` and `job_id` are set only when a scrape job first inserts the document; later upserts do not overwrite them. Deleting a job cascades to its documents (and chunks).
+Engagement counters are platform-neutral and refreshed on every upsert, including the "unchanged" path where the body did not change — updating them never triggers a re-embed. Platform-specific counters (Facebook reaction breakdowns, TikTok collects, X bookmarks, Instagram saves) stay in `metadata`.
+
+`job_run_id` and `job_id` are set only when a scrape job first inserts the document; later upserts do not overwrite them. Deleting a job cascades to its documents (and chunks).
 
 **Relations**
 
@@ -262,7 +266,7 @@ Near-duplicate detection is scoped to the same workspace. `job_run_id` and `job_
 
 ### `chunks`
 
-RAG query table. One row per text chunk with vector embedding. `topic_ids` is denormalized from `document_topics` (see triggers below).
+RAG query table. One row per retrievable unit: a text chunk, or a single image or video from the source post. `topic_ids` and the engagement counters are denormalized from other tables (see triggers below).
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -277,12 +281,16 @@ RAG query table. One row per text chunk with vector embedding. `topic_ids` is de
 | content_tsv | tsvector | NO | generated | `to_tsvector('simple', content)` |
 | embedding_model | text | NO | `text-embedding-3-small` | Model used |
 | embedding_version | text | NO | `v1` | Embedding version tag |
-| content_type | text | NO | `text` | `text` \| `image_caption` \| `image_native` |
-| media_url | text | YES | — | Optional media reference |
-| media_metadata | jsonb | YES | — | Optional media metadata |
-| embedding_multimodal | vector(1024) | YES | — | Optional multimodal embedding |
+| content_type | text | NO | `text` | `text` \| `image` \| `video` |
+| media_url | text | YES | — | Image or video URL for media chunks |
+| media_metadata | jsonb | YES | — | Media descriptor (`kind`, `url`, `index`, `count`, embedding model) |
+| embedding_multimodal | vector(1024) | YES | — | voyage-multimodal-3.5; media chunks only |
 | topic_ids | uuid[] | YES | `{}` | Denormalized topic ids for fast filtering |
 | quality_score | real | YES | — | Denormalized from `documents.quality_score` |
+| like_count | integer | NO | `0` | Denormalized from `documents.like_count` |
+| comment_count | integer | NO | `0` | Denormalized from `documents.comment_count` |
+| share_count | integer | NO | `0` | Denormalized from `documents.share_count` |
+| view_count | integer | NO | `0` | Denormalized from `documents.view_count` |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 
 **Indexes**
@@ -290,8 +298,12 @@ RAG query table. One row per text chunk with vector embedding. `topic_ids` is de
 - HNSW on `embedding` (`vector_cosine_ops`, m=16, ef_construction=64)
 - Partial HNSW on `embedding_multimodal` WHERE NOT NULL
 - GIN on `content_tsv`, `topic_ids`, `metadata`
-- B-tree on `doc_type`, `content_type`, `published_at`, `document_id`, `quality_score`
+- B-tree on `doc_type`, `content_type`, `published_at`, `document_id`, `quality_score`, `like_count DESC`
 - `(doc_type, published_at DESC)` for type + recency queries
+
+Every chunk has a text `embedding`, including media chunks — their content is the source context plus a snippet of the post body. Media chunks additionally carry `embedding_multimodal` from voyage-multimodal-3.5, which embeds the paired text and media URL together.
+
+Engagement counters are seeded on insert and afterwards kept in step by `trg_sync_chunk_engagement` (see triggers below), so refreshed scrape counts never require re-embedding.
 
 Workspace scope is inherited via `document_id` → `documents.workspace_id`.
 
@@ -636,6 +648,7 @@ Stores metadata for workspace API keys managed via Unkey. The actual key value i
 Not represented in Drizzle schema. Reference SQL in `db/manual/triggers.sql`:
 
 - `sync_chunk_topics()` — keeps `chunks.topic_ids` in sync when `document_topics` changes
+- `sync_chunk_engagement()` — mirrors `documents.{like,comment,share,view}_count` onto that document's chunks; fires only when one of the four counters actually changes
 
 Apply after migrations if not already present.
 

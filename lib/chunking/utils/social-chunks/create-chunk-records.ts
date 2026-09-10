@@ -1,4 +1,5 @@
 import type { NewChunk } from "@/db/schema";
+import { ZERO_ENGAGEMENT_COUNTS } from "@/lib/common/engagement-counts";
 import { APIError } from "@/lib/exposers/api-error";
 
 import { EMBEDDING_MODEL, EMBEDDING_VERSION } from "../../config";
@@ -34,6 +35,7 @@ export async function createChunkRecords(
     chunks,
     topicIds = [],
     qualityScore = null,
+    engagement = ZERO_ENGAGEMENT_COUNTS,
   } = params;
 
   if (chunks.length === 0) return [];
@@ -69,6 +71,7 @@ export async function createChunkRecords(
       embeddingMultimodal: multimodal,
       topicIds,
       qualityScore,
+      ...engagement,
     };
   });
 }

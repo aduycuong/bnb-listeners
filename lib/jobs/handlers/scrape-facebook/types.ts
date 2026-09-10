@@ -52,16 +52,14 @@ export type FacebookPostMetadata = {
   groupUrl: string | null;
   groupCategory: string | null;
   groupMembers: number | null;
-  likes: number;
-  numComments: number;
-  numShares: number;
-  videoViewCount: number;
-  hasImage: boolean;
+  imageUrls: string[];
+  videoUrls: string[];
   isSponsored: boolean;
   /** True when posted by a Facebook Page rather than a personal profile. */
   isPage: boolean;
   price: unknown;
   location: unknown;
   hashtags: string[];
+  /** Facebook-specific reaction breakdown; the totals live in engagement columns. */
   reactions: unknown;
 };

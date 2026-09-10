@@ -34,7 +34,6 @@ export function buildBackfillScanConditions(context: TopicBackfillScanContext) {
     isNotNull(documents.publishedAt),
     gte(documents.publishedAt, context.newListeningStartedAt),
     lt(documents.publishedAt, context.scanEndAt),
-    eq(documents.isDuplicate, false),
     sql`${documents.qualityScore} >= ${context.qualityMin}`,
   ];
 

@@ -14,7 +14,7 @@ WHERE ch.topic_ids && ARRAY['11111111-1111-1111-1111-111111111111']::uuid[]
 
 For regular ingestion (one document at a time), the trigger is safe. Each firing updates only the chunks belonging to that one document (~5–20 rows), and `idx_chunks_document_id` makes the lookup fast.
 
-Classification usually runs before chunks exist. `storeChunks` therefore copies current `document_topics` into `topic_ids` on insert. Later assignment changes still go through the trigger.
+Classification usually runs before chunks exist. `rebuildDocumentChunks` therefore copies current `document_topics` into `topic_ids` on insert. Later assignment changes still go through the trigger.
 
 ## Risk: bulk operations on `document_topics`
 

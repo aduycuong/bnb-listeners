@@ -7,7 +7,6 @@ import {
 import {
   boolean,
   date,
-  foreignKey,
   index,
   integer,
   jsonb,
@@ -290,8 +289,15 @@ export const documents = pgTable(
       .default({}),
     embeddingStatus: text("embedding_status").notNull().default("pending"),
     qualityScore: real("quality_score"),
-    isDuplicate: boolean("is_duplicate").notNull().default(false),
-    canonicalId: uuid("canonical_id"),
+    /**
+     * Platform-neutral engagement counters, refreshed on every upsert without
+     * re-embedding. Facebook reactions, TikTok collects, X bookmarks and other
+     * platform-specific counters stay in `metadata`.
+     */
+    likeCount: integer("like_count").notNull().default(0),
+    commentCount: integer("comment_count").notNull().default(0),
+    shareCount: integer("share_count").notNull().default(0),
+    viewCount: integer("view_count").notNull().default(0),
     jobRunId: uuid("job_run_id").references(() => jobRuns.id, {
       onDelete: "set null",
     }),
@@ -327,19 +333,16 @@ export const documents = pgTable(
       .on(table.embeddingStatus)
       .where(sql`${table.embeddingStatus} <> 'chunked'`),
     index("idx_documents_quality_score").on(table.qualityScore),
-    index("idx_documents_is_duplicate").on(table.isDuplicate),
     index("idx_documents_job_run_id").on(table.jobRunId),
     index("idx_documents_job_id").on(table.jobId),
     index("idx_documents_workspace_job").on(table.workspaceId, table.jobId),
     index("idx_documents_backfill_scan")
       .on(table.workspaceId, table.publishedAt, table.id)
-      .where(
-        sql`${table.isDuplicate} = false AND ${table.publishedAt} IS NOT NULL`,
-      ),
-    foreignKey({
-      columns: [table.canonicalId],
-      foreignColumns: [table.id],
-    }),
+      .where(sql`${table.publishedAt} IS NOT NULL`),
+    index("idx_documents_engagement").on(
+      table.workspaceId,
+      table.likeCount.desc(),
+    ),
   ],
 );
 
@@ -375,6 +378,11 @@ export const chunks = pgTable(
     embeddingMultimodal: pgVector1024("embedding_multimodal"),
     topicIds: uuid("topic_ids").array().default([]),
     qualityScore: real("quality_score"),
+    /** Denormalized from documents by trg_sync_chunk_engagement — filter/sort without a join. */
+    likeCount: integer("like_count").notNull().default(0),
+    commentCount: integer("comment_count").notNull().default(0),
+    shareCount: integer("share_count").notNull().default(0),
+    viewCount: integer("view_count").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -402,6 +410,7 @@ export const chunks = pgTable(
       table.publishedAt.desc(),
     ),
     index("idx_chunks_quality_score").on(table.qualityScore),
+    index("idx_chunks_like_count").on(table.likeCount.desc()),
   ],
 );
 

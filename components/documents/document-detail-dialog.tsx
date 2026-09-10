@@ -223,9 +223,10 @@ export function DocumentDetailDialog({
               />
             ) : null}
 
-            {document.isDuplicate ? (
-              <DetailField label="Duplicate" value="Yes" />
-            ) : null}
+            <DetailField
+              label="Engagement"
+              value={`${document.likeCount} likes · ${document.commentCount} comments · ${document.shareCount} shares · ${document.viewCount} views`}
+            />
           </div>
         ) : null}
       </DialogContent>

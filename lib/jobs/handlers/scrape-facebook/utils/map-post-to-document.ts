@@ -2,7 +2,6 @@ import type { UpsertDocumentParams } from "@/lib/documents/types";
 
 import type { BrightDataFacebookPost } from "../types";
 import { buildPostMetadata } from "./build-post-metadata";
-import { buildPostRawContent } from "./build-post-raw-content";
 
 type MapPostToDocumentOptions = {
   /**
@@ -18,10 +17,12 @@ type MapPostToDocumentOptions = {
  * Maps a parsed Bright Data Facebook post to upsert params (jobId/jobRunId added by caller).
  *
  * Mapping decisions:
- *   docType   = "post"          — matches chunk_recursive_by_token strategy
- *   sourceKey = caller-supplied — canonical URL of the group or page
- *   sourceId  = post_id         — Bright Data's stable post identifier
- *   sourceName = group_name     — human-readable group / page name
+ *   docType    = "post"          — social content, chunked as an atomic unit
+ *   sourceKey  = caller-supplied — canonical URL of the group or page
+ *   sourceId   = post_id         — Bright Data's stable post identifier
+ *   sourceName = group_name      — human-readable group / page name
+ *   rawContent = post body only  — author, engagement and source context are
+ *                                  columns and metadata, not embedded text
  */
 export function mapPostToDocument({
   sourceKey,
@@ -35,8 +36,14 @@ export function mapPostToDocument({
     sourceName,
     sourceId: post.post_id,
     title: buildPostTitle(post),
-    rawContent: buildPostRawContent(post),
+    rawContent: post.content.trim(),
     metadata: buildPostMetadata(post),
+    engagement: {
+      likeCount: post.likes,
+      commentCount: post.num_comments,
+      shareCount: post.num_shares,
+      viewCount: post.video_view_count,
+    },
     publishedAt: post.date_posted ?? undefined,
   };
 }
