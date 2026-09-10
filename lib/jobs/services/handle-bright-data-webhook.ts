@@ -4,9 +4,13 @@ import { jobRuns, jobs } from "@/db/schema";
 import { parseBrightDataScraperWebhookPayload } from "@/lib/bright-data/utils/parse-scraper-webhook-payload";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
+import { upsertComments } from "@/lib/comments/services/upsert-comments";
+import { BRIGHT_DATA_FACEBOOK_COMMENTS_KIND } from "@/lib/documents/services/update-document-comments";
 import { upsertDocument } from "@/lib/documents/services/upsert-document";
-import { parseFacebookPosts } from "@/lib/jobs/handlers/scrape-facebook/utils/parse-facebook-post";
+import { mapCommentToUpsertItem } from "@/lib/jobs/handlers/scrape-facebook/utils/map-comment-to-upsert-item";
 import { mapPostToDocument } from "@/lib/jobs/handlers/scrape-facebook/utils/map-post-to-document";
+import { parseFacebookComments } from "@/lib/jobs/handlers/scrape-facebook/utils/parse-facebook-comment";
+import { parseFacebookPosts } from "@/lib/jobs/handlers/scrape-facebook/utils/parse-facebook-post";
 
 type HandleBrightDataJobWebhookParams = {
   jobRunId: string;
@@ -18,6 +22,20 @@ type UpsertSummary = {
   updated: number;
   unchanged: number;
 };
+
+function readBrightDataKind(
+  result: Record<string, unknown> | null | undefined,
+): string | null {
+  const value = result?.brightDataKind;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readDocumentId(
+  result: Record<string, unknown> | null | undefined,
+): string | null {
+  const value = result?.documentId;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
 
 async function upsertFacebookPostDocuments(
   output: unknown[],
@@ -62,6 +80,7 @@ export async function handleBrightDataJobWebhook(
       id: jobRuns.id,
       status: jobRuns.status,
       jobId: jobRuns.jobId,
+      result: jobRuns.result,
       workspaceId: jobs.workspaceId,
       jobType: jobs.jobType,
       jobParams: jobs.params,
@@ -96,8 +115,35 @@ export async function handleBrightDataJobWebhook(
   const itemCount = Array.isArray(rawOutput) ? rawOutput.length : null;
 
   let upsertSummary: UpsertSummary | null = null;
+  let commentsSummary: UpsertSummary | null = null;
+  const brightDataKind = readBrightDataKind(run.result);
 
-  if (run.jobType === "scrape-facebook" && Array.isArray(rawOutput)) {
+  if (
+    brightDataKind === BRIGHT_DATA_FACEBOOK_COMMENTS_KIND &&
+    Array.isArray(rawOutput)
+  ) {
+    const documentId = readDocumentId(run.result);
+
+    if (documentId) {
+      const parsedComments = parseFacebookComments(rawOutput);
+
+      if (parsedComments.length > 0) {
+        commentsSummary = await upsertComments({
+          documentId,
+          comments: parsedComments.map(mapCommentToUpsertItem),
+        });
+      } else {
+        commentsSummary = { inserted: 0, updated: 0, unchanged: 0 };
+      }
+
+      console.log("[jobs] facebook-comments upsert complete", {
+        jobRunId: params.jobRunId,
+        documentId,
+        itemCount: parsedComments.length,
+        ...commentsSummary,
+      });
+    }
+  } else if (run.jobType === "scrape-facebook" && Array.isArray(rawOutput)) {
     const facebookUrl =
       typeof run.jobParams?.facebookUrl === "string"
         ? run.jobParams.facebookUrl
@@ -126,6 +172,7 @@ export async function handleBrightDataJobWebhook(
       result: {
         ...(itemCount != null ? { itemCount } : { received: true }),
         ...(upsertSummary && { documents: upsertSummary }),
+        ...(commentsSummary && { comments: commentsSummary }),
       },
       finishedAt: new Date(),
     })

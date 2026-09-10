@@ -11,6 +11,28 @@ export type UpdateDocumentResult = Document;
 export type DeleteDocumentParams = { id: string };
 export type DeleteDocumentResult = { id: string; message: string };
 
+export type RunDocumentActionParams = { id: string };
+
+export type RefreshDocumentFromSourceParams = { id: string };
+
+export type RefreshDocumentFromSourceResult = {
+  documentId: string;
+  jobRunId: string;
+  status: "running";
+  message: string;
+  snapshotId?: string;
+};
+
+export type UpdateDocumentCommentsParams = { id: string };
+
+export type UpdateDocumentCommentsResult = {
+  documentId: string;
+  jobRunId: string;
+  status: "running";
+  message: string;
+  snapshotId?: string;
+};
+
 export type GetDocumentParams = { id: string };
 export type GetDocumentResult = Document & {
   jobId: string | null;

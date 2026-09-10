@@ -6,9 +6,9 @@ import {
 } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useDeferredValue, useMemo, useState } from "react";
 
-import { DocumentDetailDialog } from "@/components/documents/document-detail-dialog";
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
 import { TopicDetailChartSection } from "@/components/topics/topic-detail-chart-section";
 import { TopicDetailDocuments } from "@/components/topics/topic-detail-documents";
@@ -29,6 +29,7 @@ import type {
   TopicDetailChartMetric,
   TopicDetailChartPeriodPreset,
 } from "@/lib/topics/topic-detail-chart-config";
+import { getDocumentHref } from "@/lib/documents/document-config";
 import { getTopicHref } from "@/lib/topics/topic-config";
 import type {
   GetTopicChartResult,
@@ -157,11 +158,10 @@ export function TopicDetailPage({
   const [metric, setMetric] = useState<TopicDetailChartMetric>("doc_count");
   const [customStartDate, setCustomStartDate] = useState<string>();
   const [customEndDate, setCustomEndDate] = useState<string>();
+  const router = useRouter();
   const [jobIds, setJobIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
-  const [detailDocumentId, setDetailDocumentId] = useState<string | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
 
   const chartFilters = useMemo<TopicChartQueryFilters>(
     () => ({
@@ -235,8 +235,7 @@ export function TopicDetailPage({
   const jobs = jobsQuery.data?.items ?? [];
 
   function openDocument(documentId: string) {
-    setDetailDocumentId(documentId);
-    setDetailOpen(true);
+    router.push(getDocumentHref(workspaceIndex, documentId));
   }
 
   if (topicQuery.isLoading) {
@@ -266,8 +265,7 @@ export function TopicDetailPage({
   }
 
   return (
-    <>
-      <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-8 md:px-8">
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-8 md:px-8">
         <div className="space-y-4">
           <Button
             nativeButton={false}
@@ -344,15 +342,6 @@ export function TopicDetailPage({
           }}
           onDocumentClick={openDocument}
         />
-      </div>
-
-      <DocumentDetailDialog
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        workspaceId={workspace.id}
-        workspaceIndex={workspaceIndex}
-        documentId={detailDocumentId}
-      />
-    </>
+    </div>
   );
 }

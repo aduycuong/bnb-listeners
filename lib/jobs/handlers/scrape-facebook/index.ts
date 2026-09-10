@@ -5,6 +5,7 @@ import { getBrightDataWebhookAuthorization } from "@/lib/bright-data/utils/get-w
 import { getBrightDataWebhookUrl } from "@/lib/bright-data/utils/get-webhook-url";
 
 import type { JobHandlerContext } from "../types";
+import { isFacebookGroupUrl } from "./utils/is-facebook-group-url";
 
 export type { BrightDataFacebookPost, FacebookPostMetadata } from "./types";
 
@@ -16,20 +17,6 @@ function isFacebookUrl(rawUrl: string): boolean {
   try {
     const hostname = new URL(rawUrl).hostname.toLowerCase();
     return hostname === "facebook.com" || hostname.endsWith(".facebook.com");
-  } catch {
-    return false;
-  }
-}
-
-function isFacebookGroupUrl(rawUrl: string): boolean {
-  try {
-    const url = new URL(rawUrl);
-    const host = url.hostname.toLowerCase();
-
-    if (!host.includes("facebook.com")) return false;
-
-    const path = url.pathname.toLowerCase();
-    return path === "/groups" || path.startsWith("/groups/");
   } catch {
     return false;
   }

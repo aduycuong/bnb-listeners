@@ -2,6 +2,7 @@
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ChevronDownIcon, SearchIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -9,7 +10,6 @@ import {
   type ResourceListRowItem,
 } from "@/components/dashboard/resource-list-page";
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
-import { DocumentDetailDialog } from "@/components/documents/document-detail-dialog";
 import { DocumentJobSourceFilter } from "@/components/documents/document-job-source-filter";
 import {
   documentsQueryKey,
@@ -33,6 +33,7 @@ import {
 } from "@/lib/dashboard/filter-sort-list-items";
 import {
   DOCUMENT_CONFIG,
+  getDocumentHref,
   getEmbeddingStatusBadge,
 } from "@/lib/documents/document-config";
 import { DOCUMENT_LIST_PAGE_SIZE } from "@/lib/documents/document-list-config";
@@ -119,13 +120,12 @@ export function DocumentListPage({
   workspace,
   workspaceIndex,
 }: DocumentListPageProps) {
+  const router = useRouter();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const [jobIds, setJobIds] = useState<string[]>([]);
   const [keyword, setKeyword] = useState("");
   const [sort, setSort] = useState<ListSortOption>("date-desc");
-  const [detailDocumentId, setDetailDocumentId] = useState<string | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
 
   const filters = useMemo<DocumentsQueryFilters>(
     () => ({ jobIds }),
@@ -195,13 +195,11 @@ export function DocumentListPage({
   ]);
 
   function handleItemClick(item: ResourceListRowItem) {
-    setDetailDocumentId(item.id);
-    setDetailOpen(true);
+    router.push(getDocumentHref(workspaceIndex, item.id));
   }
 
   return (
-    <>
-      <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-8">
+    <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-8">
         <div className="mb-6 space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">
             {DOCUMENT_CONFIG.listTitle}
@@ -313,15 +311,6 @@ export function DocumentListPage({
             <div ref={loadMoreRef} className="h-8" aria-hidden />
           </>
         )}
-      </div>
-
-      <DocumentDetailDialog
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        workspaceId={workspace.id}
-        workspaceIndex={workspaceIndex}
-        documentId={detailDocumentId}
-      />
-    </>
+    </div>
   );
 }
