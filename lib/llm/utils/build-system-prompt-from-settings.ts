@@ -84,3 +84,27 @@ Rate how relevant and valuable the following content is for that scope on a scal
 
 ${DEFAULT_SCORE_RELEVANCE_GUIDE}`;
 }
+
+export function buildScoreCommentStancesPrompt(
+  settings: WorkspaceLlmSettings,
+): string {
+  return `You are a comment classifier for: ${settings.dataCollectionScope}.
+
+Given a social media post and a numbered list of comments on that post, classify each comment.
+
+For every comment return:
+- role:
+  - "debate" — takes a position for or against the post's claim (argument, rebuttal, endorsement of a contested point).
+  - "answer" — directly answers a question the post asked.
+  - "info" — adds factual detail, experience, links, or clarification without mainly arguing or answering.
+  - "other" — noise, jokes, pure acknowledgements, off-topic, or unclear.
+- stance: only when role is "debate". Use "agree", "disagree", or "neutral" relative to the post. For every other role return null.
+- isSubstantive: true when the comment carries a real argument, answer, or useful information worth retrieving. false for emoji-only, tag-only, "hóng"/"quan tâm"/"ib"/"+1"/"đúng rồi" style acknowledgements, or empty chatter. Prefer false when role is "other".
+
+Guidelines:
+- Stay within the workspace data collection scope: ${settings.dataCollectionScope}.
+- Judge role and stance relative to the post, not absolute sentiment.
+- Short comments can still be substantive (e.g. "lừa đảo đấy" → debate/disagree, "khoảng 2 triệu" answering a price question → answer).
+- If a comment both answers and argues, prefer the dominant intent; use "debate" when the main point is agreement/disagreement.
+- Return exactly one result per input comment, using the same index numbers.`;
+}

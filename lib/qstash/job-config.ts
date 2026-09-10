@@ -1,4 +1,6 @@
 import { processDocument } from "@/lib/documents/services/process-document";
+import { scoreDocumentComments } from "@/lib/comments/services/score-document-comments";
+import { SCORE_DOCUMENT_COMMENTS_JOB_NAME } from "@/lib/comments/config";
 import { runScheduledJob } from "@/lib/jobs/services/run-scheduled-job";
 import { processTopicBackfillBatch } from "@/lib/topic-backfill/services/process-topic-backfill-batch";
 import { bulkDrainTopicDigests } from "@/lib/topic-digests/services/bulk-drain-topic-digests";
@@ -33,6 +35,14 @@ export const qstashJobHandlers: Record<string, QstashJobHandler> = {
    * Payload: { documentId: string }
    */
   "process-document": processDocument,
+
+  /**
+   * Triggered after comments are upserted onto a parent post.
+   * Noise-filters, batch-scores stance with the LLM, updates debate tallies,
+   * and syncs the companion discussion document for retrieval.
+   * Payload: { documentId: string }
+   */
+  [SCORE_DOCUMENT_COMMENTS_JOB_NAME]: scoreDocumentComments,
 
   /**
    * Fired by QStash on a workspace job's cron schedule.

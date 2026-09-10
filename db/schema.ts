@@ -298,6 +298,20 @@ export const documents = pgTable(
     commentCount: integer("comment_count").notNull().default(0),
     shareCount: integer("share_count").notNull().default(0),
     viewCount: integer("view_count").notNull().default(0),
+    /**
+     * Comment-signal tallies from the `comments` table. Updated by
+     * score-document-comments after batch LLM scoring — never triggers a re-embed.
+     *
+     * Role tallies count every scored comment. Stance tallies only count
+     * comments with role = `debate`. A post is "debated" when both
+     * agree_count and disagree_count are > 0.
+     */
+    debateCount: integer("debate_count").notNull().default(0),
+    answerCount: integer("answer_count").notNull().default(0),
+    infoCount: integer("info_count").notNull().default(0),
+    agreeCount: integer("agree_count").notNull().default(0),
+    disagreeCount: integer("disagree_count").notNull().default(0),
+    neutralCount: integer("neutral_count").notNull().default(0),
     jobRunId: uuid("job_run_id").references(() => jobRuns.id, {
       onDelete: "set null",
     }),
@@ -343,11 +357,88 @@ export const documents = pgTable(
       table.workspaceId,
       table.likeCount.desc(),
     ),
+    index("idx_documents_debate").on(
+      table.workspaceId,
+      table.disagreeCount.desc(),
+      table.agreeCount.desc(),
+    ),
   ],
 );
 
 export type Document = typeof documents.$inferSelect;
 export type NewDocument = typeof documents.$inferInsert;
+
+/**
+ * Social-media comments on a parent post (`documents` with doc_type = post).
+ *
+ * Kept out of the document pipeline on purpose: short comments must not run
+ * through per-row score / classify / embed. Stance is scored in batches by
+ * score-document-comments; substantive comments are later rolled into a
+ * companion `discussion` document for retrieval.
+ */
+export const comments = pgTable(
+  "comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    /** Platform comment id — unique per parent document. */
+    sourceId: text("source_id").notNull(),
+    authorName: text("author_name"),
+    authorId: text("author_id"),
+    content: text("content").notNull(),
+    likeCount: integer("like_count").notNull().default(0),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    /**
+     * Communicative role of the comment. Null until scored.
+     * Values: `debate` | `answer` | `info` | `other`.
+     */
+    role: text("role"),
+    /**
+     * Relative to the parent post. Only meaningful when role = `debate`;
+     * null for other roles and until scored.
+     * Values: `agree` | `disagree` | `neutral`.
+     */
+    stance: text("stance"),
+    /**
+     * True when the comment carries content worth retrieving (argument,
+     * answer, or useful information). False for noise. Null until scored.
+     */
+    isSubstantive: boolean("is_substantive"),
+    scoredAt: timestamp("scored_at", { withTimezone: true }),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("idx_comments_document_source").on(
+      table.documentId,
+      table.sourceId,
+    ),
+    index("idx_comments_workspace_id").on(table.workspaceId),
+    index("idx_comments_document_id").on(table.documentId),
+    index("idx_comments_role").on(table.documentId, table.role),
+    index("idx_comments_stance").on(table.documentId, table.stance),
+    index("idx_comments_unscored")
+      .on(table.documentId)
+      .where(sql`${table.scoredAt} IS NULL`),
+  ],
+);
+
+export type Comment = typeof comments.$inferSelect;
+export type NewComment = typeof comments.$inferInsert;
 
 export const chunks = pgTable(
   "chunks",

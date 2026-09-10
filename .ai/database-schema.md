@@ -50,6 +50,30 @@ Used by `documents.embedding_status`.
 | `skipped` | Reserved — not currently written by the pipeline |
 | `failed` | Processing error |
 
+### `comment_role`
+
+Used by `comments.role`. Communicative role relative to the parent post.
+
+| Value | Description |
+| ----- | ----------- |
+| `debate` | Takes a position for/against the post |
+| `answer` | Directly answers a question the post asked |
+| `info` | Adds facts, experience, or clarification |
+| `other` | Noise, jokes, acknowledgements, off-topic |
+
+Null until the comment has been scored.
+
+### `comment_stance`
+
+Used by `comments.stance`. Only meaningful when `role = debate`.
+
+| Value | Description |
+| ----- | ----------- |
+| `agree` | Supports the post's claim or position |
+| `disagree` | Opposes or challenges the post |
+| `neutral` | Debate-adjacent but neither agree nor disagree |
+
+Null until scored, and always null when `role` is not `debate`.
 ### `workspace_task_type`
 
 Used by `workspace_task_runs.task_type`.
@@ -191,11 +215,12 @@ Dedup is scoped per workspace: unique `(workspace_id, doc_type, source_key, sour
 | ----- | ----------- |
 | `news` | News articles and press releases |
 | `post` | Social media posts, forum threads, blog entries |
+| `discussion` | Companion document rolling up substantive comments on a post — same `source_key`/`source_id` as the parent, different `doc_type` |
 | `review` | User or editorial reviews |
 | `legal` | Legal documents, terms, contracts, regulations |
-| `comment` | Comments or replies on other content |
 | `guide` | How-to guides, tutorials, FAQs |
 
+Individual social comments are **not** stored as documents. They live in the `comments` table and only the substantive ones are rolled into a `discussion` document for retrieval.
 **`source_key` conventions:**
 
 - News/blog outlet slug: `vnexpress`, `reuters`, `techcrunch`
@@ -228,6 +253,12 @@ One row per ingested item within a workspace. Topic assignment is in `document_t
 | comment_count | integer | NO | `0` | Comments / replies |
 | share_count | integer | NO | `0` | Shares / retweets / reposts |
 | view_count | integer | NO | `0` | Views / plays / impressions |
+| debate_count | integer | NO | `0` | Scored comments with role = debate |
+| answer_count | integer | NO | `0` | Scored comments with role = answer |
+| info_count | integer | NO | `0` | Scored comments with role = info |
+| agree_count | integer | NO | `0` | Debate comments with stance = agree |
+| disagree_count | integer | NO | `0` | Debate comments with stance = disagree |
+| neutral_count | integer | NO | `0` | Debate comments with stance = neutral |
 | job_run_id | uuid | YES | — | FK → `job_runs.id` ON DELETE SET NULL — job run that first created this document |
 | job_id | uuid | NO | — | FK → `jobs.id` ON DELETE CASCADE — scrape job that owns this document; set on insert only |
 | published_at | timestamptz | YES | — | Source publish date; used for freshness scoring and canonical ordering |
@@ -252,8 +283,11 @@ One row per ingested item within a workspace. Topic assignment is in `document_t
 | `idx_documents_job_id` | `(job_id)` | Documents by owning job |
 | `idx_documents_workspace_job` | `(workspace_id, job_id)` | Filter/list documents by job |
 | `idx_documents_engagement` | `(workspace_id, like_count DESC)` | Rank a workspace's posts by popularity |
+| `idx_documents_debate` | `(workspace_id, disagree_count DESC, agree_count DESC)` | Rank posts by debate intensity |
 
 Engagement counters are platform-neutral and refreshed on every upsert, including the "unchanged" path where the body did not change — updating them never triggers a re-embed. Platform-specific counters (Facebook reaction breakdowns, TikTok collects, X bookmarks, Instagram saves) stay in `metadata`.
+
+Debate and role tallies are written by `score-document-comments` after batch scoring. Stance tallies (`agree_count` / `disagree_count` / `neutral_count`) only count comments with `role = debate`. A post is "debated" when both `agree_count` and `disagree_count` are greater than zero. Updating these counters never triggers a re-embed.
 
 `job_run_id` and `job_id` are set only when a scrape job first inserts the document; later upserts do not overwrite them. Deleting a job cascades to its documents (and chunks).
 
@@ -261,6 +295,50 @@ Engagement counters are platform-neutral and refreshed on every upsert, includin
 
 - → `job_runs.id` (`job_run_id`)
 - → `jobs.id` (`job_id`)
+- ← `comments.document_id`
+
+---
+
+### `comments`
+
+Individual social-media comments on a parent post. Kept out of the document pipeline on purpose — short comments must not run through per-row score / classify / embed.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
+| document_id | uuid | NO | — | FK → `documents.id` ON DELETE CASCADE — parent post |
+| source_id | text | NO | — | Platform comment id |
+| author_name | text | YES | — | Display name |
+| author_id | text | YES | — | Platform author id |
+| content | text | NO | — | Comment body |
+| like_count | integer | NO | `0` | Likes on the comment |
+| published_at | timestamptz | YES | — | When the comment was posted |
+| role | text | YES | — | `debate` \| `answer` \| `info` \| `other`; null until scored |
+| stance | text | YES | — | `agree` \| `disagree` \| `neutral`; only when role = debate |
+| is_substantive | boolean | YES | — | True when worth retrieving; null until scored |
+| scored_at | timestamptz | YES | — | When role/stance were last written |
+| metadata | jsonb | NO | `{}` | Platform-specific extras |
+| created_at | timestamptz | NO | `now()` | Ingestion time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| `idx_comments_document_source` | UNIQUE `(document_id, source_id)` | Dedup per parent post |
+| `idx_comments_workspace_id` | `(workspace_id)` | Workspace scope |
+| `idx_comments_document_id` | `(document_id)` | List comments for a post |
+| `idx_comments_role` | `(document_id, role)` | Role tallies / filters |
+| `idx_comments_stance` | `(document_id, stance)` | Debate tallies / filters |
+| `idx_comments_unscored` | `(document_id)` WHERE `scored_at IS NULL` | Scoring queue |
+
+**Pipeline:** `upsertComments` → QStash `score-document-comments` → rule-based noise filter → LLM batch role+stance scoring (`gpt-4.1-mini`) → update role/stance tallies on the parent → sync companion `discussion` document from substantive comments.
+
+**Relations**
+
+- → `workspaces.id` (`workspace_id`)
+- → `documents.id` (`document_id`)
 
 ---
 

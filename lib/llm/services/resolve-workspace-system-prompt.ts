@@ -2,6 +2,7 @@ import type { LlmPromptKey } from "../constants";
 import {
   buildClassifyTopicsPrompt,
   buildProposeTopicPrompt,
+  buildScoreCommentStancesPrompt,
   buildScoreRelevancePrompt,
 } from "../utils/build-system-prompt-from-settings";
 import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace-llm-settings";
@@ -19,5 +20,7 @@ export async function resolveWorkspaceSystemPrompt(
       return buildProposeTopicPrompt(settings);
     case "score_relevance":
       return buildScoreRelevancePrompt(settings);
+    case "score_comment_stances":
+      return buildScoreCommentStancesPrompt(settings);
   }
 }

@@ -1,13 +1,8 @@
 // Rebuild every document's chunks with the social-chunks pipeline.
 //
-// Re-chunks and re-embeds each eligible document, then sweeps away any chunk
-// still carrying an old strategy tag. Chunks are built straight from
-// raw_content, so run scripts/migrate-document-engagement.ts first on a
-// database that still holds the legacy engagement footer — this script refuses
-// to start otherwise.
-//
-// Existing documents predate media URL capture, so they rebuild as text-only
-// chunks. Media chunks appear once those sources are scraped again.
+// Run this after changing how chunks are built — splitting rules, context
+// prefix, embedding model. It re-chunks and re-embeds every eligible document,
+// then sweeps away chunks left behind by a superseded strategy.
 //
 // Example:
 //   npx tsx scripts/rebuild-chunks.ts --dry-run
@@ -22,7 +17,6 @@ import { QUALITY_SCORE_THRESHOLD } from "@/lib/chunking/config";
 import { rebuildDocumentChunks } from "@/lib/chunking/services/rebuild-document-chunks";
 import { SOCIAL_CONTENT_STRATEGY } from "@/lib/chunking/utils/social-chunks/config";
 import { db } from "@/lib/db";
-import { LEGACY_ENGAGEMENT_TAIL_MARKER } from "@/lib/documents/utils/strip-engagement-tail";
 
 const SCRIPT = "rebuild-chunks";
 
@@ -55,8 +49,7 @@ function parseArgs(): Options {
 Usage: npx tsx scripts/rebuild-chunks.ts [options]
 
 Deletes every existing chunk and rebuilds it with the social-chunks pipeline.
-Also backfills engagement columns and strips the legacy engagement footer from
-raw_content so the next scrape does not see the content as changed.
+Documents below the quality threshold are skipped.
 
 Options:
   --dry-run   Report what would change without writing (default when neither flag given)
@@ -99,7 +92,11 @@ Examples:
 // Steps
 // ---------------------------------------------------------------------------
 
-/** Removes chunks left behind by documents that are no longer eligible. */
+/**
+ * Removes chunks the rebuild loop could not overwrite — anything tagged with a
+ * strategy other than the current one, plus chunks whose document has since
+ * dropped below the quality threshold and is no longer rebuilt.
+ */
 async function sweepStaleChunks(): Promise<number> {
   const result = await db.execute(sql`
     DELETE FROM chunks
@@ -118,18 +115,14 @@ type Scope = {
   eligibleDocuments: number;
   existingChunks: number;
   contentCharacters: number;
-  legacyTailDocuments: number;
 };
 
 async function loadScope(): Promise<Scope> {
-  const legacyTailPattern = `%${LEGACY_ENGAGEMENT_TAIL_MARKER}%`;
-
   const rows = await db.execute<{
     total_documents: number;
     eligible_documents: number;
     existing_chunks: number;
     content_characters: number;
-    legacy_tail_documents: number;
   }>(sql`
     SELECT
       (SELECT count(*)::int FROM documents) AS total_documents,
@@ -137,9 +130,7 @@ async function loadScope(): Promise<Scope> {
         WHERE quality_score >= ${QUALITY_SCORE_THRESHOLD}) AS eligible_documents,
       (SELECT count(*)::int FROM chunks) AS existing_chunks,
       (SELECT COALESCE(sum(length(raw_content)), 0)::int FROM documents
-        WHERE quality_score >= ${QUALITY_SCORE_THRESHOLD}) AS content_characters,
-      (SELECT count(*)::int FROM documents
-        WHERE raw_content LIKE ${legacyTailPattern}) AS legacy_tail_documents
+        WHERE quality_score >= ${QUALITY_SCORE_THRESHOLD}) AS content_characters
   `);
 
   const row = rows.rows[0];
@@ -149,7 +140,6 @@ async function loadScope(): Promise<Scope> {
     eligibleDocuments: Number(row?.eligible_documents ?? 0),
     existingChunks: Number(row?.existing_chunks ?? 0),
     contentCharacters: Number(row?.content_characters ?? 0),
-    legacyTailDocuments: Number(row?.legacy_tail_documents ?? 0),
   };
 }
 
@@ -188,17 +178,6 @@ async function main() {
     existingChunksToReplace: scope.existingChunks,
     estimatedEmbeddingCostUsd: estimateCostUsd(scope.contentCharacters).toFixed(4),
   });
-
-  // Chunking embeds raw_content verbatim, so a leftover footer would be baked
-  // into the vectors and paid for. Stop rather than produce a bad index.
-  if (scope.legacyTailDocuments > 0) {
-    console.error(
-      `[${SCRIPT}] ${scope.legacyTailDocuments} document(s) still carry the legacy ` +
-        `engagement footer in raw_content. Run this first:\n` +
-        `  npm run documents:migrate-engagement -- --yes`,
-    );
-    process.exit(1);
-  }
 
   if (options.dryRun) {
     console.log(
