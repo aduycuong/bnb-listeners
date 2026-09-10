@@ -3,7 +3,9 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { DISCUSSION_DOC_TYPE } from "@/lib/comments/config";
 import { RETRIEVAL_RETURN_LIMIT } from "@/lib/retrieval/config";
+import { getDocumentComments } from "@/lib/retrieval/services/get-document-comments";
 import { searchChunks } from "@/lib/retrieval/services/search-chunks";
 import {
   formatRetrievalContext,
@@ -62,15 +64,68 @@ function buildSearchMcpServer(workspaceId: string): McpServer {
       const sourcesText = sources
         .map(
           (s) =>
-            `[${s.index}] ${s.title} (${s.docType})${s.publishedAt ? ` · ${new Date(s.publishedAt).toLocaleDateString()}` : ""}`,
+            `[${s.index}] ${s.title} (${s.docType})${s.publishedAt ? ` · ${new Date(s.publishedAt).toLocaleDateString()}` : ""}${s.docType !== DISCUSSION_DOC_TYPE && s.commentCount > 0 ? ` · ${s.commentCount} comments` : ""} · doc:${s.documentId}`,
         )
         .join("\n");
+
+
 
       return {
         content: [
           {
             type: "text" as const,
             text: `Found ${chunks.length} relevant result(s):\n\n${context}\n\n---\nSources:\n${sourcesText}`,
+          },
+        ],
+      };
+    },
+  );
+
+  mcp.registerTool(
+    "get_document_comments",
+    {
+      description:
+        "Retrieve the community discussion (comments and replies) for a specific document. " +
+        "Call this tool when search results show a document has comments (e.g. '12 comments') " +
+        "and you need to know what users said, asked, debated, or answered about that document. " +
+        "Use the document ID shown after 'doc:' in the search results. " +
+        "Returns the full discussion text with each comment's author, date, role (answer/debate/info), " +
+        "and stance (agree/disagree/neutral for debates).",
+      inputSchema: {
+        documentId: z
+          .string()
+          .uuid()
+          .describe("The document ID shown after 'doc:' in search results"),
+      },
+    },
+    async ({ documentId }) => {
+      const result = await getDocumentComments(documentId)
+      if (!result.found) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: "No discussion found for this document. There are no substantive comments yet.",
+            },
+          ],
+        };
+      }
+
+      const header = [
+        result.title ?? "Discussion",
+        `${result.commentCount} comments`,
+        result.publishedAt
+          ? new Date(result.publishedAt).toLocaleDateString("en-US", { dateStyle: "medium" })
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `${header}\n\n${result.content}`,
           },
         ],
       };

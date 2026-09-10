@@ -25,6 +25,7 @@ type ChunkRow = {
   source_name: string;
   published_at: Date | null;
   rrf_score: number;
+  comment_count: number;
 };
 
 /**
@@ -90,6 +91,7 @@ export async function searchChunks(params: SearchChunksParams): Promise<Retrieve
       c.chunk_index,
       c.quality_score,
       c.topic_ids,
+      c.comment_count,
       d.id         AS document_id,
       d.title,
       d.doc_type,
@@ -114,5 +116,6 @@ export async function searchChunks(params: SearchChunksParams): Promise<Retrieve
     sourceName: row.source_name,
     publishedAt: row.published_at ? new Date(row.published_at).toISOString() : null,
     rrfScore: Number(row.rrf_score),
+    commentCount: Number(row.comment_count),
   }));
 }

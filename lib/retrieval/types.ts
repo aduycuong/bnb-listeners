@@ -9,6 +9,7 @@ export type RetrievedChunk = {
   sourceName: string;
   publishedAt: string | null;
   rrfScore: number;
+  commentCount: number;
 };
 
 export type SearchChunksParams = {

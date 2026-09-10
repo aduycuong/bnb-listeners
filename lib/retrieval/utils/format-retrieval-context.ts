@@ -1,3 +1,5 @@
+import { DISCUSSION_DOC_TYPE } from "@/lib/comments/config";
+
 import type { RetrievedChunk } from "../types";
 
 /**
@@ -18,6 +20,12 @@ export function formatRetrievalContext(chunks: RetrievedChunk[]): string {
         parts.push(new Date(chunk.publishedAt).toLocaleDateString("en-US", { dateStyle: "medium" }));
       }
 
+      if (chunk.docType !== DISCUSSION_DOC_TYPE && chunk.commentCount > 0) {
+        parts.push(`${chunk.commentCount} comments`);
+      }
+
+      parts.push(`doc:${chunk.documentId}`);
+
       const meta = parts.join(" · ");
       return `[${i + 1}] ${meta}\n${chunk.content}`;
     })
@@ -30,6 +38,7 @@ export type SourceItem = {
   title: string;
   docType: string;
   publishedAt: string | null;
+  commentCount: number;
 };
 
 /**
@@ -50,6 +59,7 @@ export function formatSources(chunks: RetrievedChunk[]): SourceItem[] {
       title: chunk.title ?? chunk.sourceName,
       docType: chunk.docType,
       publishedAt: chunk.publishedAt,
+      commentCount: chunk.commentCount,
     });
   }
 
