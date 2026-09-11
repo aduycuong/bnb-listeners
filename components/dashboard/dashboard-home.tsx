@@ -15,7 +15,7 @@ export function DashboardHome() {
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted-foreground">
             <li>Collect — ingest pages, blogs, news, and social posts</li>
             <li>Score — rate quality and filter noisy content</li>
-            <li>Classify — assign topics or auto-create new ones</li>
+            <li>Classify — assign terms or auto-create new ones</li>
             <li>Serve — vector and full-text retrieval for AI agents</li>
           </ol>
         </div>

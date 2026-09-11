@@ -33,7 +33,7 @@ export async function createChunkRecords(
     docType,
     publishedAt,
     chunks,
-    topicIds = [],
+    termIds = [],
     qualityScore = null,
     engagement = ZERO_ENGAGEMENT_COUNTS,
   } = params;
@@ -69,7 +69,7 @@ export async function createChunkRecords(
           }
         : null,
       embeddingMultimodal: multimodal,
-      topicIds,
+      termIds,
       qualityScore,
       ...engagement,
     };

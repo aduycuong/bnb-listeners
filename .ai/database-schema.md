@@ -2,7 +2,7 @@
 
 Source: `db/schema.ts` (Drizzle ORM). Migrations are generated into `drizzle/`.
 
-Neon Postgres with `vector` and `pg_trgm` extensions. Multi-tenant: documents and topics are scoped by `workspace_id`. Firebase Auth identifies users; workspace membership controls API and MCP access.
+Neon Postgres with `vector` and `pg_trgm` extensions. Multi-tenant: documents and terms are scoped by `workspace_id`. Firebase Auth identifies users; workspace membership controls API and MCP access.
 
 ---
 
@@ -29,9 +29,9 @@ Used by `workspace_members.permission`.
 | `edit` | Can modify workspace resources |
 | `owner` | Full control |
 
-### `topic_language`
+### `term_language`
 
-Used by `workspaces.topic_language`. Language for AI-generated topic names and descriptions when auto-create topics is enabled.
+Used by `workspaces.term_language`. Language for AI-generated term names and descriptions when auto-create terms is enabled.
 
 | Value | Description |
 | ----- | ----------- |
@@ -59,7 +59,7 @@ Used by `comments.role`. Communicative role relative to the parent post.
 | `debate` | Takes a position for/against the post |
 | `answer` | Directly answers a question the post asked |
 | `info` | Adds facts, experience, or clarification |
-| `other` | Noise, jokes, acknowledgements, off-topic |
+| `other` | Noise, jokes, acknowledgements, off-term |
 
 Null until the comment has been scored.
 
@@ -80,10 +80,10 @@ Used by `workspace_task_runs.task_type`.
 
 | Value | Description |
 | ----- | ----------- |
-| `reclassify_documents` | Re-run topic classification on selected documents |
+| `reclassify_documents` | Re-run term classification on selected documents |
 | `reprocess_documents` | Re-run full process-document pipeline (score, classify, embed) |
 | `re_embed_documents` | Re-chunk and re-embed documents |
-| `bulk_merge_topics` | Merge topics and invalidate affected digests |
+| `bulk_merge_terms` | Merge terms and invalidate affected digests |
 
 ### `workspace_task_status`
 
@@ -139,7 +139,7 @@ App user identity, linked to Firebase Auth.
 
 ### `workspaces`
 
-Tenant container for documents, topics, and members.
+Tenant container for documents, terms, and members.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -148,9 +148,9 @@ Tenant container for documents, topics, and members.
 | slug | text | YES | — | URL-safe identifier |
 | owner_user_id | uuid | NO | — | Owning user (`users.id`) |
 | data_collection_scope | text | NO | `tin tức và dữ liệu về bất động sản` | Domain for relevance scoring and LLM prompts |
-| auto_create_topics | boolean | NO | `true` | When true, AI may propose new topics for unmatched documents |
-| topic_language | text | NO | `auto` | Language for generated topic names/descriptions (`topic_language` enum) |
-| topic_criteria | text | NO | `''` | Optional multiline guidelines for new topic proposals |
+| auto_create_terms | boolean | NO | `true` | When true, AI may propose new terms for unmatched documents |
+| term_language | text | NO | `auto` | Language for generated term names/descriptions (`term_language` enum) |
+| term_criteria | text | NO | `''` | Optional multiline guidelines for new term proposals |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Last update time |
 
@@ -163,12 +163,12 @@ Tenant container for documents, topics, and members.
 
 - ← `workspace_members.workspace_id`
 - ← `documents.workspace_id`
-- ← `topics.workspace_id`
+- ← `terms.workspace_id`
 - ← `jobs.workspace_id`
 - ← `workspace_task_runs.workspace_id`
 - ← `workspace_api_keys.workspace_id`
 
-LLM system prompts (`classify_topics`, `propose_topic`, `score_relevance`) are built in code from the columns above via `lib/llm/utils/build-system-prompt-from-settings.ts`.
+LLM system prompts (`classify_terms`, `propose_term`, `score_relevance`) are built in code from the columns above via `lib/llm/utils/build-system-prompt-from-settings.ts`.
 
 A default workspace is created for each user on first sign-in.
 
@@ -234,7 +234,7 @@ Individual social comments are **not** stored as documents. They live in the `co
 
 ### `documents`
 
-One row per ingested item within a workspace. Topic assignment is in `document_topics`.
+One row per ingested item within a workspace. Term assignment is in `document_terms`.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -274,7 +274,7 @@ One row per ingested item within a workspace. Topic assignment is in `document_t
 | `idx_documents_doc_type` | `(doc_type)` | Filter by content type |
 | `idx_documents_source_key` | `(doc_type, source_key)` | List items from one source |
 | `idx_documents_published_at` | `(published_at DESC)` | Sort/filter by publish date |
-| `idx_documents_backfill_scan` | `(workspace_id, published_at, id)` WHERE `published_at IS NOT NULL` | Keyset scan for topic backfill |
+| `idx_documents_backfill_scan` | `(workspace_id, published_at, id)` WHERE `published_at IS NOT NULL` | Keyset scan for term backfill |
 | `idx_documents_created_at` | `(created_at DESC)` | Recent-first by ingestion |
 | `idx_documents_metadata` | GIN `metadata jsonb_path_ops` | Filter by metadata |
 | `idx_documents_status` | `(embedding_status)` WHERE `<> 'chunked'` | Embedding job queue |
@@ -344,7 +344,7 @@ Individual social-media comments on a parent post. Kept out of the document pipe
 
 ### `chunks`
 
-RAG query table. One row per retrievable unit: a text chunk, or a single image or video from the source post. `topic_ids` and the engagement counters are denormalized from other tables (see triggers below).
+RAG query table. One row per retrievable unit: a text chunk, or a single image or video from the source post. `term_ids` and the engagement counters are denormalized from other tables (see triggers below).
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -363,7 +363,7 @@ RAG query table. One row per retrievable unit: a text chunk, or a single image o
 | media_url | text | YES | — | Image or video URL for media chunks |
 | media_metadata | jsonb | YES | — | Media descriptor (`kind`, `url`, `index`, `count`, embedding model) |
 | embedding_multimodal | vector(1024) | YES | — | voyage-multimodal-3.5; media chunks only |
-| topic_ids | uuid[] | YES | `{}` | Denormalized topic ids for fast filtering |
+| term_ids | uuid[] | YES | `{}` | Denormalized term ids for fast filtering |
 | quality_score | real | YES | — | Denormalized from `documents.quality_score` |
 | like_count | integer | NO | `0` | Denormalized from `documents.like_count` |
 | comment_count | integer | NO | `0` | Denormalized from `documents.comment_count` |
@@ -375,7 +375,7 @@ RAG query table. One row per retrievable unit: a text chunk, or a single image o
 
 - HNSW on `embedding` (`vector_cosine_ops`, m=16, ef_construction=64)
 - Partial HNSW on `embedding_multimodal` WHERE NOT NULL
-- GIN on `content_tsv`, `topic_ids`, `metadata`
+- GIN on `content_tsv`, `term_ids`, `metadata`
 - B-tree on `doc_type`, `content_type`, `published_at`, `document_id`, `quality_score`, `like_count DESC`
 - `(doc_type, published_at DESC)` for type + recency queries
 
@@ -387,19 +387,19 @@ Workspace scope is inherited via `document_id` → `documents.workspace_id`.
 
 ---
 
-### `topics`
+### `terms`
 
-Workspace-scoped subject taxonomy. The LLM classifier can auto-create topics when no existing topic matches a document.
+Workspace-scoped subject taxonomy. The LLM classifier can auto-create terms when no existing term matches a document.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
 | name | text | NO | — | Display name, unique per workspace |
-| description | text | YES | — | Topic description |
+| description | text | YES | — | Term description |
 | created_by | text | NO | `admin` | `admin` or `llm_classifier` |
 | source_document_id | uuid | YES | — | FK → `documents.id` ON DELETE SET NULL — document that triggered auto-creation |
-| listening_started_at | timestamptz | NO | `now()` | Earliest date the topic listens for documents; updated when a backfill completes |
+| listening_started_at | timestamptz | NO | `now()` | Earliest date the term listens for documents; updated when a backfill completes |
 | active_backfill_run_id | uuid | YES | — | Points to the in-flight backfill run (application-managed; no FK) |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
@@ -408,48 +408,48 @@ Workspace-scoped subject taxonomy. The LLM classifier can auto-create topics whe
 
 | Index | Columns | Purpose |
 | ----- | ------- | ------- |
-| `idx_topics_workspace_name` | UNIQUE `(workspace_id, name)` | Name unique within workspace |
-| `idx_topics_workspace_id` | `(workspace_id)` | List topics in a workspace |
-| `idx_topics_source_document` | `(source_document_id)` | Trace auto-created topics |
-| `idx_topics_active_backfill_run` | `(active_backfill_run_id)` | Resolve active backfill from topic |
+| `idx_terms_workspace_name` | UNIQUE `(workspace_id, name)` | Name unique within workspace |
+| `idx_terms_workspace_id` | `(workspace_id)` | List terms in a workspace |
+| `idx_terms_source_document` | `(source_document_id)` | Trace auto-created terms |
+| `idx_terms_active_backfill_run` | `(active_backfill_run_id)` | Resolve active backfill from term |
 
 ---
 
-### `document_topics`
+### `document_terms`
 
-LLM or admin assignments linking documents to topics.
+LLM or admin assignments linking documents to terms.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | document_id | uuid | NO | — | FK → `documents.id` ON DELETE CASCADE |
-| topic_id | uuid | NO | — | FK → `topics.id` ON DELETE CASCADE |
+| term_id | uuid | NO | — | FK → `terms.id` ON DELETE CASCADE |
 | confidence | real | NO | `1` | Assignment confidence (0–1) |
-| assigned_by | text | NO | `llm_classifier` | `llm_classifier` \| `admin` \| `admin_merge` \| `topic_backfill` |
+| assigned_by | text | NO | `llm_classifier` | `llm_classifier` \| `admin` \| `admin_merge` \| `term_backfill` |
 | assigned_at | timestamptz | NO | `now()` | Assignment time |
 
-**Primary key:** `(document_id, topic_id)`
+**Primary key:** `(document_id, term_id)`
 
-**Indexes:** `(topic_id)`, `(document_id)`
+**Indexes:** `(term_id)`, `(document_id)`
 
-Document and topic must belong to the same workspace (enforced by application logic).
+Document and term must belong to the same workspace (enforced by application logic).
 
 ---
 
-### `topic_backfill_runs`
+### `term_backfill_runs`
 
-Tracks user-triggered backfill jobs that scan older documents and assign matches to a single topic.
+Tracks user-triggered backfill jobs that scan older documents and assign matches to a single term.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
-| topic_id | uuid | NO | — | FK → `topics.id` ON DELETE CASCADE |
+| term_id | uuid | NO | — | FK → `terms.id` ON DELETE CASCADE |
 | status | text | NO | `pending` | `pending` \| `running` \| `success` \| `failed` \| `cancelled` |
 | new_listening_started_at | timestamptz | NO | — | Target listening start date chosen by the user |
-| scan_end_at | timestamptz | NO | — | Snapshot of `topics.created_at` when the run started |
+| scan_end_at | timestamptz | NO | — | Snapshot of `terms.created_at` when the run started |
 | model | text | NO | — | LLM model id used for evaluation |
 | quality_min | real | NO | — | Minimum `documents.quality_score` for eligibility |
-| include_already_assigned | boolean | NO | `false` | When true, re-evaluate documents already assigned to this topic |
+| include_already_assigned | boolean | NO | `false` | When true, re-evaluate documents already assigned to this term |
 | confidence_min | real | NO | — | Minimum LLM confidence to create an assignment |
 | estimate | jsonb | NO | — | Pre-run estimate: `{ documentCount, inputTokens, outputTokens, costUsd }` |
 | result | jsonb | NO | `{}` | Progress: `{ documentsScanned, documentsMatched, inputTokens, outputTokens, costUsd, cursor }` |
@@ -462,11 +462,11 @@ Tracks user-triggered backfill jobs that scan older documents and assign matches
 
 | Index | Columns | Purpose |
 | ----- | ------- | ------- |
-| `idx_topic_backfill_runs_topic_started` | `(topic_id, started_at DESC)` | Run history per topic |
-| `idx_topic_backfill_runs_workspace_started` | `(workspace_id, started_at DESC)` | Run history per workspace |
-| `idx_topic_backfill_one_active` | UNIQUE `(topic_id)` WHERE `status IN ('pending','running')` | One active backfill per topic |
+| `idx_term_backfill_runs_term_started` | `(term_id, started_at DESC)` | Run history per term |
+| `idx_term_backfill_runs_workspace_started` | `(workspace_id, started_at DESC)` | Run history per workspace |
+| `idx_term_backfill_one_active` | UNIQUE `(term_id)` WHERE `status IN ('pending','running')` | One active backfill per term |
 
-QStash job `rebuild-topic-batch` processes documents in chained batches (`flowControl` parallelism 1 per topic).
+QStash job `rebuild-term-batch` processes documents in chained batches (`flowControl` parallelism 1 per term).
 
 ---
 
@@ -491,15 +491,15 @@ Static calendar dimension table. Pre-populated for 10–20 years (~3 650–7 300
 
 ---
 
-### `topic_digest_daily`
+### `term_digest_daily`
 
-Daily-grain fact table. One row per `(topic_id, date_key, job_id)`. **Single source of truth for all digest metrics — no rollup table.** All period presets (rolling windows and calendar presets) query this table directly via SUM aggregation.
+Daily-grain fact table. One row per `(term_id, date_key, job_id)`. **Single source of truth for all digest metrics — no rollup table.** All period presets (rolling windows and calendar presets) query this table directly via SUM aggregation.
 
-Rows are created on-demand when a document from a job is first classified for a topic. Stale rows are queued for recompute in FIFO order by `stale_since`.
+Rows are created on-demand when a document from a job is first classified for a term. Stale rows are queued for recompute in FIFO order by `stale_since`.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
-| topic_id | uuid | NO | — | FK → `topics.id` ON DELETE CASCADE |
+| term_id | uuid | NO | — | FK → `terms.id` ON DELETE CASCADE |
 | date_key | date | NO | — | FK → `dim_dates.date_key` — day of the document's `published_at` |
 | job_id | uuid | NO | — | FK → `jobs.id` ON DELETE CASCADE — partition key. Each row holds metrics for documents from a specific scrape job. |
 | doc_count | integer | NO | `0` | Non-duplicate documents with `published_at` on this date |
@@ -514,19 +514,19 @@ Rows are created on-demand when a document from a job is first classified for a 
 
 **Query patterns:**
 
-- **Job-filtered query:** `WHERE job_id = $jobId AND date_key BETWEEN $start AND $end` — uses index `(job_id, date_key, topic_id)`
-- **All-jobs query:** `WHERE date_key BETWEEN $start AND $end` (no job filter) — uses index `(date_key, topic_id)`. Aggregates across all jobs.
+- **Job-filtered query:** `WHERE job_id = $jobId AND date_key BETWEEN $start AND $end` — uses index `(job_id, date_key, term_id)`
+- **All-jobs query:** `WHERE date_key BETWEEN $start AND $end` (no job filter) — uses index `(date_key, term_id)`. Aggregates across all jobs.
 
-**Primary key:** `(topic_id, date_key, job_id)`
+**Primary key:** `(term_id, date_key, job_id)`
 
 **Indexes**
 
 | Index | Columns | Purpose |
 | ----- | ------- | ------- |
-| `idx_topic_digest_daily_job_date` | `(job_id, date_key, topic_id)` | Rolling-window topic cards + sparkline |
-| `idx_topic_digest_daily_date` | `(date_key, topic_id)` | All topics for a given day (ranking) |
-| `idx_topic_digest_daily_stale` | `(stale_since)` WHERE `is_stale = true AND is_bulk_stale = false AND processing = false` | Normal recompute job queue (excludes bulk-stale rows) |
-| `idx_topic_digest_daily_bulk_stale` | `(stale_since)` WHERE `is_stale = true AND is_bulk_stale = true AND processing = false` | Bulk drain job queue — only rows from taxonomy ops |
+| `idx_term_digest_daily_job_date` | `(job_id, date_key, term_id)` | Rolling-window term cards + sparkline |
+| `idx_term_digest_daily_date` | `(date_key, term_id)` | All terms for a given day (ranking) |
+| `idx_term_digest_daily_stale` | `(stale_since)` WHERE `is_stale = true AND is_bulk_stale = false AND processing = false` | Normal recompute job queue (excludes bulk-stale rows) |
+| `idx_term_digest_daily_bulk_stale` | `(stale_since)` WHERE `is_stale = true AND is_bulk_stale = true AND processing = false` | Bulk drain job queue — only rows from taxonomy ops |
 
 ---
 
@@ -623,14 +623,14 @@ One row per job execution — success/failure, result payload, and error message
 
 Global infrastructure cron jobs (not workspace-scoped). QStash holds the schedule; each execution is recorded in `system_schedule_runs`.
 
-Seed rows (application): `system-recompute-topic-digests`, `system-bulk-drain-topic-digests`.
+Seed rows (application): `system-recompute-term-digests`, `system-bulk-drain-term-digests`.
 
 ### `system_schedules`
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
-| schedule_id | text | NO | — | Stable QStash schedule id (e.g. `system-recompute-topic-digests`) |
+| schedule_id | text | NO | — | Stable QStash schedule id (e.g. `system-recompute-term-digests`) |
 | job_name | text | NO | — | Handler key in `qstashJobHandlers` |
 | cron_config | jsonb | NO | `{ "cron": "", "timezone": "UTC" }` | Schedule: `{ cron, timezone }` |
 | description | text | YES | — | Human-readable description |
@@ -694,7 +694,7 @@ User-triggered background work (reclassify, re-embed, bulk taxonomy ops). Each a
 | workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
 | task_type | text | NO | — | See `workspace_task_type` enum |
 | status | text | NO | `pending` | See `workspace_task_status` enum |
-| params | jsonb | NO | `{}` | Task scope: `{ documentIds?, jobIds?, topicIds?, filter? }` |
+| params | jsonb | NO | `{}` | Task scope: `{ documentIds?, jobIds?, termIds?, filter? }` |
 | result | jsonb | YES | — | Progress/outcome: `{ total, processed, succeeded, failed, errors? }` |
 | error | text | YES | — | Error message when `status = failed` |
 | triggered_by | uuid | YES | — | FK → `users.id` ON DELETE SET NULL |
@@ -738,7 +738,7 @@ Stores metadata for workspace API keys managed via Unkey. The actual key value i
 
 Not represented in Drizzle schema. Reference SQL in `db/manual/triggers.sql`:
 
-- `sync_chunk_topics()` — keeps `chunks.topic_ids` in sync when `document_topics` changes
+- `sync_chunk_terms()` — keeps `chunks.term_ids` in sync when `document_terms` changes
 - `sync_chunk_engagement()` — mirrors `documents.{like,comment,share,view}_count` onto that document's chunks; fires only when one of the four counters actually changes
 
 Apply after migrations if not already present.

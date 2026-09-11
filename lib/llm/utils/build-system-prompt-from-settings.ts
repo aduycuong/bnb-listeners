@@ -1,6 +1,6 @@
 import type { WorkspaceLlmSettings } from "@/lib/workspaces/types";
 
-import { buildTopicLanguageGuideline } from "./topic-language-guideline";
+import { buildTermLanguageGuideline } from "./term-language-guideline";
 
 const DEFAULT_SCORE_RELEVANCE_GUIDE = `Scoring guide:
   0  = Completely unrelated or spam
@@ -22,57 +22,57 @@ function formatTopicCriteria(criteria: string): string {
   return `\n${lines.map((line) => `- ${line}`).join("\n")}`;
 }
 
-export function buildClassifyTopicsPrompt(
+export function buildClassifyTermsPrompt(
   settings: WorkspaceLlmSettings,
 ): string {
-  return `You are a topic classifier for: ${settings.dataCollectionScope}.
+  return `You are a term classifier for: ${settings.dataCollectionScope}.
 
-Given a document and a list of existing topics, select every existing topic that clearly applies.
+Given a document and a list of existing terms, select every existing term that clearly applies.
 
 Guidelines:
 - Stay within the workspace data collection scope: ${settings.dataCollectionScope}.
 - Use only ids from the provided list for assignments — never invent ids.
-- Assign one or more existing topics when the document is substantively about those subjects.
-- Prefer specific topics over broad ones when both fit.
+- Assign one or more existing terms when the document is substantively about those subjects.
+- Prefer specific terms over broad ones when both fit.
 - Use confidence 0.9+ when the match is obvious, 0.6–0.8 when plausible but not central.
-- Return an empty assignments array when no listed topic is a reasonable fit.`;
+- Return an empty assignments array when no listed term is a reasonable fit.`;
 }
 
 export function buildProposeTopicPrompt(
   settings: WorkspaceLlmSettings,
 ): string {
-  const languageGuideline = buildTopicLanguageGuideline(settings.topicLanguage);
+  const languageGuideline = buildTermLanguageGuideline(settings.termLanguage);
 
-  return `You are a topic designer for: ${settings.dataCollectionScope}.
+  return `You are a term designer for: ${settings.dataCollectionScope}.
 
-Propose one new topic that best describes the document's main subject. The topic should be specific enough to group similar future documents, but broad enough to be reusable.
+Propose one new term that best describes the document's main subject. The term should be specific enough to group similar future documents, but broad enough to be reusable.
 
 Guidelines:
 - Stay within the workspace data collection scope: ${settings.dataCollectionScope}.
 - Use clear, admin-friendly naming — not jargon or overly narrow labels.
-- The description should help an admin decide whether to approve, merge, or reject the topic.
-- ${languageGuideline}${formatTopicCriteria(settings.topicCriteria)}`;
+- The description should help an admin decide whether to approve, merge, or reject the term.
+- ${languageGuideline}${formatTopicCriteria(settings.termCriteria)}`;
 }
 
 export function buildEvaluateTopicPrompt(
   settings: WorkspaceLlmSettings,
-  topic: { name: string; description: string | null },
+  term: { name: string; description: string | null },
 ): string {
-  const description = topic.description?.trim()
-    ? `\nTopic description: ${topic.description.trim()}`
+  const description = term.description?.trim()
+    ? `\nTerm description: ${term.description.trim()}`
     : "";
 
-  return `You are a topic relevance evaluator for: ${settings.dataCollectionScope}.
+  return `You are a term relevance evaluator for: ${settings.dataCollectionScope}.
 
-Decide whether each document substantively belongs to this single topic:
-- Topic name: ${topic.name.trim()}${description}
+Decide whether each document substantively belongs to this single term:
+- Term name: ${term.name.trim()}${description}
 
 Guidelines:
 - Stay within the workspace data collection scope: ${settings.dataCollectionScope}.
-- Return match=true only when the document is clearly about this topic's subject.
+- Return match=true only when the document is clearly about this term's subject.
 - Use confidence 0.9+ when the match is obvious, 0.7–0.85 when plausible but not central.
 - Return match=false with low confidence when the document is unrelated or only tangentially related.
-- Do not consider other topics — only whether this document fits the given topic.`;
+- Do not consider other terms — only whether this document fits the given term.`;
 }
 
 export function buildScoreRelevancePrompt(
@@ -80,7 +80,7 @@ export function buildScoreRelevancePrompt(
 ): string {
   return `You are a content relevance evaluator for: ${settings.dataCollectionScope}.
 
-Rate how relevant and valuable the following content is for that scope on a scale of 0 to 10. Consider whether the content is substantive, on-topic, and worth indexing.
+Rate how relevant and valuable the following content is for that scope on a scale of 0 to 10. Consider whether the content is substantive, on-term, and worth indexing.
 
 ${DEFAULT_SCORE_RELEVANCE_GUIDE}`;
 }
@@ -97,7 +97,7 @@ For every comment return:
   - "debate" — takes a position for or against the post's claim (argument, rebuttal, endorsement of a contested point).
   - "answer" — directly answers a question the post asked.
   - "info" — adds factual detail, experience, links, or clarification without mainly arguing or answering.
-  - "other" — noise, jokes, pure acknowledgements, off-topic, or unclear.
+  - "other" — noise, jokes, pure acknowledgements, off-term, or unclear.
 - stance: only when role is "debate". Use "agree", "disagree", or "neutral" relative to the post. For every other role return null.
 - isSubstantive: true when the comment carries a real argument, answer, or useful information worth retrieving. false for emoji-only, tag-only, "hóng"/"quan tâm"/"ib"/"+1"/"đúng rồi" style acknowledgements, or empty chatter. Prefer false when role is "other".
 

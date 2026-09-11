@@ -20,7 +20,7 @@ function buildSearchMcpServer(workspaceId: string): McpServer {
     "search_knowledge",
     {
       description:
-        "Search the workspace knowledge base for relevant information using hybrid semantic and full-text search. Use this to answer questions about topics, documents, and content stored in the workspace.",
+        "Search the workspace knowledge base for relevant information using hybrid semantic and full-text search. Use this to answer questions about terms, documents, and content stored in the workspace.",
       inputSchema: {
         query: z
           .string()
@@ -33,19 +33,19 @@ function buildSearchMcpServer(workspaceId: string): McpServer {
           .max(RETRIEVAL_RETURN_LIMIT * 2)
           .optional()
           .describe(`Number of results to return (default ${RETRIEVAL_RETURN_LIMIT})`),
-        topicIds: z
+        termIds: z
           .array(z.uuid())
           .optional()
-          .describe("Filter results to specific topic IDs"),
+          .describe("Filter results to specific term IDs"),
       },
     },
-    async ({ query, limit, topicIds }) => {
-      console.log("--------------------------------- search_knowledge ------------------------------", { query, limit, topicIds });
+    async ({ query, limit, termIds }) => {
+      console.log("--------------------------------- search_knowledge ------------------------------", { query, limit, termIds });
       const chunks = await searchChunks({
         workspaceId,
         query,
         limit: limit ?? RETRIEVAL_RETURN_LIMIT,
-        topicIds,
+        termIds,
       });
 
       if (chunks.length === 0) {

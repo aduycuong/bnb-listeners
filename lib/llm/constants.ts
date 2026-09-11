@@ -1,6 +1,6 @@
 export const LLM_PROMPT_KEYS = [
-  "classify_topics",
-  "propose_topic",
+  "classify_terms",
+  "propose_term",
   "score_relevance",
   "score_comment_stances",
 ] as const;

@@ -120,15 +120,15 @@ function formatClassifyToast(result: ClassifyDocumentResult): {
 } {
   const names = [
     ...result.assignments.map((assignment) => assignment.name),
-    ...result.createdTopics.map((topic) => `${topic.name} (new)`),
+    ...result.createdTerms.map((term) => `${term.name} (new)`),
   ];
 
   if (names.length === 0) {
-    return { title: "Classification completed with no topic assignments." };
+    return { title: "Classification completed with no term assignments." };
   }
 
   return {
-    title: `Assigned ${names.length} topic${names.length === 1 ? "" : "s"}`,
+    title: `Assigned ${names.length} term${names.length === 1 ? "" : "s"}`,
     description: names.join(", "),
   };
 }

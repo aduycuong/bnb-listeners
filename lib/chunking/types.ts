@@ -21,7 +21,7 @@ export type DocumentChunkListItem = {
   mediaUrl: string | null;
   metadata: Record<string, unknown>;
   mediaMetadata: Record<string, unknown> | null;
-  topicIds: string[] | null;
+  termIds: string[] | null;
   createdAt: string;
 };
 

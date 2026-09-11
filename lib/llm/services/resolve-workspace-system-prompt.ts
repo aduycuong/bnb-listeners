@@ -1,6 +1,6 @@
 import type { LlmPromptKey } from "../constants";
 import {
-  buildClassifyTopicsPrompt,
+  buildClassifyTermsPrompt,
   buildProposeTopicPrompt,
   buildScoreCommentStancesPrompt,
   buildScoreRelevancePrompt,
@@ -14,9 +14,9 @@ export async function resolveWorkspaceSystemPrompt(
   const settings = await getWorkspaceLlmSettings(workspaceId);
 
   switch (promptKey) {
-    case "classify_topics":
-      return buildClassifyTopicsPrompt(settings);
-    case "propose_topic":
+    case "classify_terms":
+      return buildClassifyTermsPrompt(settings);
+    case "propose_term":
       return buildProposeTopicPrompt(settings);
     case "score_relevance":
       return buildScoreRelevancePrompt(settings);

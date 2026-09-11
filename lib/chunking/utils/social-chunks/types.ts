@@ -68,7 +68,7 @@ export type CreateChunkRecordsParams = {
   docType: string;
   publishedAt: Date | null;
   chunks: CreatedChunk[];
-  topicIds?: string[];
+  termIds?: string[];
   qualityScore?: number | null;
   /**
    * Seeds the denormalized counters on insert. Later refreshes are handled by

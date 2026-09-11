@@ -1,5 +1,5 @@
 /**
- * Default LLM model for document topic classification.
+ * Default LLM model for document term classification.
  * Must be a key in chatModelRegistry (lib/langchain).
  */
 export const DEFAULT_CLASSIFIER_MODEL = "gpt-4.1" as const;

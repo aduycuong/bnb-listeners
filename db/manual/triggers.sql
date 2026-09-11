@@ -1,9 +1,9 @@
-CREATE OR REPLACE FUNCTION sync_chunk_topics() RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION sync_chunk_terms() RETURNS TRIGGER AS $$
 BEGIN
     UPDATE chunks
-    SET topic_ids = (
-        SELECT COALESCE(array_agg(dt.topic_id), '{}')
-        FROM document_topics dt
+    SET term_ids = (
+        SELECT COALESCE(array_agg(dt.term_id), '{}')
+        FROM document_terms dt
         WHERE dt.document_id = COALESCE(NEW.document_id, OLD.document_id)
     )
     WHERE document_id = COALESCE(NEW.document_id, OLD.document_id);
@@ -11,11 +11,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_sync_chunk_topics ON document_topics;
+DROP TRIGGER IF EXISTS trg_sync_chunk_terms ON document_terms;
 
-CREATE TRIGGER trg_sync_chunk_topics
-    AFTER INSERT OR UPDATE OR DELETE ON document_topics
-    FOR EACH ROW EXECUTE FUNCTION sync_chunk_topics();
+CREATE TRIGGER trg_sync_chunk_terms
+    AFTER INSERT OR UPDATE OR DELETE ON document_terms
+    FOR EACH ROW EXECUTE FUNCTION sync_chunk_terms();
 
 -- Keeps chunks.{like,comment,share,view}_count in step with the document.
 -- Engagement counters are refreshed on every scrape, so mirroring them here

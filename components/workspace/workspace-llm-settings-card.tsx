@@ -33,7 +33,7 @@ import { toast } from "@/components/ui/toast";
 import { workspacesQueryKey } from "@/hooks/use-workspace-route-context";
 import {
   DEFAULT_DATA_COLLECTION_SCOPE,
-  TOPIC_LANGUAGE_OPTIONS,
+  TERM_LANGUAGE_OPTIONS,
 } from "@/lib/workspaces/constants";
 import {
   updateWorkspaceLlmSettingsSchema,
@@ -51,9 +51,9 @@ function toFormValues(
 ): UpdateWorkspaceLlmSettingsValues {
   return {
     dataCollectionScope: workspace.dataCollectionScope,
-    autoCreateTopics: workspace.autoCreateTopics,
-    topicLanguage: workspace.topicLanguage,
-    topicCriteria: workspace.topicCriteria,
+    autoCreateTerms: workspace.autoCreateTerms,
+    termLanguage: workspace.termLanguage,
+    termCriteria: workspace.termCriteria,
   };
 }
 
@@ -98,7 +98,7 @@ export function WorkspaceLlmSettingsCard({
 
   const isSubmitting = form.formState.isSubmitting;
   const disabled = !canEdit || isSubmitting;
-  const autoCreateTopics = form.watch("autoCreateTopics");
+  const autoCreateTerms = form.watch("autoCreateTerms");
 
   return (
     <Card>
@@ -109,7 +109,7 @@ export function WorkspaceLlmSettingsCard({
         <CardHeader>
           <CardTitle>LLM settings</CardTitle>
           <CardDescription>
-            Configure data collection scope and automatic topic creation for
+            Configure data collection scope and automatic term creation for
             this workspace.
           </CardDescription>
         </CardHeader>
@@ -143,24 +143,24 @@ export function WorkspaceLlmSettingsCard({
             <Field
               orientation="horizontal"
               data-invalid={
-                !!form.formState.errors.autoCreateTopics || undefined
+                !!form.formState.errors.autoCreateTerms || undefined
               }
             >
               <FieldContent>
-                <FieldLabel htmlFor="auto-create-topics">
-                  Auto-create topics
+                <FieldLabel htmlFor="auto-create-terms">
+                  Auto-create terms
                 </FieldLabel>
                 <FieldDescription>
-                  When enabled, the AI can propose and create new topics for
+                  When enabled, the AI can propose and create new terms for
                   documents that do not match existing ones.
                 </FieldDescription>
               </FieldContent>
               <Controller
-                name="autoCreateTopics"
+                name="autoCreateTerms"
                 control={form.control}
                 render={({ field }) => (
                   <Switch
-                    id="auto-create-topics"
+                    id="auto-create-terms"
                     checked={field.value}
                     onCheckedChange={field.onChange}
                     disabled={disabled}
@@ -169,44 +169,44 @@ export function WorkspaceLlmSettingsCard({
               />
             </Field>
 
-            {autoCreateTopics ? (
+            {autoCreateTerms ? (
               <>
                 <Field
                   data-invalid={
-                    !!form.formState.errors.topicLanguage || undefined
+                    !!form.formState.errors.termLanguage || undefined
                   }
                 >
                   <Controller
-                    name="topicLanguage"
+                    name="termLanguage"
                     control={form.control}
                     render={({ field }) => (
                       <FieldSet data-slot="radio-group">
-                        <FieldLegend variant="label">Topic language</FieldLegend>
+                        <FieldLegend variant="label">Term language</FieldLegend>
                         <RadioGroup
                           value={field.value}
                           onValueChange={field.onChange}
                           disabled={disabled}
                         >
-                          {TOPIC_LANGUAGE_OPTIONS.map((option) => (
+                          {TERM_LANGUAGE_OPTIONS.map((option) => (
                             <Field
                               key={option.value}
                               orientation="horizontal"
                               data-invalid={
-                                !!form.formState.errors.topicLanguage ||
+                                !!form.formState.errors.termLanguage ||
                                 undefined
                               }
                             >
                               <RadioGroupItem
                                 value={option.value}
-                                id={`topic-language-${option.value}`}
+                                id={`term-language-${option.value}`}
                                 aria-invalid={
-                                  !!form.formState.errors.topicLanguage
+                                  !!form.formState.errors.termLanguage
                                 }
                                 disabled={disabled}
                               />
                               <FieldContent>
                                 <FieldLabel
-                                  htmlFor={`topic-language-${option.value}`}
+                                  htmlFor={`term-language-${option.value}`}
                                 >
                                   {option.label}
                                 </FieldLabel>
@@ -220,30 +220,30 @@ export function WorkspaceLlmSettingsCard({
                       </FieldSet>
                     )}
                   />
-                  <FieldError errors={[form.formState.errors.topicLanguage]} />
+                  <FieldError errors={[form.formState.errors.termLanguage]} />
                 </Field>
 
                 <Field
                   data-invalid={
-                    !!form.formState.errors.topicCriteria || undefined
+                    !!form.formState.errors.termCriteria || undefined
                   }
                 >
-                  <FieldLabel htmlFor="topic-criteria">
-                    Topic criteria
+                  <FieldLabel htmlFor="term-criteria">
+                    Term criteria
                   </FieldLabel>
                   <Textarea
-                    id="topic-criteria"
+                    id="term-criteria"
                     placeholder="One criterion per line. Optional."
-                    aria-invalid={!!form.formState.errors.topicCriteria}
+                    aria-invalid={!!form.formState.errors.termCriteria}
                     disabled={disabled}
                     rows={4}
-                    {...form.register("topicCriteria")}
+                    {...form.register("termCriteria")}
                   />
                   <FieldDescription>
-                    Extra guidelines for how new topics should be named and
+                    Extra guidelines for how new terms should be named and
                     described.
                   </FieldDescription>
-                  <FieldError errors={[form.formState.errors.topicCriteria]} />
+                  <FieldError errors={[form.formState.errors.termCriteria]} />
                 </Field>
               </>
             ) : null}

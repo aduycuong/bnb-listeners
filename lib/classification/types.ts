@@ -2,31 +2,31 @@ export type ClassifyDocumentParams = {
   documentId: string;
 };
 
-export type TopicAssignment = {
-  topicId: string;
+export type TermAssignment = {
+  termId: string;
   name: string;
   confidence: number;
 };
 
-export type CreatedTopic = {
+export type CreatedTerm = {
   id: string;
   name: string;
 };
 
-export type ProposedTopic = {
+export type ProposedTerm = {
   name: string;
   description: string;
 };
 
 export type ClassifyDocumentResult = {
   documentId: string;
-  /** Topics assigned from the existing topic list. */
-  assignments: TopicAssignment[];
-  /** Topics auto-created because no existing topic matched. */
-  createdTopics: CreatedTopic[];
+  /** Terms assigned from the existing term list. */
+  assignments: TermAssignment[];
+  /** Terms auto-created because no existing term matched. */
+  createdTerms: CreatedTerm[];
 };
 
-export type ClassifierTopic = {
+export type ClassifierTerm = {
   id: string;
   name: string;
   description: string | null;

@@ -4,7 +4,7 @@ import { workspaceMembers, workspaces } from "@/db/schema";
 import { db } from "@/lib/db";
 
 import type { WorkspacePermission } from "../constants";
-import { parseTopicLanguage } from "../utils/parse-topic-language";
+import { parseTermLanguage } from "../utils/parse-term-language";
 import type {
   ListWorkspacesForUserParams,
   ListWorkspacesForUserResult,
@@ -20,9 +20,9 @@ export async function listWorkspacesForUser(
       slug: workspaces.slug,
       ownerUserId: workspaces.ownerUserId,
       dataCollectionScope: workspaces.dataCollectionScope,
-      autoCreateTopics: workspaces.autoCreateTopics,
-      topicLanguage: workspaces.topicLanguage,
-      topicCriteria: workspaces.topicCriteria,
+      autoCreateTerms: workspaces.autoCreateTerms,
+      termLanguage: workspaces.termLanguage,
+      termCriteria: workspaces.termCriteria,
       memberPermission: workspaceMembers.permission,
       createdAt: workspaces.createdAt,
       updatedAt: workspaces.updatedAt,
@@ -54,9 +54,9 @@ export async function listWorkspacesForUser(
           ? "owner"
           : ((row.memberPermission as WorkspacePermission | null) ?? "read"),
       dataCollectionScope: row.dataCollectionScope,
-      autoCreateTopics: row.autoCreateTopics,
-      topicLanguage: parseTopicLanguage(row.topicLanguage),
-      topicCriteria: row.topicCriteria,
+      autoCreateTerms: row.autoCreateTerms,
+      termLanguage: parseTermLanguage(row.termLanguage),
+      termCriteria: row.termCriteria,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     })),

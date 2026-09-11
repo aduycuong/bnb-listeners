@@ -311,7 +311,7 @@ export function JobMenuFormPage({
                         <AlertDialogDescription>
                           This removes the job, its QStash schedule, run
                           history, all documents it created (and their chunks),
-                          and related topic digest rows. This action cannot be
+                          and related term digest rows. This action cannot be
                           undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>

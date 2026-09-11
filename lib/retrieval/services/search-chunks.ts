@@ -18,7 +18,7 @@ type ChunkRow = {
   content: string;
   chunk_index: number;
   quality_score: number;
-  topic_ids: string[];
+  term_ids: string[];
   document_id: string;
   title: string | null;
   doc_type: string;
@@ -36,7 +36,7 @@ type ChunkRow = {
  * 3. Merge candidate lists with RRF, return top `limit` chunks.
  */
 export async function searchChunks(params: SearchChunksParams): Promise<RetrievedChunk[]> {
-  const { workspaceId, query, limit = RETRIEVAL_RETURN_LIMIT, topicIds } = params;
+  const { workspaceId, query, limit = RETRIEVAL_RETURN_LIMIT, termIds } = params;
 
   const [embedding, normalizedQuery] = await Promise.all([
     embedQuery(query),
@@ -46,9 +46,9 @@ export async function searchChunks(params: SearchChunksParams): Promise<Retrieve
   const vectorLiteral = `[${embedding.join(",")}]`;
   const returnLimit = Math.min(limit, RETRIEVAL_RETURN_LIMIT * 2);
 
-  const topicFilter =
-    topicIds && topicIds.length > 0
-      ? sql.raw(`AND c.topic_ids && ARRAY[${topicIds.map((id) => `'${id}'::uuid`).join(",")}]`)
+  const termFilter =
+    termIds && termIds.length > 0
+      ? sql.raw(`AND c.term_ids && ARRAY[${termIds.map((id) => `'${id}'::uuid`).join(",")}]`)
       : sql.raw("");
 
   const rows = await db.execute<ChunkRow>(sql`
@@ -60,7 +60,7 @@ export async function searchChunks(params: SearchChunksParams): Promise<Retrieve
       INNER JOIN documents d ON d.id = c.document_id
       WHERE d.workspace_id = ${workspaceId}::uuid
         AND c.quality_score >= ${RETRIEVAL_QUALITY_MIN}
-        ${topicFilter}
+        ${termFilter}
       ORDER BY c.embedding <=> ${sql.raw(`'${vectorLiteral}'::vector(${CHUNK_EMBEDDING_DIMENSIONS})`)}
       LIMIT ${RETRIEVAL_CANDIDATE_LIMIT}
     ),
@@ -74,7 +74,7 @@ export async function searchChunks(params: SearchChunksParams): Promise<Retrieve
       WHERE d.workspace_id = ${workspaceId}::uuid
         AND c.quality_score >= ${RETRIEVAL_QUALITY_MIN}
         AND c.content_tsv @@ query
-        ${topicFilter}
+        ${termFilter}
       LIMIT ${RETRIEVAL_CANDIDATE_LIMIT}
     ),
     rrf AS (
@@ -90,7 +90,7 @@ export async function searchChunks(params: SearchChunksParams): Promise<Retrieve
       c.content,
       c.chunk_index,
       c.quality_score,
-      c.topic_ids,
+      c.term_ids,
       c.comment_count,
       d.id         AS document_id,
       d.title,

@@ -16,5 +16,5 @@ export type SearchChunksParams = {
   workspaceId: string;
   query: string;
   limit?: number;
-  topicIds?: string[];
+  termIds?: string[];
 };

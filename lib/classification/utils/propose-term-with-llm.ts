@@ -1,0 +1,64 @@
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { z } from "zod";
+
+import { createChatModel } from "@/lib/langchain";
+
+import {
+  CLASSIFIER_CONTENT_MAX_CHARS,
+  DEFAULT_CLASSIFIER_MODEL,
+} from "../config";
+
+export const proposedTopicSchema = z.object({
+  name: z
+    .string()
+    .min(1)
+    .max(100)
+    .describe("Short, specific term name suitable for admin review"),
+  description: z
+    .string()
+    .min(1)
+    .max(500)
+    .describe("One or two sentences describing what this term covers"),
+});
+
+export type ProposedTerm = z.infer<typeof proposedTopicSchema>;
+
+function buildUserMessage(doc: {
+  title: string | null;
+  rawContent: string;
+  docType: string;
+  sourceName: string;
+}): string {
+  const contentPreview = doc.rawContent.slice(0, CLASSIFIER_CONTENT_MAX_CHARS);
+
+  return [
+    "Document:",
+    `Type: ${doc.docType}`,
+    `Source: ${doc.sourceName}`,
+    doc.title?.trim() ? `Title: ${doc.title.trim()}` : null,
+    `Content:\n${contentPreview}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/**
+ * Asks the LLM to propose a new term for a document that matched nothing existing.
+ */
+export async function proposeTermWithLlm(
+  doc: {
+    title: string | null;
+    rawContent: string;
+    docType: string;
+    sourceName: string;
+  },
+  systemPrompt: string,
+): Promise<ProposedTerm> {
+  const model = createChatModel(DEFAULT_CLASSIFIER_MODEL, { temperature: 0 });
+  const structured = model.withStructuredOutput(proposedTopicSchema);
+
+  return structured.invoke([
+    new SystemMessage(systemPrompt),
+    new HumanMessage(buildUserMessage(doc)),
+  ]);
+}

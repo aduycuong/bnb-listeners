@@ -19,7 +19,7 @@ export type ProcessDocumentPayload = z.infer<
  * Steps:
  *   1. Validate payload.
  *   2. Score — compute quality_score across all dimensions.
- *   3. Classify — assign topics via LLM, or auto-create a new topic when none match.
+ *   3. Classify — assign terms via LLM, or auto-create a new term when none match.
  *   4. Chunk — split content and media, embed, and replace the document's chunks.
  *      Skipped when quality is below the threshold.
  */
@@ -48,25 +48,25 @@ export async function processDocument(payload: unknown): Promise<void> {
       `quality=${scoreResult.qualityScore} | ${dimensionLog}`,
   );
 
-  // Step 2: topic classification
+  // Step 2: term classification
   const classifyResult = await classifyDocument({ documentId });
 
-  const topicLog = classifyResult.assignments
+  const termLog = classifyResult.assignments
     .map(({ name, confidence }) => `${name}=${confidence.toFixed(2)}`)
     .join(", ");
 
-  const createdLog = classifyResult.createdTopics
+  const createdLog = classifyResult.createdTerms
     .map(({ name }) => name)
     .join(", ");
 
-  if (classifyResult.createdTopics.length > 0) {
+  if (classifyResult.createdTerms.length > 0) {
     console.log(
       `[process-document] Classified document ${documentId}: ` +
-        `created topics=[${createdLog}]`,
+        `created terms=[${createdLog}]`,
     );
   } else {
     console.log(
-      `[process-document] Classified document ${documentId}: topics=[${topicLog}]`,
+      `[process-document] Classified document ${documentId}: terms=[${termLog}]`,
     );
   }
 

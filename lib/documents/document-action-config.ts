@@ -23,7 +23,7 @@ export function canUpdateComments(jobType: string | null | undefined): boolean {
 
 export const DOCUMENT_ACTION_LABELS = {
   score: "Re-score quality",
-  classify: "Re-classify topics",
+  classify: "Re-classify terms",
   chunks: "Rebuild search index",
   updateComments: "Update comments",
 } as const satisfies Record<string, string>;

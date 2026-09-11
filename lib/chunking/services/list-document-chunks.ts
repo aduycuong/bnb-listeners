@@ -39,7 +39,7 @@ export async function listDocumentChunks(
       mediaUrl: chunks.mediaUrl,
       metadata: chunks.metadata,
       mediaMetadata: chunks.mediaMetadata,
-      topicIds: chunks.topicIds,
+      termIds: chunks.termIds,
       createdAt: chunks.createdAt,
     })
     .from(chunks)
@@ -54,7 +54,7 @@ export async function listDocumentChunks(
     mediaUrl: row.mediaUrl,
     metadata: row.metadata,
     mediaMetadata: row.mediaMetadata,
-    topicIds: row.topicIds,
+    termIds: row.termIds,
     createdAt: row.createdAt.toISOString(),
   }));
 

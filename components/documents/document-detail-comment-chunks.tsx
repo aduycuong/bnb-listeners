@@ -104,10 +104,10 @@ function CommentChunkCard({ chunk }: { chunk: DocumentChunkListItem }) {
         {partLabel ? (
           <span className="text-[11px] text-muted-foreground">{partLabel}</span>
         ) : null}
-        {chunk.topicIds && chunk.topicIds.length > 0 ? (
+        {chunk.termIds && chunk.termIds.length > 0 ? (
           <span className="text-[11px] text-muted-foreground">
-            {chunk.topicIds.length} topic
-            {chunk.topicIds.length === 1 ? "" : "s"}
+            {chunk.termIds.length} term
+            {chunk.termIds.length === 1 ? "" : "s"}
           </span>
         ) : null}
       </div>

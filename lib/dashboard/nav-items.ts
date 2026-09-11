@@ -2,12 +2,12 @@ import { FileTextIcon, FilesIcon, SettingsIcon, TagsIcon } from "lucide-react";
 
 import { DOCUMENT_SEGMENT } from "@/lib/documents/document-config";
 import { JOB_MENU_NAV_ITEMS } from "@/lib/jobs/job-menu-config";
-import { TOPIC_SEGMENT } from "@/lib/topics/topic-config";
+import { TERM_SEGMENT } from "@/lib/terms/term-config";
 
 export const DASHBOARD_NAV_ITEMS = [
   { labelKey: "nav.overview", segment: "", icon: FileTextIcon },
   { labelKey: "nav.documents", segment: DOCUMENT_SEGMENT, icon: FilesIcon },
-  { labelKey: "nav.topics", segment: TOPIC_SEGMENT, icon: TagsIcon },
+  { labelKey: "nav.terms", segment: TERM_SEGMENT, icon: TagsIcon },
   ...JOB_MENU_NAV_ITEMS,
   { labelKey: "nav.settings", segment: "settings/workspace", icon: SettingsIcon },
 ];

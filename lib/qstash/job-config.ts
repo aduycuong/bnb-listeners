@@ -4,14 +4,14 @@ import { SCORE_DOCUMENT_COMMENTS_JOB_NAME } from "@/lib/comments/config";
 import { runScheduledJob } from "@/lib/jobs/services/run-scheduled-job";
 import { scrapeFacebookDocumentComments } from "@/lib/jobs/services/scrape-facebook-document-comments";
 import { SCRAPE_FACEBOOK_DOCUMENT_COMMENTS_JOB_NAME } from "@/lib/jobs/handlers/scrape-facebook/config";
-import { processTopicBackfillBatch } from "@/lib/topic-backfill/services/process-topic-backfill-batch";
-import { bulkDrainTopicDigests } from "@/lib/topic-digests/services/bulk-drain-topic-digests";
-import { recomputeTopicDigests } from "@/lib/topic-digests/services/recompute-topic-digests";
-import { TOPIC_BACKFILL_QSTASH_JOB_NAME } from "@/lib/topics/topic-backfill-config";
+import { processTermBackfillBatch } from "@/lib/term-backfill/services/process-term-backfill-batch";
+import { bulkDrainTermDigests } from "@/lib/term-digests/services/bulk-drain-term-digests";
+import { recomputeTermDigests } from "@/lib/term-digests/services/recompute-term-digests";
+import { TERM_BACKFILL_QSTASH_JOB_NAME } from "@/lib/terms/term-backfill-config";
 import {
   BULK_DRAIN_JOB_NAME,
   RECOMPUTE_JOB_NAME,
-} from "@/lib/topic-digests/constants";
+} from "@/lib/term-digests/constants";
 
 import { RUN_SCHEDULED_JOB_QSTASH_JOB_NAME } from "@/lib/jobs/constants";
 
@@ -33,7 +33,7 @@ export type QstashJobHandler = (
 export const qstashJobHandlers: Record<string, QstashJobHandler> = {
   /**
    * Triggered after a document is created.
-   * Scores quality dimensions, classifies topics, then chunks and embeds.
+   * Scores quality dimensions, classifies terms, then chunks and embeds.
    * Payload: { documentId: string }
    */
   "process-document": processDocument,
@@ -59,7 +59,7 @@ export const qstashJobHandlers: Record<string, QstashJobHandler> = {
    * affected rollup periods and re-ranks within each workspace.
    * No payload required.
    */
-  [RECOMPUTE_JOB_NAME]: recomputeTopicDigests,
+  [RECOMPUTE_JOB_NAME]: recomputeTermDigests,
 
   /**
    * System cron — every 15 minutes, lower priority.
@@ -68,13 +68,13 @@ export const qstashJobHandlers: Record<string, QstashJobHandler> = {
    * recompute queue.
    * No payload required.
    */
-  [BULK_DRAIN_JOB_NAME]: bulkDrainTopicDigests,
+  [BULK_DRAIN_JOB_NAME]: bulkDrainTermDigests,
 
   /**
-   * Chained batch worker for topic data backfill.
+   * Chained batch worker for term data backfill.
    * Payload: { runId: string }
    */
-  [TOPIC_BACKFILL_QSTASH_JOB_NAME]: processTopicBackfillBatch,
+  [TERM_BACKFILL_QSTASH_JOB_NAME]: processTermBackfillBatch,
 
   /**
    * Delayed follow-up scrape for Facebook post comments.

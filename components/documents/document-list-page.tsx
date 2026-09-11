@@ -15,7 +15,7 @@ import {
   documentsQueryKey,
   type DocumentsQueryFilters,
 } from "@/components/documents/document-query-keys";
-import { workspaceJobsQueryKey } from "@/components/topics/topic-query-keys";
+import { workspaceJobsQueryKey } from "@/components/terms/term-query-keys";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

@@ -9,7 +9,7 @@ Each item is scored on more than one axis so quality is actionable, not a single
 - Source credibility
 - Completeness
 - Freshness
-- Relevance to the workspace topic scope
+- Relevance to the workspace term scope
 
 ## Quality-gated retrieval
 

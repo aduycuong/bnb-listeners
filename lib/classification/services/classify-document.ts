@@ -1,22 +1,22 @@
 import { and, eq } from "drizzle-orm";
 
-import { documentTopics, documents } from "@/db/schema";
+import { documentTerms, documents } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
-import { invalidateTopicDigest } from "@/lib/topic-digests/services/invalidate-topic-digest";
-import { findTopicByName } from "@/lib/topics/utils/find-topic-by-name";
+import { invalidateTermDigest } from "@/lib/term-digests/services/invalidate-term-digest";
+import { findTermByName } from "@/lib/terms/utils/find-term-by-name";
 import { resolveWorkspaceSystemPrompt } from "@/lib/llm/services/resolve-workspace-system-prompt";
 import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace-llm-settings";
 
 import type {
   ClassifyDocumentParams,
   ClassifyDocumentResult,
-  TopicAssignment,
+  TermAssignment,
 } from "../types";
 import { classifyWithLlm } from "../utils/classify-with-llm";
-import { createAutoTopic } from "../utils/create-auto-topic";
-import { loadTopicsForClassifier } from "../utils/load-topics-for-classifier";
-import { proposeTopicWithLlm } from "../utils/propose-topic-with-llm";
+import { createAutoTerm } from "../utils/create-auto-term";
+import { loadTermsForClassifier } from "../utils/load-terms-for-classifier";
+import { proposeTermWithLlm } from "../utils/propose-term-with-llm";
 
 const LLM_ASSIGNED_BY = "llm_classifier";
 
@@ -24,58 +24,58 @@ function toDateKey(date: Date): string {
   return date.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
-async function fetchLlmTopicIds(documentId: string): Promise<string[]> {
+async function fetchLlmTermIds(documentId: string): Promise<string[]> {
   const rows = await db
-    .select({ topicId: documentTopics.topicId })
-    .from(documentTopics)
+    .select({ termId: documentTerms.termId })
+    .from(documentTerms)
     .where(
       and(
-        eq(documentTopics.documentId, documentId),
-        eq(documentTopics.assignedBy, LLM_ASSIGNED_BY),
+        eq(documentTerms.documentId, documentId),
+        eq(documentTerms.assignedBy, LLM_ASSIGNED_BY),
       ),
     );
-  return rows.map((r) => r.topicId);
+  return rows.map((r) => r.termId);
 }
 
 /**
- * Invalidate the daily digest partition for every affected topic.
+ * Invalidate the daily digest partition for every affected term.
  */
 async function invalidateAffectedDigests(
-  topicIds: string[],
+  termIds: string[],
   publishedAt: Date | null,
   documentJobId: string,
 ): Promise<void> {
-  if (!publishedAt || topicIds.length === 0) return;
+  if (!publishedAt || termIds.length === 0) return;
   const dateKey = toDateKey(publishedAt);
 
   await Promise.all(
-    topicIds.map((topicId) =>
-      invalidateTopicDigest({ topicId, dateKey, jobId: documentJobId }),
+    termIds.map((termId) =>
+      invalidateTermDigest({ termId, dateKey, jobId: documentJobId }),
     ),
   );
 }
 
 async function clearLlmAssignments(documentId: string): Promise<void> {
   await db
-    .delete(documentTopics)
+    .delete(documentTerms)
     .where(
       and(
-        eq(documentTopics.documentId, documentId),
-        eq(documentTopics.assignedBy, LLM_ASSIGNED_BY),
+        eq(documentTerms.documentId, documentId),
+        eq(documentTerms.assignedBy, LLM_ASSIGNED_BY),
       ),
     );
 }
 
-async function assignExistingTopics(
+async function assignExistingTerms(
   documentId: string,
-  assignments: TopicAssignment[],
+  assignments: TermAssignment[],
 ): Promise<void> {
   await db
-    .insert(documentTopics)
+    .insert(documentTerms)
     .values(
       assignments.map((assignment) => ({
         documentId,
-        topicId: assignment.topicId,
+        termId: assignment.termId,
         confidence: assignment.confidence,
         assignedBy: LLM_ASSIGNED_BY,
       })),
@@ -83,27 +83,27 @@ async function assignExistingTopics(
     .onConflictDoNothing();
 }
 
-async function assignProposedTopic(
+async function assignProposedTerm(
   workspaceId: string,
   documentId: string,
   proposed: { name: string; description: string },
 ): Promise<ClassifyDocumentResult> {
   const name = proposed.name.trim();
-  const existing = await findTopicByName(workspaceId, name);
+  const existing = await findTermByName(workspaceId, name);
 
   if (existing) {
-    const assignments: TopicAssignment[] = [
+    const assignments: TermAssignment[] = [
       {
-        topicId: existing.id,
+        termId: existing.id,
         name: existing.name,
         confidence: 1,
       },
     ];
-    await assignExistingTopics(documentId, assignments);
-    return { documentId, assignments, createdTopics: [] };
+    await assignExistingTerms(documentId, assignments);
+    return { documentId, assignments, createdTerms: [] };
   }
 
-  const createdTopic = await createAutoTopic(workspaceId, documentId, {
+  const createdTerm = await createAutoTerm(workspaceId, documentId, {
     name,
     description: proposed.description,
   });
@@ -111,18 +111,18 @@ async function assignProposedTopic(
   return {
     documentId,
     assignments: [],
-    createdTopics: [createdTopic],
+    createdTerms: [createdTerm],
   };
 }
 
 /**
- * Classifies a document against existing topics using an LLM.
+ * Classifies a document against existing terms using an LLM.
  *
  * Steps:
- *   1. Fetch the document and all topics (including LLM-created ones).
- *   2. Ask the LLM to select matching topics; when none fit, propose a new topic.
- *   3. Assign existing topics, or auto-create a proposed topic and assign it immediately.
- *      If the proposed name already exists, assign that topic instead.
+ *   1. Fetch the document and all terms (including LLM-created ones).
+ *   2. Ask the LLM to select matching terms; when none fit, propose a new term.
+ *   3. Assign existing terms, or auto-create a proposed term and assign it immediately.
+ *      If the proposed name already exists, assign that term instead.
  *
  * Only prior LLM assignments are replaced; admin assignments are preserved.
  *
@@ -150,74 +150,74 @@ export async function classifyDocument(
     sourceName: doc.sourceName,
   };
 
-  // Capture LLM-assigned topic IDs before clearing so they can be
+  // Capture LLM-assigned term IDs before clearing so they can be
   // invalidated — their doc counts will drop after the reassignment.
-  const oldTopicIds = await fetchLlmTopicIds(documentId);
+  const oldTermIds = await fetchLlmTermIds(documentId);
 
   await clearLlmAssignments(documentId);
 
-  const [classifierTopics, llmSettings] = await Promise.all([
-    loadTopicsForClassifier(doc.workspaceId),
+  const [classifierTerms, llmSettings] = await Promise.all([
+    loadTermsForClassifier(doc.workspaceId),
     getWorkspaceLlmSettings(doc.workspaceId),
   ]);
   const classifyPrompt = await resolveWorkspaceSystemPrompt(
     doc.workspaceId,
-    "classify_topics",
+    "classify_terms",
   );
 
   let result: ClassifyDocumentResult;
 
-  if (classifierTopics.length === 0) {
-    if (!llmSettings.autoCreateTopics) {
-      result = { documentId, assignments: [], createdTopics: [] };
+  if (classifierTerms.length === 0) {
+    if (!llmSettings.autoCreateTerms) {
+      result = { documentId, assignments: [], createdTerms: [] };
     } else {
       const proposePrompt = await resolveWorkspaceSystemPrompt(
         doc.workspaceId,
-        "propose_topic",
+        "propose_term",
       );
-      const proposed = await proposeTopicWithLlm(docContext, proposePrompt);
-      result = await assignProposedTopic(doc.workspaceId, documentId, proposed);
+      const proposed = await proposeTermWithLlm(docContext, proposePrompt);
+      result = await assignProposedTerm(doc.workspaceId, documentId, proposed);
     }
   } else {
     const { assignments: llmAssignments } = await classifyWithLlm(
       docContext,
-      classifierTopics,
+      classifierTerms,
       classifyPrompt,
     );
 
-    const topicById = new Map(
-      classifierTopics.map((topic) => [topic.id, topic]),
+    const termById = new Map(
+      classifierTerms.map((term) => [term.id, term]),
     );
-    const assignments: TopicAssignment[] = [];
+    const assignments: TermAssignment[] = [];
 
     for (const { id, confidence } of llmAssignments) {
-      const topic = topicById.get(id);
-      if (!topic) continue;
-      assignments.push({ topicId: topic.id, name: topic.name, confidence });
+      const term = termById.get(id);
+      if (!term) continue;
+      assignments.push({ termId: term.id, name: term.name, confidence });
     }
 
     if (assignments.length > 0) {
-      await assignExistingTopics(documentId, assignments);
-      result = { documentId, assignments, createdTopics: [] };
-    } else if (!llmSettings.autoCreateTopics) {
-      result = { documentId, assignments: [], createdTopics: [] };
+      await assignExistingTerms(documentId, assignments);
+      result = { documentId, assignments, createdTerms: [] };
+    } else if (!llmSettings.autoCreateTerms) {
+      result = { documentId, assignments: [], createdTerms: [] };
     } else {
       const proposePrompt = await resolveWorkspaceSystemPrompt(
         doc.workspaceId,
-        "propose_topic",
+        "propose_term",
       );
-      const proposed = await proposeTopicWithLlm(docContext, proposePrompt);
-      result = await assignProposedTopic(doc.workspaceId, documentId, proposed);
+      const proposed = await proposeTermWithLlm(docContext, proposePrompt);
+      result = await assignProposedTerm(doc.workspaceId, documentId, proposed);
     }
   }
 
-  // Invalidate daily digest rows for every topic whose doc count changed.
-  const newTopicIds = [
-    ...result.assignments.map((a) => a.topicId),
-    ...result.createdTopics.map((t) => t.id),
+  // Invalidate daily digest rows for every term whose doc count changed.
+  const newTermIds = [
+    ...result.assignments.map((a) => a.termId),
+    ...result.createdTerms.map((t) => t.id),
   ];
-  const affectedTopicIds = [...new Set([...oldTopicIds, ...newTopicIds])];
-  await invalidateAffectedDigests(affectedTopicIds, doc.publishedAt, doc.jobId);
+  const affectedTermIds = [...new Set([...oldTermIds, ...newTermIds])];
+  await invalidateAffectedDigests(affectedTermIds, doc.publishedAt, doc.jobId);
 
   return result;
 }

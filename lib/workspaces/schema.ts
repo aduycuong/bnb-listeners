@@ -2,8 +2,8 @@ import { z } from "zod";
 
 import {
   MAX_DATA_COLLECTION_SCOPE_LENGTH,
-  MAX_TOPIC_CRITERIA_LENGTH,
-  TOPIC_LANGUAGES,
+  MAX_TERM_CRITERIA_LENGTH,
+  TERM_LANGUAGES,
 } from "./constants";
 
 export const workspaceFormSchema = z.object({
@@ -11,7 +11,7 @@ export const workspaceFormSchema = z.object({
   slug: z.string().trim().optional(),
 });
 
-export const topicLanguageSchema = z.enum(TOPIC_LANGUAGES);
+export const termLanguageSchema = z.enum(TERM_LANGUAGES);
 
 export const updateWorkspaceLlmSettingsSchema = z.object({
   dataCollectionScope: z
@@ -21,13 +21,13 @@ export const updateWorkspaceLlmSettingsSchema = z.object({
     .max(MAX_DATA_COLLECTION_SCOPE_LENGTH, {
       error: `Data collection scope must be ${MAX_DATA_COLLECTION_SCOPE_LENGTH} characters or fewer.`,
     }),
-  autoCreateTopics: z.boolean(),
-  topicLanguage: topicLanguageSchema,
-  topicCriteria: z
+  autoCreateTerms: z.boolean(),
+  termLanguage: termLanguageSchema,
+  termCriteria: z
     .string()
     .trim()
-    .max(MAX_TOPIC_CRITERIA_LENGTH, {
-      error: `Topic criteria must be ${MAX_TOPIC_CRITERIA_LENGTH} characters or fewer.`,
+    .max(MAX_TERM_CRITERIA_LENGTH, {
+      error: `Term criteria must be ${MAX_TERM_CRITERIA_LENGTH} characters or fewer.`,
     }),
 });
 

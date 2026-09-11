@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { chunks, documentTopics, documents } from "@/db/schema";
+import { chunks, documentTerms, documents } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 
@@ -51,7 +51,7 @@ export async function rebuildDocumentChunks(
           docType: doc.docType,
           publishedAt: doc.publishedAt,
           chunks: built,
-          topicIds: await fetchTopicIds(documentId),
+          termIds: await fetchTopicIds(documentId),
           qualityScore: doc.qualityScore,
           engagement: {
             likeCount: doc.likeCount,
@@ -83,11 +83,11 @@ export async function rebuildDocumentChunks(
 
 async function fetchTopicIds(documentId: string): Promise<string[]> {
   const rows = await db
-    .select({ topicId: documentTopics.topicId })
-    .from(documentTopics)
-    .where(eq(documentTopics.documentId, documentId));
+    .select({ termId: documentTerms.termId })
+    .from(documentTerms)
+    .where(eq(documentTerms.documentId, documentId));
 
-  return rows.map((row) => row.topicId);
+  return rows.map((row) => row.termId);
 }
 
 function readString(

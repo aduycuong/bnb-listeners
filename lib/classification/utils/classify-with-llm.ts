@@ -7,39 +7,39 @@ import {
   CLASSIFIER_CONTENT_MAX_CHARS,
   DEFAULT_CLASSIFIER_MODEL,
 } from "../config";
-import type { ClassifierTopic } from "../types";
+import type { ClassifierTerm } from "../types";
 
 const assignmentSchema = z.object({
-  id: z.uuid().describe("Topic id from the provided list"),
+  id: z.uuid().describe("Term id from the provided list"),
   confidence: z
     .number()
     .min(0)
     .max(1)
-    .describe("Confidence that this topic applies, from 0.0 to 1.0"),
+    .describe("Confidence that this term applies, from 0.0 to 1.0"),
 });
 
 const classificationResponseSchema = z.object({
   assignments: z
     .array(assignmentSchema)
     .describe(
-      "Matching topics from the provided list. Empty when none apply.",
+      "Matching terms from the provided list. Empty when none apply.",
     ),
 });
 
-export type LlmTopicAssignment = z.infer<typeof assignmentSchema>;
+export type LlmTermAssignment = z.infer<typeof assignmentSchema>;
 
 export type ClassifyWithLlmResult = {
-  assignments: LlmTopicAssignment[];
+  assignments: LlmTermAssignment[];
 };
 
-function formatTopicsForPrompt(classifierTopics: ClassifierTopic[]): string {
-  return classifierTopics
-    .map((topic) => {
-      const description = topic.description?.trim()
-        ? `\n  Description: ${topic.description.trim()}`
+function formatTermsForPrompt(classifierTerms: ClassifierTerm[]): string {
+  return classifierTerms
+    .map((term) => {
+      const description = term.description?.trim()
+        ? `\n  Description: ${term.description.trim()}`
         : "";
 
-      return `- id: ${topic.id}\n  Name: ${topic.name}${description}`;
+      return `- id: ${term.id}\n  Name: ${term.name}${description}`;
     })
     .join("\n\n");
 }
@@ -51,13 +51,13 @@ function buildUserMessage(
     docType: string;
     sourceName: string;
   },
-  activeTopics: ClassifierTopic[],
+  activeTerms: ClassifierTerm[],
 ): string {
   const contentPreview = doc.rawContent.slice(0, CLASSIFIER_CONTENT_MAX_CHARS);
 
   return [
-    "Available topics:",
-    formatTopicsForPrompt(activeTopics),
+    "Available terms:",
+    formatTermsForPrompt(activeTerms),
     "",
     "Document:",
     `Type: ${doc.docType}`,
@@ -70,7 +70,7 @@ function buildUserMessage(
 }
 
 /**
- * Calls the LLM classifier to match a document against existing topics.
+ * Calls the LLM classifier to match a document against existing terms.
  */
 export async function classifyWithLlm(
   doc: {
@@ -79,7 +79,7 @@ export async function classifyWithLlm(
     docType: string;
     sourceName: string;
   },
-  classifierTopics: ClassifierTopic[],
+  classifierTerms: ClassifierTerm[],
   systemPrompt: string,
 ): Promise<ClassifyWithLlmResult> {
   const model = createChatModel(DEFAULT_CLASSIFIER_MODEL, { temperature: 0 });
@@ -87,7 +87,7 @@ export async function classifyWithLlm(
 
   const response = await structured.invoke([
     new SystemMessage(systemPrompt),
-    new HumanMessage(buildUserMessage(doc, classifierTopics)),
+    new HumanMessage(buildUserMessage(doc, classifierTerms)),
   ]);
 
   return { assignments: response.assignments };

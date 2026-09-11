@@ -16,28 +16,28 @@ export const DEFAULT_DATA_COLLECTION_SCOPE =
   "tin tức và dữ liệu về bất động sản";
 
 export const MAX_DATA_COLLECTION_SCOPE_LENGTH = 500;
-export const MAX_TOPIC_CRITERIA_LENGTH = 2_000;
+export const MAX_TERM_CRITERIA_LENGTH = 2_000;
 
-export const TOPIC_LANGUAGES = ["vietnamese", "english", "auto"] as const;
+export const TERM_LANGUAGES = ["vietnamese", "english", "auto"] as const;
 
-export type TopicLanguage = (typeof TOPIC_LANGUAGES)[number];
+export type TermLanguage = (typeof TERM_LANGUAGES)[number];
 
-export const DEFAULT_TOPIC_LANGUAGE: TopicLanguage = "auto";
+export const DEFAULT_TERM_LANGUAGE: TermLanguage = "auto";
 
-export const TOPIC_LANGUAGE_OPTIONS: {
-  value: TopicLanguage;
+export const TERM_LANGUAGE_OPTIONS: {
+  value: TermLanguage;
   label: string;
   description: string;
 }[] = [
   {
     value: "vietnamese",
     label: "Vietnamese",
-    description: "Always generate topic names and descriptions in Vietnamese.",
+    description: "Always generate term names and descriptions in Vietnamese.",
   },
   {
     value: "english",
     label: "English",
-    description: "Always generate topic names and descriptions in English.",
+    description: "Always generate term names and descriptions in English.",
   },
   {
     value: "auto",

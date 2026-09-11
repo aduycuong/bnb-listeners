@@ -1,7 +1,7 @@
 import {
   BULK_DRAIN_JOB_NAME,
   RECOMPUTE_JOB_NAME,
-} from "@/lib/topic-digests/constants";
+} from "@/lib/term-digests/constants";
 
 export const SYSTEM_SCHEDULE_RUN_STATUS = {
   running: "running",
@@ -22,18 +22,18 @@ export type SystemScheduleRunTrigger =
 
 export const DEFAULT_SYSTEM_SCHEDULES = [
   {
-    scheduleId: "system-recompute-topic-digests",
+    scheduleId: "system-recompute-term-digests",
     jobName: RECOMPUTE_JOB_NAME,
     cronConfig: { cron: "*/15 * * * *", timezone: "UTC" },
     description:
-      "Recompute daily digest metrics for normal-stale topic rows every 15 min.",
+      "Recompute daily digest metrics for normal-stale term rows every 15 min.",
   },
   {
-    scheduleId: "system-bulk-drain-topic-digests",
+    scheduleId: "system-bulk-drain-term-digests",
     jobName: BULK_DRAIN_JOB_NAME,
     cronConfig: { cron: "*/15 * * * *", timezone: "UTC" },
     description:
-      "Drain bulk-stale topic digest rows (taxonomy restructures) every 15 min.",
+      "Drain bulk-stale term digest rows (taxonomy restructures) every 15 min.",
   },
 ] as const;
 

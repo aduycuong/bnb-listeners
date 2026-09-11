@@ -52,9 +52,9 @@ export const workspaces = pgTable(
     dataCollectionScope: text("data_collection_scope")
       .notNull()
       .default("tin tức và dữ liệu về bất động sản"),
-    autoCreateTopics: boolean("auto_create_topics").notNull().default(true),
-    topicLanguage: text("topic_language").notNull().default("auto"),
-    topicCriteria: text("topic_criteria").notNull().default(""),
+    autoCreateTerms: boolean("auto_create_terms").notNull().default(true),
+    termLanguage: text("term_language").notNull().default("auto"),
+    termCriteria: text("term_criteria").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -469,7 +469,7 @@ export const chunks = pgTable(
     mediaUrl: text("media_url"),
     mediaMetadata: jsonb("media_metadata").$type<Record<string, unknown>>(),
     embeddingMultimodal: pgVector1024("embedding_multimodal"),
-    topicIds: uuid("topic_ids").array().default([]),
+    termIds: uuid("term_ids").array().default([]),
     qualityScore: real("quality_score"),
     /** Denormalized from documents by trg_sync_chunk_engagement — filter/sort without a join. */
     likeCount: integer("like_count").notNull().default(0),
@@ -489,7 +489,7 @@ export const chunks = pgTable(
       .with({ m: 16, ef_construction: 64 })
       .where(sql`${table.embeddingMultimodal} IS NOT NULL`),
     index("idx_chunks_content_tsv").using("gin", table.contentTsv),
-    index("idx_chunks_topic_ids").using("gin", table.topicIds),
+    index("idx_chunks_term_ids").using("gin", table.termIds),
     index("idx_chunks_doc_type").on(table.docType),
     index("idx_chunks_content_type").on(table.contentType),
     index("idx_chunks_published_at").on(table.publishedAt.desc()),
@@ -510,8 +510,8 @@ export const chunks = pgTable(
 export type Chunk = typeof chunks.$inferSelect;
 export type NewChunk = typeof chunks.$inferInsert;
 
-export const topics = pgTable(
-  "topics",
+export const terms = pgTable(
+  "terms",
   {
     id: uuid("id").primaryKey().defaultRandom().notNull(),
     workspaceId: uuid("workspace_id")
@@ -539,25 +539,25 @@ export const topics = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    uniqueIndex("idx_topics_workspace_name").on(table.workspaceId, table.name),
-    index("idx_topics_workspace_id").on(table.workspaceId),
-    index("idx_topics_source_document").on(table.sourceDocumentId),
-    index("idx_topics_active_backfill_run").on(table.activeBackfillRunId),
+    uniqueIndex("idx_terms_workspace_name").on(table.workspaceId, table.name),
+    index("idx_terms_workspace_id").on(table.workspaceId),
+    index("idx_terms_source_document").on(table.sourceDocumentId),
+    index("idx_terms_active_backfill_run").on(table.activeBackfillRunId),
   ],
 );
 
-export type Topic = typeof topics.$inferSelect;
-export type NewTopic = typeof topics.$inferInsert;
+export type Term = typeof terms.$inferSelect;
+export type NewTerm = typeof terms.$inferInsert;
 
-export const documentTopics = pgTable(
-  "document_topics",
+export const documentTerms = pgTable(
+  "document_terms",
   {
     documentId: uuid("document_id")
       .notNull()
       .references(() => documents.id, { onDelete: "cascade" }),
-    topicId: uuid("topic_id")
+    termId: uuid("term_id")
       .notNull()
-      .references(() => topics.id, { onDelete: "cascade" }),
+      .references(() => terms.id, { onDelete: "cascade" }),
     confidence: real("confidence").notNull().default(1),
     assignedBy: text("assigned_by").notNull().default("llm_classifier"),
     assignedAt: timestamp("assigned_at", { withTimezone: true })
@@ -565,25 +565,25 @@ export const documentTopics = pgTable(
       .defaultNow(),
   },
   (table) => [
-    primaryKey({ columns: [table.documentId, table.topicId] }),
-    index("idx_document_topics_topic").on(table.topicId),
-    index("idx_document_topics_document").on(table.documentId),
+    primaryKey({ columns: [table.documentId, table.termId] }),
+    index("idx_document_terms_term").on(table.termId),
+    index("idx_document_terms_document").on(table.documentId),
   ],
 );
 
-export type DocumentTopic = typeof documentTopics.$inferSelect;
-export type NewDocumentTopic = typeof documentTopics.$inferInsert;
+export type DocumentTerm = typeof documentTerms.$inferSelect;
+export type NewDocumentTerm = typeof documentTerms.$inferInsert;
 
-export const topicBackfillRuns = pgTable(
-  "topic_backfill_runs",
+export const termBackfillRuns = pgTable(
+  "term_backfill_runs",
   {
     id: uuid("id").primaryKey().defaultRandom().notNull(),
     workspaceId: uuid("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
-    topicId: uuid("topic_id")
+    termId: uuid("term_id")
       .notNull()
-      .references(() => topics.id, { onDelete: "cascade" }),
+      .references(() => terms.id, { onDelete: "cascade" }),
     status: text("status").notNull().default("pending"),
     newListeningStartedAt: timestamp("new_listening_started_at", {
       withTimezone: true,
@@ -634,22 +634,22 @@ export const topicBackfillRuns = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
   (table) => [
-    index("idx_topic_backfill_runs_topic_started").on(
-      table.topicId,
+    index("idx_term_backfill_runs_term_started").on(
+      table.termId,
       table.startedAt.desc(),
     ),
-    index("idx_topic_backfill_runs_workspace_started").on(
+    index("idx_term_backfill_runs_workspace_started").on(
       table.workspaceId,
       table.startedAt.desc(),
     ),
-    uniqueIndex("idx_topic_backfill_one_active")
-      .on(table.topicId)
+    uniqueIndex("idx_term_backfill_one_active")
+      .on(table.termId)
       .where(sql`${table.status} IN ('pending', 'running')`),
   ],
 );
 
-export type TopicBackfillRun = typeof topicBackfillRuns.$inferSelect;
-export type NewTopicBackfillRun = typeof topicBackfillRuns.$inferInsert;
+export type TermBackfillRun = typeof termBackfillRuns.$inferSelect;
+export type NewTermBackfillRun = typeof termBackfillRuns.$inferInsert;
 
 // ---------------------------------------------------------------------------
 // Date dimension — static calendar table, seeded once for ~10–20 years.
@@ -676,17 +676,17 @@ export type DimDate = typeof dimDates.$inferSelect;
 export type NewDimDate = typeof dimDates.$inferInsert;
 
 // ---------------------------------------------------------------------------
-// Daily fact table — one row per (topic, date).
+// Daily fact table — one row per (term, date).
 // Source of truth for all digest metrics.
 // Arbitrary-range queries (e.g. Aug 15 – Sep 30) run directly against this.
 // ---------------------------------------------------------------------------
 
-export const topicDigestDaily = pgTable(
-  "topic_digest_daily",
+export const termDigestDaily = pgTable(
+  "term_digest_daily",
   {
-    topicId: uuid("topic_id")
+    termId: uuid("term_id")
       .notNull()
-      .references(() => topics.id, { onDelete: "cascade" }),
+      .references(() => terms.id, { onDelete: "cascade" }),
     dateKey: date("date_key")
       .notNull()
       .references(() => dimDates.dateKey),
@@ -701,7 +701,7 @@ export const topicDigestDaily = pgTable(
 
     // Processing / cache state
     isStale: boolean("is_stale").notNull().default(true),
-    // true when row was invalidated by a bulk taxonomy op (merge/split topics).
+    // true when row was invalidated by a bulk taxonomy op (merge/split terms).
     // Normal recompute job skips these; a separate low-priority bulk drain job
     // processes them with a smaller LIMIT so burst traffic doesn't crowd out
     // day-to-day invalidations.
@@ -715,23 +715,23 @@ export const topicDigestDaily = pgTable(
     computedAt: timestamp("computed_at", { withTimezone: true }),
   },
   (table) => [
-    primaryKey({ columns: [table.topicId, table.dateKey, table.jobId] }),
-    // rolling-window topic cards + sparkline
-    index("idx_topic_digest_daily_job_date").on(
+    primaryKey({ columns: [table.termId, table.dateKey, table.jobId] }),
+    // rolling-window term cards + sparkline
+    index("idx_term_digest_daily_job_date").on(
       table.jobId,
       table.dateKey,
-      table.topicId,
+      table.termId,
     ),
-    // "all topics on a date" — used by ranking after daily recompute
-    index("idx_topic_digest_daily_date").on(table.dateKey, table.topicId),
+    // "all terms on a date" — used by ranking after daily recompute
+    index("idx_term_digest_daily_date").on(table.dateKey, table.termId),
     // normal recompute job queue — excludes bulk-stale rows
-    index("idx_topic_digest_daily_stale")
+    index("idx_term_digest_daily_stale")
       .on(table.staleSince)
       .where(
         sql`${table.isStale} = true AND ${table.isBulkStale} = false AND ${table.processing} = false`,
       ),
     // bulk drain job queue — only rows flagged by taxonomy ops
-    index("idx_topic_digest_daily_bulk_stale")
+    index("idx_term_digest_daily_bulk_stale")
       .on(table.staleSince)
       .where(
         sql`${table.isStale} = true AND ${table.isBulkStale} = true AND ${table.processing} = false`,
@@ -739,8 +739,8 @@ export const topicDigestDaily = pgTable(
   ],
 );
 
-export type TopicDigestDaily = typeof topicDigestDaily.$inferSelect;
-export type NewTopicDigestDaily = typeof topicDigestDaily.$inferInsert;
+export type TermDigestDaily = typeof termDigestDaily.$inferSelect;
+export type NewTermDigestDaily = typeof termDigestDaily.$inferInsert;
 
 export const workspaceApiKeys = pgTable(
   "workspace_api_keys",

@@ -5,19 +5,19 @@ import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 
 import type { WorkspaceLlmSettings } from "../types";
-import { parseTopicLanguage } from "../utils/parse-topic-language";
+import { parseTermLanguage } from "../utils/parse-term-language";
 
 function toWorkspaceLlmSettings(row: {
   dataCollectionScope: string;
-  autoCreateTopics: boolean;
-  topicLanguage: string;
-  topicCriteria: string;
+  autoCreateTerms: boolean;
+  termLanguage: string;
+  termCriteria: string;
 }): WorkspaceLlmSettings {
   return {
     dataCollectionScope: row.dataCollectionScope,
-    autoCreateTopics: row.autoCreateTopics,
-    topicLanguage: parseTopicLanguage(row.topicLanguage),
-    topicCriteria: row.topicCriteria,
+    autoCreateTerms: row.autoCreateTerms,
+    termLanguage: parseTermLanguage(row.termLanguage),
+    termCriteria: row.termCriteria,
   };
 }
 
@@ -27,9 +27,9 @@ export async function getWorkspaceLlmSettings(
   const [row] = await db
     .select({
       dataCollectionScope: workspaces.dataCollectionScope,
-      autoCreateTopics: workspaces.autoCreateTopics,
-      topicLanguage: workspaces.topicLanguage,
-      topicCriteria: workspaces.topicCriteria,
+      autoCreateTerms: workspaces.autoCreateTerms,
+      termLanguage: workspaces.termLanguage,
+      termCriteria: workspaces.termCriteria,
     })
     .from(workspaces)
     .where(eq(workspaces.id, workspaceId))
