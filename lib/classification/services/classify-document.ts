@@ -11,12 +11,14 @@ import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace
 import type {
   ClassifyDocumentParams,
   ClassifyDocumentResult,
+  CreatedTerm,
+  ProposedTerm,
   TermAssignment,
 } from "../types";
 import { classifyWithLlm } from "../utils/classify-with-llm";
 import { createAutoTerm } from "../utils/create-auto-term";
 import { loadTermsForClassifier } from "../utils/load-terms-for-classifier";
-import { proposeTermWithLlm } from "../utils/propose-term-with-llm";
+import { proposeTermsWithLlm } from "../utils/propose-term-with-llm";
 
 const LLM_ASSIGNED_BY = "llm_classifier";
 
@@ -70,6 +72,10 @@ async function assignExistingTerms(
   documentId: string,
   assignments: TermAssignment[],
 ): Promise<void> {
+  if (assignments.length === 0) {
+    return;
+  }
+
   await db
     .insert(documentTerms)
     .values(
@@ -83,36 +89,47 @@ async function assignExistingTerms(
     .onConflictDoNothing();
 }
 
-async function assignProposedTerm(
+async function assignProposedTerms(
   workspaceId: string,
   documentId: string,
-  proposed: { name: string; description: string },
+  proposedTerms: ProposedTerm[],
 ): Promise<ClassifyDocumentResult> {
-  const name = proposed.name.trim();
-  const existing = await findTermByName(workspaceId, name);
+  const assignments: TermAssignment[] = [];
+  const createdTerms: CreatedTerm[] = [];
+  const seenNames = new Set<string>();
 
-  if (existing) {
-    const assignments: TermAssignment[] = [
-      {
+  for (const proposed of proposedTerms) {
+    const name = proposed.name.trim();
+    if (!name) {
+      continue;
+    }
+
+    const nameKey = name.toLowerCase();
+    if (seenNames.has(nameKey)) {
+      continue;
+    }
+    seenNames.add(nameKey);
+
+    const existing = await findTermByName(workspaceId, name);
+    if (existing) {
+      assignments.push({
         termId: existing.id,
         name: existing.name,
         confidence: 1,
-      },
-    ];
-    await assignExistingTerms(documentId, assignments);
-    return { documentId, assignments, createdTerms: [] };
+      });
+      continue;
+    }
+
+    const createdTerm = await createAutoTerm(workspaceId, documentId, {
+      name,
+      description: proposed.description,
+    });
+    createdTerms.push(createdTerm);
   }
 
-  const createdTerm = await createAutoTerm(workspaceId, documentId, {
-    name,
-    description: proposed.description,
-  });
+  await assignExistingTerms(documentId, assignments);
 
-  return {
-    documentId,
-    assignments: [],
-    createdTerms: [createdTerm],
-  };
+  return { documentId, assignments, createdTerms };
 }
 
 /**
@@ -120,9 +137,9 @@ async function assignProposedTerm(
  *
  * Steps:
  *   1. Fetch the document and all terms (including LLM-created ones).
- *   2. Ask the LLM to select matching terms; when none fit, propose a new term.
- *   3. Assign existing terms, or auto-create a proposed term and assign it immediately.
- *      If the proposed name already exists, assign that term instead.
+ *   2. Ask the LLM to select matching terms; when none fit, optionally propose new terms.
+ *   3. Assign existing terms, or auto-create proposed terms (0..N) when appropriate.
+ *      If a proposed name already exists, assign that term instead.
  *
  * Only prior LLM assignments are replaced; admin assignments are preserved.
  *
@@ -175,8 +192,12 @@ export async function classifyDocument(
         doc.workspaceId,
         "propose_term",
       );
-      const proposed = await proposeTermWithLlm(docContext, proposePrompt);
-      result = await assignProposedTerm(doc.workspaceId, documentId, proposed);
+      const proposedTerms = await proposeTermsWithLlm(docContext, proposePrompt);
+      result = await assignProposedTerms(
+        doc.workspaceId,
+        documentId,
+        proposedTerms,
+      );
     }
   } else {
     const { assignments: llmAssignments } = await classifyWithLlm(
@@ -206,8 +227,12 @@ export async function classifyDocument(
         doc.workspaceId,
         "propose_term",
       );
-      const proposed = await proposeTermWithLlm(docContext, proposePrompt);
-      result = await assignProposedTerm(doc.workspaceId, documentId, proposed);
+      const proposedTerms = await proposeTermsWithLlm(docContext, proposePrompt);
+      result = await assignProposedTerms(
+        doc.workspaceId,
+        documentId,
+        proposedTerms,
+      );
     }
   }
 

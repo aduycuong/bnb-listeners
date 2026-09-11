@@ -10,8 +10,8 @@ import {
 } from "../document-term-config";
 import { countDocumentsForSourceTerms } from "../utils/count-documents-for-source-terms";
 import {
-  disableChunkTopicTrigger,
-  enableChunkTopicTrigger,
+  disableChunkTermTrigger,
+  enableChunkTermTrigger,
 } from "../utils/chunk-term-trigger";
 import { fetchDigestPartitionsForSourceTerms } from "../utils/fetch-digest-partitions-for-source-terms";
 import { fetchDocumentIdsForSourceTerms } from "../utils/fetch-document-ids-for-source-terms";
@@ -30,7 +30,7 @@ async function bulkInsertAssignmentsWithTriggerDisabled(
   let triggerDisabled = false;
 
   try {
-    await disableChunkTopicTrigger();
+    await disableChunkTermTrigger();
     triggerDisabled = true;
 
     const insertResult = await db.execute<{ document_id: string }>(sql`
@@ -54,7 +54,7 @@ async function bulkInsertAssignmentsWithTriggerDisabled(
     return insertResult.rows.length;
   } finally {
     if (triggerDisabled) {
-      await enableChunkTopicTrigger();
+      await enableChunkTermTrigger();
     }
   }
 }

@@ -1,7 +1,7 @@
 import type { LlmPromptKey } from "../constants";
 import {
   buildClassifyTermsPrompt,
-  buildProposeTopicPrompt,
+  buildProposeTermPrompt,
   buildScoreCommentStancesPrompt,
   buildScoreRelevancePrompt,
 } from "../utils/build-system-prompt-from-settings";
@@ -17,7 +17,7 @@ export async function resolveWorkspaceSystemPrompt(
     case "classify_terms":
       return buildClassifyTermsPrompt(settings);
     case "propose_term":
-      return buildProposeTopicPrompt(settings);
+      return buildProposeTermPrompt(settings);
     case "score_relevance":
       return buildScoreRelevancePrompt(settings);
     case "score_comment_stances":

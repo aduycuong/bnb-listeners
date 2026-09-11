@@ -10,19 +10,19 @@ import {
 import type { ClassifierTerm } from "../types";
 
 const assignmentSchema = z.object({
-  id: z.uuid().describe("Term id from the provided list"),
+  id: z.uuid().describe("Id term từ danh sách được cung cấp"),
   confidence: z
     .number()
     .min(0)
     .max(1)
-    .describe("Confidence that this term applies, from 0.0 to 1.0"),
+    .describe("Độ tin cậy term áp dụng, từ 0.0 đến 1.0"),
 });
 
 const classificationResponseSchema = z.object({
   assignments: z
     .array(assignmentSchema)
     .describe(
-      "Matching terms from the provided list. Empty when none apply.",
+      "Các term khớp từ danh sách. Để rỗng khi không có term phù hợp.",
     ),
 });
 
@@ -36,10 +36,10 @@ function formatTermsForPrompt(classifierTerms: ClassifierTerm[]): string {
   return classifierTerms
     .map((term) => {
       const description = term.description?.trim()
-        ? `\n  Description: ${term.description.trim()}`
+        ? `\n  Mô tả: ${term.description.trim()}`
         : "";
 
-      return `- id: ${term.id}\n  Name: ${term.name}${description}`;
+      return `- id: ${term.id}\n  Tên: ${term.name}${description}`;
     })
     .join("\n\n");
 }
@@ -56,14 +56,14 @@ function buildUserMessage(
   const contentPreview = doc.rawContent.slice(0, CLASSIFIER_CONTENT_MAX_CHARS);
 
   return [
-    "Available terms:",
+    "Danh sách term hiện có:",
     formatTermsForPrompt(activeTerms),
     "",
-    "Document:",
-    `Type: ${doc.docType}`,
-    `Source: ${doc.sourceName}`,
-    doc.title?.trim() ? `Title: ${doc.title.trim()}` : null,
-    `Content:\n${contentPreview}`,
+    "Tài liệu:",
+    `Loại: ${doc.docType}`,
+    `Nguồn: ${doc.sourceName}`,
+    doc.title?.trim() ? `Tiêu đề: ${doc.title.trim()}` : null,
+    `Nội dung:\n${contentPreview}`,
   ]
     .filter(Boolean)
     .join("\n");

@@ -17,7 +17,7 @@ type TermDetailListeningSectionProps = {
   workspaceId: string;
   term: GetTermResult;
   canEdit: boolean;
-  onTopicUpdated: () => Promise<void>;
+  onTermUpdated: () => Promise<void>;
 };
 
 function formatDateTime(value: string) {
@@ -31,7 +31,7 @@ export function TermDetailListeningSection({
   workspaceId,
   term,
   canEdit,
-  onTopicUpdated,
+  onTermUpdated,
 }: TermDetailListeningSectionProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const hasActiveBackfill = Boolean(term.activeBackfillRun);
@@ -63,7 +63,7 @@ export function TermDetailListeningSection({
               workspaceId={workspaceId}
               termId={term.id}
               run={term.activeBackfillRun}
-              onUpdated={onTopicUpdated}
+              onUpdated={onTermUpdated}
             />
           ) : null}
 
@@ -85,7 +85,7 @@ export function TermDetailListeningSection({
         onOpenChange={setDialogOpen}
         workspaceId={workspaceId}
         term={term}
-        onStarted={onTopicUpdated}
+        onStarted={onTermUpdated}
       />
     </>
   );

@@ -151,8 +151,8 @@ export function WorkspaceLlmSettingsCard({
                   Auto-create terms
                 </FieldLabel>
                 <FieldDescription>
-                  When enabled, the AI can propose and create new terms for
-                  documents that do not match existing ones.
+                  Khi bật, AI có thể tạo term mới (theo quy tắc bên dưới) cho
+                  tài liệu không khớp term hiện có.
                 </FieldDescription>
               </FieldContent>
               <Controller
@@ -229,19 +229,19 @@ export function WorkspaceLlmSettingsCard({
                   }
                 >
                   <FieldLabel htmlFor="term-criteria">
-                    Term criteria
+                    Quy tắc tạo term
                   </FieldLabel>
                   <Textarea
                     id="term-criteria"
-                    placeholder="One criterion per line. Optional."
+                    placeholder="Mỗi dòng một quy tắc. Ví dụ: tên term là cụm từ khóa ngắn; không tạo term quá rộng như 'bất động sản'."
                     aria-invalid={!!form.formState.errors.termCriteria}
                     disabled={disabled}
                     rows={4}
                     {...form.register("termCriteria")}
                   />
                   <FieldDescription>
-                    Extra guidelines for how new terms should be named and
-                    described.
+                    Quy tắc chính khi AI tạo term mới — ưu tiên cao hơn suy luận tự do
+                    của model. Mỗi dòng một quy tắc.
                   </FieldDescription>
                   <FieldError errors={[form.formState.errors.termCriteria]} />
                 </Field>

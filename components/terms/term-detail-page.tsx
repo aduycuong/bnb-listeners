@@ -318,7 +318,7 @@ export function TermDetailPage({
             workspace.permission === "edit" ||
             workspace.permission === "owner"
           }
-          onTopicUpdated={async () => {
+          onTermUpdated={async () => {
             await termQuery.refetch();
             await chartQuery.refetch();
             await documentsQuery.refetch();

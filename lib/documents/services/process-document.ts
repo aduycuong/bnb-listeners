@@ -19,7 +19,7 @@ export type ProcessDocumentPayload = z.infer<
  * Steps:
  *   1. Validate payload.
  *   2. Score — compute quality_score across all dimensions.
- *   3. Classify — assign terms via LLM, or auto-create a new term when none match.
+ *   3. Classify — assign terms via LLM; optionally propose 0..N new terms when none match.
  *   4. Chunk — split content and media, embed, and replace the document's chunks.
  *      Skipped when quality is below the threshold.
  */

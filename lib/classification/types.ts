@@ -22,7 +22,7 @@ export type ClassifyDocumentResult = {
   documentId: string;
   /** Terms assigned from the existing term list. */
   assignments: TermAssignment[];
-  /** Terms auto-created because no existing term matched. */
+  /** Terms auto-created from LLM proposals (0..N per document). */
   createdTerms: CreatedTerm[];
 };
 

@@ -5,8 +5,8 @@ import type { TermBackfillRun } from "@/db/schema";
 import { db } from "@/lib/db";
 import { fetchDigestPartitionsForDocuments } from "@/lib/document-terms/utils/fetch-digest-partitions-for-documents";
 import {
-  disableChunkTopicTrigger,
-  enableChunkTopicTrigger,
+  disableChunkTermTrigger,
+  enableChunkTermTrigger,
 } from "@/lib/document-terms/utils/chunk-term-trigger";
 import { syncChunkTermsForDocuments } from "@/lib/document-terms/utils/sync-chunk-terms-for-documents";
 import { bulkInvalidateTermDigestPartitions } from "@/lib/term-digests/services/bulk-invalidate-term-digest-partitions";
@@ -28,12 +28,12 @@ export async function finalizeTermBackfillRun(params: {
     let triggerDisabled = false;
 
     try {
-      await disableChunkTopicTrigger();
+      await disableChunkTermTrigger();
       triggerDisabled = true;
       await syncChunkTermsForDocuments(assignedDocumentIds);
     } finally {
       if (triggerDisabled) {
-        await enableChunkTopicTrigger();
+        await enableChunkTermTrigger();
       }
     }
 

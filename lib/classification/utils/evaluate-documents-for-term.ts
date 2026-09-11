@@ -5,19 +5,19 @@ import { createChatModel, type ChatModelId } from "@/lib/langchain";
 import { TERM_BACKFILL_CONTENT_MAX_CHARS } from "@/lib/terms/term-backfill-config";
 
 const evaluationItemSchema = z.object({
-  documentId: z.uuid().describe("Document id from the provided list"),
-  match: z.boolean().describe("True when the document belongs to the term"),
+  documentId: z.uuid().describe("Id tài liệu từ danh sách được cung cấp"),
+  match: z.boolean().describe("True khi tài liệu thuộc term này"),
   confidence: z
     .number()
     .min(0)
     .max(1)
-    .describe("Confidence that this term applies, from 0.0 to 1.0"),
+    .describe("Độ tin cậy term áp dụng, từ 0.0 đến 1.0"),
 });
 
 const evaluationResponseSchema = z.object({
   results: z
     .array(evaluationItemSchema)
-    .describe("One evaluation per provided document"),
+    .describe("Một kết quả cho mỗi tài liệu được cung cấp"),
 });
 
 export type EvaluateDocumentInput = {
@@ -30,7 +30,7 @@ export type EvaluateDocumentInput = {
 
 export type DocumentTermEvaluation = z.infer<typeof evaluationItemSchema>;
 
-export type EvaluateDocumentsForTopicResult = {
+export type EvaluateDocumentsForTermResult = {
   results: DocumentTermEvaluation[];
   usage: { inputTokens: number; outputTokens: number };
 };
@@ -40,7 +40,7 @@ function buildUserMessage(
   documents: EvaluateDocumentInput[],
 ): string {
   const termDescription = term.description?.trim()
-    ? `\nDescription: ${term.description.trim()}`
+    ? `\nMô tả: ${term.description.trim()}`
     : "";
 
   const documentBlocks = documents
@@ -51,12 +51,12 @@ function buildUserMessage(
       );
 
       return [
-        `Document ${index + 1}:`,
+        `Tài liệu ${index + 1}:`,
         `id: ${doc.id}`,
-        `Type: ${doc.docType}`,
-        `Source: ${doc.sourceName}`,
-        doc.title?.trim() ? `Title: ${doc.title.trim()}` : null,
-        `Content:\n${contentPreview}`,
+        `Loại: ${doc.docType}`,
+        `Nguồn: ${doc.sourceName}`,
+        doc.title?.trim() ? `Tiêu đề: ${doc.title.trim()}` : null,
+        `Nội dung:\n${contentPreview}`,
       ]
         .filter(Boolean)
         .join("\n");
@@ -65,9 +65,9 @@ function buildUserMessage(
 
   return [
     "Term:",
-    `Name: ${term.name.trim()}${termDescription}`,
+    `Tên: ${term.name.trim()}${termDescription}`,
     "",
-    "Documents:",
+    "Danh sách tài liệu:",
     documentBlocks,
   ].join("\n");
 }
@@ -80,7 +80,7 @@ export async function evaluateDocumentsForTerm(
   documents: EvaluateDocumentInput[],
   systemPrompt: string,
   model: ChatModelId,
-): Promise<EvaluateDocumentsForTopicResult> {
+): Promise<EvaluateDocumentsForTermResult> {
   if (documents.length === 0) {
     return { results: [], usage: { inputTokens: 0, outputTokens: 0 } };
   }

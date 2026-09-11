@@ -51,7 +51,7 @@ export async function rebuildDocumentChunks(
           docType: doc.docType,
           publishedAt: doc.publishedAt,
           chunks: built,
-          termIds: await fetchTopicIds(documentId),
+          termIds: await fetchTermIds(documentId),
           qualityScore: doc.qualityScore,
           engagement: {
             likeCount: doc.likeCount,
@@ -81,7 +81,7 @@ export async function rebuildDocumentChunks(
   };
 }
 
-async function fetchTopicIds(documentId: string): Promise<string[]> {
+async function fetchTermIds(documentId: string): Promise<string[]> {
   const rows = await db
     .select({ termId: documentTerms.termId })
     .from(documentTerms)

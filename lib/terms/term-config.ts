@@ -9,7 +9,7 @@ export const TERM_CONFIG = {
   segment: TERM_SEGMENT,
   listTitle: "Terms",
   listDescription:
-    "Flexible term taxonomy used to classify documents in this workspace.",
+    "Từ khóa/nhãn linh hoạt để gắn và lọc tài liệu trong workspace.",
   emptyTitle: "No terms yet",
   emptyDescription: "Add a term to start classifying documents.",
   createLabel: "Add term",

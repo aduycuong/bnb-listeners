@@ -150,7 +150,7 @@ Tenant container for documents, terms, and members.
 | data_collection_scope | text | NO | `tin tức và dữ liệu về bất động sản` | Domain for relevance scoring and LLM prompts |
 | auto_create_terms | boolean | NO | `true` | When true, AI may propose new terms for unmatched documents |
 | term_language | text | NO | `auto` | Language for generated term names/descriptions (`term_language` enum) |
-| term_criteria | text | NO | `''` | Optional multiline guidelines for new term proposals |
+| term_criteria | text | NO | `''` | Multiline rules for new term creation (primary source for auto-created terms) |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Last update time |
 
@@ -389,7 +389,7 @@ Workspace scope is inherited via `document_id` → `documents.workspace_id`.
 
 ### `terms`
 
-Workspace-scoped subject taxonomy. The LLM classifier can auto-create terms when no existing term matches a document.
+Workspace-scoped keyword labels. Terms are short keywords/tags for filtering — not a fixed subject taxonomy. The LLM can auto-create terms when no existing term matches, primarily following workspace rules (`term_criteria`).
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |

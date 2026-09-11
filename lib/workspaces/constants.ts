@@ -32,16 +32,16 @@ export const TERM_LANGUAGE_OPTIONS: {
   {
     value: "vietnamese",
     label: "Vietnamese",
-    description: "Always generate term names and descriptions in Vietnamese.",
+    description: "Luôn tạo tên và mô tả term bằng tiếng Việt.",
   },
   {
     value: "english",
     label: "English",
-    description: "Always generate term names and descriptions in English.",
+    description: "Luôn tạo tên và mô tả term bằng tiếng Anh.",
   },
   {
     value: "auto",
     label: "Auto",
-    description: "Match the language of the document being classified.",
+    description: "Tên và mô tả term cùng ngôn ngữ với tài liệu.",
   },
 ];

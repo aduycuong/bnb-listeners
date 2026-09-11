@@ -3,10 +3,10 @@ import type { TermLanguage } from "@/lib/workspaces/constants";
 export function buildTermLanguageGuideline(language: TermLanguage): string {
   switch (language) {
     case "vietnamese":
-      return "Write proposed term names and descriptions in Vietnamese.";
+      return "Luôn viết tên và mô tả term bằng tiếng Việt.";
     case "english":
-      return "Write proposed term names and descriptions in English.";
+      return "Luôn viết tên và mô tả term bằng tiếng Anh.";
     case "auto":
-      return "Write proposed term names and descriptions in the same language as the document.";
+      return "Viết tên và mô tả term cùng ngôn ngữ với tài liệu.";
   }
 }

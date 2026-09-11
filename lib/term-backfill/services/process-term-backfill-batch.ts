@@ -5,7 +5,7 @@ import { documentTerms, termBackfillRuns, terms } from "@/db/schema";
 import { evaluateDocumentsForTerm } from "@/lib/classification/utils/evaluate-documents-for-term";
 import { DOCUMENT_TERM_ASSIGNED_BY } from "@/lib/document-terms/document-term-config";
 import { db } from "@/lib/db";
-import { buildEvaluateTopicPrompt } from "@/lib/llm/utils/build-system-prompt-from-settings";
+import { buildEvaluateTermPrompt } from "@/lib/llm/utils/build-system-prompt-from-settings";
 import { parseChatModel, type ChatModelId } from "@/lib/langchain";
 import { addJob } from "@/lib/qstash/services/add-job-service";
 import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace-llm-settings";
@@ -141,7 +141,7 @@ export async function processTermBackfillBatch(
   }
 
   const llmSettings = await getWorkspaceLlmSettings(term.workspaceId);
-  const systemPrompt = buildEvaluateTopicPrompt(llmSettings, {
+  const systemPrompt = buildEvaluateTermPrompt(llmSettings, {
     name: term.name,
     description: term.description,
   });
