@@ -67,6 +67,10 @@ function formatDuration(startedAt: string, finishedAt: string | null) {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
+function formatRunType(runType: string) {
+  return runType.replaceAll("-", " ");
+}
+
 function statusBadgeClassName(status: string) {
   switch (status) {
     case "success":
@@ -136,6 +140,9 @@ export function JobRunsSection({
                       )}
                     >
                       {run.status}
+                    </span>
+                    <span className="text-xs text-muted-foreground capitalize">
+                      {formatRunType(run.runType)}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {formatDuration(run.startedAt, run.finishedAt)}

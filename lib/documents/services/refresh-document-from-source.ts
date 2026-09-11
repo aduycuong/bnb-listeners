@@ -3,6 +3,7 @@ import { CreateFailedError, UnknownServiceError } from "@/lib/common/service-err
 import { db } from "@/lib/db";
 import { executeScrapeFacebookPost } from "@/lib/jobs/handlers/scrape-facebook/execute-scrape-facebook-post";
 import type { SchedulableJobType } from "@/lib/jobs/constants";
+import { JOB_RUN_TYPE_FACEBOOK_POST } from "@/lib/jobs/run-types";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type {
@@ -39,7 +40,11 @@ export async function refreshDocumentFromSource(
 
       const [run] = await db
         .insert(jobRuns)
-        .values({ jobId: document.jobId, status: "running" })
+        .values({
+          jobId: document.jobId,
+          status: "running",
+          runType: JOB_RUN_TYPE_FACEBOOK_POST,
+        })
         .returning();
 
       if (!run) {

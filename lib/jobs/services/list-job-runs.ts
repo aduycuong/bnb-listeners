@@ -28,6 +28,7 @@ export async function listJobRuns(
   const rows = await db
     .select({
       id: jobRuns.id,
+      runType: jobRuns.runType,
       status: jobRuns.status,
       result: jobRuns.result,
       error: jobRuns.error,

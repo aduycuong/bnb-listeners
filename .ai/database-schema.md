@@ -544,6 +544,17 @@ Used by `job_runs.status`.
 | `success` | Completed without error |
 | `failed` | Completed with error |
 
+### `job_run_type`
+
+Used by `job_runs.run_type`. One `job_type` can produce multiple run types.
+
+| Value | Description |
+| ----- | ----------- |
+| `facebook-posts` | Scheduled or manual scrape of a Facebook page/group feed |
+| `facebook-post` | Re-fetch a single Facebook post document from source |
+| `facebook-comments` | Fetch comments for a Facebook post document |
+| `scrape-website` | Website scrape run |
+
 ### `jobs`
 
 Workspace-scoped job definition for QStash scheduling.
@@ -586,6 +597,7 @@ One row per job execution — success/failure, result payload, and error message
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | job_id | uuid | NO | — | FK → `jobs.id` ON DELETE CASCADE |
 | status | text | NO | `running` | `running` \| `success` \| `failed` |
+| run_type | text | NO | — | Handler-specific run kind (see `job_run_type`) |
 | result | jsonb | YES | — | Structured outcome (counts, ids, …) |
 | error | text | YES | — | Error message when `status = failed` |
 | started_at | timestamptz | NO | `now()` | Run start time |
@@ -599,6 +611,7 @@ One row per job execution — success/failure, result payload, and error message
 | `idx_job_runs_started_at` | `(started_at DESC)` | Recent runs globally |
 | `idx_job_runs_status` | `(status)` | Filter by outcome |
 | `idx_job_runs_job_started` | `(job_id, started_at DESC)` | Recent runs per job |
+| `idx_job_runs_run_type` | `(run_type)` | Filter runs by kind |
 
 **Relations**
 

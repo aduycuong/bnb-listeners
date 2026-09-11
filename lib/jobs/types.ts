@@ -49,6 +49,7 @@ export type ListJobRunsParams = { id: string };
 
 export type JobRunListItem = {
   id: string;
+  runType: string;
   status: string;
   result: Record<string, unknown> | null;
   error: string | null;

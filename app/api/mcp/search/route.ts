@@ -34,7 +34,7 @@ function buildSearchMcpServer(workspaceId: string): McpServer {
           .optional()
           .describe(`Number of results to return (default ${RETRIEVAL_RETURN_LIMIT})`),
         topicIds: z
-          .array(z.string().uuid())
+          .array(z.uuid())
           .optional()
           .describe("Filter results to specific topic IDs"),
       },
@@ -93,7 +93,6 @@ function buildSearchMcpServer(workspaceId: string): McpServer {
         "and stance (agree/disagree/neutral for debates).",
       inputSchema: {
         documentId: z
-          .string()
           .uuid()
           .describe("The document ID shown after 'doc:' in search results"),
       },

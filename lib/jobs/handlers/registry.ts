@@ -1,6 +1,11 @@
 import type { z } from "zod";
 
 import type { SchedulableJobType } from "../constants";
+import {
+  JOB_RUN_TYPE_FACEBOOK_POSTS,
+  JOB_RUN_TYPE_SCRAPE_WEBSITE,
+  type JobRunType,
+} from "../run-types";
 import type { JobHandlerContext } from "./types";
 import {
   SCRAPE_FACEBOOK_DEFAULT_PARAMS,
@@ -18,6 +23,7 @@ export type JobHandlerConfig = {
   description: string;
   paramsSchema: z.ZodType<Record<string, unknown>>;
   defaultParams: Record<string, unknown>;
+  defaultRunType: JobRunType;
   execute: (
     params: Record<string, unknown>,
     context: JobHandlerContext,
@@ -37,6 +43,7 @@ export const JOB_HANDLERS = {
       Record<string, unknown>
     >,
     defaultParams: SCRAPE_FACEBOOK_DEFAULT_PARAMS,
+    defaultRunType: JOB_RUN_TYPE_FACEBOOK_POSTS,
     execute: executeScrapeFacebook,
     completesAsynchronously: true,
   },
@@ -47,6 +54,7 @@ export const JOB_HANDLERS = {
       Record<string, unknown>
     >,
     defaultParams: SCRAPE_WEBSITE_DEFAULT_PARAMS,
+    defaultRunType: JOB_RUN_TYPE_SCRAPE_WEBSITE,
     execute: executeScrapeWebsite,
     completesAsynchronously: false,
   },

@@ -5,8 +5,12 @@ import { parseBrightDataScraperWebhookPayload } from "@/lib/bright-data/utils/pa
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { upsertComments } from "@/lib/comments/services/upsert-comments";
-import { BRIGHT_DATA_FACEBOOK_COMMENTS_KIND } from "@/lib/documents/services/update-document-comments";
 import { upsertDocument } from "@/lib/documents/services/upsert-document";
+import {
+  JOB_RUN_TYPE_FACEBOOK_COMMENTS,
+  JOB_RUN_TYPE_FACEBOOK_POST,
+  JOB_RUN_TYPE_FACEBOOK_POSTS,
+} from "@/lib/jobs/run-types";
 import { mapCommentToUpsertItem } from "@/lib/jobs/handlers/scrape-facebook/utils/map-comment-to-upsert-item";
 import { mapPostToDocument } from "@/lib/jobs/handlers/scrape-facebook/utils/map-post-to-document";
 import { parseFacebookComments } from "@/lib/jobs/handlers/scrape-facebook/utils/parse-facebook-comment";
@@ -22,13 +26,6 @@ type UpsertSummary = {
   updated: number;
   unchanged: number;
 };
-
-function readBrightDataKind(
-  result: Record<string, unknown> | null | undefined,
-): string | null {
-  const value = result?.brightDataKind;
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
 
 function readDocumentId(
   result: Record<string, unknown> | null | undefined,
@@ -79,6 +76,7 @@ export async function handleBrightDataJobWebhook(
     .select({
       id: jobRuns.id,
       status: jobRuns.status,
+      runType: jobRuns.runType,
       jobId: jobRuns.jobId,
       result: jobRuns.result,
       workspaceId: jobs.workspaceId,
@@ -116,10 +114,9 @@ export async function handleBrightDataJobWebhook(
 
   let upsertSummary: UpsertSummary | null = null;
   let commentsSummary: UpsertSummary | null = null;
-  const brightDataKind = readBrightDataKind(run.result);
 
   if (
-    brightDataKind === BRIGHT_DATA_FACEBOOK_COMMENTS_KIND &&
+    run.runType === JOB_RUN_TYPE_FACEBOOK_COMMENTS &&
     Array.isArray(rawOutput)
   ) {
     const documentId = readDocumentId(run.result);
@@ -143,7 +140,11 @@ export async function handleBrightDataJobWebhook(
         ...commentsSummary,
       });
     }
-  } else if (run.jobType === "scrape-facebook" && Array.isArray(rawOutput)) {
+  } else if (
+    (run.runType === JOB_RUN_TYPE_FACEBOOK_POSTS ||
+      run.runType === JOB_RUN_TYPE_FACEBOOK_POST) &&
+    Array.isArray(rawOutput)
+  ) {
     const facebookUrl =
       typeof run.jobParams?.facebookUrl === "string"
         ? run.jobParams.facebookUrl

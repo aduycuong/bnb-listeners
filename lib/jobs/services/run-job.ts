@@ -28,6 +28,7 @@ export async function runJob(
 
   return {
     id: run.id,
+    runType: run.runType,
     status: run.status,
     result: run.result,
     error: run.error,

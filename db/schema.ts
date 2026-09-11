@@ -145,6 +145,7 @@ export const jobRuns = pgTable(
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
     status: text("status").notNull().default("running"),
+    runType: text("run_type").notNull(),
     result: jsonb("result").$type<Record<string, unknown>>(),
     error: text("error"),
     startedAt: timestamp("started_at", { withTimezone: true })
@@ -157,6 +158,7 @@ export const jobRuns = pgTable(
     index("idx_job_runs_started_at").on(table.startedAt.desc()),
     index("idx_job_runs_status").on(table.status),
     index("idx_job_runs_job_started").on(table.jobId, table.startedAt.desc()),
+    index("idx_job_runs_run_type").on(table.runType),
   ],
 );
 

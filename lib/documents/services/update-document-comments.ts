@@ -3,6 +3,7 @@ import { CreateFailedError, UnknownServiceError } from "@/lib/common/service-err
 import { db } from "@/lib/db";
 import { executeScrapeFacebookComments } from "@/lib/jobs/handlers/scrape-facebook/execute-scrape-facebook-comments";
 import type { SchedulableJobType } from "@/lib/jobs/constants";
+import { JOB_RUN_TYPE_FACEBOOK_COMMENTS } from "@/lib/jobs/run-types";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type {
@@ -10,8 +11,6 @@ import type {
   UpdateDocumentCommentsResult,
 } from "../types";
 import { getDocument } from "./get-document";
-
-export const BRIGHT_DATA_FACEBOOK_COMMENTS_KIND = "facebook-comments";
 
 function readPostUrl(metadata: Record<string, unknown>): string | null {
   const value = metadata.postUrl;
@@ -44,8 +43,8 @@ export async function updateDocumentComments(
         .values({
           jobId: document.jobId,
           status: "running",
+          runType: JOB_RUN_TYPE_FACEBOOK_COMMENTS,
           result: {
-            brightDataKind: BRIGHT_DATA_FACEBOOK_COMMENTS_KIND,
             documentId: document.id,
           },
         })

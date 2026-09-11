@@ -13,6 +13,7 @@ export type ExecuteJobParams = {
 
 export type ExecuteJobResult = {
   id: string;
+  runType: string;
   status: string;
   result: Record<string, unknown> | null;
   error: string | null;
@@ -41,7 +42,11 @@ export async function executeJob(
 
   const [run] = await db
     .insert(jobRuns)
-    .values({ jobId: job.id, status: "running" })
+    .values({
+      jobId: job.id,
+      status: "running",
+      runType: handler.defaultRunType,
+    })
     .returning();
 
   if (!run) {
@@ -59,6 +64,7 @@ export async function executeJob(
     if (handler.completesAsynchronously) {
       return {
         id: run.id,
+        runType: run.runType,
         status: "running",
         result: run.result ?? null,
         error: null,
@@ -78,6 +84,7 @@ export async function executeJob(
 
     return {
       id: run.id,
+      runType: run.runType,
       status: "success",
       result: run.result ?? null,
       error: null,
@@ -99,6 +106,7 @@ export async function executeJob(
 
     return {
       id: run.id,
+      runType: run.runType,
       status: "failed",
       result: run.result ?? null,
       error: message,
