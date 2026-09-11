@@ -5,6 +5,10 @@ import { getBrightDataWebhookAuthorization } from "@/lib/bright-data/utils/get-w
 import { getBrightDataWebhookUrl } from "@/lib/bright-data/utils/get-webhook-url";
 
 import type { JobHandlerContext } from "../types";
+import {
+  DEFAULT_MAX_COMMENTS,
+  DEFAULT_SCRAPE_POST_COMMENTS,
+} from "./config";
 import { isFacebookGroupUrl } from "./utils/is-facebook-group-url";
 
 export type { BrightDataFacebookPost, FacebookPostMetadata } from "./types";
@@ -30,12 +34,19 @@ export const scrapeFacebookParamsSchema = z.object({
     .refine(isFacebookUrl, {
       error: "Facebook URL must be a facebook.com page or group URL.",
     }),
+  scrapePostComments: z.boolean().default(DEFAULT_SCRAPE_POST_COMMENTS),
+  maxComments: z
+    .int()
+    .positive({ error: "Max comments must be at least 1." })
+    .default(DEFAULT_MAX_COMMENTS),
 });
 
 export type ScrapeFacebookParams = z.infer<typeof scrapeFacebookParamsSchema>;
 
 export const SCRAPE_FACEBOOK_DEFAULT_PARAMS = {
   facebookUrl: "",
+  scrapePostComments: DEFAULT_SCRAPE_POST_COMMENTS,
+  maxComments: DEFAULT_MAX_COMMENTS,
 };
 
 export async function executeScrapeFacebook(

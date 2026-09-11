@@ -40,6 +40,7 @@ function buildSearchMcpServer(workspaceId: string): McpServer {
       },
     },
     async ({ query, limit, topicIds }) => {
+      console.log("--------------------------------- search_knowledge ------------------------------", { query, limit, topicIds });
       const chunks = await searchChunks({
         workspaceId,
         query,
@@ -69,7 +70,7 @@ function buildSearchMcpServer(workspaceId: string): McpServer {
         .join("\n");
 
 
-
+      console.log("--------------------------------- search_knowledge ------------------------------", { context, sourcesText });
       return {
         content: [
           {

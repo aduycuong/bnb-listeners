@@ -7,10 +7,18 @@ import { db } from "@/lib/db";
 import { upsertComments } from "@/lib/comments/services/upsert-comments";
 import { upsertDocument } from "@/lib/documents/services/upsert-document";
 import {
+  FACEBOOK_COMMENT_SCRAPE_DELAYS_SECONDS,
+  FACEBOOK_COMMENT_SCRAPE_MAX_ATTEMPTS,
+  readCommentScrapeAttempt,
+  readMaxComments,
+  readScrapePostComments,
+} from "@/lib/jobs/handlers/scrape-facebook/config";
+import {
   JOB_RUN_TYPE_FACEBOOK_COMMENTS,
   JOB_RUN_TYPE_FACEBOOK_POST,
   JOB_RUN_TYPE_FACEBOOK_POSTS,
 } from "@/lib/jobs/run-types";
+import { scheduleFacebookCommentScrape } from "@/lib/jobs/services/schedule-facebook-comment-scrape";
 import { mapCommentToUpsertItem } from "@/lib/jobs/handlers/scrape-facebook/utils/map-comment-to-upsert-item";
 import { mapPostToDocument } from "@/lib/jobs/handlers/scrape-facebook/utils/map-post-to-document";
 import { parseFacebookComments } from "@/lib/jobs/handlers/scrape-facebook/utils/parse-facebook-comment";
@@ -34,28 +42,82 @@ function readDocumentId(
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+type UpsertFacebookPostDocumentsResult = {
+  summary: UpsertSummary;
+  insertedDocumentIds: string[];
+};
+
 async function upsertFacebookPostDocuments(
   output: unknown[],
   sourceKey: string,
   workspaceId: string,
   jobRunId: string,
   jobId: string,
-): Promise<UpsertSummary> {
+): Promise<UpsertFacebookPostDocumentsResult> {
   const posts = parseFacebookPosts(output);
   const summary: UpsertSummary = { inserted: 0, updated: 0, unchanged: 0 };
+  const insertedDocumentIds: string[] = [];
 
   await Promise.all(
     posts.map(async (post) => {
       const params = mapPostToDocument({ sourceKey, post });
-      const { outcome } = await upsertDocument(
+      const { documentId, outcome } = await upsertDocument(
         { ...params, jobRunId, jobId },
         workspaceId,
       );
       summary[outcome]++;
+      if (outcome === "inserted") {
+        insertedDocumentIds.push(documentId);
+      }
     }),
   );
 
-  return summary;
+  return { summary, insertedDocumentIds };
+}
+
+async function scheduleInitialFacebookCommentScrapes(
+  insertedDocumentIds: string[],
+  jobParams: Record<string, unknown> | null,
+): Promise<void> {
+  if (insertedDocumentIds.length === 0 || !readScrapePostComments(jobParams)) {
+    return;
+  }
+
+  const maxComments = readMaxComments(jobParams);
+
+  await Promise.all(
+    insertedDocumentIds.map((documentId) =>
+      scheduleFacebookCommentScrape({
+        documentId,
+        attempt: 1,
+        maxComments,
+        delaySeconds: FACEBOOK_COMMENT_SCRAPE_DELAYS_SECONDS.first,
+      }),
+    ),
+  );
+}
+
+async function scheduleNextFacebookCommentScrape(
+  documentId: string,
+  attempt: number,
+  maxComments: number,
+  insertedCount: number,
+): Promise<void> {
+  if (attempt >= FACEBOOK_COMMENT_SCRAPE_MAX_ATTEMPTS) {
+    return;
+  }
+
+  const delaySeconds =
+    insertedCount > 0
+      ? FACEBOOK_COMMENT_SCRAPE_DELAYS_SECONDS.afterNewComments
+      : FACEBOOK_COMMENT_SCRAPE_DELAYS_SECONDS.afterNoNewComments;
+
+  await scheduleFacebookCommentScrape({
+    documentId,
+    attempt: attempt + 1,
+    maxComments,
+    delaySeconds,
+  });
 }
 
 export async function handleBrightDataJobWebhook(
@@ -139,6 +201,25 @@ export async function handleBrightDataJobWebhook(
         itemCount: parsedComments.length,
         ...commentsSummary,
       });
+
+      const attempt = readCommentScrapeAttempt(run.result);
+      if (
+        attempt != null &&
+        readScrapePostComments(run.jobParams) &&
+        commentsSummary
+      ) {
+        const maxComments =
+          typeof run.result?.maxComments === "number"
+            ? run.result.maxComments
+            : readMaxComments(run.jobParams);
+
+        await scheduleNextFacebookCommentScrape(
+          documentId,
+          attempt,
+          maxComments,
+          commentsSummary.inserted,
+        );
+      }
     }
   } else if (
     (run.runType === JOB_RUN_TYPE_FACEBOOK_POSTS ||
@@ -151,17 +232,24 @@ export async function handleBrightDataJobWebhook(
         : null;
 
     if (facebookUrl) {
-      upsertSummary = await upsertFacebookPostDocuments(
+      const { summary, insertedDocumentIds } = await upsertFacebookPostDocuments(
         rawOutput,
         facebookUrl,
         run.workspaceId,
         run.id,
         run.jobId,
       );
+      upsertSummary = summary;
+
+      await scheduleInitialFacebookCommentScrapes(
+        insertedDocumentIds,
+        run.jobParams,
+      );
 
       console.log("[jobs] scrape-facebook upsert complete", {
         jobRunId: params.jobRunId,
         ...upsertSummary,
+        scheduledCommentScrapes: insertedDocumentIds.length,
       });
     }
   }

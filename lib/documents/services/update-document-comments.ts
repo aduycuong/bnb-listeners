@@ -1,9 +1,11 @@
-import { jobRuns } from "@/db/schema";
-import { CreateFailedError, UnknownServiceError } from "@/lib/common/service-errors";
+import { eq } from "drizzle-orm";
+
+import { jobs } from "@/db/schema";
+import { UnknownServiceError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
-import { executeScrapeFacebookComments } from "@/lib/jobs/handlers/scrape-facebook/execute-scrape-facebook-comments";
+import { readMaxComments } from "@/lib/jobs/handlers/scrape-facebook/config";
 import type { SchedulableJobType } from "@/lib/jobs/constants";
-import { JOB_RUN_TYPE_FACEBOOK_COMMENTS } from "@/lib/jobs/run-types";
+import { startFacebookDocumentCommentScrape } from "@/lib/jobs/services/start-facebook-document-comment-scrape";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type {
@@ -11,11 +13,6 @@ import type {
   UpdateDocumentCommentsResult,
 } from "../types";
 import { getDocument } from "./get-document";
-
-function readPostUrl(metadata: Record<string, unknown>): string | null {
-  const value = metadata.postUrl;
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
 
 export async function updateDocumentComments(
   params: UpdateDocumentCommentsParams,
@@ -31,37 +28,22 @@ export async function updateDocumentComments(
 
   switch (document.jobType as SchedulableJobType) {
     case "scrape-facebook": {
-      const postUrl = readPostUrl(document.metadata);
-      if (!postUrl) {
-        throw new UnknownServiceError(
-          "This document is missing the Facebook post URL needed to fetch comments.",
-        );
-      }
+      const [job] = await db
+        .select({ params: jobs.params })
+        .from(jobs)
+        .where(eq(jobs.id, document.jobId))
+        .limit(1);
 
-      const [run] = await db
-        .insert(jobRuns)
-        .values({
-          jobId: document.jobId,
-          status: "running",
-          runType: JOB_RUN_TYPE_FACEBOOK_COMMENTS,
-          result: {
-            documentId: document.id,
-          },
-        })
-        .returning();
-
-      if (!run) {
-        throw new CreateFailedError("job run");
-      }
-
-      const { snapshotId } = await executeScrapeFacebookComments(
-        { postUrl },
-        { jobId: document.jobId, jobRunId: run.id },
+      const { jobRunId, snapshotId } = await startFacebookDocumentCommentScrape(
+        {
+          documentId: document.id,
+          maxComments: readMaxComments(job?.params),
+        },
       );
 
       return {
         documentId: document.id,
-        jobRunId: run.id,
+        jobRunId,
         status: "running",
         message:
           "Comment fetch started. Comments will update when the scrape completes.",

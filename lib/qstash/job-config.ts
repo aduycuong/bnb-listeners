@@ -2,6 +2,8 @@ import { processDocument } from "@/lib/documents/services/process-document";
 import { scoreDocumentComments } from "@/lib/comments/services/score-document-comments";
 import { SCORE_DOCUMENT_COMMENTS_JOB_NAME } from "@/lib/comments/config";
 import { runScheduledJob } from "@/lib/jobs/services/run-scheduled-job";
+import { scrapeFacebookDocumentComments } from "@/lib/jobs/services/scrape-facebook-document-comments";
+import { SCRAPE_FACEBOOK_DOCUMENT_COMMENTS_JOB_NAME } from "@/lib/jobs/handlers/scrape-facebook/config";
 import { processTopicBackfillBatch } from "@/lib/topic-backfill/services/process-topic-backfill-batch";
 import { bulkDrainTopicDigests } from "@/lib/topic-digests/services/bulk-drain-topic-digests";
 import { recomputeTopicDigests } from "@/lib/topic-digests/services/recompute-topic-digests";
@@ -73,4 +75,10 @@ export const qstashJobHandlers: Record<string, QstashJobHandler> = {
    * Payload: { runId: string }
    */
   [TOPIC_BACKFILL_QSTASH_JOB_NAME]: processTopicBackfillBatch,
+
+  /**
+   * Delayed follow-up scrape for Facebook post comments.
+   * Payload: { documentId: string, attempt: number, maxComments: number }
+   */
+  [SCRAPE_FACEBOOK_DOCUMENT_COMMENTS_JOB_NAME]: scrapeFacebookDocumentComments,
 };
