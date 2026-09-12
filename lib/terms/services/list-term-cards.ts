@@ -6,7 +6,6 @@ import type { WorkspaceContext } from "@/lib/workspaces/types";
 import {
   TERM_CARD_PAGE_SIZE,
   TERM_CARD_SPARKLINE_DAYS,
-  type TermCardSort,
 } from "../term-card-config";
 import type {
   ListTermCardsParams,
@@ -19,6 +18,10 @@ import {
   buildSparklineDateKeys,
   resolveTermCardPeriod,
 } from "../utils/resolve-term-card-period";
+import {
+  buildTermSearchFtsFilter,
+  buildTermSearchOrderClause,
+} from "../utils/build-term-search-fts-sql";
 import {
   resolveTermCardJobIds,
   resolveTermCardQuerySource,
@@ -43,19 +46,11 @@ type SparklineRow = {
   doc_count: number;
 };
 
-function getOrderClause(sort: TermCardSort) {
-  switch (sort) {
-    case "count":
-      return sql`doc_count DESC, name ASC`;
-    case "quality":
-      return sql`avg_quality_score DESC NULLS LAST, name ASC`;
-    case "created_at":
-      return sql`t.created_at DESC, name ASC`;
-    case "trend":
-    default:
-      return sql`trend_score DESC NULLS LAST, name ASC`;
-  }
-}
+type TermGroupRow = {
+  term_id: string;
+  group_id: string;
+  group_name: string;
+};
 
 function toIsoTimestamp(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -68,6 +63,23 @@ function toDigest(row: TermCardRow): TermCardDigest {
     trendScore: row.trend_score,
     isStale: row.is_stale,
   };
+}
+
+function buildGroupsByTermId(
+  rows: TermGroupRow[],
+): Map<string, TermCardItem["groups"]> {
+  const groupsByTermId = new Map<string, TermCardItem["groups"]>();
+
+  for (const row of rows) {
+    const groups = groupsByTermId.get(row.term_id) ?? [];
+    groups.push({
+      id: row.group_id,
+      name: row.group_name,
+    });
+    groupsByTermId.set(row.term_id, groups);
+  }
+
+  return groupsByTermId;
 }
 
 function buildSparklineSeries(
@@ -108,6 +120,16 @@ export async function listTermCards(
     endDate: params.endDate,
   });
   const resolvedJobIds = resolveTermCardJobIds(params.jobIds);
+  const searchFilter = buildTermSearchFtsFilter(params.search);
+  const orderClause = buildTermSearchOrderClause(params.search, params.sort);
+  const groupFilter = params.groupId
+    ? sql`AND EXISTS (
+        SELECT 1
+        FROM term_group_members tgm
+        WHERE tgm.term_id = t.id
+          AND tgm.term_group_id = ${params.groupId}::uuid
+      )`
+    : sql``;
 
   // Build an optional job filter fragment. When resolvedJobIds is null the
   // query aggregates across all jobs (no WHERE on job_id).
@@ -144,13 +166,16 @@ export async function listTermCards(
       AND tdd.date_key <= ${querySource.endDate}::date
       ${jobFilter}
     WHERE t.workspace_id = ${ctx.workspaceId}::uuid
+      ${searchFilter}
+      ${groupFilter}
     GROUP BY
       t.id,
       t.name,
       t.description,
       t.created_by,
-      t.created_at
-    ORDER BY ${getOrderClause(params.sort)}
+      t.created_at,
+      t.search_tsv
+    ORDER BY ${orderClause}
     LIMIT ${limit + 1}
     OFFSET ${offset}
   `);
@@ -169,24 +194,45 @@ export async function listTermCards(
     : sql``;
 
   let sparklineRows: SparklineRow[] = [];
+  let termGroupRows: TermGroupRow[] = [];
   if (termIds.length > 0) {
-    const sparklineResult = await db.execute<SparklineRow>(sql`
-      SELECT
-        tdd.term_id,
-        tdd.date_key,
-        tdd.doc_count
-      FROM term_digest_daily tdd
-      WHERE tdd.term_id = ANY(ARRAY[${sql.join(
-        termIds.map((id) => sql`${id}::uuid`),
-        sql`, `,
-      )}])
-        AND tdd.date_key >= ${sparklineStart}::date
-        AND tdd.date_key <= ${sparklineEnd}::date
-        ${sparklineJobFilter}
-      ORDER BY tdd.term_id, tdd.date_key
-    `);
+    const [sparklineResult, termGroupsResult] = await Promise.all([
+      db.execute<SparklineRow>(sql`
+        SELECT
+          tdd.term_id,
+          tdd.date_key,
+          tdd.doc_count
+        FROM term_digest_daily tdd
+        WHERE tdd.term_id = ANY(ARRAY[${sql.join(
+          termIds.map((id) => sql`${id}::uuid`),
+          sql`, `,
+        )}])
+          AND tdd.date_key >= ${sparklineStart}::date
+          AND tdd.date_key <= ${sparklineEnd}::date
+          ${sparklineJobFilter}
+        ORDER BY tdd.term_id, tdd.date_key
+      `),
+      db.execute<TermGroupRow>(sql`
+        SELECT
+          tgm.term_id,
+          tg.id AS group_id,
+          tg.name AS group_name
+        FROM term_group_members tgm
+        INNER JOIN term_groups tg
+          ON tg.id = tgm.term_group_id
+        WHERE tgm.term_id = ANY(ARRAY[${sql.join(
+          termIds.map((id) => sql`${id}::uuid`),
+          sql`, `,
+        )}])
+          AND tg.workspace_id = ${ctx.workspaceId}::uuid
+        ORDER BY tgm.term_id, tg.name
+      `),
+    ]);
     sparklineRows = sparklineResult.rows;
+    termGroupRows = termGroupsResult.rows;
   }
+
+  const groupsByTermId = buildGroupsByTermId(termGroupRows);
 
   const items: TermCardItem[] = pageRows.map((row) => ({
     id: row.id,
@@ -194,6 +240,7 @@ export async function listTermCards(
     description: row.description,
     createdBy: row.created_by,
     createdAt: toIsoTimestamp(row.created_at),
+    groups: groupsByTermId.get(row.id) ?? [],
     digest: toDigest(row),
     sparkline: buildSparklineSeries(row.id, sparklineDateKeys, sparklineRows),
   }));

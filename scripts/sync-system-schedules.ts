@@ -24,7 +24,7 @@ const SCRIPT = "sync-system-schedules";
 
 const optionsSchema = z
   .object({
-    callbackUrl: z.string().url().optional(),
+    callbackUrl: z.url().optional(),
     dryRun: z.boolean(),
     yes: z.boolean(),
   })

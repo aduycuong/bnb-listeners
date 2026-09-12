@@ -1,5 +1,7 @@
 export const LLM_PROMPT_KEYS = [
   "classify_terms",
+  "classify_term_groups",
+  "evaluate_term_group_membership",
   "propose_term",
   "score_relevance",
   "score_comment_stances",

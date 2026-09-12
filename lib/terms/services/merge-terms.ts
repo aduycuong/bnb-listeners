@@ -5,6 +5,7 @@ import { NotFoundError, UnknownServiceError } from "@/lib/common/service-errors"
 import { addDocumentTermAssignmentsFromSources } from "@/lib/document-terms/services/add-document-term-assignments-from-sources";
 import { db } from "@/lib/db";
 import { bulkInvalidateTermDigests } from "@/lib/term-digests/services/bulk-invalidate-workspace-digests";
+import { transferTermGroupMemberships } from "@/lib/term-groups/utils/transfer-term-group-memberships";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import { TERM_MERGE_MAX_SOURCES } from "../term-config";
@@ -97,6 +98,7 @@ export async function mergeTerms(
   });
 
   await bulkInvalidateTermDigests({ termIds: [targetId] });
+  await transferTermGroupMemberships(sourceIds, targetId);
 
   const deletedIds: string[] = [];
   const failures: MergeTermsFailure[] = [];

@@ -2,7 +2,7 @@
 
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlusIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
 import { TermCard } from "@/components/terms/term-card";
@@ -11,6 +11,7 @@ import { TermDeleteDialog } from "@/components/terms/term-delete-dialog";
 import { TermFormDialog } from "@/components/terms/term-form-dialog";
 import { TermMergeDialog } from "@/components/terms/term-merge-dialog";
 import { TermListToolbar } from "@/components/terms/term-list-toolbar";
+import { termGroupsQueryKey } from "@/components/term-groups/term-group-query-keys";
 import {
   termCardsQueryKey,
   workspaceJobsQueryKey,
@@ -26,11 +27,13 @@ import {
   type TermCardPeriodPreset,
   type TermCardSort,
 } from "@/lib/terms/term-card-config";
+import { getTermGroupHref } from "@/lib/term-groups/term-group-config";
 import { TERM_BULK_DELETE_MAX, TERM_CONFIG, TERM_MERGE_MAX_SOURCES, getTermHref } from "@/lib/terms/term-config";
 import type {
   ListTermCardsResult,
 } from "@/lib/terms/types";
 import type { ListJobsResult } from "@/lib/jobs/types";
+import type { ListTermGroupsResult } from "@/lib/term-groups/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { cn } from "@/lib/utils";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
@@ -65,6 +68,15 @@ async function fetchTermCards(
     params.set("jobIds", filters.jobIds.join(","));
   }
 
+  const search = filters.search?.trim();
+  if (search) {
+    params.set("search", search);
+  }
+
+  if (filters.groupId) {
+    params.set("groupId", filters.groupId);
+  }
+
   const res = await workspaceFetch(
     workspaceId,
     `/api/terms/cards?${params.toString()}`,
@@ -76,6 +88,22 @@ async function fetchTermCards(
 
   if (!res.ok) {
     throw new Error(data.message ?? data.error ?? "Could not load terms.");
+  }
+
+  return data;
+}
+
+async function fetchTermGroups(
+  workspaceId: string,
+): Promise<ListTermGroupsResult> {
+  const res = await workspaceFetch(workspaceId, "/api/term-groups");
+  const data = (await res.json()) as ListTermGroupsResult & {
+    error?: string;
+    message?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(data.message ?? data.error ?? "Could not load term groups.");
   }
 
   return data;
@@ -107,6 +135,9 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
   const [period, setPeriod] = useState<TermCardPeriodPreset>("last_7_days");
   const [sort, setSort] = useState<TermCardSort>("trend");
   const [jobIds, setJobIds] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
+  const [groupId, setGroupId] = useState<string>();
   const [customStartDate, setCustomStartDate] = useState<string>();
   const [customEndDate, setCustomEndDate] = useState<string>();
 
@@ -134,10 +165,12 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
       period,
       sort,
       jobIds,
+      search: deferredSearch.trim() || undefined,
+      groupId,
       startDate: period === "custom" ? customStartDate : undefined,
       endDate: period === "custom" ? customEndDate : undefined,
     }),
-    [customEndDate, customStartDate, jobIds, period, sort],
+    [customEndDate, customStartDate, deferredSearch, groupId, jobIds, period, sort],
   );
 
   const cardsQuery = useInfiniteQuery({
@@ -155,7 +188,13 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
     queryFn: () => fetchJobs(workspace.id),
   });
 
+  const groupsQuery = useQuery({
+    queryKey: termGroupsQueryKey(workspace.id),
+    queryFn: () => fetchTermGroups(workspace.id),
+  });
+
   const jobs = jobsQuery.data?.items ?? [];
+  const groups = groupsQuery.data?.items ?? [];
   const cards = useMemo(
     () => cardsQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [cardsQuery.data?.pages],
@@ -237,6 +276,7 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
     setPeriod("custom");
   }
 
+  const hasSearch = search.trim().length > 0;
   const showEmptyState =
     !isInitialLoading &&
     !errorMessage &&
@@ -350,13 +390,18 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
             sort={sort}
             jobIds={jobIds}
             jobs={jobs}
+            search={search}
+            groups={groups}
+            groupId={groupId}
             customStartDate={customStartDate}
             customEndDate={customEndDate}
             onPeriodChange={handlePeriodChange}
             onSortChange={setSort}
             onJobIdsChange={setJobIds}
+            onSearchChange={setSearch}
+            onGroupIdChange={setGroupId}
             onCustomRangeApply={handleCustomRangeApply}
-            disabled={isInitialLoading}
+            controlsDisabled={isInitialLoading}
           />
         </div>
 
@@ -378,14 +423,22 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
           </div>
         ) : showEmptyState ? (
           <ResourceListEmpty
-            title={TERM_CONFIG.emptyTitle}
-            description={
-              canEdit
-                ? TERM_CONFIG.emptyDescription
-                : "Terms will appear here once they are added to this workspace."
+            title={
+              hasSearch
+                ? TERM_CONFIG.listSearchEmptyTitle
+                : TERM_CONFIG.emptyTitle
             }
-            actionLabel={canEdit ? TERM_CONFIG.createLabel : undefined}
-            onAction={canEdit ? openCreate : undefined}
+            description={
+              hasSearch
+                ? TERM_CONFIG.listSearchEmptyDescription
+                : canEdit
+                  ? TERM_CONFIG.emptyDescription
+                  : "Terms will appear here once they are added to this workspace."
+            }
+            actionLabel={
+              hasSearch || !canEdit ? undefined : TERM_CONFIG.createLabel
+            }
+            onAction={hasSearch || !canEdit ? undefined : openCreate}
           />
         ) : (
           <>
@@ -399,6 +452,9 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
                   key={term.id}
                   term={term}
                   href={getTermHref(workspaceIndex, term.id)}
+                  getGroupHref={(groupId) =>
+                    getTermGroupHref(workspaceIndex, groupId)
+                  }
                   canEdit={canEdit}
                   selected={selectedIds.includes(term.id)}
                   onEdit={openEdit}

@@ -1,6 +1,8 @@
 import type { LlmPromptKey } from "../constants";
 import {
+  buildClassifyTermGroupsPrompt,
   buildClassifyTermsPrompt,
+  buildEvaluateTermGroupMembershipPrompt,
   buildProposeTermPrompt,
   buildScoreCommentStancesPrompt,
   buildScoreRelevancePrompt,
@@ -16,6 +18,10 @@ export async function resolveWorkspaceSystemPrompt(
   switch (promptKey) {
     case "classify_terms":
       return buildClassifyTermsPrompt(settings);
+    case "classify_term_groups":
+      return buildClassifyTermGroupsPrompt(settings);
+    case "evaluate_term_group_membership":
+      return buildEvaluateTermGroupMembershipPrompt(settings);
     case "propose_term":
       return buildProposeTermPrompt(settings);
     case "score_relevance":

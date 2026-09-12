@@ -27,6 +27,10 @@ export const TERM_CONFIG = {
   detailDocumentsSearchEmptyTitle: "No matching documents",
   detailDocumentsSearchEmptyDescription:
     "Try a different search term or clear the filter.",
+  listSearchPlaceholder: "Search terms...",
+  listSearchEmptyTitle: "No matching terms",
+  listSearchEmptyDescription:
+    "Try a different keyword or clear the search box.",
 } as const;
 
 /** Max terms per bulk-delete request (each deleted in its own transaction). */

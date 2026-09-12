@@ -68,12 +68,18 @@ export type TermCardSparklinePoint = {
   docCount: number;
 };
 
+export type TermCardGroup = {
+  id: string;
+  name: string;
+};
+
 export type TermCardItem = {
   id: string;
   name: string;
   description: string | null;
   createdBy: string;
   createdAt: string;
+  groups: TermCardGroup[];
   digest: TermCardDigest;
   sparkline: TermCardSparklinePoint[];
 };
@@ -93,6 +99,14 @@ export type ListTermCardsParams = {
   limit?: number;
   /** Omit or empty for all jobs; pass UUIDs to filter to those jobs. */
   jobIds?: string[];
+  /** Full-text search over term name and description. */
+  search?: string;
+  /** Filter to terms that belong to this group. */
+  groupId?: string;
+};
+
+export type ListTermsParams = {
+  search?: string;
 };
 
 export type ListTermCardsResult = {

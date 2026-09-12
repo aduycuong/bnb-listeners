@@ -403,6 +403,7 @@ Workspace-scoped keyword labels. Terms are short keywords/tags for filtering —
 | active_backfill_run_id | uuid | YES | — | Points to the in-flight backfill run (application-managed; no FK) |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
+| search_tsv | tsvector | NO | generated | `to_tsvector('simple', coalesce(name,'') || ' ' || coalesce(description,''))` — full-text search over name and description |
 
 **Indexes**
 
@@ -412,6 +413,50 @@ Workspace-scoped keyword labels. Terms are short keywords/tags for filtering —
 | `idx_terms_workspace_id` | `(workspace_id)` | List terms in a workspace |
 | `idx_terms_source_document` | `(source_document_id)` | Trace auto-created terms |
 | `idx_terms_active_backfill_run` | `(active_backfill_run_id)` | Resolve active backfill from term |
+| `idx_terms_search_tsv` | GIN `(search_tsv)` | Full-text search on term name and description |
+
+---
+
+### `term_groups`
+
+Admin-curated groups for organizing terms (e.g. “Dự án”, “Khu vực”). Names are unique per workspace. LLM classification can auto-assign terms to groups after document classification.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
+| name | text | NO | — | Display name, unique per workspace |
+| description | text | YES | — | Group description — guides LLM group assignment |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
+| active_member_rebuild_run_id | uuid | YES | — | Active member rebuild run, if any |
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| `idx_term_groups_workspace_name` | UNIQUE `(workspace_id, name)` | Name unique within workspace |
+| `idx_term_groups_workspace_id` | `(workspace_id)` | List groups in a workspace |
+| `idx_term_groups_active_member_rebuild_run` | `(active_member_rebuild_run_id)` | Resolve active rebuild from group |
+
+---
+
+### `term_group_members`
+
+Many-to-many link between terms and term groups. A term may belong to multiple groups (capped at 10 in application logic).
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| term_group_id | uuid | NO | — | FK → `term_groups.id` ON DELETE CASCADE |
+| term_id | uuid | NO | — | FK → `terms.id` ON DELETE CASCADE |
+| assigned_by | text | NO | `admin` | `admin` \| `llm_classifier` \| `term_group_member_rebuild` |
+| assigned_at | timestamptz | NO | `now()` | Assignment time |
+
+**Primary key:** `(term_group_id, term_id)`
+
+**Indexes:** `(term_id)`
+
+Term and group must belong to the same workspace (enforced by application logic).
 
 ---
 
@@ -467,6 +512,40 @@ Tracks user-triggered backfill jobs that scan older documents and assign matches
 | `idx_term_backfill_one_active` | UNIQUE `(term_id)` WHERE `status IN ('pending','running')` | One active backfill per term |
 
 QStash job `rebuild-term-batch` processes documents in chained batches (`flowControl` parallelism 1 per term).
+
+---
+
+### `term_group_member_rebuild_runs`
+
+Tracks user-triggered jobs that scan workspace terms and assign (or remove) members for a single term group. Uses an LLM agent with optional Exa Answer web research for ambiguous terms.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
+| term_group_id | uuid | NO | — | FK → `term_groups.id` ON DELETE CASCADE |
+| status | text | NO | `pending` | `pending` \| `running` \| `success` \| `failed` \| `cancelled` |
+| model | text | NO | — | LLM model id used for evaluation |
+| include_already_members | boolean | NO | `false` | When true, re-evaluate terms already in this group |
+| remove_non_matching | boolean | NO | `false` | When true, remove members that no longer match |
+| enable_web_research | boolean | NO | `true` | When true, agent may call Exa Answer (`EXA_API_KEY`) |
+| confidence_min | real | NO | — | Minimum LLM confidence to add/remove a member |
+| estimate | jsonb | NO | — | Pre-run estimate: `{ termCount, inputTokens, outputTokens, costUsd }` |
+| result | jsonb | NO | `{}` | Progress: `{ termsScanned, termsMatched, termsRemoved, webQueries, inputTokens, outputTokens, costUsd, cursor }` |
+| error | text | YES | — | Error message when `status = failed` |
+| triggered_by | uuid | YES | — | FK → `users.id` ON DELETE SET NULL |
+| started_at | timestamptz | NO | `now()` | Run start time |
+| finished_at | timestamptz | YES | — | Run end time |
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| `idx_term_group_member_rebuild_runs_group_started` | `(term_group_id, started_at DESC)` | Run history per group |
+| `idx_term_group_member_rebuild_runs_workspace_started` | `(workspace_id, started_at DESC)` | Run history per workspace |
+| `idx_term_group_member_rebuild_one_active` | UNIQUE `(term_group_id)` WHERE `status IN ('pending','running')` | One active rebuild per group |
+
+QStash job `rebuild-term-group-members-batch` processes terms in chained batches (`flowControl` parallelism 1 per group).
 
 ---
 

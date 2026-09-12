@@ -31,12 +31,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { TERM_CREATED_BY } from "@/lib/terms/term-config";
-import type { TermCardItem } from "@/lib/terms/types";
+import type { TermCardGroup, TermCardItem } from "@/lib/terms/types";
 import { cn } from "@/lib/utils";
 
 type TermCardProps = {
   term: TermCardItem;
   href?: string;
+  getGroupHref?: (groupId: string) => string;
   canEdit?: boolean;
   selected?: boolean;
   onEdit?: (termId: string) => void;
@@ -58,9 +59,43 @@ function formatScore(value: number | null) {
   return value.toFixed(1);
 }
 
+function TermGroupBadge({
+  group,
+  href,
+}: {
+  group: TermCardGroup;
+  href?: string;
+}) {
+  const className = cn(
+    "inline-flex max-w-full rounded-full px-2 py-0.5 text-[11px] font-medium",
+    "bg-primary/10 text-primary",
+  );
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        className={cn(className, "truncate hover:bg-primary/15")}
+        onClick={(event) => {
+          event.stopPropagation();
+        }}
+      >
+        {group.name}
+      </a>
+    );
+  }
+
+  return (
+    <span className={cn(className, "truncate")} title={group.name}>
+      {group.name}
+    </span>
+  );
+}
+
 export function TermCard({
   term,
   href,
+  getGroupHref,
   canEdit = false,
   selected = false,
   onEdit,
@@ -69,16 +104,8 @@ export function TermCard({
 }: TermCardProps) {
   const router = useRouter();
   const isUpdating = term.digest.isStale;
-  const badges = [
-    ...(term.createdBy === TERM_CREATED_BY.llmClassifier
-      ? [
-          {
-            label: "Classifier",
-            className: "bg-muted text-muted-foreground",
-          },
-        ]
-      : []),
-  ];
+  const showClassifierBadge = term.createdBy === TERM_CREATED_BY.llmClassifier;
+  const hasBadges = showClassifierBadge || term.groups.length > 0;
 
   return (
     <Card
@@ -118,18 +145,19 @@ export function TermCard({
           ) : null}
           <span className="line-clamp-2">{term.name}</span>
         </CardTitle>
-        {badges.length > 0 ? (
+        {hasBadges ? (
           <div className="flex flex-wrap gap-1.5">
-            {badges.map((badge) => (
-              <span
-                key={badge.label}
-                className={cn(
-                  "inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium",
-                  badge.className,
-                )}
-              >
-                {badge.label}
+            {showClassifierBadge ? (
+              <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                Classifier
               </span>
+            ) : null}
+            {term.groups.map((group) => (
+              <TermGroupBadge
+                key={group.id}
+                group={group}
+                href={getGroupHref?.(group.id)}
+              />
             ))}
           </div>
         ) : null}

@@ -537,17 +537,78 @@ export const terms = pgTable(
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
+    searchTsv: tsvector("search_tsv").generatedAlwaysAs(
+      (): ReturnType<typeof sql> =>
+        sql`to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(description, ''))`,
+    ),
   },
   (table) => [
     uniqueIndex("idx_terms_workspace_name").on(table.workspaceId, table.name),
     index("idx_terms_workspace_id").on(table.workspaceId),
     index("idx_terms_source_document").on(table.sourceDocumentId),
     index("idx_terms_active_backfill_run").on(table.activeBackfillRunId),
+    index("idx_terms_search_tsv").using("gin", table.searchTsv),
   ],
 );
 
 export type Term = typeof terms.$inferSelect;
 export type NewTerm = typeof terms.$inferInsert;
+
+export const termGroups = pgTable(
+  "term_groups",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+    activeMemberRebuildRunId: uuid("active_member_rebuild_run_id"),
+  },
+  (table) => [
+    uniqueIndex("idx_term_groups_workspace_name").on(
+      table.workspaceId,
+      table.name,
+    ),
+    index("idx_term_groups_workspace_id").on(table.workspaceId),
+    index("idx_term_groups_active_member_rebuild_run").on(
+      table.activeMemberRebuildRunId,
+    ),
+  ],
+);
+
+export type TermGroup = typeof termGroups.$inferSelect;
+export type NewTermGroup = typeof termGroups.$inferInsert;
+
+export const termGroupMembers = pgTable(
+  "term_group_members",
+  {
+    termGroupId: uuid("term_group_id")
+      .notNull()
+      .references(() => termGroups.id, { onDelete: "cascade" }),
+    termId: uuid("term_id")
+      .notNull()
+      .references(() => terms.id, { onDelete: "cascade" }),
+    assignedBy: text("assigned_by").notNull().default("admin"),
+    assignedAt: timestamp("assigned_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.termGroupId, table.termId] }),
+    index("idx_term_group_members_term").on(table.termId),
+  ],
+);
+
+export type TermGroupMember = typeof termGroupMembers.$inferSelect;
+export type NewTermGroupMember = typeof termGroupMembers.$inferInsert;
 
 export const documentTerms = pgTable(
   "document_terms",
@@ -650,6 +711,88 @@ export const termBackfillRuns = pgTable(
 
 export type TermBackfillRun = typeof termBackfillRuns.$inferSelect;
 export type NewTermBackfillRun = typeof termBackfillRuns.$inferInsert;
+
+export const termGroupMemberRebuildRuns = pgTable(
+  "term_group_member_rebuild_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    termGroupId: uuid("term_group_id")
+      .notNull()
+      .references(() => termGroups.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("pending"),
+    model: text("model").notNull(),
+    includeAlreadyMembers: boolean("include_already_members")
+      .notNull()
+      .default(false),
+    removeNonMatching: boolean("remove_non_matching")
+      .notNull()
+      .default(false),
+    enableWebResearch: boolean("enable_web_research")
+      .notNull()
+      .default(true),
+    confidenceMin: real("confidence_min").notNull(),
+    estimate: jsonb("estimate")
+      .$type<{
+        termCount: number;
+        inputTokens: number;
+        outputTokens: number;
+        costUsd: number;
+      }>()
+      .notNull(),
+    result: jsonb("result")
+      .$type<{
+        termsScanned: number;
+        termsMatched: number;
+        termsRemoved: number;
+        webQueries: number;
+        inputTokens: number;
+        outputTokens: number;
+        costUsd: number;
+        cursor: { createdAt: string; termId: string } | null;
+        cancelledAt?: string;
+      }>()
+      .notNull()
+      .default({
+        termsScanned: 0,
+        termsMatched: 0,
+        termsRemoved: 0,
+        webQueries: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        costUsd: 0,
+        cursor: null,
+      }),
+    error: text("error"),
+    triggeredBy: uuid("triggered_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_term_group_member_rebuild_runs_group_started").on(
+      table.termGroupId,
+      table.startedAt.desc(),
+    ),
+    index("idx_term_group_member_rebuild_runs_workspace_started").on(
+      table.workspaceId,
+      table.startedAt.desc(),
+    ),
+    uniqueIndex("idx_term_group_member_rebuild_one_active")
+      .on(table.termGroupId)
+      .where(sql`${table.status} IN ('pending', 'running')`),
+  ],
+);
+
+export type TermGroupMemberRebuildRun =
+  typeof termGroupMemberRebuildRuns.$inferSelect;
+export type NewTermGroupMemberRebuildRun =
+  typeof termGroupMemberRebuildRuns.$inferInsert;
 
 // ---------------------------------------------------------------------------
 // Date dimension — static calendar table, seeded once for ~10–20 years.

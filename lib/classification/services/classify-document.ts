@@ -4,6 +4,7 @@ import { documentTerms, documents } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { invalidateTermDigest } from "@/lib/term-digests/services/invalidate-term-digest";
+import { assignTermGroupsAfterClassification } from "@/lib/term-groups/services/assign-term-groups-after-classification";
 import { findTermByName } from "@/lib/terms/utils/find-term-by-name";
 import { resolveWorkspaceSystemPrompt } from "@/lib/llm/services/resolve-workspace-system-prompt";
 import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace-llm-settings";
@@ -243,6 +244,14 @@ export async function classifyDocument(
   ];
   const affectedTermIds = [...new Set([...oldTermIds, ...newTermIds])];
   await invalidateAffectedDigests(affectedTermIds, doc.publishedAt, doc.jobId);
+
+  if (newTermIds.length > 0) {
+    await assignTermGroupsAfterClassification({
+      workspaceId: doc.workspaceId,
+      termIds: newTermIds,
+      doc: docContext,
+    });
+  }
 
   return result;
 }

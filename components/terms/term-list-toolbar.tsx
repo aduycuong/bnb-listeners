@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, SearchIcon } from "lucide-react";
 
 import { TermCustomPeriodDialog } from "@/components/terms/term-custom-period-dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { JobListItem } from "@/lib/jobs/types";
+import type { TermGroupListItem } from "@/lib/term-groups/types";
 import {
   TERM_CARD_PERIOD_LABELS,
   TERM_CARD_PERIOD_PRESETS,
@@ -20,22 +22,30 @@ import {
   type TermCardPeriodPreset,
   type TermCardSort,
 } from "@/lib/terms/term-card-config";
+import { TERM_CONFIG } from "@/lib/terms/term-config";
 import { cn } from "@/lib/utils";
 
 const ALL_JOBS_LABEL = "All jobs";
+const ALL_GROUPS_LABEL = "All groups";
 
 type TermListToolbarProps = {
   period: TermCardPeriodPreset;
   sort: TermCardSort;
   jobIds: string[];
   jobs: JobListItem[];
+  groups: TermGroupListItem[];
+  search: string;
+  groupId?: string;
   customStartDate?: string;
   customEndDate?: string;
   onPeriodChange: (period: TermCardPeriodPreset) => void;
   onSortChange: (sort: TermCardSort) => void;
   onJobIdsChange: (jobIds: string[]) => void;
+  onSearchChange: (search: string) => void;
+  onGroupIdChange: (groupId: string | undefined) => void;
   onCustomRangeApply: (range: { startDate: string; endDate: string }) => void;
-  disabled?: boolean;
+  /** Disables period/sort/job controls while data loads — search stays editable. */
+  controlsDisabled?: boolean;
 };
 
 function getPeriodLabel(
@@ -92,83 +102,157 @@ export function TermListToolbar({
   sort,
   jobIds,
   jobs,
+  groups,
+  search,
+  groupId,
   customStartDate,
   customEndDate,
   onPeriodChange,
   onSortChange,
   onJobIdsChange,
+  onSearchChange,
+  onGroupIdChange,
   onCustomRangeApply,
-  disabled = false,
+  controlsDisabled = false,
 }: TermListToolbarProps) {
   const periodLabel = getPeriodLabel(period, customStartDate, customEndDate);
   const sortLabel = TERM_CARD_SORT_LABELS[sort];
+  const groupLabel =
+    groups.find((group) => group.id === groupId)?.name ?? ALL_GROUPS_LABEL;
   const allJobIds = jobs.map((job) => job.id);
   const allJobsSelected = isAllJobsSelected(jobIds);
 
+  const filterControlCount = groups.length > 0 ? 3 : 2;
+
   return (
     <>
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="outline"
-                  className="w-full justify-between sm:w-auto sm:min-w-44"
-                  disabled={disabled}
-                />
-              }
-            >
-              {periodLabel}
-              <ChevronDownIcon className="size-4 text-muted-foreground" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-44">
-              <DropdownMenuRadioGroup
-                value={period}
-                onValueChange={(value) =>
-                  onPeriodChange(value as TermCardPeriodPreset)
+      <div className="flex min-w-0 flex-col gap-3">
+        <div className="relative min-w-0">
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder={TERM_CONFIG.listSearchPlaceholder}
+            className="pl-8"
+            aria-label="Search terms"
+          />
+        </div>
+
+        <div
+          className={cn(
+            "grid min-w-0 grid-cols-1 gap-3",
+            filterControlCount === 3
+              ? "sm:grid-cols-2 lg:grid-cols-3"
+              : "sm:grid-cols-2",
+          )}
+        >
+          <div className="min-w-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    className="w-full min-w-0 justify-between gap-2"
+                    disabled={controlsDisabled}
+                  />
                 }
               >
-                {TERM_CARD_PERIOD_PRESETS.filter(
-                  (option) => option !== "custom",
-                ).map((option) => (
-                  <DropdownMenuRadioItem key={option} value={option}>
-                    {TERM_CARD_PERIOD_LABELS[option]}
+                <span className="min-w-0 truncate">{periodLabel}</span>
+                <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-44">
+                <DropdownMenuRadioGroup
+                  value={period}
+                  onValueChange={(value) =>
+                    onPeriodChange(value as TermCardPeriodPreset)
+                  }
+                >
+                  {TERM_CARD_PERIOD_PRESETS.filter(
+                    (option) => option !== "custom",
+                  ).map((option) => (
+                    <DropdownMenuRadioItem key={option} value={option}>
+                      {TERM_CARD_PERIOD_LABELS[option]}
+                    </DropdownMenuRadioItem>
+                  ))}
+                  <DropdownMenuRadioItem value="custom">
+                    {TERM_CARD_PERIOD_LABELS.custom}
                   </DropdownMenuRadioItem>
-                ))}
-                <DropdownMenuRadioItem value="custom">
-                  {TERM_CARD_PERIOD_LABELS.custom}
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="outline"
-                  className="w-full justify-between sm:w-auto sm:min-w-44"
-                  disabled={disabled}
-                />
-              }
-            >
-              Sort: {sortLabel}
-              <ChevronDownIcon className="size-4 text-muted-foreground" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-44">
-              <DropdownMenuRadioGroup
-                value={sort}
-                onValueChange={(value) => onSortChange(value as TermCardSort)}
+          {groups.length > 0 ? (
+            <div className="min-w-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      className="w-full min-w-0 justify-between gap-2"
+                      disabled={controlsDisabled}
+                    />
+                  }
+                >
+                  <span className="min-w-0 truncate">{groupLabel}</span>
+                  <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-44">
+                  <DropdownMenuRadioGroup
+                    value={groupId ?? "all"}
+                    onValueChange={(value) =>
+                      onGroupIdChange(value === "all" ? undefined : value)
+                    }
+                  >
+                    <DropdownMenuRadioItem value="all">
+                      {ALL_GROUPS_LABEL}
+                    </DropdownMenuRadioItem>
+                    {groups.map((group) => (
+                      <DropdownMenuRadioItem key={group.id} value={group.id}>
+                        {group.name}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : null}
+
+          <div
+            className={cn(
+              "min-w-0",
+              filterControlCount === 3 && "sm:col-span-2 lg:col-span-1",
+            )}
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    className="w-full min-w-0 justify-between gap-2"
+                    disabled={controlsDisabled}
+                  />
+                }
               >
-                {TERM_CARD_SORT_OPTIONS.map((option) => (
-                  <DropdownMenuRadioItem key={option} value={option}>
-                    {TERM_CARD_SORT_LABELS[option]}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <span className="min-w-0 truncate">Sort: {sortLabel}</span>
+                <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-44">
+                <DropdownMenuRadioGroup
+                  value={sort}
+                  onValueChange={(value) =>
+                    onSortChange(value as TermCardSort)
+                  }
+                >
+                  {TERM_CARD_SORT_OPTIONS.map((option) => (
+                    <DropdownMenuRadioItem key={option} value={option}>
+                      {TERM_CARD_SORT_LABELS[option]}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {jobs.length > 0 ? (
@@ -183,7 +267,7 @@ export function TermListToolbar({
                   ? selectedSourceTagClassName
                   : unselectedSourceTagClassName,
               )}
-              disabled={disabled}
+              disabled={controlsDisabled}
               onClick={() => onJobIdsChange([])}
             >
               {ALL_JOBS_LABEL}
@@ -204,7 +288,7 @@ export function TermListToolbar({
                       ? selectedSourceTagClassName
                       : unselectedSourceTagClassName,
                   )}
-                  disabled={disabled}
+                  disabled={controlsDisabled}
                   onClick={() =>
                     onJobIdsChange(toggleJob(jobIds, job.id, allJobIds))
                   }

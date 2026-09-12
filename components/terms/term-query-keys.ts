@@ -4,6 +4,8 @@ export type TermCardsQueryFilters = {
   startDate?: string;
   endDate?: string;
   jobIds?: string[];
+  search?: string;
+  groupId?: string;
 };
 
 export type TermDocumentsQueryFilters = {
