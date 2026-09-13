@@ -1,70 +1,83 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
-import { documents } from "@/db/schema";
-import { DISCUSSION_DOC_TYPE } from "@/lib/comments/config";
+import { comments, documents } from "@/db/schema";
 import { db } from "@/lib/db";
 
-export type GetDocumentCommentsResult =
-  | { found: false }
-  | {
-      found: true;
-      documentId: string;
-      title: string | null;
-      content: string;
-      commentCount: number;
-      publishedAt: string | null;
-    };
+import { DOCUMENT_COMMENTS_PAGE_SIZE } from "../config";
+import type {
+  DocumentCommentItem,
+  GetDocumentCommentsParams,
+  GetDocumentCommentsResult,
+} from "../types";
 
 /**
- * Fetches the companion `discussion` document for a given parent document.
+ * Fetches paginated comments for a document directly from the `comments` table.
  *
- * Used by the MCP `get_document_comments` tool so AI agents can explicitly
- * retrieve the community discussion for a post after finding it via search.
+ * Used by the MCP `get_document_comments` tool so AI agents can retrieve
+ * community discussion for a post after finding it via search.
  */
 export async function getDocumentComments(
-  parentDocumentId: string,
+  params: GetDocumentCommentsParams,
 ): Promise<GetDocumentCommentsResult> {
-  const [parent] = await db
-    .select({
-      workspaceId: documents.workspaceId,
-      sourceKey: documents.sourceKey,
-      sourceId: documents.sourceId,
-    })
-    .from(documents)
-    .where(eq(documents.id, parentDocumentId))
-    .limit(1);
+  const offset = params.offset ?? 0;
 
-  if (!parent) return { found: false };
-
-  const [discussion] = await db
-    .select({
-      id: documents.id,
-      title: documents.title,
-      rawContent: documents.rawContent,
-      commentCount: documents.commentCount,
-      publishedAt: documents.publishedAt,
-    })
+  const [document] = await db
+    .select({ id: documents.id })
     .from(documents)
     .where(
       and(
-        eq(documents.workspaceId, parent.workspaceId),
-        eq(documents.docType, DISCUSSION_DOC_TYPE),
-        eq(documents.sourceKey, parent.sourceKey),
-        eq(documents.sourceId, parent.sourceId),
+        eq(documents.id, params.documentId),
+        eq(documents.workspaceId, params.workspaceId),
       ),
     )
     .limit(1);
 
-  if (!discussion) return { found: false };
+  if (!document) return { found: false };
+
+  const rows = await db
+    .select({
+      id: comments.id,
+      sourceId: comments.sourceId,
+      authorName: comments.authorName,
+      content: comments.content,
+      likeCount: comments.likeCount,
+      publishedAt: comments.publishedAt,
+      role: comments.role,
+      stance: comments.stance,
+      isSubstantive: comments.isSubstantive,
+      scoredAt: comments.scoredAt,
+      createdAt: comments.createdAt,
+    })
+    .from(comments)
+    .where(eq(comments.documentId, params.documentId))
+    .orderBy(
+      sql`${comments.publishedAt} DESC NULLS LAST`,
+      desc(comments.createdAt),
+    )
+    .limit(DOCUMENT_COMMENTS_PAGE_SIZE + 1)
+    .offset(offset);
+
+  const pageRows = rows.slice(0, DOCUMENT_COMMENTS_PAGE_SIZE);
+  const hasMore = rows.length > DOCUMENT_COMMENTS_PAGE_SIZE;
+
+  const items: DocumentCommentItem[] = pageRows.map((row) => ({
+    id: row.id,
+    sourceId: row.sourceId,
+    authorName: row.authorName,
+    content: row.content,
+    likeCount: row.likeCount,
+    publishedAt: row.publishedAt?.toISOString() ?? null,
+    role: row.role,
+    stance: row.stance,
+    isSubstantive: row.isSubstantive,
+    scoredAt: row.scoredAt?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+  }));
 
   return {
     found: true,
-    documentId: discussion.id,
-    title: discussion.title,
-    content: discussion.rawContent,
-    commentCount: discussion.commentCount,
-    publishedAt: discussion.publishedAt
-      ? discussion.publishedAt.toISOString()
-      : null,
+    items,
+    offset,
+    hasMore,
   };
 }

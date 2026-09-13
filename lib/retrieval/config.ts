@@ -9,3 +9,6 @@ export const RETRIEVAL_QUALITY_MIN = 0.4;
 
 /** RRF ranking constant — standard value; higher = less steep score falloff. */
 export const RRF_K = 60;
+
+/** Page size for get_document_comments MCP tool. */
+export const DOCUMENT_COMMENTS_PAGE_SIZE = 10;

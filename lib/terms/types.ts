@@ -190,3 +190,50 @@ export type ListTermDocumentsResult = {
   offset: number;
   limit: number;
 };
+
+export type FindTopTermsParams = {
+  query: string;
+  period: ResolvedTermCardPeriod;
+};
+
+export type FindTopTermsItem = {
+  id: string;
+  name: string;
+  description: string | null;
+  docCount: number;
+};
+
+export type FindTopTermsResult = {
+  resolvedMode: "term_group" | "keyword_search";
+  termGroup?: { id: string; name: string };
+  searchKeyword?: string;
+  period: ResolvedTermCardPeriod;
+  items: FindTopTermsItem[];
+};
+
+export type GetTermDetailSummaryParams = {
+  id: string;
+  period: Exclude<TermCardPeriodPreset, "custom">;
+};
+
+export type GetTermDetailSummaryResult = {
+  term: {
+    id: string;
+    name: string;
+    description: string | null;
+    createdAt: string;
+    listeningStartedAt: string;
+    groups: Array<{ id: string; name: string }>;
+  };
+  digest: TermDetailChartDigest;
+  chart: {
+    metric: import("./term-detail-chart-config").TermDetailChartMetric;
+    bucket: import("./utils/resolve-term-detail-chart-period").TermDetailChartBucket;
+    period: {
+      preset: import("./term-detail-chart-config").TermDetailChartPeriodPreset;
+      startDate: string;
+      endDate: string;
+    };
+    points: TermDetailChartPoint[];
+  };
+};
