@@ -201,6 +201,7 @@ export type FindTopTermsItem = {
   name: string;
   description: string | null;
   docCount: number;
+  trendScore: number | null;
 };
 
 export type FindTopTermsResult = {
@@ -211,29 +212,34 @@ export type FindTopTermsResult = {
   items: FindTopTermsItem[];
 };
 
-export type GetTermDetailSummaryParams = {
-  id: string;
-  period: Exclude<TermCardPeriodPreset, "custom">;
+export type TermAnalyticsDailyPoint = {
+  dateKey: string;
+  docCount: number;
+  avgQualityScore: number | null;
+  trendScore: number | null;
 };
 
-export type GetTermDetailSummaryResult = {
-  term: {
-    id: string;
-    name: string;
-    description: string | null;
-    createdAt: string;
-    listeningStartedAt: string;
-    groups: Array<{ id: string; name: string }>;
-  };
-  digest: TermDetailChartDigest;
-  chart: {
-    metric: import("./term-detail-chart-config").TermDetailChartMetric;
-    bucket: import("./utils/resolve-term-detail-chart-period").TermDetailChartBucket;
-    period: {
-      preset: import("./term-detail-chart-config").TermDetailChartPeriodPreset;
-      startDate: string;
-      endDate: string;
-    };
-    points: TermDetailChartPoint[];
-  };
+export type TermAnalyticsSummary = {
+  docCount: number;
+  avgQualityScore: number | null;
+  trendScore: number | null;
+  isStale: boolean;
+};
+
+export type TermAnalyticsItem = {
+  id: string;
+  name: string;
+  summary: TermAnalyticsSummary;
+  daily: TermAnalyticsDailyPoint[];
+};
+
+export type GetTermAnalyticsParams = {
+  termIds: string[];
+  period: ResolvedTermCardPeriod;
+};
+
+export type GetTermAnalyticsResult = {
+  period: ResolvedTermCardPeriod;
+  terms: TermAnalyticsItem[];
+  notFound: string[];
 };

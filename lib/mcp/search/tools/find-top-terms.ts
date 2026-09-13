@@ -24,12 +24,12 @@ function formatTopTermsResult(
   }
 
   const body = result.items
-    .map(
-      (item, index) =>
-        `${index + 1}. ${item.name} · ${item.docCount} docs · id:${item.id}` +
-        (item.description?.trim() ? `\n   ${item.description.trim()}` : ""),
-    )
-    .join("\n\n");
+    .map((item, index) => {
+      const trendText =
+        item.trendScore != null ? item.trendScore.toFixed(2) : "—";
+      return `${index + 1}. ${item.name} · trend ${trendText} · ${item.docCount} docs · id:${item.id}`;
+    })
+    .join("\n");
 
   return `${headerLines.join("\n")}\n\nTop ${result.items.length} terms:\n\n${body}`;
 }
@@ -42,7 +42,7 @@ export function registerFindTopTermsTool(
     "find_top_terms",
     {
       description:
-        "Tìm top 10 terms (từ khóa/chủ đề đang theo dõi) trong workspace.",
+        "Tìm top 10 terms (từ khóa/chủ đề đang theo dõi) trong workspace, xếp theo trend score.",
       inputSchema: {
         query: z
           .string()

@@ -17,11 +17,12 @@ type KeywordTopTermRow = {
   name: string;
   description: string | null;
   doc_count: number;
+  trend_score: number | null;
 };
 
 const DEFAULT_LIMIT = TERM_GROUP_TOP_TERMS_LIMIT;
 
-async function listTopTermsByDocCount(
+async function listTopTermsByTrendScore(
   params: {
     search?: string;
     workspaceId: string;
@@ -39,7 +40,8 @@ async function listTopTermsByDocCount(
       t.id,
       t.name,
       t.description,
-      COALESCE(SUM(tdd.doc_count), 0)::int AS doc_count
+      COALESCE(SUM(tdd.doc_count), 0)::int AS doc_count,
+      SUM(tdd.trend_score) AS trend_score
     FROM terms t
     LEFT JOIN term_digest_daily tdd
       ON tdd.term_id = t.id
@@ -48,7 +50,7 @@ async function listTopTermsByDocCount(
     WHERE t.workspace_id = ${params.workspaceId}::uuid
       ${searchFilter}
     GROUP BY t.id, t.name, t.description, t.search_tsv
-    ORDER BY doc_count DESC, t.name ASC
+    ORDER BY trend_score DESC NULLS LAST, t.name ASC
     LIMIT ${params.limit}
   `);
 
@@ -88,7 +90,7 @@ export async function findTopTerms(
   }
 
   if (mode === "keyword_search") {
-    const rows = await listTopTermsByDocCount({
+    const rows = await listTopTermsByTrendScore({
       search: searchKeyword,
       workspaceId: ctx.workspaceId,
       startDate: period.startDate,
@@ -105,6 +107,7 @@ export async function findTopTerms(
         name: row.name,
         description: row.description,
         docCount: row.doc_count,
+        trendScore: row.trend_score,
       })),
     };
   }
@@ -115,7 +118,7 @@ export async function findTopTerms(
       period: period.preset,
       startDate: period.startDate,
       endDate: period.endDate,
-      sort: "count",
+      sort: "trend",
       limit: DEFAULT_LIMIT,
     },
     ctx,
@@ -130,6 +133,7 @@ export async function findTopTerms(
       name: item.name,
       description: item.description,
       docCount: item.digest.docCount,
+      trendScore: item.digest.trendScore,
     })),
   };
 }
