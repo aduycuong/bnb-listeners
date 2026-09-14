@@ -1,0 +1,12 @@
+{
+  "apiBaseUrl": "https://timeline.ryobui.com",
+  "apiKey": "local-dev-key",
+  "entries": [
+    {
+      "workspaceKey": "bnb-listeners",
+      "projectSlug": "social-listening",
+      "displayName": "Social listening",
+      "gitBranch": "main"
+    }
+  ]
+}
