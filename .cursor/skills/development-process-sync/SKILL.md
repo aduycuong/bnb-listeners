@@ -10,151 +10,97 @@ description: >-
 
 # Development Process Sync
 
-Publish development updates to the [Project Timeline](https://timeline.ryobui.com) server by **reading code changes**, not raw commit messages.
+Đăng cập nhật tiến độ phát triển lên server [Project Timeline](https://timeline.ryobui.com) bằng cách tổng hợp thay đổi code từ git — không phải copy raw commit messages.
 
-## Config
+## Cấu hình
 
-Read [`timeline-sync.json`](../../../timeline-sync.json) at the repo root (gitignored; copy from [`timeline-sync.example.json`](../../../timeline-sync.example.json)).
+Đọc `timeline-sync.json` ở root repo (gitignored).
 
-| Field | Meaning |
+| Field | Ý nghĩa |
 |-------|---------|
-| `apiBaseUrl` | Timeline API host (production: `https://timeline.ryobui.com`) |
-| `apiKey` | Bearer token for POST (user-maintained; required for production writes) |
-| `entries[].workspaceKey` | Match against the current workspace folder name (e.g. `bnb-listeners`) |
-| `entries[].projectSlug` | **Allowlisted** timeline project slug for this workspace (e.g. `social-listening`) — the only slug the agent may read or write |
-| `entries[].gitBranch` | Branch to read history from (default `main`) |
+| `apiBaseUrl` | Host của Timeline API |
+| `apiKey` | Bearer token để ghi (bắt buộc) |
+| `entries[].workspaceKey` | Tên thư mục workspace (e.g. `bnb-listeners`) |
+| `entries[].projectSlug` | Slug project được phép sync trong workspace này |
+| `entries[].gitBranch` | Branch để đọc lịch sử (mặc định `main`) |
+| `entries[].latestSyncCommit` | SHA của commit cuối đã sync, `null` nếu chưa sync |
 
-If `apiKey` is empty, stop before any write and ask the user to set it in `timeline-sync.json`.
-
-If no entry matches the workspace, stop and ask the user to add one.
-
-## Project slug lock (security)
-
-The matched entry’s `projectSlug` in `timeline-sync.json` is the **only** slug permitted for timeline API calls in this workspace.
-
-| Allowed | Forbidden |
-|---------|-----------|
-| `GET /api/v1/updates?project={projectSlug}` where `{projectSlug}` is exactly the config value | Querying or posting to any other slug (`tool-order-task`, `chat-agent`, etc.) |
-| `POST /api/v1/updates` with `"projectSlug": "{projectSlug}"` matching config | Using a slug from `GET /api/v1/projects`, user prompts, or another config entry |
-| Idempotency keys `{projectSlug}-{publishedAt}-sync` using the config slug | Accepting “post to X instead” without the user editing `timeline-sync.json` first |
-
-Rules:
-
-1. Resolve `{projectSlug}` once from the matched config entry — never substitute another value.
-2. Before every POST, verify the payload `projectSlug` equals the config value character-for-character.
-3. If the user asks to sync a different project, refuse the write and tell them to add or change an entry in `timeline-sync.json` (or run sync from that project’s workspace).
-4. `GET /api/v1/projects` is optional sanity-check only; it must not change which slug is used.
-5. If config `projectSlug` is missing from the API project list, stop — do not pick a “close” slug.
-
-## Prerequisites
-
-- `apiKey` set in `timeline-sync.json`.
-- Git repo with history on the configured branch.
-- Network access to `apiBaseUrl`.
+**Quy tắc slug:** Chỉ được đọc/ghi timeline cho đúng `projectSlug` trong config. Không dùng slug nào khác dù user yêu cầu — bảo user sửa `timeline-sync.json` trước.
 
 ## Workflow
 
+### 1. Đọc config
+
+1. Đọc `timeline-sync.json`, tìm entry có `workspaceKey` khớp tên thư mục workspace.
+2. Ghi nhớ `projectSlug`, `apiBaseUrl`, `apiKey`, `gitBranch`, `latestSyncCommit`.
+3. Nếu `apiKey` trống → dừng, yêu cầu user điền vào `timeline-sync.json`.
+4. Nếu không có entry khớp → dừng, yêu cầu user thêm vào `timeline-sync.json`.
+
+### 2. Xác định khoảng cần sync
+
+Lấy commits sau `latestSyncCommit` (hoặc 30 ngày gần nhất nếu `null`):
+
+```bash
+# Khi latestSyncCommit có giá trị:
+git log {branch} {latestSyncCommit}..HEAD --format="%H|%ad|%s" --date=short --reverse
+
+# Khi latestSyncCommit là null (lần đầu sync):
+git log {branch} --since="30 days ago" --format="%H|%ad|%s" --date=short --reverse
 ```
-Sync progress:
-- [ ] Step 1: Resolve project config
-- [ ] Step 2: Read existing timeline (sync checkpoint)
-- [ ] Step 3: User confirms date range to sync
-- [ ] Step 4: Collect commits and analyze code changes
-- [ ] Step 5: Synthesize report drafts
-- [ ] Step 6: Present drafts — wait for user confirmation
-- [ ] Step 7: POST confirmed updates
-- [ ] Step 8: Verify readback
-```
 
-### Step 1: Resolve project config
-
-1. Read [`timeline-sync.json`](../../../timeline-sync.json).
-2. Match `workspaceKey` to the workspace root folder name.
-3. Set `{projectSlug}` from the matched entry only — this is the allowlisted slug for all subsequent API calls.
-4. Optionally call `GET {apiBaseUrl}/api/v1/projects` to confirm that `{projectSlug}` exists; never select a different slug from the response.
-5. If the config slug is missing from the API, stop — do not guess or substitute slugs.
-
-### Step 2: Read existing timeline (sync by date)
-
-1. Fetch all updates for the project (paginate if `totalPages` > 1):
+Đồng thời, fetch những ngày đã có trên timeline để tránh trùng:
 
 ```bash
 curl -sS "{apiBaseUrl}/api/v1/updates?project={projectSlug}&page=1&pageSize=100"
 ```
 
-2. Collect every `publishedAt` date already on the timeline.
-3. **Sync checkpoint** = latest `publishedAt`, or `null` if empty.
-4. Report checkpoint, existing update count, and which dates are already covered.
+Báo cáo cho user: commit checkpoint local, checkpoint trên server, các ngày có commit chưa được đăng.
 
-Do **not** auto-decide the sync range or backfill scope. The user verifies what still needs syncing.
+### 3. Xác nhận với user
 
-### Step 3: User confirms date range
+Hỏi user khoảng ngày nào cần sync. Không tự quyết — chờ user xác nhận.
 
-Ask the user which dates (or range) to sync. Use the checkpoint report as context only.
+### 4. Phân tích code changes
 
-Examples: “sync from 2026-09-10”, “only 2026-09-14”, “everything after checkpoint”.
-
-If the user already specified a range in their request, confirm it before proceeding.
-
-### Step 4: Collect commits and analyze code changes
-
-For the confirmed range, list **all** commits on the configured branch — no filtering by message type, author, or merge vs non-merge:
+Với từng ngày trong khoảng đã xác nhận, xem diff của các commit:
 
 ```bash
-git log {branch} --since="{start}" --until="{end}" --format="%H|%ad|%s" --date=short --reverse
-```
-
-For each commit (or batched per day), inspect **actual code changes**:
-
-```bash
+git log {branch} --after="{YYYY-MM-DD}" --before="{YYYY-MM-DD}" --format="%H|%ad|%s" --date=short --reverse
 git show --stat {hash}
 git show {hash} --no-color
-git diff {hash}^..{hash}
 ```
 
-Read changed files when needed to understand behavior, not just file names. Use commit messages as hints only — the report must reflect what the code does.
+Đọc file thay đổi khi cần để hiểu hành vi thực sự — commit message chỉ là gợi ý.
 
-### Step 5: Synthesize report drafts
+### 5. Soạn bản nháp
 
-**Do not create one record per commit.** Synthesize meaningful report records from the code analysis.
+Mặc định **một record mỗi ngày** (gộp toàn bộ thay đổi trong ngày vào một bài).
 
-| Rule | Detail |
-|------|--------|
-| Grouping | Default: **one record per calendar day** in the sync range that has commits and lacks a timeline entry. Merge all that day’s code changes into one cohesive report. |
-| Alternative grouping | If the user asks for weekly or single-batch reports, follow their grouping. |
-| Language | Vietnamese, product-facing tone (user/operator impact). |
-| Source | Summarize from diffs and code — never paste raw commit messages as the summary. |
-| Style reference | `c:\apps\tien-do\data\projects\tool-order-task.json` |
+| Field | Hướng dẫn |
+|-------|-----------|
+| `title` | Tiêu đề ngắn gọn ≤ 120 ký tự |
+| `summary` | 1–3 câu mô tả thay đổi và tác động, ≤ 2000 ký tự |
+| `publishedAt` | Ngày của record (`YYYY-MM-DD`) |
 
-| Field | Guidance |
-|-------|----------|
-| `title` | Short outcome headline, ≤ 120 chars |
-| `summary` | 1–3 sentences on what changed and why it matters, ≤ 2000 chars |
-| `publishedAt` | Calendar date for the report (`YYYY-MM-DD`) |
+- Viết bằng **tiếng Việt**, tone hướng đến user/operator.
+- Tổng hợp từ diff, không copy commit message.
+- Bỏ qua ngày đã có trên timeline (trừ khi user yêu cầu PATCH).
 
-Skip dates that already have a timeline update unless the user explicitly asks to replace one (PATCH only on explicit request).
+### 6. Trình bày bản nháp — chờ xác nhận
 
-Prepare idempotency keys: `{projectSlug}-{publishedAt}-sync`
+**Không POST nếu chưa được user duyệt.**
 
-### Step 6: Ask for confirmation (required)
+Trình bày từng record:
 
-**Never POST without explicit user approval.**
+| Ngày | Title | Summary (preview) | Commits | Action |
+|------|-------|-------------------|---------|--------|
+| … | … | 120 ký tự đầu… | N commits | POST / skip |
 
-Present drafts with evidence:
+Hỏi user xác nhận, sửa, hoặc bỏ qua từng record.
 
-| Date | Title | Summary (preview) | Commits analyzed | Action |
-|------|-------|-------------------|------------------|--------|
-| … | … | first ~120 chars… | N commits | POST / skip |
+### 7. POST lên timeline
 
-Ask the user to confirm, edit title/summary, or skip records.
-
-If nothing to publish, say so and stop.
-
-### Step 7: POST confirmed updates
-
-**Pre-flight:** confirm the POST body `projectSlug` equals the config `{projectSlug}`. If it differs, abort and report a slug lock violation — do not POST.
-
-Use `apiKey` from `timeline-sync.json`:
+**Kiểm tra trước:** `projectSlug` trong body phải khớp đúng config — nếu khác, dừng ngay.
 
 ```bash
 curl -sS -X POST "{apiBaseUrl}/api/v1/updates" \
@@ -169,26 +115,94 @@ curl -sS -X POST "{apiBaseUrl}/api/v1/updates" \
   }'
 ```
 
-- Expect `201` on first create, `200` with `Idempotent-Replayed: true` on safe retry.
-- On `409 IDEMPOTENCY_CONFLICT`, stop that record and ask the user.
-- On `401` / `405`, report invalid or missing `apiKey` / writes disabled.
+- `201` → tạo mới thành công.
+- `200` + `Idempotent-Replayed: true` → retry an toàn (không ghi trùng).
+- `409 IDEMPOTENCY_CONFLICT` → cùng key nhưng body khác → dừng record đó, hỏi user.
+- `401` / `405` → `apiKey` sai hoặc thiếu / writes bị tắt trên deployment.
 
-### Step 8: Verify readback
+### 8. Xác nhận readback
 
-Re-fetch `GET /api/v1/updates?project={projectSlug}` and confirm each posted `publishedAt` appears with the expected title.
+Fetch lại `GET /api/v1/updates?project={projectSlug}` và kiểm tra từng `publishedAt` vừa đăng có xuất hiện với đúng title.
 
-## Safety rules
+### 9. Cập nhật `latestSyncCommit`
 
-1. **Read before write** — checkpoint comes from the API, not local `tien-do` files.
-2. **Confirm before write** — no API mutations until the user approves drafts.
-3. **User owns sync scope** — report checkpoint; user decides what range to sync.
-4. **Synthesize from code** — analyze diffs; do not filter commits or mirror commits 1:1.
-5. **Do not guess slugs** — use only the matched config entry’s `projectSlug`; `GET /api/v1/projects` is verify-only.
-6. **Slug lock** — never read or write timeline data for any slug other than the one in `timeline-sync.json` for this workspace.
-7. **Do not PATCH/DELETE** unless the user explicitly asks.
-8. Production data is in Vercel Blob; local `tien-do/data/projects/` is dev-only.
+Sau khi Step 8 thành công:
 
-## Additional resources
+1. Lấy SHA của commit mới nhất trong khoảng vừa sync (`git log {branch} --format="%H" -1` hoặc commit cuối trong danh sách đã xử lý).
+2. Set `latestSyncCommit` bằng SHA đó (chỉ tiến lên, không lùi).
+3. Ghi lại `timeline-sync.json` — giữ nguyên các field khác.
 
-- API details: [reference.md](reference.md)
-- Full AI guide: `c:\apps\tien-do\API_FOR_AI.md`
+Nếu tất cả records bị skip hoặc POST thất bại → không cập nhật `latestSyncCommit`.
+
+## API reference
+
+### Đọc updates
+
+```bash
+curl -sS "{apiBaseUrl}/api/v1/updates?project={projectSlug}&page=1&pageSize=100"
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "id": "upd_example",
+      "projectId": "prj_social_listening",
+      "title": "Bản cập nhật social listening",
+      "summary": "Hoàn thành tính năng theo dõi mới...",
+      "publishedAt": "2026-09-14",
+      "createdAt": "2026-09-14T02:15:00.000Z",
+      "updatedAt": "2026-09-14T02:15:00.000Z",
+      "project": { "id": "prj_social_listening", "slug": "social-listening", "name": "Social listening" }
+    }
+  ],
+  "pagination": { "page": 1, "pageSize": 20, "totalItems": 4, "totalPages": 1 }
+}
+```
+
+### Đăng bài mới (POST)
+
+```bash
+curl -sS -X POST "{apiBaseUrl}/api/v1/updates" \
+  -H "Authorization: Bearer {apiKey}" \
+  -H "Idempotency-Key: {projectSlug}-{publishedAt}-sync" \
+  -H "Content-Type: application/json" \
+  --data '{
+    "projectSlug": "{projectSlug}",
+    "title": "Tiêu đề",
+    "summary": "Mô tả thay đổi.",
+    "publishedAt": "2026-09-14"
+  }'
+```
+
+- Lần đầu: `201 Created`, `Idempotent-Replayed: false`.
+- Retry cùng key + cùng body: `200 OK`, `Idempotent-Replayed: true`.
+- Cùng key + body khác: `409 IDEMPOTENCY_CONFLICT`, không ghi gì.
+
+### Sửa bài (PATCH) — chỉ khi user yêu cầu rõ
+
+```bash
+curl -sS -X PATCH "{apiBaseUrl}/api/v1/updates/{id}" \
+  -H "Authorization: Bearer {apiKey}" \
+  -H "Content-Type: application/json" \
+  --data '{"summary": "Nội dung mới"}'
+```
+
+### Xóa bài (DELETE) — chỉ khi user yêu cầu rõ
+
+```bash
+curl -i -X DELETE "{apiBaseUrl}/api/v1/updates/{id}" \
+  -H "Authorization: Bearer {apiKey}"
+```
+
+`DELETE` là idempotent: xóa lại cùng ID vẫn trả `204`.
+
+### Lỗi
+
+Mọi lỗi trả về cùng dạng:
+
+```json
+{ "error": { "code": "...", "message": "...", "details": "..." } }
+```

@@ -6,7 +6,8 @@
       "workspaceKey": "bnb-listeners",
       "projectSlug": "social-listening",
       "displayName": "Social listening",
-      "gitBranch": "main"
+      "gitBranch": "main",
+      "latestSyncCommit": null
     }
   ]
 }
