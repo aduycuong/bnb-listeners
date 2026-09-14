@@ -341,6 +341,10 @@ export const documents = pgTable(
     index("idx_documents_source_key").on(table.docType, table.sourceKey),
     index("idx_documents_published_at").on(table.publishedAt.desc()),
     index("idx_documents_created_at").on(table.createdAt.desc()),
+    index("idx_documents_workspace_created_at").on(
+      table.workspaceId,
+      table.createdAt.desc(),
+    ),
     index("idx_documents_metadata").using(
       "gin",
       sql`${table.metadata} jsonb_path_ops`,

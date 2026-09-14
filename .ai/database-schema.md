@@ -276,6 +276,7 @@ One row per ingested item within a workspace. Term assignment is in `document_te
 | `idx_documents_published_at` | `(published_at DESC)` | Sort/filter by publish date |
 | `idx_documents_backfill_scan` | `(workspace_id, published_at, id)` WHERE `published_at IS NOT NULL` | Keyset scan for term backfill |
 | `idx_documents_created_at` | `(created_at DESC)` | Recent-first by ingestion |
+| `idx_documents_workspace_created_at` | `(workspace_id, created_at DESC)` | Per-workspace ingestion chart and 30-day counts |
 | `idx_documents_metadata` | GIN `metadata jsonb_path_ops` | Filter by metadata |
 | `idx_documents_status` | `(embedding_status)` WHERE `<> 'chunked'` | Embedding job queue |
 | `idx_documents_quality_score` | `(quality_score)` | Filter/sort by quality |

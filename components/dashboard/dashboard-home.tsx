@@ -1,24 +1,75 @@
-export function DashboardHome() {
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+
+import { DashboardCounterCards } from "@/components/dashboard/dashboard-counter-cards";
+import { DashboardIngestionChart } from "@/components/dashboard/dashboard-ingestion-chart";
+import { DashboardTermGroupSection } from "@/components/dashboard/dashboard-term-group-section";
+import type { GetDashboardOverviewResult } from "@/lib/dashboard/types";
+import type { GetDashboardTermGroupsResult } from "@/lib/dashboard/types";
+import type { WorkspaceListItem } from "@/lib/workspaces/types";
+import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
+
+type DashboardHomeProps = {
+  workspace: WorkspaceListItem;
+  workspaceIndex: number;
+};
+
+async function fetchOverview(
+  workspaceId: string,
+): Promise<GetDashboardOverviewResult> {
+  const res = await workspaceFetch(workspaceId, "/api/dashboard/overview");
+  if (!res.ok) throw new Error("Failed to load overview");
+  return res.json() as Promise<GetDashboardOverviewResult>;
+}
+
+async function fetchTermGroups(
+  workspaceId: string,
+): Promise<GetDashboardTermGroupsResult> {
+  const res = await workspaceFetch(workspaceId, "/api/dashboard/term-groups");
+  if (!res.ok) throw new Error("Failed to load term groups");
+  return res.json() as Promise<GetDashboardTermGroupsResult>;
+}
+
+export function DashboardHome({ workspace, workspaceIndex }: DashboardHomeProps) {
+  const overviewQuery = useQuery({
+    queryKey: ["dashboard", "overview", workspace.id],
+    queryFn: () => fetchOverview(workspace.id),
+  });
+
+  const termGroupsQuery = useQuery({
+    queryKey: ["dashboard", "term-groups", workspace.id],
+    queryFn: () => fetchTermGroups(workspace.id),
+  });
+
   return (
-    <div className="flex min-h-full flex-1 flex-col p-8">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Research document pipeline
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Collect, score, classify, and serve content for real-estate and
-          marketing research. Use the REST API or MCP tools with your workspace
-          id to ingest documents.
+    <div className="flex min-h-full flex-1 flex-col gap-6 p-6 md:p-8">
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">Overview</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {workspace.name} · document pipeline summary
         </p>
-        <div className="rounded-xl border border-border bg-card p-4 text-sm">
-          <p className="font-medium">Pipeline</p>
-          <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted-foreground">
-            <li>Collect — ingest pages, blogs, news, and social posts</li>
-            <li>Score — rate quality and filter noisy content</li>
-            <li>Classify — assign terms or auto-create new ones</li>
-            <li>Serve — vector and full-text retrieval for AI agents</li>
-          </ol>
-        </div>
+      </div>
+
+      <DashboardCounterCards
+        data={overviewQuery.data}
+        isLoading={overviewQuery.isLoading}
+      />
+
+      <DashboardIngestionChart
+        data={overviewQuery.data}
+        isLoading={overviewQuery.isLoading}
+      />
+
+      <div className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground">
+          Trending keywords by group · last 30 days
+        </h2>
+        <DashboardTermGroupSection
+          data={termGroupsQuery.data}
+          isLoading={termGroupsQuery.isLoading}
+          workspaceIndex={workspaceIndex}
+        />
       </div>
     </div>
   );

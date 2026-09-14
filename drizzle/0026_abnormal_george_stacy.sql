@@ -1,0 +1,1 @@
+CREATE INDEX "idx_documents_workspace_created_at" ON "documents" USING btree ("workspace_id","created_at" DESC NULLS LAST);
