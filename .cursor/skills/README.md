@@ -7,7 +7,7 @@ This folder contains **project skills** for Cursor Agents. Each subfolder is one
 - **`job-status-tracking/`**: Realtime job status tracking via Firebase RTDB (`jobs/{jobKey}`), including backend create/update services and the `use-job-status-tracking` hook. Use when implementing job progress UI, realtime status updates, or RTDB read rules.
 - **`script-development/`**: TypeScript script and CLI conventions. Use when creating or changing files under `scripts/`, npm script entries that run local scripts, or script argument parsing/help behavior.
 - **`cron-config-scheduling/`**: Recurring jobs from `cron_config` via QStash schedules — sync on create/update/delete, eligibility, scheduleId, and callback handlers. Use when adding cron-based scheduling for any entity or task handler.
-- **`development-process-sync/`**: Sync git history to the Project Timeline report server (`timeline.ryobui.com`) — check existing updates by date, synthesize report records from code changes, confirm with the user, then POST via API. Config and `apiKey` in `development-process-sync/projects.json` (do not commit secrets).
+- **`development-process-sync/`**: Sync git history to the Project Timeline report server (`timeline.ryobui.com`) — check existing updates by date, synthesize report records from code changes, confirm with the user, then POST via API. Config in repo-root `timeline-sync.json` (gitignored; copy from `timeline-sync.example.json`). **Slug lock:** only the matched entry’s `projectSlug` may be read or written.
 
 ### Conventions
 

@@ -39,3 +39,6 @@ next-env.d.ts
 
 # local files
 .local
+
+# timeline dev-process sync (copy from timeline-sync.example.json)
+/timeline-sync.json

@@ -1,6 +1,6 @@
 {
   "apiBaseUrl": "https://timeline.ryobui.com",
-  "apiKey": "local-dev-key",
+  "apiKey": "",
   "entries": [
     {
       "workspaceKey": "bnb-listeners",

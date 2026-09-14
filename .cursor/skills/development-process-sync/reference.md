@@ -6,10 +6,10 @@ Source repo (local dev / OpenAPI): `c:\apps\tien-do` — see `API_FOR_AI.md` and
 
 ## Auth
 
-- Production writes use `apiKey` from [projects.json](projects.json) (Bearer token).
+- Production writes use `apiKey` from [`timeline-sync.json`](../../../timeline-sync.json) at the repo root (Bearer token).
 - Local dev default when testing against `http://localhost:8787`: `local-dev-key`.
 
-Do not commit `projects.json` if it contains a real API key.
+`timeline-sync.json` is gitignored. Copy [`timeline-sync.example.json`](../../../timeline-sync.example.json) and set your key locally.
 
 ## Endpoints
 
@@ -48,8 +48,10 @@ Use a stable key per planned post: `{projectSlug}-{publishedAt}-sync`
 
 Common codes: `UNAUTHORIZED`, `WRITES_DISABLED`, `PROJECT_NOT_FOUND`, `VALIDATION_ERROR`, `IDEMPOTENCY_CONFLICT`.
 
-## Canonical project slugs
+## Project slug allowlist
 
-`tool-order-task`, `social-listening`, `chat-agent`, `sale-gen-anh`
+For this repo, the **only** slug the agent may use is `entries[].projectSlug` from the matched row in [`timeline-sync.json`](../../../timeline-sync.json) (currently `social-listening` for workspace `bnb-listeners`).
 
-Always confirm slugs with `GET /api/v1/projects` before writing.
+Other slugs exist on the server (`tool-order-task`, `chat-agent`, `sale-gen-anh`, …) but are **out of scope** here. Use `GET /api/v1/projects` only to verify the config slug exists — never to pick or switch slugs.
+
+To sync a different project, the user must edit `timeline-sync.json` (or use that project’s workspace config).

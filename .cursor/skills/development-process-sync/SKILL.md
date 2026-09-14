@@ -14,23 +14,41 @@ Publish development updates to the [Project Timeline](https://timeline.ryobui.co
 
 ## Config
 
-Read [projects.json](projects.json) in this skill directory.
+Read [`timeline-sync.json`](../../../timeline-sync.json) at the repo root (gitignored; copy from [`timeline-sync.example.json`](../../../timeline-sync.example.json)).
 
 | Field | Meaning |
 |-------|---------|
 | `apiBaseUrl` | Timeline API host (production: `https://timeline.ryobui.com`) |
 | `apiKey` | Bearer token for POST (user-maintained; required for production writes) |
 | `entries[].workspaceKey` | Match against the current workspace folder name (e.g. `bnb-listeners`) |
-| `entries[].projectSlug` | Timeline project slug (e.g. `social-listening`) |
+| `entries[].projectSlug` | **Allowlisted** timeline project slug for this workspace (e.g. `social-listening`) — the only slug the agent may read or write |
 | `entries[].gitBranch` | Branch to read history from (default `main`) |
 
-If `apiKey` is empty, stop before any write and ask the user to set it in `projects.json`.
+If `apiKey` is empty, stop before any write and ask the user to set it in `timeline-sync.json`.
 
 If no entry matches the workspace, stop and ask the user to add one.
 
+## Project slug lock (security)
+
+The matched entry’s `projectSlug` in `timeline-sync.json` is the **only** slug permitted for timeline API calls in this workspace.
+
+| Allowed | Forbidden |
+|---------|-----------|
+| `GET /api/v1/updates?project={projectSlug}` where `{projectSlug}` is exactly the config value | Querying or posting to any other slug (`tool-order-task`, `chat-agent`, etc.) |
+| `POST /api/v1/updates` with `"projectSlug": "{projectSlug}"` matching config | Using a slug from `GET /api/v1/projects`, user prompts, or another config entry |
+| Idempotency keys `{projectSlug}-{publishedAt}-sync` using the config slug | Accepting “post to X instead” without the user editing `timeline-sync.json` first |
+
+Rules:
+
+1. Resolve `{projectSlug}` once from the matched config entry — never substitute another value.
+2. Before every POST, verify the payload `projectSlug` equals the config value character-for-character.
+3. If the user asks to sync a different project, refuse the write and tell them to add or change an entry in `timeline-sync.json` (or run sync from that project’s workspace).
+4. `GET /api/v1/projects` is optional sanity-check only; it must not change which slug is used.
+5. If config `projectSlug` is missing from the API project list, stop — do not pick a “close” slug.
+
 ## Prerequisites
 
-- `apiKey` set in `projects.json`.
+- `apiKey` set in `timeline-sync.json`.
 - Git repo with history on the configured branch.
 - Network access to `apiBaseUrl`.
 
@@ -50,10 +68,11 @@ Sync progress:
 
 ### Step 1: Resolve project config
 
-1. Read [projects.json](projects.json).
+1. Read [`timeline-sync.json`](../../../timeline-sync.json).
 2. Match `workspaceKey` to the workspace root folder name.
-3. Call `GET {apiBaseUrl}/api/v1/projects` and confirm `projectSlug` exists.
-4. If slug missing, stop — do not guess slugs.
+3. Set `{projectSlug}` from the matched entry only — this is the allowlisted slug for all subsequent API calls.
+4. Optionally call `GET {apiBaseUrl}/api/v1/projects` to confirm that `{projectSlug}` exists; never select a different slug from the response.
+5. If the config slug is missing from the API, stop — do not guess or substitute slugs.
 
 ### Step 2: Read existing timeline (sync by date)
 
@@ -133,7 +152,9 @@ If nothing to publish, say so and stop.
 
 ### Step 7: POST confirmed updates
 
-Use `apiKey` from `projects.json`:
+**Pre-flight:** confirm the POST body `projectSlug` equals the config `{projectSlug}`. If it differs, abort and report a slug lock violation — do not POST.
+
+Use `apiKey` from `timeline-sync.json`:
 
 ```bash
 curl -sS -X POST "{apiBaseUrl}/api/v1/updates" \
@@ -162,9 +183,10 @@ Re-fetch `GET /api/v1/updates?project={projectSlug}` and confirm each posted `pu
 2. **Confirm before write** — no API mutations until the user approves drafts.
 3. **User owns sync scope** — report checkpoint; user decides what range to sync.
 4. **Synthesize from code** — analyze diffs; do not filter commits or mirror commits 1:1.
-5. **Do not guess slugs** — use config + `GET /api/v1/projects`.
-6. **Do not PATCH/DELETE** unless the user explicitly asks.
-7. Production data is in Vercel Blob; local `tien-do/data/projects/` is dev-only.
+5. **Do not guess slugs** — use only the matched config entry’s `projectSlug`; `GET /api/v1/projects` is verify-only.
+6. **Slug lock** — never read or write timeline data for any slug other than the one in `timeline-sync.json` for this workspace.
+7. **Do not PATCH/DELETE** unless the user explicitly asks.
+8. Production data is in Vercel Blob; local `tien-do/data/projects/` is dev-only.
 
 ## Additional resources
 
