@@ -2,7 +2,6 @@
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ChevronDownIcon, SearchIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -12,6 +11,10 @@ import {
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
 import { DocumentDataSourceFilter } from "@/components/documents/document-data-source-filter";
 import { DocumentDataSourceGroupFilter } from "@/components/documents/document-data-source-group-filter";
+import {
+  DocumentTermFilterSelect,
+  DocumentTermPicker,
+} from "@/components/documents/document-term-filter";
 import {
   documentsQueryKey,
   type DocumentsQueryFilters,
@@ -39,7 +42,12 @@ import {
   getEmbeddingStatusBadge,
 } from "@/lib/documents/document-config";
 import { DOCUMENT_LIST_PAGE_SIZE } from "@/lib/documents/document-list-config";
-import type { DocumentListItem, ListDocumentsResult } from "@/lib/documents/types";
+import type { DocumentTermFilterMode } from "@/lib/documents/document-term-filter-config";
+import type {
+  DocumentListItem,
+  DocumentTermSummary,
+  ListDocumentsResult,
+} from "@/lib/documents/types";
 import type { ListDataSourcesResult } from "@/lib/data-sources/types";
 import type { ListDataSourceGroupsResult } from "@/lib/data-source-groups/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
@@ -66,6 +74,14 @@ async function fetchDocuments(
 
   if (filters.dataSourceGroupId) {
     params.set("dataSourceGroupId", filters.dataSourceGroupId);
+  }
+
+  if (filters.termFilterMode !== "all") {
+    params.set("termFilter", filters.termFilterMode);
+  }
+
+  if (filters.termFilterMode === "selected" && filters.termIds.length > 0) {
+    params.set("termIds", filters.termIds.join(","));
   }
 
   const res = await workspaceFetch(workspaceId, `/api/documents?${params.toString()}`);
@@ -138,6 +154,7 @@ function toListRowItem(doc: DocumentListItem): ResourceListRowItem {
         ? `Quality ${Math.round(doc.qualityScore * 100)}%`
         : undefined,
     badges: [statusBadge],
+    terms: doc.terms,
   };
 }
 
@@ -145,19 +162,31 @@ export function DocumentListPage({
   workspace,
   workspaceIndex,
 }: DocumentListPageProps) {
-  const router = useRouter();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const [dataSourceIds, setJobIds] = useState<string[]>([]);
   const [dataSourceGroupId, setDataSourceGroupId] = useState<string | null>(
     null,
   );
+  const [termFilterMode, setTermFilterMode] =
+    useState<DocumentTermFilterMode>("all");
+  const [selectedTerms, setSelectedTerms] = useState<DocumentTermSummary[]>([]);
   const [keyword, setKeyword] = useState("");
   const [sort, setSort] = useState<ListSortOption>("date-desc");
 
+  const termIds = useMemo(
+    () => selectedTerms.map((term) => term.id),
+    [selectedTerms],
+  );
+
   const filters = useMemo<DocumentsQueryFilters>(
-    () => ({ dataSourceIds, dataSourceGroupId }),
-    [dataSourceGroupId, dataSourceIds],
+    () => ({
+      dataSourceIds,
+      dataSourceGroupId,
+      termFilterMode,
+      termIds,
+    }),
+    [dataSourceGroupId, dataSourceIds, termFilterMode, termIds],
   );
 
   const documentsQuery = useInfiniteQuery({
@@ -191,13 +220,15 @@ export function DocumentListPage({
 
   const jobs = jobsQuery.data?.items ?? [];
   const groups = groupsQuery.data?.items ?? [];
-  const totalLoaded = documents.length;
+  const totalDocuments = documentsQuery.data?.pages[0]?.total ?? 0;
   const isInitialLoading = documentsQuery.isLoading;
   const isFetchingMore = documentsQuery.isFetchingNextPage;
   const errorMessage = documentsQuery.error?.message;
   const activeSortLabel =
     LIST_SORT_OPTIONS.find((option) => option.value === sort)?.label ?? "Sort";
   const hasKeyword = keyword.trim().length > 0;
+  const awaitingTermSelection =
+    termFilterMode === "selected" && selectedTerms.length === 0;
   const showEmptyState =
     !isInitialLoading && !errorMessage && listItems.length === 0;
 
@@ -228,10 +259,6 @@ export function DocumentListPage({
     documentsQuery.isFetchingNextPage,
   ]);
 
-  function handleItemClick(item: ResourceListRowItem) {
-    router.push(getDocumentHref(workspaceIndex, item.id));
-  }
-
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-8">
         <div className="mb-6 space-y-1">
@@ -243,30 +270,52 @@ export function DocumentListPage({
           </p>
         </div>
 
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <DocumentDataSourceGroupFilter
-            groups={groups}
-            dataSourceGroupId={dataSourceGroupId}
-            onDataSourceGroupIdChange={(groupId) => {
-              setDataSourceGroupId(groupId);
-              if (groupId) {
-                setJobIds([]);
-              }
-            }}
-            disabled={isInitialLoading}
-          />
+        <div className="mb-4 flex flex-col gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <DocumentDataSourceGroupFilter
+              groups={groups}
+              dataSourceGroupId={dataSourceGroupId}
+              onDataSourceGroupIdChange={(groupId) => {
+                setDataSourceGroupId(groupId);
+                if (groupId) {
+                  setJobIds([]);
+                }
+              }}
+              disabled={isInitialLoading}
+            />
 
-          <DocumentDataSourceFilter
-            dataSources={jobs}
-            dataSourceIds={dataSourceIds}
-            onDataSourceIdsChange={(nextIds) => {
-              setJobIds(nextIds);
-              if (nextIds.length > 0) {
-                setDataSourceGroupId(null);
-              }
-            }}
-            disabled={isInitialLoading}
-          />
+            <DocumentDataSourceFilter
+              dataSources={jobs}
+              dataSourceIds={dataSourceIds}
+              onDataSourceIdsChange={(nextIds) => {
+                setJobIds(nextIds);
+                if (nextIds.length > 0) {
+                  setDataSourceGroupId(null);
+                }
+              }}
+              disabled={isInitialLoading}
+            />
+
+            <DocumentTermFilterSelect
+              termFilterMode={termFilterMode}
+              onTermFilterModeChange={(mode) => {
+                setTermFilterMode(mode);
+                if (mode !== "selected") {
+                  setSelectedTerms([]);
+                }
+              }}
+              disabled={isInitialLoading}
+            />
+          </div>
+
+          {termFilterMode === "selected" ? (
+            <DocumentTermPicker
+              workspaceId={workspace.id}
+              selectedTerms={selectedTerms}
+              onSelectedTermsChange={setSelectedTerms}
+              disabled={isInitialLoading}
+            />
+          ) : null}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative min-w-0 flex-1">
@@ -323,21 +372,30 @@ export function DocumentListPage({
               </li>
             ))}
           </ul>
+        ) : awaitingTermSelection ? (
+          <ResourceListEmpty
+            title="Choose terms to filter"
+            description="Search and add one or more terms to see matching documents."
+          />
         ) : showEmptyState ? (
           <ResourceListEmpty
             title={hasKeyword ? "No matching results" : DOCUMENT_CONFIG.emptyTitle}
             description={
               hasKeyword
                 ? "Try a different search term or clear the filter."
-                : "Documents appear here after a scrape dataSource ingests content."
+                : termFilterMode === "none"
+                  ? "No unassigned documents in the current filters."
+                  : termFilterMode === "selected"
+                    ? "No documents match the selected terms."
+                    : "Documents appear here after a scrape dataSource ingests content."
             }
           />
         ) : (
           <>
             <p className="mb-3 text-xs text-muted-foreground">
               {hasKeyword
-                ? `${listItems.length} matching of ${totalLoaded} loaded`
-                : `${totalLoaded} document${totalLoaded === 1 ? "" : "s"} loaded`}
+                ? `${listItems.length} matching of ${totalDocuments}`
+                : `${totalDocuments} document${totalDocuments === 1 ? "" : "s"}`}
             </p>
 
             <ul className="flex flex-col gap-2.5">
@@ -345,7 +403,7 @@ export function DocumentListPage({
                 <li key={item.id}>
                   <ResourceListRow
                     item={item}
-                    onClick={() => handleItemClick(item)}
+                    href={getDocumentHref(workspaceIndex, item.id)}
                   />
                 </li>
               ))}

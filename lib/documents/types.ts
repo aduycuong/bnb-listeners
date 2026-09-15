@@ -1,6 +1,7 @@
 import type { z } from "zod";
 
 import type { updateDocumentBodySchema } from "./schema";
+import type { DocumentTermFilterMode } from "./document-term-filter-config";
 import type { Document } from "@/db/schema";
 import type { EngagementCounts } from "@/lib/common/engagement-counts";
 
@@ -45,8 +46,15 @@ export type ListDocumentsParams = {
   embeddingStatus?: string;
   dataSourceIds?: string[];
   dataSourceGroupId?: string;
+  termFilterMode?: DocumentTermFilterMode;
+  termIds?: string[];
   offset?: number;
   limit?: number;
+};
+
+export type DocumentTermSummary = {
+  id: string;
+  name: string;
 };
 
 export type DocumentListItem = {
@@ -69,10 +77,12 @@ export type DocumentListItem = {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  terms: DocumentTermSummary[];
 };
 
 export type ListDocumentsResult = {
   items: DocumentListItem[];
+  total: number;
   hasMore: boolean;
   offset: number;
   limit: number;

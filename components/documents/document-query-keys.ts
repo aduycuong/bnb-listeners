@@ -1,6 +1,10 @@
+import type { DocumentTermFilterMode } from "@/lib/documents/document-term-filter-config";
+
 export type DocumentsQueryFilters = {
   dataSourceIds: string[];
   dataSourceGroupId: string | null;
+  termFilterMode: DocumentTermFilterMode;
+  termIds: string[];
 };
 
 export const documentsQueryKey = (

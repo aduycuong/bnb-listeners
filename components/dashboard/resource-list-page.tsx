@@ -28,6 +28,11 @@ export type ResourceListBadge = {
   className?: string;
 };
 
+export type ResourceListTermTag = {
+  id: string;
+  name: string;
+};
+
 export type ResourceListRowItem = {
   id: string;
   name: string;
@@ -36,6 +41,7 @@ export type ResourceListRowItem = {
   subtitle?: ReactNode;
   meta?: string;
   badges?: ResourceListBadge[];
+  terms?: ResourceListTermTag[];
   leading?: {
     initials: string;
     className: string;
@@ -126,6 +132,18 @@ export function ResourceListRow({
           <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
             {item.description}
           </p>
+        ) : null}
+        {item.terms && item.terms.length > 0 ? (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {item.terms.map((term) => (
+              <span
+                key={term.id}
+                className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-900 dark:border-violet-900/60 dark:bg-violet-950/40 dark:text-violet-200"
+              >
+                {term.name}
+              </span>
+            ))}
+          </div>
         ) : null}
       </div>
 

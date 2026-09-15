@@ -43,7 +43,7 @@ export function DocumentDataSourceFilter({
         render={
           <Button
             variant="outline"
-            className="w-full justify-between sm:w-auto sm:min-w-52"
+            className="w-full justify-between"
             disabled={disabled}
           />
         }
