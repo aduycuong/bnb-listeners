@@ -44,6 +44,7 @@ export type ListDocumentsParams = {
   docType?: string;
   embeddingStatus?: string;
   dataSourceIds?: string[];
+  dataSourceGroupId?: string;
   offset?: number;
   limit?: number;
 };

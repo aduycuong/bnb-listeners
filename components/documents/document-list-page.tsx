@@ -11,10 +11,12 @@ import {
 } from "@/components/dashboard/resource-list-page";
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
 import { DocumentDataSourceFilter } from "@/components/documents/document-data-source-filter";
+import { DocumentDataSourceGroupFilter } from "@/components/documents/document-data-source-group-filter";
 import {
   documentsQueryKey,
   type DocumentsQueryFilters,
 } from "@/components/documents/document-query-keys";
+import { dataSourceGroupsQueryKey } from "@/components/data-source-groups/data-source-group-query-keys";
 import { workspaceJobsQueryKey } from "@/components/terms/term-query-keys";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +41,7 @@ import {
 import { DOCUMENT_LIST_PAGE_SIZE } from "@/lib/documents/document-list-config";
 import type { DocumentListItem, ListDocumentsResult } from "@/lib/documents/types";
 import type { ListDataSourcesResult } from "@/lib/data-sources/types";
+import type { ListDataSourceGroupsResult } from "@/lib/data-source-groups/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
@@ -61,6 +64,10 @@ async function fetchDocuments(
     params.set("dataSourceIds", filters.dataSourceIds.join(","));
   }
 
+  if (filters.dataSourceGroupId) {
+    params.set("dataSourceGroupId", filters.dataSourceGroupId);
+  }
+
   const res = await workspaceFetch(workspaceId, `/api/documents?${params.toString()}`);
   const data = (await res.json()) as ListDocumentsResult & {
     error?: string;
@@ -69,6 +76,24 @@ async function fetchDocuments(
 
   if (!res.ok) {
     throw new Error(data.message ?? data.error ?? "Could not load documents.");
+  }
+
+  return data;
+}
+
+async function fetchDataSourceGroups(
+  workspaceId: string,
+): Promise<ListDataSourceGroupsResult> {
+  const res = await workspaceFetch(workspaceId, "/api/data-source-groups");
+  const data = (await res.json()) as ListDataSourceGroupsResult & {
+    error?: string;
+    message?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(
+      data.message ?? data.error ?? "Could not load data source groups.",
+    );
   }
 
   return data;
@@ -124,12 +149,15 @@ export function DocumentListPage({
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const [dataSourceIds, setJobIds] = useState<string[]>([]);
+  const [dataSourceGroupId, setDataSourceGroupId] = useState<string | null>(
+    null,
+  );
   const [keyword, setKeyword] = useState("");
   const [sort, setSort] = useState<ListSortOption>("date-desc");
 
   const filters = useMemo<DocumentsQueryFilters>(
-    () => ({ dataSourceIds }),
-    [dataSourceIds],
+    () => ({ dataSourceIds, dataSourceGroupId }),
+    [dataSourceGroupId, dataSourceIds],
   );
 
   const documentsQuery = useInfiniteQuery({
@@ -146,6 +174,11 @@ export function DocumentListPage({
     queryFn: () => fetchJobs(workspace.id),
   });
 
+  const groupsQuery = useQuery({
+    queryKey: dataSourceGroupsQueryKey(workspace.id),
+    queryFn: () => fetchDataSourceGroups(workspace.id),
+  });
+
   const documents = useMemo(
     () => documentsQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [documentsQuery.data?.pages],
@@ -157,6 +190,7 @@ export function DocumentListPage({
   );
 
   const jobs = jobsQuery.data?.items ?? [];
+  const groups = groupsQuery.data?.items ?? [];
   const totalLoaded = documents.length;
   const isInitialLoading = documentsQuery.isLoading;
   const isFetchingMore = documentsQuery.isFetchingNextPage;
@@ -209,11 +243,28 @@ export function DocumentListPage({
           </p>
         </div>
 
-        <div className="mb-4 flex flex-col gap-3">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <DocumentDataSourceGroupFilter
+            groups={groups}
+            dataSourceGroupId={dataSourceGroupId}
+            onDataSourceGroupIdChange={(groupId) => {
+              setDataSourceGroupId(groupId);
+              if (groupId) {
+                setJobIds([]);
+              }
+            }}
+            disabled={isInitialLoading}
+          />
+
           <DocumentDataSourceFilter
             dataSources={jobs}
             dataSourceIds={dataSourceIds}
-            onDataSourceIdsChange={setJobIds}
+            onDataSourceIdsChange={(nextIds) => {
+              setJobIds(nextIds);
+              if (nextIds.length > 0) {
+                setDataSourceGroupId(null);
+              }
+            }}
             disabled={isInitialLoading}
           />
 

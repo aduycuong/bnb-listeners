@@ -1,5 +1,6 @@
 export type DocumentsQueryFilters = {
   dataSourceIds: string[];
+  dataSourceGroupId: string | null;
 };
 
 export const documentsQueryKey = (

@@ -678,6 +678,48 @@ QStash schedule id pattern (application): `source-schedule-{id}`.
 
 ---
 
+### `data_source_groups`
+
+Admin-curated groups for organizing data sources (e.g. “Competitors”, “Owned channels”). Names are unique per workspace. Used to filter documents by group membership.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
+| name | text | NO | — | Human-readable name, unique per workspace |
+| description | text | YES | — | Optional group description |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| `idx_data_source_groups_workspace_name` | UNIQUE `(workspace_id, name)` | Name unique within workspace |
+| `idx_data_source_groups_workspace_id` | `(workspace_id)` | List groups in a workspace |
+
+---
+
+### `data_source_group_members`
+
+Many-to-many link between data source groups and data sources. A data source may belong to multiple groups (hard cap enforced in application code).
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| data_source_group_id | uuid | NO | — | FK → `data_source_groups.id` ON DELETE CASCADE |
+| data_source_id | uuid | NO | — | FK → `data_sources.id` ON DELETE CASCADE |
+| assigned_by | text | NO | `admin` | `admin` |
+| assigned_at | timestamptz | NO | `now()` | Assignment time |
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| PRIMARY KEY | `(data_source_group_id, data_source_id)` | One membership row per pair |
+| `idx_data_source_group_members_data_source` | `(data_source_id)` | Resolve groups for a data source |
+
+---
+
 ### `source_runs`
 
 One row per data source execution — success/failure, result payload, and error message.

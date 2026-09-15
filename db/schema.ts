@@ -140,6 +140,62 @@ export const dataSources = pgTable(
 export type DataSource = typeof dataSources.$inferSelect;
 export type NewDataSource = typeof dataSources.$inferInsert;
 
+export const dataSourceGroups = pgTable(
+  "data_source_groups",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("idx_data_source_groups_workspace_name").on(
+      table.workspaceId,
+      table.name,
+    ),
+    index("idx_data_source_groups_workspace_id").on(table.workspaceId),
+  ],
+);
+
+export type DataSourceGroup = typeof dataSourceGroups.$inferSelect;
+export type NewDataSourceGroup = typeof dataSourceGroups.$inferInsert;
+
+export const dataSourceGroupMembers = pgTable(
+  "data_source_group_members",
+  {
+    dataSourceGroupId: uuid("data_source_group_id")
+      .notNull()
+      .references(() => dataSourceGroups.id, { onDelete: "cascade" }),
+    dataSourceId: uuid("data_source_id")
+      .notNull()
+      .references(() => dataSources.id, { onDelete: "cascade" }),
+    assignedBy: text("assigned_by").notNull().default("admin"),
+    assignedAt: timestamp("assigned_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.dataSourceGroupId, table.dataSourceId],
+    }),
+    index("idx_data_source_group_members_data_source").on(table.dataSourceId),
+  ],
+);
+
+export type DataSourceGroupMember =
+  typeof dataSourceGroupMembers.$inferSelect;
+export type NewDataSourceGroupMember =
+  typeof dataSourceGroupMembers.$inferInsert;
+
 export const sourceRuns = pgTable(
   "source_runs",
   {

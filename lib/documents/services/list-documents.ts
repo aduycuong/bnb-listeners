@@ -1,11 +1,25 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 
 import { documents, dataSources } from "@/db/schema";
+import { assertDataSourceGroupInWorkspace } from "@/lib/data-source-groups/utils/assert-data-source-group-in-workspace";
+import { listDataSourceGroupMemberIds } from "@/lib/data-source-groups/utils/list-data-source-group-member-ids";
 import { db } from "@/lib/db";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import { DOCUMENT_LIST_PAGE_SIZE } from "../document-list-config";
 import type { ListDocumentsParams, ListDocumentsResult } from "../types";
+
+function intersectIds(
+  primaryIds: string[] | undefined,
+  secondaryIds: string[],
+): string[] {
+  if (!primaryIds || primaryIds.length === 0) {
+    return secondaryIds;
+  }
+
+  const allowed = new Set(secondaryIds);
+  return primaryIds.filter((id) => allowed.has(id));
+}
 
 export async function listDocuments(
   params: ListDocumentsParams,
@@ -23,8 +37,28 @@ export async function listDocuments(
     conditions.push(eq(documents.embeddingStatus, params.embeddingStatus));
   }
 
-  if (params.dataSourceIds && params.dataSourceIds.length > 0) {
-    conditions.push(inArray(documents.dataSourceId, params.dataSourceIds));
+  let resolvedDataSourceIds = params.dataSourceIds;
+
+  if (params.dataSourceGroupId) {
+    await assertDataSourceGroupInWorkspace(
+      params.dataSourceGroupId,
+      ctx.workspaceId,
+    );
+    const groupMemberIds = await listDataSourceGroupMemberIds(
+      params.dataSourceGroupId,
+    );
+    resolvedDataSourceIds = intersectIds(resolvedDataSourceIds, groupMemberIds);
+  }
+
+  if (resolvedDataSourceIds && resolvedDataSourceIds.length > 0) {
+    conditions.push(inArray(documents.dataSourceId, resolvedDataSourceIds));
+  } else if (params.dataSourceGroupId) {
+    return {
+      items: [],
+      hasMore: false,
+      offset,
+      limit,
+    };
   }
 
   const rows = await db
