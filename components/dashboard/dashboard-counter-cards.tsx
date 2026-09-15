@@ -71,8 +71,8 @@ export function DashboardCounterCards({
       />
       <StatCard
         label="Sources"
-        value={data.totalJobs.toLocaleString()}
-        sub="Scrape jobs"
+        value={data.totalDataSources.toLocaleString()}
+        sub="Data sources"
         icon={<LinkIcon className="size-5 text-muted-foreground" />}
       />
     </div>

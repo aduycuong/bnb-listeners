@@ -14,7 +14,7 @@ type DailyRow = { date_key: string; doc_count: number };
 export async function getDashboardOverview(
   ctx: WorkspaceContext,
 ): Promise<GetDashboardOverviewResult> {
-  const [docsResult, jobsResult, newDocsResult, dailyResult] =
+  const [docsResult, dataSourcesResult, newDocsResult, dailyResult] =
     await Promise.all([
       db.execute<CountRow>(sql`
         SELECT COUNT(*)::int AS count
@@ -23,7 +23,7 @@ export async function getDashboardOverview(
       `),
       db.execute<CountRow>(sql`
         SELECT COUNT(*)::int AS count
-        FROM jobs
+        FROM data_sources
         WHERE workspace_id = ${ctx.workspaceId}::uuid
       `),
       db.execute<CountRow>(sql`
@@ -60,7 +60,7 @@ export async function getDashboardOverview(
 
   return {
     totalDocuments: docsResult.rows[0]?.count ?? 0,
-    totalJobs: jobsResult.rows[0]?.count ?? 0,
+    totalDataSources: dataSourcesResult.rows[0]?.count ?? 0,
     newDocumentsLast30Days: newDocsResult.rows[0]?.count ?? 0,
     dailyIngestion: daily,
   };

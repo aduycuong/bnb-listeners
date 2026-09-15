@@ -7,7 +7,31 @@
       "projectSlug": "social-listening",
       "displayName": "Social listening",
       "gitBranch": "main",
-      "latestSyncCommit": null
+      "latestSyncCommit": null,
+      "masterTimeline": {
+        "milestones": [
+          {
+            "id": "mst_social_listening_20260801_foundation",
+            "date": "2026-08-01",
+            "title": "Khởi tạo thu thập Facebook và quản lý tài liệu"
+          },
+          {
+            "id": "mst_social_listening_20261001_demo",
+            "date": "2026-10-01",
+            "title": "Demo dữ liệu Facebook, biểu đồ thống kê và theo dõi từ khóa"
+          },
+          {
+            "id": "mst_social_listening_20261101_expand",
+            "date": "2026-11-01",
+            "title": "Mở rộng thu thập nhiều nguồn hơn từ Facebook, thu thập hình ảnh, phân loại comments"
+          },
+          {
+            "id": "mst_social_listening_20261201_short_video",
+            "date": "2026-12-01",
+            "title": "Bổ sung nguồn short video"
+          }
+        ]
+      }
     }
   ]
 }

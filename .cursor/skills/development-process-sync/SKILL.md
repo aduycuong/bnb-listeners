@@ -12,6 +12,8 @@ description: >-
 
 Đăng cập nhật tiến độ phát triển lên server [Project Timeline](https://timeline.ryobui.com) bằng cách tổng hợp thay đổi code từ git — không phải copy raw commit messages.
 
+> **Master Timeline (ngang):** Dùng skill `master-timeline-sync` để sync cột mốc lớn từ `timeline-sync.json`. Skill này chỉ xử lý timeline dọc (cập nhật hàng ngày).
+
 ## Cấu hình
 
 Đọc `timeline-sync.json` ở root repo (gitignored).
@@ -24,6 +26,7 @@ description: >-
 | `entries[].projectSlug` | Slug project được phép sync trong workspace này |
 | `entries[].gitBranch` | Branch để đọc lịch sử (mặc định `main`) |
 | `entries[].latestSyncCommit` | SHA của commit cuối đã sync, `null` nếu chưa sync |
+| `entries[].masterTimeline` | Master Timeline local — xem skill `master-timeline-sync` |
 
 **Quy tắc slug:** Chỉ được đọc/ghi timeline cho đúng `projectSlug` trong config. Không dùng slug nào khác dù user yêu cầu — bảo user sửa `timeline-sync.json` trước.
 

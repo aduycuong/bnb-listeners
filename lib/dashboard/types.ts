@@ -5,7 +5,7 @@ export type DashboardDailyIngestionPoint = {
 
 export type GetDashboardOverviewResult = {
   totalDocuments: number;
-  totalJobs: number;
+  totalDataSources: number;
   newDocumentsLast30Days: number;
   dailyIngestion: DashboardDailyIngestionPoint[];
 };
