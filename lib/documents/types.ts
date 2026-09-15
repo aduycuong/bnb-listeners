@@ -17,7 +17,7 @@ export type RefreshDocumentFromSourceParams = { id: string };
 
 export type RefreshDocumentFromSourceResult = {
   documentId: string;
-  jobRunId: string;
+  sourceRunId: string;
   status: "running";
   message: string;
   snapshotId?: string;
@@ -27,7 +27,7 @@ export type UpdateDocumentCommentsParams = { id: string };
 
 export type UpdateDocumentCommentsResult = {
   documentId: string;
-  jobRunId: string;
+  sourceRunId: string;
   status: "running";
   message: string;
   snapshotId?: string;
@@ -35,15 +35,15 @@ export type UpdateDocumentCommentsResult = {
 
 export type GetDocumentParams = { id: string };
 export type GetDocumentResult = Document & {
-  jobId: string | null;
-  jobName: string | null;
-  jobType: string | null;
+  dataSourceId: string | null;
+  dataSourceName: string | null;
+  sourceType: string | null;
 };
 
 export type ListDocumentsParams = {
   docType?: string;
   embeddingStatus?: string;
-  jobIds?: string[];
+  dataSourceIds?: string[];
   offset?: number;
   limit?: number;
 };
@@ -51,9 +51,9 @@ export type ListDocumentsParams = {
 export type DocumentListItem = {
   id: string;
   docType: string;
-  sourceKey: string;
-  sourceName: string;
-  sourceId: string;
+  sourceOriginKey: string;
+  sourceOriginName: string;
+  sourceItemId: string;
   title: string | null;
   rawContent: string;
   embeddingStatus: string;
@@ -62,9 +62,9 @@ export type DocumentListItem = {
   commentCount: number;
   shareCount: number;
   viewCount: number;
-  jobRunId: string | null;
-  jobId: string;
-  jobName: string | null;
+  sourceRunId: string | null;
+  dataSourceId: string;
+  dataSourceName: string | null;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -79,19 +79,19 @@ export type ListDocumentsResult = {
 
 export type UpsertDocumentParams = {
   docType: string;
-  sourceKey: string;
-  sourceName: string;
-  sourceId: string;
+  sourceOriginKey: string;
+  sourceOriginName: string;
+  sourceItemId: string;
   title?: string;
   rawContent: string;
   metadata?: Record<string, unknown>;
   /** Refreshed on every upsert, including the unchanged path — never triggers a re-embed. */
   engagement?: EngagementCounts;
   publishedAt?: string;
-  /** Set only on insert; later upserts leave the original job run in place. */
-  jobRunId?: string;
-  /** Set only on insert; upsert/update does not overwrite an existing job. */
-  jobId: string;
+  /** Set only on insert; later upserts leave the original dataSource run in place. */
+  sourceRunId?: string;
+  /** Set only on insert; upsert/update does not overwrite an existing dataSource. */
+  dataSourceId: string;
 };
 
 /** Result of an upsert-document operation. */

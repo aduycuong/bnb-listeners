@@ -12,11 +12,11 @@ export function buildContextPrefix(context?: ChunkSourceContext): string {
 
   const parts: string[] = [];
   const author = context.author?.trim();
-  const sourceName = context.sourceName?.trim();
+  const sourceOriginName = context.sourceOriginName?.trim();
   const dateKey = context.publishedAt ? toDateKey(context.publishedAt) : null;
 
   if (author) parts.push(`Tác giả: ${author}`);
-  if (sourceName) parts.push(`Nguồn: ${sourceName}`);
+  if (sourceOriginName) parts.push(`Nguồn: ${sourceOriginName}`);
   if (dateKey) parts.push(`Ngày: ${dateKey}`);
 
   for (const label of context.labels ?? []) {

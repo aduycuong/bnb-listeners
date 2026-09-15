@@ -53,7 +53,7 @@ async function invalidateAffectedDigests(
 
   await Promise.all(
     termIds.map((termId) =>
-      invalidateTermDigest({ termId, dateKey, jobId: documentJobId }),
+      invalidateTermDigest({ termId, dateKey, dataSourceId: documentJobId }),
     ),
   );
 }
@@ -144,7 +144,7 @@ async function assignProposedTerms(
  *
  * Only prior LLM assignments are replaced; admin assignments are preserved.
  *
- * Digest invalidation runs for every classified document (all documents belong to a job).
+ * Digest invalidation runs for every classified document (all documents belong to a dataSource).
  */
 export async function classifyDocument(
   params: ClassifyDocumentParams,
@@ -165,7 +165,7 @@ export async function classifyDocument(
     title: doc.title,
     rawContent: doc.rawContent,
     docType: doc.docType,
-    sourceName: doc.sourceName,
+    sourceOriginName: doc.sourceOriginName,
   };
 
   // Capture LLM-assigned term IDs before clearing so they can be
@@ -243,7 +243,7 @@ export async function classifyDocument(
     ...result.createdTerms.map((t) => t.id),
   ];
   const affectedTermIds = [...new Set([...oldTermIds, ...newTermIds])];
-  await invalidateAffectedDigests(affectedTermIds, doc.publishedAt, doc.jobId);
+  await invalidateAffectedDigests(affectedTermIds, doc.publishedAt, doc.dataSourceId);
 
   if (newTermIds.length > 0) {
     await assignTermGroupsAfterClassification({

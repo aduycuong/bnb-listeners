@@ -1,7 +1,7 @@
 import { APIError } from "@/lib/exposers/api-error";
 
 type GetBrightDataWebhookUrlParams = {
-  jobRunId: string;
+  sourceRunId: string;
 };
 
 export function getBrightDataWebhookUrl(
@@ -17,5 +17,5 @@ export function getBrightDataWebhookUrl(
     );
   }
 
-  return `${appUrl}/api/webhooks/bright-data/${params.jobRunId}`;
+  return `${appUrl}/api/webhooks/bright-data/${params.sourceRunId}`;
 }

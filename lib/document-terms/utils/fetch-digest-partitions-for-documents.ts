@@ -6,11 +6,11 @@ import type { DigestPartition } from "../types";
 
 type PartitionRow = {
   date_key: string;
-  job_id: string;
+  data_source_id: string;
 };
 
 /**
- * Distinct (published_at date, job_id) pairs for the given documents.
+ * Distinct (published_at date, data_source_id) pairs for the given documents.
  */
 export async function fetchDigestPartitionsForDocuments(
   documentIds: string[],
@@ -22,7 +22,7 @@ export async function fetchDigestPartitionsForDocuments(
   const result = await db.execute<PartitionRow>(sql`
     SELECT DISTINCT
       d.published_at::date AS date_key,
-      d.job_id
+      d.data_source_id
     FROM documents d
     WHERE d.id = ANY(ARRAY[${sql.join(
       documentIds.map((id) => sql`${id}::uuid`),
@@ -33,6 +33,6 @@ export async function fetchDigestPartitionsForDocuments(
 
   return result.rows.map((row) => ({
     dateKey: row.date_key,
-    jobId: row.job_id,
+    dataSourceId: row.data_source_id,
   }));
 }

@@ -16,7 +16,7 @@ type AssignTermGroupsAfterClassificationParams = {
     title: string | null;
     rawContent: string;
     docType: string;
-    sourceName: string;
+    sourceOriginName: string;
   };
 };
 

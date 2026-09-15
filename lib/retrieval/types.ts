@@ -6,7 +6,7 @@ export type RetrievedChunk = {
   documentId: string;
   title: string | null;
   docType: string;
-  sourceName: string;
+  sourceOriginName: string;
   publishedAt: string | null;
   rrfScore: number;
   commentCount: number;
@@ -27,7 +27,7 @@ export type GetDocumentCommentsParams = {
 
 export type DocumentCommentItem = {
   id: string;
-  sourceId: string;
+  sourceItemId: string;
   authorName: string | null;
   content: string;
   likeCount: number;

@@ -1,6 +1,6 @@
 import type { ChatModelId } from "@/lib/langchain";
 
-/** QStash job that scores unscored comments on one parent document. */
+/** QStash dataSource that scores unscored comments on one parent document. */
 export const SCORE_DOCUMENT_COMMENTS_JOB_NAME = "score-document-comments";
 
 /** Comments sent to the LLM in a single structured-output call. */

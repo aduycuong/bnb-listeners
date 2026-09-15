@@ -61,7 +61,7 @@ export async function executeSystemScheduleJob(
   if (!handler) {
     throw new APIError(
       "QSTASH_UNKNOWN_JOB",
-      `Unknown QStash job: ${params.jobName}`,
+      `Unknown QStash dataSource: ${params.jobName}`,
       400,
     );
   }
@@ -70,7 +70,7 @@ export async function executeSystemScheduleJob(
   if (!schedule) {
     throw new APIError(
       "ERR_SYSTEM_SCHEDULE_NOT_FOUND",
-      `System schedule row missing for job: ${params.jobName}. Run db:seed-system-schedules.`,
+      `System schedule row missing for dataSource: ${params.jobName}. Run db:seed-system-schedules.`,
       500,
     );
   }

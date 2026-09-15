@@ -33,7 +33,7 @@ export async function createTermBackfillRun(
 
   if (term.activeBackfillRunId) {
     throw new UnknownServiceError(
-      "A backfill job is already running for this term.",
+      "A backfill dataSource is already running for this term.",
     );
   }
 

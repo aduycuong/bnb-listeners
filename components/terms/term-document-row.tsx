@@ -23,7 +23,7 @@ function formatConfidence(value: number) {
 }
 
 export function TermDocumentRow({ document, onClick }: TermDocumentRowProps) {
-  const title = document.title?.trim() || document.sourceId;
+  const title = document.title?.trim() || document.sourceItemId;
 
   return (
     <button
@@ -36,7 +36,7 @@ export function TermDocumentRow({ document, onClick }: TermDocumentRowProps) {
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{title}</p>
         <p className="truncate text-xs text-muted-foreground">
-          {[document.sourceName, document.jobName]
+          {[document.sourceOriginName, document.dataSourceName]
             .filter(Boolean)
             .join(" · ")}
         </p>

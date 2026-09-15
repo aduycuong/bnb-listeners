@@ -68,7 +68,7 @@ export type BulkInvalidateWorkspaceDigestsParams = {
  * Use this only when the set of affected terms is unknown (e.g. a full
  * taxonomy reset or external data import). For term merge/split operations
  * prefer bulkInvalidateTermDigests, which is more targeted and avoids
- * queuing unaffected terms in the bulk-drain job.
+ * queuing unaffected terms in the bulk-drain dataSource.
  */
 export async function bulkInvalidateWorkspaceDigests(
   params: BulkInvalidateWorkspaceDigestsParams,

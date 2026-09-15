@@ -100,15 +100,15 @@ export const workspaceMembers = pgTable(
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 export type NewWorkspaceMember = typeof workspaceMembers.$inferInsert;
 
-export const jobs = pgTable(
-  "jobs",
+export const dataSources = pgTable(
+  "data_sources",
   {
     id: uuid("id").primaryKey().defaultRandom().notNull(),
     workspaceId: uuid("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    jobType: text("job_type").notNull(),
+    sourceType: text("source_type").notNull(),
     cronConfig: jsonb("cron_config")
       .$type<{ cron: string; timezone: string }>()
       .notNull()
@@ -127,23 +127,26 @@ export const jobs = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    uniqueIndex("idx_jobs_workspace_name").on(table.workspaceId, table.name),
-    index("idx_jobs_workspace_id").on(table.workspaceId),
-    index("idx_jobs_enabled").on(table.enabled),
-    index("idx_jobs_job_type").on(table.jobType),
+    uniqueIndex("idx_data_sources_workspace_name").on(
+      table.workspaceId,
+      table.name,
+    ),
+    index("idx_data_sources_workspace_id").on(table.workspaceId),
+    index("idx_data_sources_enabled").on(table.enabled),
+    index("idx_data_sources_source_type").on(table.sourceType),
   ],
 );
 
-export type Job = typeof jobs.$inferSelect;
-export type NewJob = typeof jobs.$inferInsert;
+export type DataSource = typeof dataSources.$inferSelect;
+export type NewDataSource = typeof dataSources.$inferInsert;
 
-export const jobRuns = pgTable(
-  "job_runs",
+export const sourceRuns = pgTable(
+  "source_runs",
   {
     id: uuid("id").primaryKey().defaultRandom().notNull(),
-    jobId: uuid("job_id")
+    dataSourceId: uuid("data_source_id")
       .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
+      .references(() => dataSources.id, { onDelete: "cascade" }),
     status: text("status").notNull().default("running"),
     runType: text("run_type").notNull(),
     result: jsonb("result").$type<Record<string, unknown>>(),
@@ -154,16 +157,19 @@ export const jobRuns = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
   (table) => [
-    index("idx_job_runs_job_id").on(table.jobId),
-    index("idx_job_runs_started_at").on(table.startedAt.desc()),
-    index("idx_job_runs_status").on(table.status),
-    index("idx_job_runs_job_started").on(table.jobId, table.startedAt.desc()),
-    index("idx_job_runs_run_type").on(table.runType),
+    index("idx_source_runs_data_source_id").on(table.dataSourceId),
+    index("idx_source_runs_started_at").on(table.startedAt.desc()),
+    index("idx_source_runs_status").on(table.status),
+    index("idx_source_runs_data_source_started").on(
+      table.dataSourceId,
+      table.startedAt.desc(),
+    ),
+    index("idx_source_runs_run_type").on(table.runType),
   ],
 );
 
-export type JobRun = typeof jobRuns.$inferSelect;
-export type NewJobRun = typeof jobRuns.$inferInsert;
+export type SourceRun = typeof sourceRuns.$inferSelect;
+export type NewSourceRun = typeof sourceRuns.$inferInsert;
 
 export const systemSchedules = pgTable(
   "system_schedules",
@@ -280,9 +286,9 @@ export const documents = pgTable(
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
     docType: text("doc_type").notNull(),
-    sourceKey: text("source_key").notNull(),
-    sourceName: text("source_name").notNull(),
-    sourceId: text("source_id").notNull(),
+    sourceOriginKey: text("source_origin_key").notNull(),
+    sourceOriginName: text("source_origin_name").notNull(),
+    sourceItemId: text("source_item_id").notNull(),
     title: text("title"),
     rawContent: text("raw_content").notNull(),
     metadata: jsonb("metadata")
@@ -314,12 +320,12 @@ export const documents = pgTable(
     agreeCount: integer("agree_count").notNull().default(0),
     disagreeCount: integer("disagree_count").notNull().default(0),
     neutralCount: integer("neutral_count").notNull().default(0),
-    jobRunId: uuid("job_run_id").references(() => jobRuns.id, {
+    sourceRunId: uuid("source_run_id").references(() => sourceRuns.id, {
       onDelete: "set null",
     }),
-    jobId: uuid("job_id")
+    dataSourceId: uuid("data_source_id")
       .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
+      .references(() => dataSources.id, { onDelete: "cascade" }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -333,12 +339,15 @@ export const documents = pgTable(
     uniqueIndex("idx_documents_workspace_source").on(
       table.workspaceId,
       table.docType,
-      table.sourceKey,
-      table.sourceId,
+      table.sourceOriginKey,
+      table.sourceItemId,
     ),
     index("idx_documents_workspace_id").on(table.workspaceId),
     index("idx_documents_doc_type").on(table.docType),
-    index("idx_documents_source_key").on(table.docType, table.sourceKey),
+    index("idx_documents_source_origin_key").on(
+      table.docType,
+      table.sourceOriginKey,
+    ),
     index("idx_documents_published_at").on(table.publishedAt.desc()),
     index("idx_documents_created_at").on(table.createdAt.desc()),
     index("idx_documents_workspace_created_at").on(
@@ -353,9 +362,12 @@ export const documents = pgTable(
       .on(table.embeddingStatus)
       .where(sql`${table.embeddingStatus} <> 'chunked'`),
     index("idx_documents_quality_score").on(table.qualityScore),
-    index("idx_documents_job_run_id").on(table.jobRunId),
-    index("idx_documents_job_id").on(table.jobId),
-    index("idx_documents_workspace_job").on(table.workspaceId, table.jobId),
+    index("idx_documents_source_run_id").on(table.sourceRunId),
+    index("idx_documents_data_source_id").on(table.dataSourceId),
+    index("idx_documents_workspace_data_source").on(
+      table.workspaceId,
+      table.dataSourceId,
+    ),
     index("idx_documents_backfill_scan")
       .on(table.workspaceId, table.publishedAt, table.id)
       .where(sql`${table.publishedAt} IS NOT NULL`),
@@ -393,7 +405,7 @@ export const comments = pgTable(
       .notNull()
       .references(() => documents.id, { onDelete: "cascade" }),
     /** Platform comment id — unique per parent document. */
-    sourceId: text("source_id").notNull(),
+    sourceItemId: text("source_item_id").notNull(),
     authorName: text("author_name"),
     authorId: text("author_id"),
     content: text("content").notNull(),
@@ -429,9 +441,9 @@ export const comments = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    uniqueIndex("idx_comments_document_source").on(
+    uniqueIndex("idx_comments_document_source_item").on(
       table.documentId,
-      table.sourceId,
+      table.sourceItemId,
     ),
     index("idx_comments_workspace_id").on(table.workspaceId),
     index("idx_comments_document_id").on(table.documentId),
@@ -837,9 +849,9 @@ export const termDigestDaily = pgTable(
     dateKey: date("date_key")
       .notNull()
       .references(() => dimDates.dateKey),
-    jobId: uuid("job_id")
+    dataSourceId: uuid("data_source_id")
       .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
+      .references(() => dataSources.id, { onDelete: "cascade" }),
 
     // Metrics
     docCount: integer("doc_count").notNull().default(0),
@@ -849,7 +861,7 @@ export const termDigestDaily = pgTable(
     // Processing / cache state
     isStale: boolean("is_stale").notNull().default(true),
     // true when row was invalidated by a bulk taxonomy op (merge/split terms).
-    // Normal recompute job skips these; a separate low-priority bulk drain job
+    // Normal recompute dataSource skips these; a separate low-priority bulk drain dataSource
     // processes them with a smaller LIMIT so burst traffic doesn't crowd out
     // day-to-day invalidations.
     isBulkStale: boolean("is_bulk_stale").notNull().default(false),
@@ -862,22 +874,22 @@ export const termDigestDaily = pgTable(
     computedAt: timestamp("computed_at", { withTimezone: true }),
   },
   (table) => [
-    primaryKey({ columns: [table.termId, table.dateKey, table.jobId] }),
+    primaryKey({ columns: [table.termId, table.dateKey, table.dataSourceId] }),
     // rolling-window term cards + sparkline
-    index("idx_term_digest_daily_job_date").on(
-      table.jobId,
+    index("idx_term_digest_daily_data_source_date").on(
+      table.dataSourceId,
       table.dateKey,
       table.termId,
     ),
     // "all terms on a date" — used by ranking after daily recompute
     index("idx_term_digest_daily_date").on(table.dateKey, table.termId),
-    // normal recompute job queue — excludes bulk-stale rows
+    // normal recompute dataSource queue — excludes bulk-stale rows
     index("idx_term_digest_daily_stale")
       .on(table.staleSince)
       .where(
         sql`${table.isStale} = true AND ${table.isBulkStale} = false AND ${table.processing} = false`,
       ),
-    // bulk drain job queue — only rows flagged by taxonomy ops
+    // bulk drain dataSource queue — only rows flagged by taxonomy ops
     index("idx_term_digest_daily_bulk_stale")
       .on(table.staleSince)
       .where(

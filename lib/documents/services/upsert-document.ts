@@ -8,7 +8,7 @@ import { addJob } from "@/lib/qstash/services/add-job-service";
 import type { UpsertDocumentParams, UpsertDocumentResult } from "../types";
 
 /**
- * Upserts a document identified by (workspaceId, docType, sourceKey, sourceId):
+ * Upserts a document identified by (workspaceId, docType, sourceOriginKey, sourceItemId):
  *
  *   inserted   — no existing document found; created and process-document dispatched.
  *   updated    — rawContent changed; embeddingStatus reset to "pending" and
@@ -35,8 +35,8 @@ export async function upsertDocument(
       and(
         eq(documents.workspaceId, workspaceId),
         eq(documents.docType, params.docType),
-        eq(documents.sourceKey, params.sourceKey),
-        eq(documents.sourceId, params.sourceId),
+        eq(documents.sourceOriginKey, params.sourceOriginKey),
+        eq(documents.sourceItemId, params.sourceItemId),
       ),
     )
     .limit(1);
@@ -47,23 +47,23 @@ export async function upsertDocument(
       .values({
         workspaceId,
         docType: params.docType,
-        sourceKey: params.sourceKey,
-        sourceName: params.sourceName,
-        sourceId: params.sourceId,
+        sourceOriginKey: params.sourceOriginKey,
+        sourceOriginName: params.sourceOriginName,
+        sourceItemId: params.sourceItemId,
         title: params.title,
         rawContent: params.rawContent,
         metadata: params.metadata ?? {},
         ...engagement,
         publishedAt: newPublishedAt,
         embeddingStatus: "pending",
-        jobRunId: params.jobRunId ?? null,
-        jobId: params.jobId,
+        sourceRunId: params.sourceRunId ?? null,
+        dataSourceId: params.dataSourceId,
       })
       .returning({ id: documents.id });
 
     if (!doc) {
       throw new Error(
-        `[upsert-document] Insert failed for ${params.docType}/${params.sourceId}`,
+        `[upsert-document] Insert failed for ${params.docType}/${params.sourceItemId}`,
       );
     }
 

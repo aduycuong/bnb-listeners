@@ -15,10 +15,10 @@ export type ClaimDigestRowsParams = {
  *
  * Rows are ordered by stale_since ASC (oldest stale episode first).
  *
- * - Normal recompute job: bulkOnly = false → picks rows where is_bulk_stale = false
- * - Bulk drain job:       bulkOnly = true  → picks rows where is_bulk_stale = true
+ * - Normal recompute dataSource: bulkOnly = false → picks rows where is_bulk_stale = false
+ * - Bulk drain dataSource:       bulkOnly = true  → picks rows where is_bulk_stale = true
  *
- * Returns the list of (termId, dateKey, jobId) triples that were claimed.
+ * Returns the list of (termId, dateKey, dataSourceId) triples that were claimed.
  */
 export async function claimDigestRows(
   params: ClaimDigestRowsParams,
@@ -32,12 +32,12 @@ export async function claimDigestRows(
   const rows = await db.execute<{
     term_id: string;
     date_key: string;
-    job_id: string;
+    data_source_id: string;
   }>(sql`
     UPDATE term_digest_daily
     SET processing = true, processing_started_at = now()
-    WHERE (term_id, date_key, job_id) IN (
-      SELECT term_id, date_key, job_id
+    WHERE (term_id, date_key, data_source_id) IN (
+      SELECT term_id, date_key, data_source_id
       FROM term_digest_daily
       WHERE is_stale = true
         AND processing = false
@@ -46,12 +46,12 @@ export async function claimDigestRows(
       LIMIT ${batchSize}
       FOR UPDATE SKIP LOCKED
     )
-    RETURNING term_id, date_key, job_id
+    RETURNING term_id, date_key, data_source_id
   `);
 
   return rows.rows.map((r) => ({
     termId: r.term_id,
     dateKey: r.date_key,
-    jobId: r.job_id,
+    dataSourceId: r.data_source_id,
   }));
 }

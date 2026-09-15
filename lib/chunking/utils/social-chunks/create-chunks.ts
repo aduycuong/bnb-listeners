@@ -14,7 +14,7 @@ import type { CreateChunksParams, CreatedChunk, MediaKind } from "./types";
  * Builds chunks from raw social content plus its image and video URLs.
  *
  * Standalone by design — no database reads, no network calls, no document
- * lookup — so it can be driven from a job handler, a script, or a test.
+ * lookup — so it can be driven from a dataSource handler, a script, or a test.
  * Pass the result to `createChunkRecords` to get insertable `chunks` rows.
  *
  * Text is treated as an atomic unit; each image and video becomes its own chunk

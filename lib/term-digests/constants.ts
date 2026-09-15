@@ -14,12 +14,12 @@ export const BULK_DRAIN_BATCH_SIZE = 50;
 
 /**
  * A processing row older than this is considered stuck and will be reset at
- * the start of every job run.
+ * the start of every dataSource run.
  */
 export const STUCK_WORKER_TIMEOUT_MINUTES = 30;
 
 // ---------------------------------------------------------------------------
-// QStash job names — must match keys in lib/qstash/job-config.ts
+// QStash dataSource names — must match keys in lib/qstash/job-config.ts
 // ---------------------------------------------------------------------------
 
 export const RECOMPUTE_JOB_NAME = "recompute-term-digests";

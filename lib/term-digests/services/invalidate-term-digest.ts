@@ -10,12 +10,12 @@ export type InvalidateTermDigestParams = {
    * Only this specific daily row is invalidated — not the entire term history.
    */
   dateKey: string;
-  /** The scrape job that produced the document. */
-  jobId: string;
+  /** The scrape dataSource that produced the document. */
+  dataSourceId: string;
 };
 
 /**
- * Mark the (term, date, job) daily row as stale so the recompute job will pick
+ * Mark the (term, date, dataSource) daily row as stale so the recompute dataSource will pick
  * it up on its next run.
  *
  * stale_since is set at the start of a stale episode (COALESCE) so FIFO ordering
@@ -27,7 +27,7 @@ export type InvalidateTermDigestParams = {
 export async function invalidateTermDigest(
   params: InvalidateTermDigestParams,
 ): Promise<void> {
-  const { termId, dateKey, jobId } = params;
+  const { termId, dateKey, dataSourceId } = params;
   const now = new Date();
 
   await db
@@ -35,7 +35,7 @@ export async function invalidateTermDigest(
     .values({
       termId,
       dateKey,
-      jobId,
+      dataSourceId,
       isStale: true,
       isBulkStale: false,
       staleSince: now,
@@ -44,7 +44,7 @@ export async function invalidateTermDigest(
       target: [
         termDigestDaily.termId,
         termDigestDaily.dateKey,
-        termDigestDaily.jobId,
+        termDigestDaily.dataSourceId,
       ],
       set: {
         isStale: true,

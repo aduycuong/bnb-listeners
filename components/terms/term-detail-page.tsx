@@ -36,7 +36,7 @@ import type {
   GetTermResult,
   ListTermDocumentsResult,
 } from "@/lib/terms/types";
-import type { ListJobsResult } from "@/lib/jobs/types";
+import type { ListDataSourcesResult } from "@/lib/data-sources/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
@@ -109,8 +109,8 @@ async function fetchTermDocuments(
     limit: String(TERM_DETAIL_DOCUMENTS_PAGE_SIZE),
   });
 
-  if (filters.jobIds.length > 0) {
-    params.set("jobIds", filters.jobIds.join(","));
+  if (filters.dataSourceIds.length > 0) {
+    params.set("dataSourceIds", filters.dataSourceIds.join(","));
   }
 
   const search = filters.search.trim();
@@ -134,15 +134,15 @@ async function fetchTermDocuments(
   return data;
 }
 
-async function fetchJobs(workspaceId: string): Promise<ListJobsResult> {
-  const res = await workspaceFetch(workspaceId, "/api/jobs");
-  const data = (await res.json()) as ListJobsResult & {
+async function fetchJobs(workspaceId: string): Promise<ListDataSourcesResult> {
+  const res = await workspaceFetch(workspaceId, "/api/data-sources");
+  const data = (await res.json()) as ListDataSourcesResult & {
     error?: string;
     message?: string;
   };
 
   if (!res.ok) {
-    throw new Error(data.message ?? data.error ?? "Could not load jobs.");
+    throw new Error(data.message ?? data.error ?? "Could not load dataSources.");
   }
 
   return data;
@@ -159,7 +159,7 @@ export function TermDetailPage({
   const [customStartDate, setCustomStartDate] = useState<string>();
   const [customEndDate, setCustomEndDate] = useState<string>();
   const router = useRouter();
-  const [jobIds, setJobIds] = useState<string[]>([]);
+  const [dataSourceIds, setJobIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
 
@@ -175,10 +175,10 @@ export function TermDetailPage({
 
   const documentFilters = useMemo<TermDocumentsQueryFilters>(
     () => ({
-      jobIds,
+      dataSourceIds,
       search: deferredSearch,
     }),
-    [deferredSearch, jobIds],
+    [deferredSearch, dataSourceIds],
   );
 
   const waitingForCustomRange =
@@ -328,7 +328,7 @@ export function TermDetailPage({
         <TermDetailDocuments
           documents={documents}
           jobs={jobs}
-          jobIds={jobIds}
+          dataSourceIds={dataSourceIds}
           search={search}
           totalLoaded={documents.length}
           isInitialLoading={documentsQuery.isLoading}

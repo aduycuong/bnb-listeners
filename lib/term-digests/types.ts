@@ -7,7 +7,7 @@ export type DigestMetrics = {
 export type ClaimedRow = {
   termId: string;
   dateKey: string;
-  jobId: string;
+  dataSourceId: string;
 };
 
 export type TermDigestJobMetrics = {

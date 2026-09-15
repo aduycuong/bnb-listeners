@@ -1,9 +1,9 @@
-import { jobRuns } from "@/db/schema";
+import { sourceRuns } from "@/db/schema";
 import { CreateFailedError, UnknownServiceError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
-import { executeScrapeFacebookPost } from "@/lib/jobs/handlers/scrape-facebook/execute-scrape-facebook-post";
-import type { SchedulableJobType } from "@/lib/jobs/constants";
-import { JOB_RUN_TYPE_FACEBOOK_POST } from "@/lib/jobs/run-types";
+import { executeScrapeFacebookPost } from "@/lib/data-sources/handlers/scrape-facebook/execute-scrape-facebook-post";
+import type { SourceType } from "@/lib/data-sources/constants";
+import { SOURCE_RUN_TYPE_FACEBOOK_POST } from "@/lib/data-sources/source-run-types";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type {
@@ -23,13 +23,13 @@ export async function refreshDocumentFromSource(
 ): Promise<RefreshDocumentFromSourceResult> {
   const document = await getDocument({ id: params.id }, ctx);
 
-  if (!document.jobId || !document.jobType) {
+  if (!document.dataSourceId || !document.sourceType) {
     throw new UnknownServiceError(
-      "This document has no scrape job and cannot be refreshed from source.",
+      "This document has no scrape dataSource and cannot be refreshed from source.",
     );
   }
 
-  switch (document.jobType as SchedulableJobType) {
+  switch (document.sourceType as SourceType) {
     case "scrape-facebook": {
       const postUrl = readPostUrl(document.metadata);
       if (!postUrl) {
@@ -39,26 +39,26 @@ export async function refreshDocumentFromSource(
       }
 
       const [run] = await db
-        .insert(jobRuns)
+        .insert(sourceRuns)
         .values({
-          jobId: document.jobId,
+          dataSourceId: document.dataSourceId,
           status: "running",
-          runType: JOB_RUN_TYPE_FACEBOOK_POST,
+          runType: SOURCE_RUN_TYPE_FACEBOOK_POST,
         })
         .returning();
 
       if (!run) {
-        throw new CreateFailedError("job run");
+        throw new CreateFailedError("source run");
       }
 
       const { snapshotId } = await executeScrapeFacebookPost(
-        { postUrl, sourceKey: document.sourceKey },
-        { jobId: document.jobId, jobRunId: run.id },
+        { postUrl, sourceOriginKey: document.sourceOriginKey },
+        { dataSourceId: document.dataSourceId, sourceRunId: run.id },
       );
 
       return {
         documentId: document.id,
-        jobRunId: run.id,
+        sourceRunId: run.id,
         status: "running",
         message: "Re-fetch started. Content will update when the scrape completes.",
         snapshotId,
@@ -70,7 +70,7 @@ export async function refreshDocumentFromSource(
       );
     default:
       throw new UnknownServiceError(
-        `Re-fetch is not supported for job type "${document.jobType}".`,
+        `Re-fetch is not supported for dataSource type "${document.sourceType}".`,
       );
   }
 }

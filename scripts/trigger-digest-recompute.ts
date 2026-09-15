@@ -1,4 +1,4 @@
-// Manually trigger a term digest system schedule job without waiting for QStash.
+// Manually trigger a term digest system schedule dataSource without waiting for QStash.
 //
 // Examples:
 //   npx tsx scripts/trigger-digest-recompute.ts --dry-run
@@ -35,14 +35,14 @@ type Options = z.infer<typeof optionsSchema>;
 function parseArgs(): Options {
   const program = new Command()
     .name(SCRIPT)
-    .description("Manually trigger a term digest system schedule job.")
+    .description("Manually trigger a term digest system schedule dataSource.")
     .option(
       "--bulk",
-      "Run the bulk-drain job (is_bulk_stale rows) instead of the normal recompute job.",
+      "Run the bulk-drain dataSource (is_bulk_stale rows) instead of the normal recompute dataSource.",
       false,
     )
     .option("--dry-run", "Show what would run without executing anything.", false)
-    .option("--yes", "Execute the job.", false);
+    .option("--yes", "Execute the dataSource.", false);
 
   program.parse();
   return optionsSchema.parse(program.opts());

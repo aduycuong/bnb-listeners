@@ -6,7 +6,7 @@ export const DOCUMENT_CONFIG = {
   listDescription:
     "Content ingested into this workspace for scoring, classification, and search.",
   emptyTitle: "No documents yet",
-  emptyDescription: "Documents appear here after a scrape job ingests content.",
+  emptyDescription: "Documents appear here after a scrape dataSource ingests content.",
 } as const;
 
 export function getDocumentHref(

@@ -18,8 +18,8 @@ export async function getTerm(
       term: terms,
       sourceDocumentId: documents.id,
       sourceDocumentTitle: documents.title,
-      sourceDocumentSourceName: documents.sourceName,
-      sourceDocumentSourceId: documents.sourceId,
+      sourceDocumentSourceName: documents.sourceOriginName,
+      sourceDocumentSourceId: documents.sourceItemId,
     })
     .from(terms)
     .leftJoin(documents, eq(terms.sourceDocumentId, documents.id))
@@ -54,8 +54,8 @@ export async function getTerm(
       ? {
           id: row.sourceDocumentId,
           title: row.sourceDocumentTitle,
-          sourceName: row.sourceDocumentSourceName ?? "",
-          sourceId: row.sourceDocumentSourceId ?? "",
+          sourceOriginName: row.sourceDocumentSourceName ?? "",
+          sourceItemId: row.sourceDocumentSourceId ?? "",
         }
       : null,
     activeBackfillRun,

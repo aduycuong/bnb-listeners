@@ -36,14 +36,14 @@ function buildUserMessage(doc: {
   title: string | null;
   rawContent: string;
   docType: string;
-  sourceName: string;
+  sourceOriginName: string;
 }): string {
   const contentPreview = doc.rawContent.slice(0, CLASSIFIER_CONTENT_MAX_CHARS);
 
   return [
     "Tài liệu:",
     `Loại: ${doc.docType}`,
-    `Nguồn: ${doc.sourceName}`,
+    `Nguồn: ${doc.sourceOriginName}`,
     doc.title?.trim() ? `Tiêu đề: ${doc.title.trim()}` : null,
     `Nội dung:\n${contentPreview}`,
   ]
@@ -60,7 +60,7 @@ export async function proposeTermsWithLlm(
     title: string | null;
     rawContent: string;
     docType: string;
-    sourceName: string;
+    sourceOriginName: string;
   },
   systemPrompt: string,
 ): Promise<ProposedTerm[]> {

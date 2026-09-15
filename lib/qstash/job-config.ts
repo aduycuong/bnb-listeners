@@ -1,9 +1,9 @@
 import { processDocument } from "@/lib/documents/services/process-document";
 import { scoreDocumentComments } from "@/lib/comments/services/score-document-comments";
 import { SCORE_DOCUMENT_COMMENTS_JOB_NAME } from "@/lib/comments/config";
-import { runScheduledJob } from "@/lib/jobs/services/run-scheduled-job";
-import { scrapeFacebookDocumentComments } from "@/lib/jobs/services/scrape-facebook-document-comments";
-import { SCRAPE_FACEBOOK_DOCUMENT_COMMENTS_JOB_NAME } from "@/lib/jobs/handlers/scrape-facebook/config";
+import { runScheduledDataSource } from "@/lib/data-sources/services/run-scheduled-data-source";
+import { scrapeFacebookDocumentComments } from "@/lib/data-sources/services/scrape-facebook-document-comments";
+import { SCRAPE_FACEBOOK_DOCUMENT_COMMENTS_JOB_NAME } from "@/lib/data-sources/handlers/scrape-facebook/config";
 import { processTermGroupMemberRebuildBatch } from "@/lib/term-group-member-rebuild/services/process-term-group-member-rebuild-batch";
 import { processTermBackfillBatch } from "@/lib/term-backfill/services/process-term-backfill-batch";
 import { bulkDrainTermDigests } from "@/lib/term-digests/services/bulk-drain-term-digests";
@@ -15,7 +15,7 @@ import {
   RECOMPUTE_JOB_NAME,
 } from "@/lib/term-digests/constants";
 
-import { RUN_SCHEDULED_JOB_QSTASH_JOB_NAME } from "@/lib/jobs/constants";
+import { RUN_SCHEDULED_DATA_SOURCE_QSTASH_JOB_NAME } from "@/lib/data-sources/constants";
 
 export type QstashJobHandlerContext = {
   userId?: string;
@@ -50,9 +50,9 @@ export const qstashJobHandlers: Record<string, QstashJobHandler> = {
 
   /**
    * Fired by QStash on a workspace job's cron schedule.
-   * Payload: { jobId: string }
+   * Payload: { dataSourceId: string }
    */
-  [RUN_SCHEDULED_JOB_QSTASH_JOB_NAME]: runScheduledJob,
+  [RUN_SCHEDULED_DATA_SOURCE_QSTASH_JOB_NAME]: runScheduledDataSource,
 
   /**
    * System cron — every 15 minutes.

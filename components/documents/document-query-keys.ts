@@ -1,5 +1,5 @@
 export type DocumentsQueryFilters = {
-  jobIds: string[];
+  dataSourceIds: string[];
 };
 
 export const documentsQueryKey = (

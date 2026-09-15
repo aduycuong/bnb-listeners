@@ -43,10 +43,10 @@ import {
 import type { ClassifyDocumentResult } from "@/lib/classification/types";
 import type { GetDocumentResult } from "@/lib/documents/types";
 import {
-  getJobMenuConfigByJobType,
-  getJobMenuHref,
-} from "@/lib/jobs/job-menu-config";
-import { isSchedulableJobType } from "@/lib/jobs/constants";
+  getDataSourceMenuConfigByJobType,
+  getDataSourceMenuHref,
+} from "@/lib/data-sources/data-source-menu-config";
+import { isSourceType } from "@/lib/data-sources/constants";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
@@ -99,19 +99,19 @@ function resolveJobHref(
   document: GetDocumentResult,
 ): string | null {
   if (
-    !document.jobId ||
-    !document.jobType ||
-    !isSchedulableJobType(document.jobType)
+    !document.dataSourceId ||
+    !document.sourceType ||
+    !isSourceType(document.sourceType)
   ) {
     return null;
   }
 
-  const menu = getJobMenuConfigByJobType(document.jobType);
+  const menu = getDataSourceMenuConfigByJobType(document.sourceType);
   if (!menu) {
     return null;
   }
 
-  return getJobMenuHref(workspaceIndex, menu, document.jobId);
+  return getDataSourceMenuHref(workspaceIndex, menu, document.dataSourceId);
 }
 
 function formatClassifyToast(result: ClassifyDocumentResult): {
@@ -180,10 +180,10 @@ export function DocumentDetailPage({
     : null;
   const jobHref = document ? resolveJobHref(workspaceIndex, document) : null;
   const title =
-    document?.title?.trim() || document?.sourceId || "Document details";
-  const refreshLabel = getRefreshFromSourceActionLabel(document?.jobType);
-  const refreshEnabled = canRefreshFromSource(document?.jobType);
-  const updateCommentsEnabled = canUpdateComments(document?.jobType);
+    document?.title?.trim() || document?.sourceItemId || "Document details";
+  const refreshLabel = getRefreshFromSourceActionLabel(document?.sourceType);
+  const refreshEnabled = canRefreshFromSource(document?.sourceType);
+  const updateCommentsEnabled = canUpdateComments(document?.sourceType);
 
   async function runAction(action: DocumentAction) {
     setPendingAction(action);
@@ -377,17 +377,17 @@ export function DocumentDetailPage({
 
       <div className="space-y-4 rounded-xl border bg-card p-4 md:p-6">
         <DetailField label="Document type" value={document.docType} />
-        <DetailField label="Source key" value={document.sourceKey} mono />
-        <DetailField label="Source name" value={document.sourceName} />
-        <DetailField label="Source ID" value={document.sourceId} mono />
+        <DetailField label="Source key" value={document.sourceOriginKey} mono />
+        <DetailField label="Source name" value={document.sourceOriginName} />
+        <DetailField label="Source ID" value={document.sourceItemId} mono />
 
         <DetailField
           label="Job run"
           value={
-            document.jobRunId ? (
+            document.sourceRunId ? (
               <>
-                <span>{document.jobRunId}</span>
-                {document.jobName ? (
+                <span>{document.sourceRunId}</span>
+                {document.dataSourceName ? (
                   <p className="mt-1 font-sans text-sm text-muted-foreground">
                     Created by{" "}
                     {jobHref ? (
@@ -395,10 +395,10 @@ export function DocumentDetailPage({
                         href={jobHref}
                         className="text-foreground underline underline-offset-2"
                       >
-                        {document.jobName}
+                        {document.dataSourceName}
                       </Link>
                     ) : (
-                      document.jobName
+                      document.dataSourceName
                     )}
                   </p>
                 ) : null}

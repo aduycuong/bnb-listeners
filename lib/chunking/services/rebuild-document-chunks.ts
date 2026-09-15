@@ -39,7 +39,7 @@ export async function rebuildDocumentChunks(
     videoUrls: readStringArray(doc.metadata, "videoUrls"),
     context: {
       author: readString(doc.metadata, "authorName"),
-      sourceName: doc.sourceName,
+      sourceOriginName: doc.sourceOriginName,
       publishedAt: doc.publishedAt,
     },
   });

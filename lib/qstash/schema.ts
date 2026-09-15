@@ -16,7 +16,7 @@ export const addJobRequestSchema = z.object({
    */
   delay: z.number().optional(),
   /**
-   * Optional flow control configuration for this job.
+   * Optional flow control configuration for this dataSource.
    * See Upstash QStash Flow Control docs.
    */
   flowControl: z

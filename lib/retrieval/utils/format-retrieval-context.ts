@@ -12,7 +12,7 @@ export function formatRetrievalContext(chunks: RetrievedChunk[]): string {
       const parts: string[] = [];
 
       if (chunk.title) parts.push(chunk.title);
-      else parts.push(chunk.sourceName);
+      else parts.push(chunk.sourceOriginName);
 
       parts.push(chunk.docType);
 
@@ -56,7 +56,7 @@ export function formatSources(chunks: RetrievedChunk[]): SourceItem[] {
     sources.push({
       index: sources.length + 1,
       documentId: chunk.documentId,
-      title: chunk.title ?? chunk.sourceName,
+      title: chunk.title ?? chunk.sourceOriginName,
       docType: chunk.docType,
       publishedAt: chunk.publishedAt,
       commentCount: chunk.commentCount,

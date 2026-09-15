@@ -113,7 +113,7 @@ export async function searchChunks(params: SearchChunksParams): Promise<Retrieve
     documentId: row.document_id,
     title: row.title ?? null,
     docType: row.doc_type,
-    sourceName: row.source_name,
+    sourceOriginName: row.source_name,
     publishedAt: row.published_at ? new Date(row.published_at).toISOString() : null,
     rrfScore: Number(row.rrf_score),
     commentCount: Number(row.comment_count),

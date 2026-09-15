@@ -164,7 +164,7 @@ Tenant container for documents, terms, and members.
 - ← `workspace_members.workspace_id`
 - ← `documents.workspace_id`
 - ← `terms.workspace_id`
-- ← `jobs.workspace_id`
+- ← `data_sources.workspace_id`
 - ← `workspace_task_runs.workspace_id`
 - ← `workspace_api_keys.workspace_id`
 
@@ -195,6 +195,16 @@ Membership and permission for a user within a workspace.
 
 ## Document pipeline
 
+### Terminology
+
+| Term | Where | Meaning |
+| ---- | ----- | ------- |
+| **Data source** | `data_sources` | Workspace connector config (URL, params, cron). Triggers `source_runs`. |
+| **Source origin** | `documents.source_origin_key` / `source_origin_name` | External platform or page identity on an ingested item. |
+| **Source item** | `documents.source_item_id`, `comments.source_item_id` | External id of a post, article, or comment. |
+
+Do not confuse **data source** (internal config) with **source origin** (external identity stamped on documents at ingest).
+
 ### Source model
 
 Each ingested item is identified at three levels (all required):
@@ -202,12 +212,12 @@ Each ingested item is identified at three levels (all required):
 | Level | Column | Purpose | Examples |
 | ----- | ------ | ------- | -------- |
 | Content type | `doc_type` | What kind of content the item is | `news`, `post`, `review`, `legal`, `comment`, `guide`, … |
-| Instance | `source_key` + `source_name` | Which platform/source the item came from | `techcrunch`, `tripadvisor`, `reddit:r/travel`, `facebook:pageId` |
-| Item | `source_id` | External item id from the source (dedup) | Platform post id, article id — **not** a URL |
+| Instance | `source_origin_key` + `source_origin_name` | Which platform/source the item came from | `techcrunch`, `tripadvisor`, `reddit:r/travel`, `facebook:pageId` |
+| Item | `source_item_id` | External item id from the source (dedup) | Platform post id, article id — **not** a URL |
 
-`doc_type` describes the **nature of the content**, not the platform. The same `doc_type` (e.g. `review`) can appear from many platforms, each with its own `source_key`.
+`doc_type` describes the **nature of the content**, not the platform. The same `doc_type` (e.g. `review`) can appear from many platforms, each with its own `source_origin_key`.
 
-Dedup is scoped per workspace: unique `(workspace_id, doc_type, source_key, source_id)`. URLs and other canonical links belong in `metadata` (e.g. `metadata.url`).
+Dedup is scoped per workspace: unique `(workspace_id, doc_type, source_origin_key, source_item_id)`. URLs and other canonical links belong in `metadata` (e.g. `metadata.url`).
 
 **`doc_type` values (open set):**
 
@@ -215,13 +225,13 @@ Dedup is scoped per workspace: unique `(workspace_id, doc_type, source_key, sour
 | ----- | ----------- |
 | `news` | News articles and press releases |
 | `post` | Social media posts, forum threads, blog entries |
-| `discussion` | Companion document rolling up substantive comments on a post — same `source_key`/`source_id` as the parent, different `doc_type` |
+| `discussion` | Companion document rolling up substantive comments on a post — same `source_origin_key`/`source_item_id` as the parent, different `doc_type` |
 | `review` | User or editorial reviews |
 | `legal` | Legal documents, terms, contracts, regulations |
 | `guide` | How-to guides, tutorials, FAQs |
 
 Individual social comments are **not** stored as documents. They live in the `comments` table and only the substantive ones are rolled into a `discussion` document for retrieval.
-**`source_key` conventions:**
+**`source_origin_key` conventions:**
 
 - News/blog outlet slug: `vnexpress`, `reuters`, `techcrunch`
 - Review platform: `tripadvisor`, `booking`, `google_maps`
@@ -241,9 +251,9 @@ One row per ingested item within a workspace. Term assignment is in `document_te
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
 | doc_type | text | NO | — | Content type |
-| source_key | text | NO | — | Stable platform/source id |
-| source_name | text | NO | — | Human-readable source label |
-| source_id | text | NO | — | External item id (not a URL) |
+| source_origin_key | text | NO | — | Stable platform/source id |
+| source_origin_name | text | NO | — | Human-readable source label |
+| source_item_id | text | NO | — | External item id (not a URL) |
 | title | text | YES | — | Human-readable title |
 | raw_content | text | NO | — | Full raw text |
 | metadata | jsonb | NO | `{}` | Type-specific fields (url, author, …) |
@@ -259,8 +269,8 @@ One row per ingested item within a workspace. Term assignment is in `document_te
 | agree_count | integer | NO | `0` | Debate comments with stance = agree |
 | disagree_count | integer | NO | `0` | Debate comments with stance = disagree |
 | neutral_count | integer | NO | `0` | Debate comments with stance = neutral |
-| job_run_id | uuid | YES | — | FK → `job_runs.id` ON DELETE SET NULL — job run that first created this document |
-| job_id | uuid | NO | — | FK → `jobs.id` ON DELETE CASCADE — scrape job that owns this document; set on insert only |
+| source_run_id | uuid | YES | — | FK → `source_runs.id` ON DELETE SET NULL — source run that first created this document |
+| data_source_id | uuid | NO | — | FK → `data_sources.id` ON DELETE CASCADE — data source that owns this document; set on insert only |
 | published_at | timestamptz | YES | — | Source publish date; used for freshness scoring and canonical ordering |
 | created_at | timestamptz | NO | `now()` | Ingestion time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
@@ -269,10 +279,10 @@ One row per ingested item within a workspace. Term assignment is in `document_te
 
 | Index | Columns | Purpose |
 | ----- | ------- | ------- |
-| `idx_documents_workspace_source` | UNIQUE `(workspace_id, doc_type, source_key, source_id)` | Per-workspace dedup |
+| `idx_documents_workspace_source` | UNIQUE `(workspace_id, doc_type, source_origin_key, source_item_id)` | Per-workspace dedup |
 | `idx_documents_workspace_id` | `(workspace_id)` | List documents in a workspace |
 | `idx_documents_doc_type` | `(doc_type)` | Filter by content type |
-| `idx_documents_source_key` | `(doc_type, source_key)` | List items from one source |
+| `idx_documents_source_origin_key` | `(doc_type, source_origin_key)` | List items from one source |
 | `idx_documents_published_at` | `(published_at DESC)` | Sort/filter by publish date |
 | `idx_documents_backfill_scan` | `(workspace_id, published_at, id)` WHERE `published_at IS NOT NULL` | Keyset scan for term backfill |
 | `idx_documents_created_at` | `(created_at DESC)` | Recent-first by ingestion |
@@ -280,9 +290,9 @@ One row per ingested item within a workspace. Term assignment is in `document_te
 | `idx_documents_metadata` | GIN `metadata jsonb_path_ops` | Filter by metadata |
 | `idx_documents_status` | `(embedding_status)` WHERE `<> 'chunked'` | Embedding job queue |
 | `idx_documents_quality_score` | `(quality_score)` | Filter/sort by quality |
-| `idx_documents_job_run_id` | `(job_run_id)` | Documents created by a job run |
-| `idx_documents_job_id` | `(job_id)` | Documents by owning job |
-| `idx_documents_workspace_job` | `(workspace_id, job_id)` | Filter/list documents by job |
+| `idx_documents_source_run_id` | `(source_run_id)` | Documents created by a source run |
+| `idx_documents_data_source_id` | `(data_source_id)` | Documents by owning data source |
+| `idx_documents_workspace_data_source` | `(workspace_id, data_source_id)` | Filter/list documents by data source |
 | `idx_documents_engagement` | `(workspace_id, like_count DESC)` | Rank a workspace's posts by popularity |
 | `idx_documents_debate` | `(workspace_id, disagree_count DESC, agree_count DESC)` | Rank posts by debate intensity |
 
@@ -290,12 +300,12 @@ Engagement counters are platform-neutral and refreshed on every upsert, includin
 
 Debate and role tallies are written by `score-document-comments` after batch scoring. Stance tallies (`agree_count` / `disagree_count` / `neutral_count`) only count comments with `role = debate`. A post is "debated" when both `agree_count` and `disagree_count` are greater than zero. Updating these counters never triggers a re-embed.
 
-`job_run_id` and `job_id` are set only when a scrape job first inserts the document; later upserts do not overwrite them. Deleting a job cascades to its documents (and chunks).
+`source_run_id` and `data_source_id` are set only when a data source first inserts the document; later upserts do not overwrite them. Deleting a data source cascades to its documents (and chunks).
 
 **Relations**
 
-- → `job_runs.id` (`job_run_id`)
-- → `jobs.id` (`job_id`)
+- → `source_runs.id` (`source_run_id`)
+- → `data_sources.id` (`data_source_id`)
 - ← `comments.document_id`
 
 ---
@@ -309,7 +319,7 @@ Individual social-media comments on a parent post. Kept out of the document pipe
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
 | document_id | uuid | NO | — | FK → `documents.id` ON DELETE CASCADE — parent post |
-| source_id | text | NO | — | Platform comment id |
+| source_item_id | text | NO | — | Platform comment id |
 | author_name | text | YES | — | Display name |
 | author_id | text | YES | — | Platform author id |
 | content | text | NO | — | Comment body |
@@ -327,7 +337,7 @@ Individual social-media comments on a parent post. Kept out of the document pipe
 
 | Index | Columns | Purpose |
 | ----- | ------- | ------- |
-| `idx_comments_document_source` | UNIQUE `(document_id, source_id)` | Dedup per parent post |
+| `idx_comments_document_source_item` | UNIQUE `(document_id, source_item_id)` | Dedup per parent post |
 | `idx_comments_workspace_id` | `(workspace_id)` | Workspace scope |
 | `idx_comments_document_id` | `(document_id)` | List comments for a post |
 | `idx_comments_role` | `(document_id, role)` | Role tallies / filters |
@@ -573,15 +583,15 @@ Static calendar dimension table. Pre-populated for 10–20 years (~3 650–7 300
 
 ### `term_digest_daily`
 
-Daily-grain fact table. One row per `(term_id, date_key, job_id)`. **Single source of truth for all digest metrics — no rollup table.** All period presets (rolling windows and calendar presets) query this table directly via SUM aggregation.
+Daily-grain fact table. One row per `(term_id, date_key, data_source_id)`. **Single source of truth for all digest metrics — no rollup table.** All period presets (rolling windows and calendar presets) query this table directly via SUM aggregation.
 
-Rows are created on-demand when a document from a job is first classified for a term. Stale rows are queued for recompute in FIFO order by `stale_since`.
+Rows are created on-demand when a document from a data source is first classified for a term. Stale rows are queued for recompute in FIFO order by `stale_since`.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | term_id | uuid | NO | — | FK → `terms.id` ON DELETE CASCADE |
 | date_key | date | NO | — | FK → `dim_dates.date_key` — day of the document's `published_at` |
-| job_id | uuid | NO | — | FK → `jobs.id` ON DELETE CASCADE — partition key. Each row holds metrics for documents from a specific scrape job. |
+| data_source_id | uuid | NO | — | FK → `data_sources.id` ON DELETE CASCADE — partition key. Each row holds metrics for documents from a specific data source. |
 | doc_count | integer | NO | `0` | Non-duplicate documents with `published_at` on this date |
 | avg_quality_score | real | YES | — | Average `quality_score` for those documents |
 | trend_score | real | YES | — | `doc_count × avg_quality_score × DAILY_RECENCY_WEIGHT(1.5)` |
@@ -594,29 +604,29 @@ Rows are created on-demand when a document from a job is first classified for a 
 
 **Query patterns:**
 
-- **Job-filtered query:** `WHERE job_id = $jobId AND date_key BETWEEN $start AND $end` — uses index `(job_id, date_key, term_id)`
-- **All-jobs query:** `WHERE date_key BETWEEN $start AND $end` (no job filter) — uses index `(date_key, term_id)`. Aggregates across all jobs.
+- **Data-source-filtered query:** `WHERE data_source_id = $dataSourceId AND date_key BETWEEN $start AND $end` — uses index `(data_source_id, date_key, term_id)`
+- **All-sources query:** `WHERE date_key BETWEEN $start AND $end` (no data source filter) — uses index `(date_key, term_id)`. Aggregates across all data sources.
 
-**Primary key:** `(term_id, date_key, job_id)`
+**Primary key:** `(term_id, date_key, data_source_id)`
 
 **Indexes**
 
 | Index | Columns | Purpose |
 | ----- | ------- | ------- |
-| `idx_term_digest_daily_job_date` | `(job_id, date_key, term_id)` | Rolling-window term cards + sparkline |
+| `idx_term_digest_daily_data_source_date` | `(data_source_id, date_key, term_id)` | Rolling-window term cards + sparkline |
 | `idx_term_digest_daily_date` | `(date_key, term_id)` | All terms for a given day (ranking) |
 | `idx_term_digest_daily_stale` | `(stale_since)` WHERE `is_stale = true AND is_bulk_stale = false AND processing = false` | Normal recompute job queue (excludes bulk-stale rows) |
 | `idx_term_digest_daily_bulk_stale` | `(stale_since)` WHERE `is_stale = true AND is_bulk_stale = true AND processing = false` | Bulk drain job queue — only rows from taxonomy ops |
 
 ---
 
-## Scheduled jobs (QStash)
+## Scheduled data sources (QStash)
 
-Recurring scrape/ingest tasks are defined per workspace. QStash holds the schedule; each execution is recorded in `job_runs`.
+Recurring scrape/ingest tasks are defined per workspace. QStash holds the schedule; each execution is recorded in `source_runs`.
 
-### `job_status`
+### `source_run_status`
 
-Used by `job_runs.status`.
+Used by `source_runs.status`.
 
 | Value | Description |
 | ----- | ----------- |
@@ -624,9 +634,9 @@ Used by `job_runs.status`.
 | `success` | Completed without error |
 | `failed` | Completed with error |
 
-### `job_run_type`
+### `source_run_type`
 
-Used by `job_runs.run_type`. One `job_type` can produce multiple run types.
+Used by `source_runs.run_type`. One `source_type` can produce multiple run types.
 
 | Value | Description |
 | ----- | ----------- |
@@ -635,16 +645,16 @@ Used by `job_runs.run_type`. One `job_type` can produce multiple run types.
 | `facebook-comments` | Fetch comments for a Facebook post document |
 | `scrape-website` | Website scrape run |
 
-### `jobs`
+### `data_sources`
 
-Workspace-scoped job definition for QStash scheduling.
+Workspace-scoped data source definition for QStash scheduling.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
 | name | text | NO | — | Human-readable name, unique per workspace |
-| job_type | text | NO | — | Handler key (maps to `qstashJobHandlers` / scrape type) |
+| source_type | text | NO | — | Handler key (maps to `qstashJobHandlers` / scrape type) |
 | cron_config | jsonb | NO | `{ "cron": "", "timezone": "UTC" }` | Schedule: `{ cron, timezone }` — empty `cron` means no schedule |
 | enabled | boolean | NO | `true` | When false, QStash schedule should be removed |
 | params | jsonb | NO | `{}` | Type-specific config (source, doc_type, scrape targets, …) |
@@ -655,29 +665,29 @@ Workspace-scoped job definition for QStash scheduling.
 
 | Index | Columns | Purpose |
 | ----- | ------- | ------- |
-| `idx_jobs_workspace_name` | UNIQUE `(workspace_id, name)` | One name per workspace |
-| `idx_jobs_workspace_id` | `(workspace_id)` | List jobs in a workspace |
-| `idx_jobs_enabled` | `(enabled)` | Filter active jobs |
-| `idx_jobs_job_type` | `(job_type)` | Filter by handler/scrape type |
+| `idx_data_sources_workspace_name` | UNIQUE `(workspace_id, name)` | One name per workspace |
+| `idx_data_sources_workspace_id` | `(workspace_id)` | List data sources in a workspace |
+| `idx_data_sources_enabled` | `(enabled)` | Filter active data sources |
+| `idx_data_sources_source_type` | `(source_type)` | Filter by handler/scrape type |
 
 **Relations**
 
-- ← `job_runs.job_id`
+- ← `source_runs.data_source_id`
 
-QStash schedule id pattern (application): `job-schedule-{id}`.
+QStash schedule id pattern (application): `source-schedule-{id}`.
 
 ---
 
-### `job_runs`
+### `source_runs`
 
-One row per job execution — success/failure, result payload, and error message.
+One row per data source execution — success/failure, result payload, and error message.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
-| job_id | uuid | NO | — | FK → `jobs.id` ON DELETE CASCADE |
+| data_source_id | uuid | NO | — | FK → `data_sources.id` ON DELETE CASCADE |
 | status | text | NO | `running` | `running` \| `success` \| `failed` |
-| run_type | text | NO | — | Handler-specific run kind (see `job_run_type`) |
+| run_type | text | NO | — | Handler-specific run kind (see `source_run_type`) |
 | result | jsonb | YES | — | Structured outcome (counts, ids, …) |
 | error | text | YES | — | Error message when `status = failed` |
 | started_at | timestamptz | NO | `now()` | Run start time |
@@ -687,15 +697,15 @@ One row per job execution — success/failure, result payload, and error message
 
 | Index | Columns | Purpose |
 | ----- | ------- | ------- |
-| `idx_job_runs_job_id` | `(job_id)` | Runs for a job |
-| `idx_job_runs_started_at` | `(started_at DESC)` | Recent runs globally |
-| `idx_job_runs_status` | `(status)` | Filter by outcome |
-| `idx_job_runs_job_started` | `(job_id, started_at DESC)` | Recent runs per job |
-| `idx_job_runs_run_type` | `(run_type)` | Filter runs by kind |
+| `idx_source_runs_data_source_id` | `(data_source_id)` | Runs for a data source |
+| `idx_source_runs_started_at` | `(started_at DESC)` | Recent runs globally |
+| `idx_source_runs_status` | `(status)` | Filter by outcome |
+| `idx_source_runs_data_source_started` | `(data_source_id, started_at DESC)` | Recent runs per data source |
+| `idx_source_runs_run_type` | `(run_type)` | Filter runs by kind |
 
 **Relations**
 
-- ← `documents.job_run_id` — documents first created by this run; set null if the run is deleted
+- ← `documents.source_run_id` — documents first created by this run; set null if the run is deleted
 
 ---
 
@@ -764,7 +774,7 @@ Uses `job_status` for `status` (`running` \| `success` \| `failed`).
 
 ## Workspace tasks
 
-User-triggered background work (reclassify, re-embed, bulk taxonomy ops). Each action creates one row in `workspace_task_runs`. Not stored in `jobs` — scrape job lineage (`documents.job_id`) is unchanged.
+User-triggered background work (reclassify, re-embed, bulk taxonomy ops). Each action creates one row in `workspace_task_runs`. Not stored in `data_sources` — scrape lineage (`documents.data_source_id`) is unchanged.
 
 ### `workspace_task_runs`
 

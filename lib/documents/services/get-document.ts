@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 
-import { documents, jobs } from "@/db/schema";
+import { documents, dataSources } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
@@ -14,12 +14,12 @@ export async function getDocument(
   const [row] = await db
     .select({
       document: documents,
-      jobId: jobs.id,
-      jobName: jobs.name,
-      jobType: jobs.jobType,
+      dataSourceId: dataSources.id,
+      dataSourceName: dataSources.name,
+      sourceType: dataSources.sourceType,
     })
     .from(documents)
-    .innerJoin(jobs, eq(documents.jobId, jobs.id))
+    .innerJoin(dataSources, eq(documents.dataSourceId, dataSources.id))
     .where(
       and(
         eq(documents.id, params.id),
@@ -34,8 +34,8 @@ export async function getDocument(
 
   return {
     ...row.document,
-    jobId: row.jobId,
-    jobName: row.jobName,
-    jobType: row.jobType,
+    dataSourceId: row.dataSourceId,
+    dataSourceName: row.dataSourceName,
+    sourceType: row.sourceType,
   };
 }

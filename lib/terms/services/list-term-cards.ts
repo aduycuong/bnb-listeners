@@ -119,7 +119,7 @@ export async function listTermCards(
     startDate: params.startDate,
     endDate: params.endDate,
   });
-  const resolvedJobIds = resolveTermCardJobIds(params.jobIds);
+  const resolvedJobIds = resolveTermCardJobIds(params.dataSourceIds);
   const searchFilter = buildTermSearchFtsFilter(params.search);
   const orderClause = buildTermSearchOrderClause(params.search, params.sort);
   const groupFilter = params.groupId
@@ -131,10 +131,10 @@ export async function listTermCards(
       )`
     : sql``;
 
-  // Build an optional job filter fragment. When resolvedJobIds is null the
-  // query aggregates across all jobs (no WHERE on job_id).
+  // Build an optional dataSource filter fragment. When resolvedJobIds is null the
+  // query aggregates across all jobs (no WHERE on data_source_id).
   const jobFilter = resolvedJobIds
-    ? sql`AND tdd.job_id = ANY(ARRAY[${sql.join(
+    ? sql`AND tdd.data_source_id = ANY(ARRAY[${sql.join(
         resolvedJobIds.map((id) => sql`${id}::uuid`),
         sql`, `,
       )}])`
@@ -185,9 +185,9 @@ export async function listTermCards(
   const hasMore = rows.length > limit;
   const termIds = pageRows.map((row) => row.id);
 
-  // Sparkline filter: same job filter applied to the 7-day sparkline.
+  // Sparkline filter: same dataSource filter applied to the 7-day sparkline.
   const sparklineJobFilter = resolvedJobIds
-    ? sql`AND tdd.job_id = ANY(ARRAY[${sql.join(
+    ? sql`AND tdd.data_source_id = ANY(ARRAY[${sql.join(
         resolvedJobIds.map((id) => sql`${id}::uuid`),
         sql`, `,
       )}])`

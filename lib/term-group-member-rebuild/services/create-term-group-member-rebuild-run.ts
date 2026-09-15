@@ -29,7 +29,7 @@ export async function createTermGroupMemberRebuildRun(
 
   if (group.activeMemberRebuildRunId) {
     throw new UnknownServiceError(
-      "A member rebuild job is already running for this term group.",
+      "A member rebuild dataSource is already running for this term group.",
     );
   }
 

@@ -10,7 +10,7 @@ import {
   type ResourceListRowItem,
 } from "@/components/dashboard/resource-list-page";
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
-import { DocumentJobSourceFilter } from "@/components/documents/document-job-source-filter";
+import { DocumentDataSourceFilter } from "@/components/documents/document-data-source-filter";
 import {
   documentsQueryKey,
   type DocumentsQueryFilters,
@@ -38,7 +38,7 @@ import {
 } from "@/lib/documents/document-config";
 import { DOCUMENT_LIST_PAGE_SIZE } from "@/lib/documents/document-list-config";
 import type { DocumentListItem, ListDocumentsResult } from "@/lib/documents/types";
-import type { ListJobsResult } from "@/lib/jobs/types";
+import type { ListDataSourcesResult } from "@/lib/data-sources/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
@@ -57,8 +57,8 @@ async function fetchDocuments(
     limit: String(DOCUMENT_LIST_PAGE_SIZE),
   });
 
-  if (filters.jobIds.length > 0) {
-    params.set("jobIds", filters.jobIds.join(","));
+  if (filters.dataSourceIds.length > 0) {
+    params.set("dataSourceIds", filters.dataSourceIds.join(","));
   }
 
   const res = await workspaceFetch(workspaceId, `/api/documents?${params.toString()}`);
@@ -74,15 +74,15 @@ async function fetchDocuments(
   return data;
 }
 
-async function fetchJobs(workspaceId: string): Promise<ListJobsResult> {
-  const res = await workspaceFetch(workspaceId, "/api/jobs");
-  const data = (await res.json()) as ListJobsResult & {
+async function fetchJobs(workspaceId: string): Promise<ListDataSourcesResult> {
+  const res = await workspaceFetch(workspaceId, "/api/data-sources");
+  const data = (await res.json()) as ListDataSourcesResult & {
     error?: string;
     message?: string;
   };
 
   if (!res.ok) {
-    throw new Error(data.message ?? data.error ?? "Could not load jobs.");
+    throw new Error(data.message ?? data.error ?? "Could not load dataSources.");
   }
 
   return data;
@@ -102,8 +102,8 @@ function toListRowItem(doc: DocumentListItem): ResourceListRowItem {
 
   return {
     id: doc.id,
-    name: doc.title?.trim() || doc.sourceId,
-    subtitle: [doc.sourceName, doc.docType, doc.jobName ? `from ${doc.jobName}` : null]
+    name: doc.title?.trim() || doc.sourceItemId,
+    subtitle: [doc.sourceOriginName, doc.docType, doc.dataSourceName ? `from ${doc.dataSourceName}` : null]
       .filter(Boolean)
       .join(" · "),
     description: truncateContent(doc.rawContent),
@@ -123,13 +123,13 @@ export function DocumentListPage({
   const router = useRouter();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const [jobIds, setJobIds] = useState<string[]>([]);
+  const [dataSourceIds, setJobIds] = useState<string[]>([]);
   const [keyword, setKeyword] = useState("");
   const [sort, setSort] = useState<ListSortOption>("date-desc");
 
   const filters = useMemo<DocumentsQueryFilters>(
-    () => ({ jobIds }),
-    [jobIds],
+    () => ({ dataSourceIds }),
+    [dataSourceIds],
   );
 
   const documentsQuery = useInfiniteQuery({
@@ -210,10 +210,10 @@ export function DocumentListPage({
         </div>
 
         <div className="mb-4 flex flex-col gap-3">
-          <DocumentJobSourceFilter
-            jobs={jobs}
-            jobIds={jobIds}
-            onJobIdsChange={setJobIds}
+          <DocumentDataSourceFilter
+            dataSources={jobs}
+            dataSourceIds={dataSourceIds}
+            onDataSourceIdsChange={setJobIds}
             disabled={isInitialLoading}
           />
 
@@ -278,7 +278,7 @@ export function DocumentListPage({
             description={
               hasKeyword
                 ? "Try a different search term or clear the filter."
-                : "Documents appear here after a scrape job ingests content."
+                : "Documents appear here after a scrape dataSource ingests content."
             }
           />
         ) : (

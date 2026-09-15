@@ -1,11 +1,11 @@
 import { eq } from "drizzle-orm";
 
-import { jobs } from "@/db/schema";
+import { dataSources } from "@/db/schema";
 import { UnknownServiceError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
-import { readMaxComments } from "@/lib/jobs/handlers/scrape-facebook/config";
-import type { SchedulableJobType } from "@/lib/jobs/constants";
-import { startFacebookDocumentCommentScrape } from "@/lib/jobs/services/start-facebook-document-comment-scrape";
+import { readMaxComments } from "@/lib/data-sources/handlers/scrape-facebook/config";
+import type { SourceType } from "@/lib/data-sources/constants";
+import { startFacebookDocumentCommentScrape } from "@/lib/data-sources/services/start-facebook-document-comment-scrape";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type {
@@ -20,30 +20,30 @@ export async function updateDocumentComments(
 ): Promise<UpdateDocumentCommentsResult> {
   const document = await getDocument({ id: params.id }, ctx);
 
-  if (!document.jobId || !document.jobType) {
+  if (!document.dataSourceId || !document.sourceType) {
     throw new UnknownServiceError(
-      "This document has no scrape job and cannot fetch comments from source.",
+      "This document has no scrape dataSource and cannot fetch comments from source.",
     );
   }
 
-  switch (document.jobType as SchedulableJobType) {
+  switch (document.sourceType as SourceType) {
     case "scrape-facebook": {
-      const [job] = await db
-        .select({ params: jobs.params })
-        .from(jobs)
-        .where(eq(jobs.id, document.jobId))
+      const [dataSource] = await db
+        .select({ params: dataSources.params })
+        .from(dataSources)
+        .where(eq(dataSources.id, document.dataSourceId))
         .limit(1);
 
-      const { jobRunId, snapshotId } = await startFacebookDocumentCommentScrape(
+      const { sourceRunId, snapshotId } = await startFacebookDocumentCommentScrape(
         {
           documentId: document.id,
-          maxComments: readMaxComments(job?.params),
+          maxComments: readMaxComments(dataSource?.params),
         },
       );
 
       return {
         documentId: document.id,
-        jobRunId,
+        sourceRunId,
         status: "running",
         message:
           "Comment fetch started. Comments will update when the scrape completes.",
@@ -56,7 +56,7 @@ export async function updateDocumentComments(
       );
     default:
       throw new UnknownServiceError(
-        `Comment fetch is not supported for job type "${document.jobType}".`,
+        `Comment fetch is not supported for dataSource type "${document.sourceType}".`,
       );
   }
 }

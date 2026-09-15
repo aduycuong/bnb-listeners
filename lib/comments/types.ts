@@ -55,7 +55,7 @@ export type ListDocumentCommentsParams = { id: string };
 
 export type CommentListItem = {
   id: string;
-  sourceId: string;
+  sourceItemId: string;
   authorName: string | null;
   content: string;
   likeCount: number;

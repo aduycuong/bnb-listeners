@@ -1,6 +1,6 @@
 import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 
-import { documentTerms, documents, jobs, terms } from "@/db/schema";
+import { dataSources, documentTerms, documents, terms } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
@@ -21,8 +21,8 @@ function buildSearchCondition(search?: string) {
 
   return or(
     ilike(documents.title, pattern),
-    ilike(documents.sourceName, pattern),
-    ilike(documents.sourceId, pattern),
+    ilike(documents.sourceOriginName, pattern),
+    ilike(documents.sourceItemId, pattern),
     ilike(documents.rawContent, pattern),
   );
 }
@@ -56,8 +56,8 @@ export async function listTermDocuments(
     eq(documents.workspaceId, ctx.workspaceId),
   ];
 
-  if (params.jobIds && params.jobIds.length > 0) {
-    conditions.push(inArray(documents.jobId, params.jobIds));
+  if (params.dataSourceIds && params.dataSourceIds.length > 0) {
+    conditions.push(inArray(documents.dataSourceId, params.dataSourceIds));
   }
 
   if (searchCondition) {
@@ -68,16 +68,16 @@ export async function listTermDocuments(
     .select({
       id: documents.id,
       title: documents.title,
-      sourceName: documents.sourceName,
-      sourceId: documents.sourceId,
-      jobName: jobs.name,
+      sourceOriginName: documents.sourceOriginName,
+      sourceItemId: documents.sourceItemId,
+      dataSourceName: dataSources.name,
       publishedAt: documents.publishedAt,
       confidence: documentTerms.confidence,
       qualityScore: documents.qualityScore,
     })
     .from(documentTerms)
     .innerJoin(documents, eq(documentTerms.documentId, documents.id))
-    .innerJoin(jobs, eq(documents.jobId, jobs.id))
+    .innerJoin(dataSources, eq(documents.dataSourceId, dataSources.id))
     .where(and(...conditions))
     .orderBy(
       sql`${documents.publishedAt} DESC NULLS LAST`,
@@ -93,9 +93,9 @@ export async function listTermDocuments(
     items: pageRows.map((row) => ({
       id: row.id,
       title: row.title,
-      sourceName: row.sourceName,
-      sourceId: row.sourceId,
-      jobName: row.jobName,
+      sourceOriginName: row.sourceOriginName,
+      sourceItemId: row.sourceItemId,
+      dataSourceName: row.dataSourceName,
       publishedAt: row.publishedAt?.toISOString() ?? null,
       confidence: row.confidence,
       qualityScore: row.qualityScore,

@@ -3,26 +3,26 @@
 import { SearchIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 
-import { DocumentJobSourceFilter } from "@/components/documents/document-job-source-filter";
+import { DocumentDataSourceFilter } from "@/components/documents/document-data-source-filter";
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
 import { TermDocumentRow } from "@/components/terms/term-document-row";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TERM_CONFIG } from "@/lib/terms/term-config";
 import type { TermDocumentListItem } from "@/lib/terms/types";
-import type { JobListItem } from "@/lib/jobs/types";
+import type { DataSourceListItem } from "@/lib/data-sources/types";
 
 type TermDetailDocumentsProps = {
   documents: TermDocumentListItem[];
-  jobs: JobListItem[];
-  jobIds: string[];
+  jobs: DataSourceListItem[];
+  dataSourceIds: string[];
   search: string;
   totalLoaded: number;
   isInitialLoading: boolean;
   isFetchingMore: boolean;
   errorMessage?: string;
   hasNextPage: boolean;
-  onJobIdsChange: (jobIds: string[]) => void;
+  onJobIdsChange: (dataSourceIds: string[]) => void;
   onSearchChange: (search: string) => void;
   onLoadMore: () => void;
   onDocumentClick: (documentId: string) => void;
@@ -31,7 +31,7 @@ type TermDetailDocumentsProps = {
 export function TermDetailDocuments({
   documents,
   jobs,
-  jobIds,
+  dataSourceIds,
   search,
   totalLoaded,
   isInitialLoading,
@@ -79,10 +79,10 @@ export function TermDetailDocuments({
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <DocumentJobSourceFilter
-          jobs={jobs}
-          jobIds={jobIds}
-          onJobIdsChange={onJobIdsChange}
+        <DocumentDataSourceFilter
+          dataSources={jobs}
+          dataSourceIds={dataSourceIds}
+          onDataSourceIdsChange={onJobIdsChange}
           disabled={isInitialLoading}
         />
 

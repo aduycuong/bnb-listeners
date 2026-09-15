@@ -32,11 +32,11 @@ export async function recomputeTermDigests(): Promise<TermDigestJobMetrics> {
   }
 
   await Promise.all(
-    claimed.map(({ termId, dateKey, jobId }) =>
+    claimed.map(({ termId, dateKey, dataSourceId }) =>
       computeDailyMetrics({
         termId,
         dateKey,
-        jobId,
+        dataSourceId,
         clearBulkStale: false,
       }),
     ),

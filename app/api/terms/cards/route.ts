@@ -25,7 +25,7 @@ const listTermCardsQuerySchema = z
       .min(1)
       .max(TERM_CARD_PAGE_SIZE)
       .default(TERM_CARD_PAGE_SIZE),
-    jobIds: z
+    dataSourceIds: z
       .preprocess(
         (value) => {
           if (typeof value !== "string" || value.length === 0) {

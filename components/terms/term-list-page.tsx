@@ -32,7 +32,7 @@ import { TERM_BULK_DELETE_MAX, TERM_CONFIG, TERM_MERGE_MAX_SOURCES, getTermHref 
 import type {
   ListTermCardsResult,
 } from "@/lib/terms/types";
-import type { ListJobsResult } from "@/lib/jobs/types";
+import type { ListDataSourcesResult } from "@/lib/data-sources/types";
 import type { ListTermGroupsResult } from "@/lib/term-groups/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { cn } from "@/lib/utils";
@@ -64,8 +64,8 @@ async function fetchTermCards(
     }
   }
 
-  if (filters.jobIds && filters.jobIds.length > 0) {
-    params.set("jobIds", filters.jobIds.join(","));
+  if (filters.dataSourceIds && filters.dataSourceIds.length > 0) {
+    params.set("dataSourceIds", filters.dataSourceIds.join(","));
   }
 
   const search = filters.search?.trim();
@@ -109,15 +109,15 @@ async function fetchTermGroups(
   return data;
 }
 
-async function fetchJobs(workspaceId: string): Promise<ListJobsResult> {
-  const res = await workspaceFetch(workspaceId, "/api/jobs");
-  const data = (await res.json()) as ListJobsResult & {
+async function fetchJobs(workspaceId: string): Promise<ListDataSourcesResult> {
+  const res = await workspaceFetch(workspaceId, "/api/data-sources");
+  const data = (await res.json()) as ListDataSourcesResult & {
     error?: string;
     message?: string;
   };
 
   if (!res.ok) {
-    throw new Error(data.message ?? data.error ?? "Could not load jobs.");
+    throw new Error(data.message ?? data.error ?? "Could not load dataSources.");
   }
 
   return data;
@@ -134,7 +134,7 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
 
   const [period, setPeriod] = useState<TermCardPeriodPreset>("last_7_days");
   const [sort, setSort] = useState<TermCardSort>("trend");
-  const [jobIds, setJobIds] = useState<string[]>([]);
+  const [dataSourceIds, setJobIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [groupId, setGroupId] = useState<string>();
@@ -164,13 +164,13 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
     () => ({
       period,
       sort,
-      jobIds,
+      dataSourceIds,
       search: deferredSearch.trim() || undefined,
       groupId,
       startDate: period === "custom" ? customStartDate : undefined,
       endDate: period === "custom" ? customEndDate : undefined,
     }),
-    [customEndDate, customStartDate, deferredSearch, groupId, jobIds, period, sort],
+    [customEndDate, customStartDate, deferredSearch, groupId, dataSourceIds, period, sort],
   );
 
   const cardsQuery = useInfiniteQuery({
@@ -388,7 +388,7 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
           <TermListToolbar
             period={period}
             sort={sort}
-            jobIds={jobIds}
+            dataSourceIds={dataSourceIds}
             jobs={jobs}
             search={search}
             groups={groups}

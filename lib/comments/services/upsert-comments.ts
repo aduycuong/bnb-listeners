@@ -12,7 +12,7 @@ import type { UpsertCommentsParams, UpsertCommentsResult } from "../types";
 /**
  * Upserts comments for a parent document, then dispatches batch stance scoring.
  *
- * Dedup key is (documentId, sourceId). Content changes clear stance fields so
+ * Dedup key is (documentId, sourceItemId). Content changes clear stance fields so
  * the scorer re-evaluates; identical content only refreshes likeCount/metadata.
  *
  * Scoring is dispatched whenever any comment on the document is still
@@ -36,23 +36,23 @@ export async function upsertComments(
 
   if (!parent) throw new NotFoundError("document", documentId);
 
-  const sourceIds = items.map((item) => item.sourceId);
+  const sourceItemIds = items.map((item) => item.sourceItemId);
   const existingRows = await db
     .select({
       id: comments.id,
-      sourceId: comments.sourceId,
+      sourceItemId: comments.sourceItemId,
       content: comments.content,
     })
     .from(comments)
     .where(
       and(
         eq(comments.documentId, documentId),
-        inArray(comments.sourceId, sourceIds),
+        inArray(comments.sourceItemId, sourceItemIds),
       ),
     );
 
   const existingBySourceId = new Map(
-    existingRows.map((row) => [row.sourceId, row]),
+    existingRows.map((row) => [row.sourceItemId, row]),
   );
 
   let inserted = 0;
@@ -60,7 +60,7 @@ export async function upsertComments(
   let unchanged = 0;
 
   for (const item of items) {
-    const existing = existingBySourceId.get(item.sourceId);
+    const existing = existingBySourceId.get(item.sourceItemId);
     const publishedAt = item.publishedAt ? new Date(item.publishedAt) : null;
     const likeCount = item.likeCount ?? 0;
     const metadata = item.metadata ?? {};
@@ -70,7 +70,7 @@ export async function upsertComments(
       await db.insert(comments).values({
         workspaceId: parent.workspaceId,
         documentId,
-        sourceId: item.sourceId,
+        sourceItemId: item.sourceItemId,
         authorName: item.authorName ?? null,
         authorId: item.authorId ?? null,
         content,

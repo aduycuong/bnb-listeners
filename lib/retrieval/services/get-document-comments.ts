@@ -37,7 +37,7 @@ export async function getDocumentComments(
   const rows = await db
     .select({
       id: comments.id,
-      sourceId: comments.sourceId,
+      sourceItemId: comments.sourceItemId,
       authorName: comments.authorName,
       content: comments.content,
       likeCount: comments.likeCount,
@@ -62,7 +62,7 @@ export async function getDocumentComments(
 
   const items: DocumentCommentItem[] = pageRows.map((row) => ({
     id: row.id,
-    sourceId: row.sourceId,
+    sourceItemId: row.sourceItemId,
     authorName: row.authorName,
     content: row.content,
     likeCount: row.likeCount,

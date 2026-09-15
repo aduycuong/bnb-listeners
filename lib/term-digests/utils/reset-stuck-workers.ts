@@ -6,7 +6,7 @@ import { STUCK_WORKER_TIMEOUT_MINUTES } from "../constants";
 /**
  * Reset daily rows that have been stuck in processing state for longer than
  * STUCK_WORKER_TIMEOUT_MINUTES. Should run at the start of every recompute
- * or bulk-drain job run to recover from crashed workers.
+ * or bulk-drain dataSource run to recover from crashed workers.
  */
 export async function resetStuckWorkers(): Promise<void> {
   await db.execute(sql`

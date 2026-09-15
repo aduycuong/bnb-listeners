@@ -43,8 +43,8 @@ export function TermDetailGeneral({
   const createdByBadge = getCreatedByBadge(term.createdBy);
   const sourceDocumentLabel =
     term.sourceDocument?.title?.trim() ||
-    term.sourceDocument?.sourceName ||
-    term.sourceDocument?.sourceId;
+    term.sourceDocument?.sourceOriginName ||
+    term.sourceDocument?.sourceItemId;
 
   return (
     <Card className="h-full">

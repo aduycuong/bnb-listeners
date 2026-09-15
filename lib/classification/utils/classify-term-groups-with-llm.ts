@@ -55,7 +55,7 @@ function buildUserMessage(
     title: string | null;
     rawContent: string;
     docType: string;
-    sourceName: string;
+    sourceOriginName: string;
   },
   classifiedTerms: ClassifiedTermForGroups[],
   groups: ClassifierTermGroup[],
@@ -71,7 +71,7 @@ function buildUserMessage(
     "",
     "Tài liệu:",
     `Loại: ${doc.docType}`,
-    `Nguồn: ${doc.sourceName}`,
+    `Nguồn: ${doc.sourceOriginName}`,
     doc.title?.trim() ? `Tiêu đề: ${doc.title.trim()}` : null,
     `Nội dung:\n${contentPreview}`,
   ]
@@ -84,7 +84,7 @@ export async function classifyTermGroupsWithLlm(
     title: string | null;
     rawContent: string;
     docType: string;
-    sourceName: string;
+    sourceOriginName: string;
   },
   classifiedTerms: ClassifiedTermForGroups[],
   groups: ClassifierTermGroup[],

@@ -10,7 +10,7 @@ import type { TermDigestJobMetrics } from "../types";
  * Picks up at most BULK_DRAIN_BATCH_SIZE bulk-stale rows
  * (is_bulk_stale = true) produced by taxonomy restructure operations.
  *
- * The smaller batch limit ensures this job drains gradually without
+ * The smaller batch limit ensures this dataSource drains gradually without
  * crowding out normal invalidations processed by recompute-term-digests.
  *
  * After computing a row, is_bulk_stale is reset to false so the row is not
@@ -35,11 +35,11 @@ export async function bulkDrainTermDigests(): Promise<TermDigestJobMetrics> {
   }
 
   await Promise.all(
-    claimed.map(({ termId, dateKey, jobId }) =>
+    claimed.map(({ termId, dateKey, dataSourceId }) =>
       computeDailyMetrics({
         termId,
         dateKey,
-        jobId,
+        dataSourceId,
         clearBulkStale: true,
       }),
     ),

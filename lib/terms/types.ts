@@ -97,8 +97,8 @@ export type ListTermCardsParams = {
   sort: TermCardSort;
   offset?: number;
   limit?: number;
-  /** Omit or empty for all jobs; pass UUIDs to filter to those jobs. */
-  jobIds?: string[];
+  /** Omit or empty for all jobs; pass UUIDs to filter to those dataSources. */
+  dataSourceIds?: string[];
   /** Full-text search over term name and description. */
   search?: string;
   /** Filter to terms that belong to this group. */
@@ -122,8 +122,8 @@ export type TermFormValues = z.infer<typeof termFormSchema>;
 export type TermSourceDocumentSummary = {
   id: string;
   title: string | null;
-  sourceName: string;
-  sourceId: string;
+  sourceOriginName: string;
+  sourceItemId: string;
 };
 
 export type GetTermParams = { id: string };
@@ -167,7 +167,7 @@ export type GetTermChartResult = {
 
 export type ListTermDocumentsParams = {
   termId: string;
-  jobIds?: string[];
+  dataSourceIds?: string[];
   search?: string;
   offset?: number;
   limit?: number;
@@ -176,9 +176,9 @@ export type ListTermDocumentsParams = {
 export type TermDocumentListItem = {
   id: string;
   title: string | null;
-  sourceName: string;
-  sourceId: string;
-  jobName: string | null;
+  sourceOriginName: string;
+  sourceItemId: string;
+  dataSourceName: string | null;
   publishedAt: string | null;
   confidence: number;
   qualityScore: number | null;

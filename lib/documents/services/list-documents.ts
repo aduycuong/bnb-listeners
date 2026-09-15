@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 
-import { documents, jobs } from "@/db/schema";
+import { documents, dataSources } from "@/db/schema";
 import { db } from "@/lib/db";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
@@ -23,17 +23,17 @@ export async function listDocuments(
     conditions.push(eq(documents.embeddingStatus, params.embeddingStatus));
   }
 
-  if (params.jobIds && params.jobIds.length > 0) {
-    conditions.push(inArray(documents.jobId, params.jobIds));
+  if (params.dataSourceIds && params.dataSourceIds.length > 0) {
+    conditions.push(inArray(documents.dataSourceId, params.dataSourceIds));
   }
 
   const rows = await db
     .select({
       id: documents.id,
       docType: documents.docType,
-      sourceKey: documents.sourceKey,
-      sourceName: documents.sourceName,
-      sourceId: documents.sourceId,
+      sourceOriginKey: documents.sourceOriginKey,
+      sourceOriginName: documents.sourceOriginName,
+      sourceItemId: documents.sourceItemId,
       title: documents.title,
       rawContent: documents.rawContent,
       embeddingStatus: documents.embeddingStatus,
@@ -42,15 +42,15 @@ export async function listDocuments(
       commentCount: documents.commentCount,
       shareCount: documents.shareCount,
       viewCount: documents.viewCount,
-      jobRunId: documents.jobRunId,
-      jobId: documents.jobId,
-      jobName: jobs.name,
+      sourceRunId: documents.sourceRunId,
+      dataSourceId: documents.dataSourceId,
+      dataSourceName: dataSources.name,
       publishedAt: documents.publishedAt,
       createdAt: documents.createdAt,
       updatedAt: documents.updatedAt,
     })
     .from(documents)
-    .innerJoin(jobs, eq(documents.jobId, jobs.id))
+    .innerJoin(dataSources, eq(documents.dataSourceId, dataSources.id))
     .where(and(...conditions))
     .orderBy(desc(documents.createdAt))
     .limit(limit + 1)

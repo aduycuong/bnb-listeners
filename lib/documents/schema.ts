@@ -3,9 +3,9 @@ import { z } from "zod";
 export const updateDocumentBodySchema = z
   .object({
     docType: z.string().min(1).optional(),
-    sourceKey: z.string().min(1).optional(),
-    sourceName: z.string().min(1).optional(),
-    sourceId: z.string().min(1).optional(),
+    sourceOriginKey: z.string().min(1).optional(),
+    sourceOriginName: z.string().min(1).optional(),
+    sourceItemId: z.string().min(1).optional(),
     title: z.string().optional(),
     rawContent: z.string().min(1).optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),

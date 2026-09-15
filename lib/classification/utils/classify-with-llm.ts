@@ -49,7 +49,7 @@ function buildUserMessage(
     title: string | null;
     rawContent: string;
     docType: string;
-    sourceName: string;
+    sourceOriginName: string;
   },
   activeTerms: ClassifierTerm[],
 ): string {
@@ -61,7 +61,7 @@ function buildUserMessage(
     "",
     "Tài liệu:",
     `Loại: ${doc.docType}`,
-    `Nguồn: ${doc.sourceName}`,
+    `Nguồn: ${doc.sourceOriginName}`,
     doc.title?.trim() ? `Tiêu đề: ${doc.title.trim()}` : null,
     `Nội dung:\n${contentPreview}`,
   ]
@@ -77,7 +77,7 @@ export async function classifyWithLlm(
     title: string | null;
     rawContent: string;
     docType: string;
-    sourceName: string;
+    sourceOriginName: string;
   },
   classifierTerms: ClassifierTerm[],
   systemPrompt: string,

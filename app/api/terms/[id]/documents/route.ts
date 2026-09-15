@@ -9,7 +9,7 @@ const termDocumentsParamsSchema = z.object({
 });
 
 const termDocumentsQuerySchema = z.object({
-  jobIds: z
+  dataSourceIds: z
     .preprocess(
       (value) => {
         if (typeof value !== "string" || value.length === 0) {
@@ -42,7 +42,7 @@ export const GET = createApiHandler(
     listTermDocuments(
       {
         termId: params.id,
-        jobIds: params.jobIds,
+        dataSourceIds: params.dataSourceIds,
         search: params.search,
         offset: params.offset,
         limit: params.limit,

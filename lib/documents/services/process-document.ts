@@ -14,7 +14,7 @@ export type ProcessDocumentPayload = z.infer<
 >;
 
 /**
- * QStash job handler: process a newly created document.
+ * QStash dataSource handler: process a newly created document.
  *
  * Steps:
  *   1. Validate payload.

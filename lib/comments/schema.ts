@@ -6,7 +6,7 @@ export const commentRoleSchema = z.enum(COMMENT_ROLES);
 export const commentStanceSchema = z.enum(COMMENT_STANCES);
 
 export const upsertCommentItemSchema = z.object({
-  sourceId: z.string().min(1, { error: "sourceId is required" }),
+  sourceItemId: z.string().min(1, { error: "sourceItemId is required" }),
   content: z
     .string()
     .transform((value) => value.trim())

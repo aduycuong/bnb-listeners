@@ -5,7 +5,7 @@ import type { DigestPartition } from "@/lib/document-terms/types";
 import { db } from "@/lib/db";
 
 /**
- * Upsert stale daily digest rows for specific (dateKey, jobId) partitions and
+ * Upsert stale daily digest rows for specific (dateKey, dataSourceId) partitions and
  * route them through the bulk-drain queue (is_bulk_stale = true).
  *
  * Unlike bulkInvalidateTermDigestsInDateRange, this creates missing rows so
@@ -23,13 +23,13 @@ export async function bulkInvalidateTermDigestPartitions(params: {
   const now = new Date();
 
   await Promise.all(
-    partitions.map(({ dateKey, jobId }) =>
+    partitions.map(({ dateKey, dataSourceId }) =>
       db
         .insert(termDigestDaily)
         .values({
           termId,
           dateKey,
-          jobId,
+          dataSourceId,
           isStale: true,
           isBulkStale: true,
           staleSince: now,
@@ -38,7 +38,7 @@ export async function bulkInvalidateTermDigestPartitions(params: {
           target: [
             termDigestDaily.termId,
             termDigestDaily.dateKey,
-            termDigestDaily.jobId,
+            termDigestDaily.dataSourceId,
           ],
           set: {
             isStale: true,

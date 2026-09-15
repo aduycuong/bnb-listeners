@@ -17,7 +17,7 @@ export type SyncDiscussionDocumentResult = {
 /**
  * Rebuilds (or removes) the companion `discussion` document for a parent post.
  *
- * Uses the same sourceKey/sourceId as the parent with doc_type = "discussion",
+ * Uses the same sourceOriginKey/sourceItemId as the parent with doc_type = "discussion",
  * so the unique key keeps post and discussion as two rows without colliding.
  * Only substantive comments are included — noise stays in the comments table
  * for debate tallies but never enters the retrieval index.
@@ -68,8 +68,8 @@ export async function syncDiscussionDocument(
       and(
         eq(documents.workspaceId, parent.workspaceId),
         eq(documents.docType, DISCUSSION_DOC_TYPE),
-        eq(documents.sourceKey, parent.sourceKey),
-        eq(documents.sourceId, parent.sourceId),
+        eq(documents.sourceOriginKey, parent.sourceOriginKey),
+        eq(documents.sourceItemId, parent.sourceItemId),
       ),
     )
     .limit(1);
@@ -96,14 +96,14 @@ export async function syncDiscussionDocument(
   const rawContent = buildDiscussionContent(substantive);
   const title = parent.title?.trim()
     ? `Thảo luận: ${parent.title.trim()}`
-    : `Thảo luận về bài ${parent.sourceId}`;
+    : `Thảo luận về bài ${parent.sourceItemId}`;
 
   const result = await upsertDocument(
     {
       docType: DISCUSSION_DOC_TYPE,
-      sourceKey: parent.sourceKey,
-      sourceName: parent.sourceName,
-      sourceId: parent.sourceId,
+      sourceOriginKey: parent.sourceOriginKey,
+      sourceOriginName: parent.sourceOriginName,
+      sourceItemId: parent.sourceItemId,
       title,
       rawContent,
       metadata: {
@@ -120,8 +120,8 @@ export async function syncDiscussionDocument(
       publishedAt: parent.publishedAt
         ? parent.publishedAt.toISOString()
         : undefined,
-      jobId: parent.jobId,
-      jobRunId: parent.jobRunId ?? undefined,
+      dataSourceId: parent.dataSourceId,
+      sourceRunId: parent.sourceRunId ?? undefined,
     },
     parent.workspaceId,
     userId,

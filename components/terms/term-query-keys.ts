@@ -3,13 +3,13 @@ export type TermCardsQueryFilters = {
   sort: import("@/lib/terms/term-card-config").TermCardSort;
   startDate?: string;
   endDate?: string;
-  jobIds?: string[];
+  dataSourceIds?: string[];
   search?: string;
   groupId?: string;
 };
 
 export type TermDocumentsQueryFilters = {
-  jobIds: string[];
+  dataSourceIds: string[];
   search: string;
 };
 

@@ -52,7 +52,7 @@ export async function scoreDocument(
 
   const dimensions: ScoringDimensions = {
     sourceCredibility: {
-      score: scoreSourceCredibility(doc.sourceKey),
+      score: scoreSourceCredibility(doc.sourceOriginKey),
       weight: SCORING_WEIGHTS.sourceCredibility,
     },
     completeness: {

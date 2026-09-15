@@ -1,9 +1,9 @@
-import type { SchedulableJobType } from "@/lib/jobs/constants";
+import type { SourceType } from "@/lib/data-sources/constants";
 
 export function getRefreshFromSourceActionLabel(
-  jobType: string | null | undefined,
+  sourceType: string | null | undefined,
 ): string {
-  switch (jobType) {
+  switch (sourceType) {
     case "scrape-facebook":
       return "Re-fetch Facebook post";
     case "scrape-website":
@@ -13,12 +13,12 @@ export function getRefreshFromSourceActionLabel(
   }
 }
 
-export function canRefreshFromSource(jobType: string | null | undefined): boolean {
-  return jobType === "scrape-facebook";
+export function canRefreshFromSource(sourceType: string | null | undefined): boolean {
+  return sourceType === "scrape-facebook";
 }
 
-export function canUpdateComments(jobType: string | null | undefined): boolean {
-  return jobType === "scrape-facebook";
+export function canUpdateComments(sourceType: string | null | undefined): boolean {
+  return sourceType === "scrape-facebook";
 }
 
 export const DOCUMENT_ACTION_LABELS = {
@@ -32,8 +32,8 @@ export type DocumentActionKey =
   | keyof typeof DOCUMENT_ACTION_LABELS
   | "refresh";
 
-export function isSchedulableJobTypeValue(
+export function isSourceTypeValue(
   value: string | null | undefined,
-): value is SchedulableJobType {
+): value is SourceType {
   return value === "scrape-facebook" || value === "scrape-website";
 }

@@ -7,15 +7,15 @@ import type { DigestMetrics } from "../types";
 
 /**
  * Compute doc_count, avg_quality_score, and trend_score for a single
- * (termId, dateKey, jobId) partition by aggregating the documents table.
+ * (termId, dateKey, dataSourceId) partition by aggregating the documents table.
  *
- * Only documents whose published_at falls on dateKey and whose job_id
- * matches jobId are counted.
+ * Only documents whose published_at falls on dateKey and whose data_source_id
+ * matches dataSourceId are counted.
  */
 async function fetchMetrics(
   termId: string,
   dateKey: string,
-  jobId: string,
+  dataSourceId: string,
 ): Promise<DigestMetrics> {
   const [row] = await db
     .select({
@@ -28,7 +28,7 @@ async function fetchMetrics(
       and(
         eq(documentTerms.termId, termId),
         sql`${documents.publishedAt}::date = ${dateKey}::date`,
-        eq(documents.jobId, jobId),
+        eq(documents.dataSourceId, dataSourceId),
       ),
     );
 
@@ -48,7 +48,7 @@ const invalidatedDuringProcessing = sql`${termDigestDaily.staleSince} > ${termDi
 export type ComputeDailyMetricsParams = {
   termId: string;
   dateKey: string;
-  jobId: string;
+  dataSourceId: string;
   /** When true, also resets is_bulk_stale so bulk drain doesn't re-claim the row. */
   clearBulkStale: boolean;
 };
@@ -64,8 +64,8 @@ export type ComputeDailyMetricsParams = {
 export async function computeDailyMetrics(
   params: ComputeDailyMetricsParams,
 ): Promise<DigestMetrics> {
-  const { termId, dateKey, jobId, clearBulkStale } = params;
-  const metrics = await fetchMetrics(termId, dateKey, jobId);
+  const { termId, dateKey, dataSourceId, clearBulkStale } = params;
+  const metrics = await fetchMetrics(termId, dateKey, dataSourceId);
 
   await db
     .update(termDigestDaily)
@@ -86,7 +86,7 @@ export async function computeDailyMetrics(
       and(
         eq(termDigestDaily.termId, termId),
         eq(termDigestDaily.dateKey, dateKey),
-        eq(termDigestDaily.jobId, jobId),
+        eq(termDigestDaily.dataSourceId, dataSourceId),
         eq(termDigestDaily.processing, true),
       ),
     );

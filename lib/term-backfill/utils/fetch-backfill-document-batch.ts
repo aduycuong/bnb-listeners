@@ -10,7 +10,7 @@ export type BackfillDocumentRow = {
   title: string | null;
   rawContent: string;
   docType: string;
-  sourceName: string;
+  sourceOriginName: string;
   publishedAt: Date | null;
 };
 
@@ -40,7 +40,7 @@ export async function fetchBackfillDocumentBatch(params: {
       title: documents.title,
       rawContent: documents.rawContent,
       docType: documents.docType,
-      sourceName: documents.sourceName,
+      sourceOriginName: documents.sourceOriginName,
       publishedAt: documents.publishedAt,
     })
     .from(documents)

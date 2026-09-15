@@ -3,7 +3,7 @@ import { invalidateTermDigest } from "@/lib/term-digests/services/invalidate-ter
 import type { DigestPartition } from "../types";
 
 /**
- * Upsert stale daily digest rows for every (dateKey, jobId) partition on the
+ * Upsert stale daily digest rows for every (dateKey, dataSourceId) partition on the
  * given term.
  */
 export async function invalidateTermDigestsForPartitions(
@@ -15,8 +15,8 @@ export async function invalidateTermDigestsForPartitions(
   }
 
   await Promise.all(
-    partitions.map(({ dateKey, jobId }) =>
-      invalidateTermDigest({ termId, dateKey, jobId }),
+    partitions.map(({ dateKey, dataSourceId }) =>
+      invalidateTermDigest({ termId, dateKey, dataSourceId }),
     ),
   );
 

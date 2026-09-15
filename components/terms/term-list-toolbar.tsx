@@ -12,7 +12,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { JobListItem } from "@/lib/jobs/types";
+import type { DataSourceListItem } from "@/lib/data-sources/types";
 import type { TermGroupListItem } from "@/lib/term-groups/types";
 import {
   TERM_CARD_PERIOD_LABELS,
@@ -31,8 +31,8 @@ const ALL_GROUPS_LABEL = "All groups";
 type TermListToolbarProps = {
   period: TermCardPeriodPreset;
   sort: TermCardSort;
-  jobIds: string[];
-  jobs: JobListItem[];
+  dataSourceIds: string[];
+  jobs: DataSourceListItem[];
   groups: TermGroupListItem[];
   search: string;
   groupId?: string;
@@ -40,7 +40,7 @@ type TermListToolbarProps = {
   customEndDate?: string;
   onPeriodChange: (period: TermCardPeriodPreset) => void;
   onSortChange: (sort: TermCardSort) => void;
-  onJobIdsChange: (jobIds: string[]) => void;
+  onJobIdsChange: (dataSourceIds: string[]) => void;
   onSearchChange: (search: string) => void;
   onGroupIdChange: (groupId: string | undefined) => void;
   onCustomRangeApply: (range: { startDate: string; endDate: string }) => void;
@@ -60,30 +60,30 @@ function getPeriodLabel(
   return TERM_CARD_PERIOD_LABELS[period];
 }
 
-function isAllJobsSelected(jobIds: string[]) {
-  return jobIds.length === 0;
+function isAllJobsSelected(dataSourceIds: string[]) {
+  return dataSourceIds.length === 0;
 }
 
-function isJobSelected(jobIds: string[], jobId: string) {
-  return isAllJobsSelected(jobIds) || jobIds.includes(jobId);
+function isJobSelected(dataSourceIds: string[], dataSourceId: string) {
+  return isAllJobsSelected(dataSourceIds) || dataSourceIds.includes(dataSourceId);
 }
 
 function toggleJob(
   selectedIds: string[],
-  jobId: string,
+  dataSourceId: string,
   allJobIds: string[],
 ) {
   if (isAllJobsSelected(selectedIds)) {
-    return [jobId];
+    return [dataSourceId];
   }
 
-  const isSelected = selectedIds.includes(jobId);
+  const isSelected = selectedIds.includes(dataSourceId);
   if (isSelected) {
-    const next = selectedIds.filter((id) => id !== jobId);
+    const next = selectedIds.filter((id) => id !== dataSourceId);
     return next.length === 0 ? [] : next;
   }
 
-  const next = [...selectedIds, jobId];
+  const next = [...selectedIds, dataSourceId];
   if (allJobIds.length > 0 && allJobIds.every((id) => next.includes(id))) {
     return [];
   }
@@ -100,7 +100,7 @@ const selectedSourceTagClassName =
 export function TermListToolbar({
   period,
   sort,
-  jobIds,
+  dataSourceIds,
   jobs,
   groups,
   search,
@@ -119,8 +119,8 @@ export function TermListToolbar({
   const sortLabel = TERM_CARD_SORT_LABELS[sort];
   const groupLabel =
     groups.find((group) => group.id === groupId)?.name ?? ALL_GROUPS_LABEL;
-  const allJobIds = jobs.map((job) => job.id);
-  const allJobsSelected = isAllJobsSelected(jobIds);
+  const allDataSourceIds = jobs.map((dataSource) => dataSource.id);
+  const allJobsSelected = isAllJobsSelected(dataSourceIds);
 
   const filterControlCount = groups.length > 0 ? 3 : 2;
 
@@ -273,12 +273,12 @@ export function TermListToolbar({
               {ALL_JOBS_LABEL}
             </Button>
 
-            {jobs.map((job) => {
-              const selected = isJobSelected(jobIds, job.id);
+            {jobs.map((dataSource) => {
+              const selected = isJobSelected(dataSourceIds, dataSource.id);
 
               return (
                 <Button
-                  key={job.id}
+                  key={dataSource.id}
                   type="button"
                   size="sm"
                   variant="outline"
@@ -290,10 +290,16 @@ export function TermListToolbar({
                   )}
                   disabled={controlsDisabled}
                   onClick={() =>
-                    onJobIdsChange(toggleJob(jobIds, job.id, allJobIds))
+                    onJobIdsChange(
+                      toggleJob(
+                        dataSourceIds,
+                        dataSource.id,
+                        allDataSourceIds,
+                      ),
+                    )
                   }
                 >
-                  {job.name}
+                  {dataSource.name}
                 </Button>
               );
             })}

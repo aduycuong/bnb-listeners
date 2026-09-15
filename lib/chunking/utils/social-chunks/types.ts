@@ -12,7 +12,7 @@ export type ChunkContentType = "text" | MediaKind;
  */
 export type ChunkSourceContext = {
   author?: string | null;
-  sourceName?: string | null;
+  sourceOriginName?: string | null;
   publishedAt?: Date | string | null;
   /** Extra labels appended to the context line, e.g. ["thắc mắc", "Đà Lạt"]. */
   labels?: string[];

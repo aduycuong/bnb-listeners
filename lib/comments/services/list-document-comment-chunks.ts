@@ -19,8 +19,8 @@ export async function listDocumentCommentChunks(
   const [parent] = await db
     .select({
       id: documents.id,
-      sourceKey: documents.sourceKey,
-      sourceId: documents.sourceId,
+      sourceOriginKey: documents.sourceOriginKey,
+      sourceItemId: documents.sourceItemId,
     })
     .from(documents)
     .where(
@@ -42,8 +42,8 @@ export async function listDocumentCommentChunks(
       and(
         eq(documents.workspaceId, ctx.workspaceId),
         eq(documents.docType, DISCUSSION_DOC_TYPE),
-        eq(documents.sourceKey, parent.sourceKey),
-        eq(documents.sourceId, parent.sourceId),
+        eq(documents.sourceOriginKey, parent.sourceOriginKey),
+        eq(documents.sourceItemId, parent.sourceItemId),
       ),
     )
     .limit(1);

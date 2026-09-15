@@ -32,13 +32,13 @@ export function resolveTermCardQuerySource(
 }
 
 /**
- * Returns sorted job UUIDs to filter by, or null when no filter should be applied
+ * Returns sorted dataSource UUIDs to filter by, or null when no filter should be applied
  * (i.e. the query aggregates across all jobs).
  */
-export function resolveTermCardJobIds(jobIds?: string[]): string[] | null {
-  if (!jobIds || jobIds.length === 0) {
+export function resolveTermCardJobIds(dataSourceIds?: string[]): string[] | null {
+  if (!dataSourceIds || dataSourceIds.length === 0) {
     return null;
   }
 
-  return [...jobIds].sort();
+  return [...dataSourceIds].sort();
 }

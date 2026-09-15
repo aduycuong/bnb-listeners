@@ -1,6 +1,6 @@
 export type DigestPartition = {
   dateKey: string;
-  jobId: string;
+  dataSourceId: string;
 };
 
 export type AddDocumentTermAssignmentsFromSourcesParams = {

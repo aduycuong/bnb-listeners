@@ -25,7 +25,7 @@ export type EvaluateDocumentInput = {
   title: string | null;
   rawContent: string;
   docType: string;
-  sourceName: string;
+  sourceOriginName: string;
 };
 
 export type DocumentTermEvaluation = z.infer<typeof evaluationItemSchema>;
@@ -54,7 +54,7 @@ function buildUserMessage(
         `Tài liệu ${index + 1}:`,
         `id: ${doc.id}`,
         `Loại: ${doc.docType}`,
-        `Nguồn: ${doc.sourceName}`,
+        `Nguồn: ${doc.sourceOriginName}`,
         doc.title?.trim() ? `Tiêu đề: ${doc.title.trim()}` : null,
         `Nội dung:\n${contentPreview}`,
       ]
