@@ -22,7 +22,7 @@ type ChunkRow = {
   document_id: string;
   title: string | null;
   doc_type: string;
-  source_name: string;
+  source_origin_name: string;
   published_at: Date | null;
   rrf_score: number;
   comment_count: number;
@@ -95,7 +95,7 @@ export async function searchChunks(params: SearchChunksParams): Promise<Retrieve
       d.id         AS document_id,
       d.title,
       d.doc_type,
-      d.source_name,
+      d.source_origin_name,
       d.published_at,
       r.rrf_score
     FROM rrf r
@@ -113,7 +113,7 @@ export async function searchChunks(params: SearchChunksParams): Promise<Retrieve
     documentId: row.document_id,
     title: row.title ?? null,
     docType: row.doc_type,
-    sourceOriginName: row.source_name,
+    sourceOriginName: row.source_origin_name,
     publishedAt: row.published_at ? new Date(row.published_at).toISOString() : null,
     rrfScore: Number(row.rrf_score),
     commentCount: Number(row.comment_count),
