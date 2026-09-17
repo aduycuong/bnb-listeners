@@ -1,5 +1,4 @@
 import { ChatAnthropic } from "@langchain/anthropic";
-import { ChatAlibabaTongyi } from "@langchain/community/chat_models/alibaba_tongyi";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { ChatDeepSeek } from "@langchain/deepseek";
 import { ChatOpenAI } from "@langchain/openai";
@@ -13,6 +12,12 @@ import {
 export type CreateChatModelOptions = {
   temperature?: number;
 };
+
+const alibabaCompatibleBaseUrls = {
+  china: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  singapore: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  us: "https://dashscope-us.aliyuncs.com/compatible-mode/v1",
+} as const;
 
 const providerEnvKeys: Record<ChatModelProvider, string> = {
   openai: "OPENAI_API_KEY",
@@ -85,10 +90,12 @@ export function createChatModel(
           ? process.env.ALIBABA_REGION
           : "singapore";
 
-      return new ChatAlibabaTongyi({
+      return new ChatOpenAI({
         model: definition.modelName,
-        alibabaApiKey: apiKey,
-        region,
+        apiKey,
+        configuration: {
+          baseURL: alibabaCompatibleBaseUrls[region],
+        },
         ...modelOptions,
       });
     }
