@@ -1,6 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 
-import { documents, documentTerms, termDigestDaily } from "@/db/schema";
+import { termDigestDaily } from "@/db/schema";
+import { DISCUSSION_DOC_TYPE } from "@/lib/comments/config";
 import { db } from "@/lib/db";
 import { DAILY_RECENCY_WEIGHT } from "../constants";
 import type { DigestMetrics } from "../types";
@@ -11,29 +12,43 @@ import type { DigestMetrics } from "../types";
  *
  * Only documents whose published_at falls on dateKey and whose data_source_id
  * matches dataSourceId are counted.
+ *
+ * A post and its companion discussion share (workspace_id, source_origin_key,
+ * source_item_id) and are counted as ONE logical document. When both carry
+ * the term, the post row is used; when only the discussion does, the
+ * discussion row is used.
  */
 async function fetchMetrics(
   termId: string,
   dateKey: string,
   dataSourceId: string,
 ): Promise<DigestMetrics> {
-  const [row] = await db
-    .select({
-      docCount: sql<number>`COUNT(*)::int`,
-      avgQualityScore: sql<number | null>`AVG(${documents.qualityScore})`,
-    })
-    .from(documentTerms)
-    .innerJoin(documents, eq(documentTerms.documentId, documents.id))
-    .where(
-      and(
-        eq(documentTerms.termId, termId),
-        sql`${documents.publishedAt}::date = ${dateKey}::date`,
-        eq(documents.dataSourceId, dataSourceId),
-      ),
-    );
+  const result = await db.execute<{
+    doc_count: number;
+    avg_quality_score: number | null;
+  }>(sql`
+    SELECT
+      COUNT(*)::int AS doc_count,
+      AVG(logical_docs.quality_score)::float AS avg_quality_score
+    FROM (
+      SELECT DISTINCT ON (d.workspace_id, d.source_origin_key, d.source_item_id)
+        d.quality_score
+      FROM document_terms dt
+      INNER JOIN documents d ON d.id = dt.document_id
+      WHERE dt.term_id = ${termId}::uuid
+        AND d.published_at::date = ${dateKey}::date
+        AND d.data_source_id = ${dataSourceId}::uuid
+      ORDER BY
+        d.workspace_id,
+        d.source_origin_key,
+        d.source_item_id,
+        (d.doc_type = ${DISCUSSION_DOC_TYPE}) ASC
+    ) AS logical_docs
+  `);
 
-  const docCount = row?.docCount ?? 0;
-  const avgQualityScore = row?.avgQualityScore ?? null;
+  const row = result.rows[0];
+  const docCount = row?.doc_count ?? 0;
+  const avgQualityScore = row?.avg_quality_score ?? null;
   const trendScore =
     docCount > 0
       ? docCount * (avgQualityScore ?? 1.0) * DAILY_RECENCY_WEIGHT

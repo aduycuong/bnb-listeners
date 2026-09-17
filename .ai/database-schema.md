@@ -344,7 +344,7 @@ Individual social-media comments on a parent post. Kept out of the document pipe
 | `idx_comments_stance` | `(document_id, stance)` | Debate tallies / filters |
 | `idx_comments_unscored` | `(document_id)` WHERE `scored_at IS NULL` | Scoring queue |
 
-**Pipeline:** `upsertComments` → QStash `score-document-comments` → rule-based noise filter → LLM batch role+stance scoring (`gpt-4.1-mini`) → update role/stance tallies on the parent → sync companion `discussion` document from substantive comments.
+**Pipeline:** `upsertComments` → QStash `score-document-comments` → rule-based noise filter → LLM batch role+stance scoring (`gpt-4.1-mini`) → update role/stance tallies on the parent → sync companion `discussion` document from substantive comments. When the discussion body changes, `process-document` re-scores, re-classifies (own terms + mirrored parent terms — see `document_terms`), and re-chunks it.
 
 **Relations**
 
@@ -480,7 +480,7 @@ LLM or admin assignments linking documents to terms.
 | document_id | uuid | NO | — | FK → `documents.id` ON DELETE CASCADE |
 | term_id | uuid | NO | — | FK → `terms.id` ON DELETE CASCADE |
 | confidence | real | NO | `1` | Assignment confidence (0–1) |
-| assigned_by | text | NO | `llm_classifier` | `llm_classifier` \| `admin` \| `admin_merge` \| `term_backfill` |
+| assigned_by | text | NO | `llm_classifier` | `llm_classifier` \| `admin` \| `admin_merge` \| `term_backfill` \| `parent_mirror` |
 | assigned_at | timestamptz | NO | `now()` | Assignment time |
 
 **Primary key:** `(document_id, term_id)`
@@ -489,11 +489,19 @@ LLM or admin assignments linking documents to terms.
 
 Document and term must belong to the same workspace (enforced by application logic).
 
+**Discussion documents.** A `discussion` document's terms are the union of two sources:
+
+- `parent_mirror` — copied from the parent post by `syncDiscussionDocumentTerms` whenever the parent's assignments change. Only rows with this value are replaced on re-sync; terms the discussion earned on its own are kept (the existing row wins when the parent shares the term).
+- `llm_classifier` — found by classifying the discussion body itself (parent post passed as framing context). Discussion classification never proposes new terms.
+- `term_backfill` — a backfill run evaluates discussion documents like any other document, so a thread can earn a term its parent never got.
+
+When a discussion is (re)classified — on discussion content change via `process-document`, whenever the parent post is classified, or by manual re-classify — every row **except `admin`** is dropped and rebuilt from those two sources. Admin assignments on a discussion are never touched automatically.
+
 ---
 
 ### `term_backfill_runs`
 
-Tracks user-triggered backfill jobs that scan older documents and assign matches to a single term.
+Tracks user-triggered backfill jobs that scan older documents and assign matches to a single term. `discussion` documents are scanned like any other document (a thread can mention a term its parent post does not). When `include_already_assigned` is on, unmatched documents lose the term **except** `admin` and `parent_mirror` rows, which a backfill never removes.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -592,8 +600,8 @@ Rows are created on-demand when a document from a data source is first classifie
 | term_id | uuid | NO | — | FK → `terms.id` ON DELETE CASCADE |
 | date_key | date | NO | — | FK → `dim_dates.date_key` — day of the document's `published_at` |
 | data_source_id | uuid | NO | — | FK → `data_sources.id` ON DELETE CASCADE — partition key. Each row holds metrics for documents from a specific data source. |
-| doc_count | integer | NO | `0` | Non-duplicate documents with `published_at` on this date |
-| avg_quality_score | real | YES | — | Average `quality_score` for those documents |
+| doc_count | integer | NO | `0` | Logical documents with `published_at` on this date. A post and its companion `discussion` (same `workspace_id`/`source_origin_key`/`source_item_id`) count as **one**; the post row wins when both carry the term. |
+| avg_quality_score | real | YES | — | Average `quality_score` over those logical documents |
 | trend_score | real | YES | — | `doc_count × avg_quality_score × DAILY_RECENCY_WEIGHT(1.5)` |
 | is_stale | boolean | NO | `true` | `true` = metrics need recompute |
 | is_bulk_stale | boolean | NO | `false` | `true` when invalidated by a bulk taxonomy op (merge/split). Normal recompute job skips these; a separate low-priority bulk drain job handles them with a smaller `LIMIT`. |

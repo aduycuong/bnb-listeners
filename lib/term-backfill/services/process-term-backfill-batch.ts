@@ -1,7 +1,8 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { documentTerms, termBackfillRuns, terms } from "@/db/schema";
+import { DISCUSSION_DOC_TYPE } from "@/lib/comments/config";
 import { syncDiscussionDocumentTerms } from "@/lib/comments/services/sync-discussion-document-terms";
 import { evaluateDocumentsForTerm } from "@/lib/classification/utils/evaluate-documents-for-term";
 import { DOCUMENT_TERM_ASSIGNED_BY } from "@/lib/document-terms/document-term-config";
@@ -31,6 +32,15 @@ function passesBackfillThreshold(
 ): boolean {
   return item.match && item.confidence >= confidenceMin;
 }
+
+/**
+ * Assignments a backfill run must never remove: admin hand-picks, and
+ * `parent_mirror` rows on discussion documents (owned by the parent post).
+ */
+const BACKFILL_PROTECTED_ASSIGNED_BY = [
+  DOCUMENT_TERM_ASSIGNED_BY.admin,
+  DOCUMENT_TERM_ASSIGNED_BY.parentMirror,
+];
 
 export const processTermBackfillBatchPayloadSchema = z.object({
   runId: z.uuid(),
@@ -163,7 +173,16 @@ export async function processTermBackfillBatch(
   let batchOutputTokens = 0;
   let batchMatched = 0;
   let batchUnmatched = 0;
+  // Posts whose assignments changed — their discussion mirrors need a re-sync.
+  // Discussion documents get their own rows and are never mirrored from.
   const affectedParentDocumentIds = new Set<string>();
+  const docTypeById = new Map(documents.map((doc) => [doc.id, doc.docType]));
+
+  const markAffected = (documentId: string) => {
+    if (docTypeById.get(documentId) !== DISCUSSION_DOC_TYPE) {
+      affectedParentDocumentIds.add(documentId);
+    }
+  };
 
   try {
     for (
@@ -204,28 +223,36 @@ export async function processTermBackfillBatch(
         );
 
         if (documentIdsToRemove.length > 0) {
-          await db
+          const removed = await db
             .delete(documentTerms)
             .where(
               and(
                 eq(documentTerms.termId, run.termId),
                 inArray(documentTerms.documentId, documentIdsToRemove),
+                notInArray(
+                  documentTerms.assignedBy,
+                  BACKFILL_PROTECTED_ASSIGNED_BY,
+                ),
               ),
+            )
+            .returning({ documentId: documentTerms.documentId });
+
+          if (removed.length > 0) {
+            const removedDocumentIds = removed.map((row) => row.documentId);
+            const partitions = await fetchDigestPartitionsForDocuments(
+              removedDocumentIds,
             );
 
-          const partitions = await fetchDigestPartitionsForDocuments(
-            documentIdsToRemove,
-          );
+            await bulkInvalidateTermDigestPartitions({
+              termId: run.termId,
+              partitions,
+            });
 
-          await bulkInvalidateTermDigestPartitions({
-            termId: run.termId,
-            partitions,
-          });
+            batchUnmatched += removedDocumentIds.length;
 
-          batchUnmatched += documentIdsToRemove.length;
-
-          for (const documentId of documentIdsToRemove) {
-            affectedParentDocumentIds.add(documentId);
+            for (const documentId of removedDocumentIds) {
+              markAffected(documentId);
+            }
           }
         }
       }
@@ -254,7 +281,7 @@ export async function processTermBackfillBatch(
         batchMatched += newMatches.length;
 
         for (const item of newMatches) {
-          affectedParentDocumentIds.add(item.documentId);
+          markAffected(item.documentId);
         }
       }
     }

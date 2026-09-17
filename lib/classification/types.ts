@@ -28,6 +28,22 @@ export type ClassifyDocumentResult = {
   createdTerms: CreatedTerm[];
 };
 
+/** Document fields sent to the classifier LLM. */
+export type ClassifierDocContext = {
+  title: string | null;
+  rawContent: string;
+  docType: string;
+  sourceOriginName: string;
+  /**
+   * Parent post of a discussion document. Sent as framing context only —
+   * the LLM classifies the discussion body, not the parent.
+   */
+  parentContext?: {
+    title: string | null;
+    rawContent: string;
+  };
+};
+
 export type ClassifierTerm = {
   id: string;
   name: string;

@@ -1,11 +1,13 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 
-import { documentTerms, documents, terms } from "@/db/schema";
+import { documentTerms, documents, terms, type Document } from "@/db/schema";
 import { syncDiscussionDocumentTerms } from "@/lib/comments/services/sync-discussion-document-terms";
+import { findDiscussionDocumentId } from "@/lib/comments/utils/find-discussion-document-id";
 import { resolveDiscussionParentDocumentId } from "@/lib/comments/utils/resolve-discussion-parent-document-id";
 import { DISCUSSION_DOC_TYPE } from "@/lib/comments/config";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
+import { DOCUMENT_TERM_ASSIGNED_BY } from "@/lib/document-terms/document-term-config";
 import { invalidateTermDigest } from "@/lib/term-digests/services/invalidate-term-digest";
 import { assignTermGroupsAfterClassification } from "@/lib/term-groups/services/assign-term-groups-after-classification";
 import { findTermByName } from "@/lib/terms/utils/find-term-by-name";
@@ -13,6 +15,8 @@ import { resolveWorkspaceSystemPrompt } from "@/lib/llm/services/resolve-workspa
 import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace-llm-settings";
 
 import type {
+  ClassifierDocContext,
+  ClassifierTerm,
   ClassifyDocumentParams,
   ClassifyDocumentResult,
   CreatedTerm,
@@ -24,7 +28,7 @@ import { createAutoTerm } from "../utils/create-auto-term";
 import { loadTermsForClassifier } from "../utils/load-terms-for-classifier";
 import { proposeTermsWithLlm } from "../utils/propose-term-with-llm";
 
-const LLM_ASSIGNED_BY = "llm_classifier";
+const LLM_ASSIGNED_BY = DOCUMENT_TERM_ASSIGNED_BY.llmClassifier;
 
 function toDateKey(date: Date): string {
   return date.toISOString().slice(0, 10); // YYYY-MM-DD
@@ -46,6 +50,19 @@ async function fetchLlmTermIds(documentId: string): Promise<string[]> {
       and(
         eq(documentTerms.documentId, documentId),
         eq(documentTerms.assignedBy, LLM_ASSIGNED_BY),
+      ),
+    );
+  return rows.map((r) => r.termId);
+}
+
+async function fetchNonAdminTermIds(documentId: string): Promise<string[]> {
+  const rows = await db
+    .select({ termId: documentTerms.termId })
+    .from(documentTerms)
+    .where(
+      and(
+        eq(documentTerms.documentId, documentId),
+        ne(documentTerms.assignedBy, DOCUMENT_TERM_ASSIGNED_BY.admin),
       ),
     );
   return rows.map((r) => r.termId);
@@ -84,6 +101,45 @@ async function clearLlmAssignments(documentId: string): Promise<void> {
         eq(documentTerms.assignedBy, LLM_ASSIGNED_BY),
       ),
     );
+}
+
+/** Remove every assignment except those an admin set by hand. */
+async function clearNonAdminAssignments(documentId: string): Promise<void> {
+  await db
+    .delete(documentTerms)
+    .where(
+      and(
+        eq(documentTerms.documentId, documentId),
+        ne(documentTerms.assignedBy, DOCUMENT_TERM_ASSIGNED_BY.admin),
+      ),
+    );
+}
+
+/**
+ * Ask the LLM to pick matching terms from the existing list and map the
+ * response back onto known terms (unknown ids are dropped).
+ */
+async function selectExistingTermsWithLlm(
+  docContext: ClassifierDocContext,
+  classifierTerms: ClassifierTerm[],
+  classifyPrompt: string,
+): Promise<TermAssignment[]> {
+  const { assignments: llmAssignments } = await classifyWithLlm(
+    docContext,
+    classifierTerms,
+    classifyPrompt,
+  );
+
+  const termById = new Map(classifierTerms.map((term) => [term.id, term]));
+  const assignments: TermAssignment[] = [];
+
+  for (const { id, confidence } of llmAssignments) {
+    const term = termById.get(id);
+    if (!term) continue;
+    assignments.push({ termId: term.id, name: term.name, confidence });
+  }
+
+  return assignments;
 }
 
 async function assignExistingTerms(
@@ -175,6 +231,110 @@ async function assignProposedTerms(
 }
 
 /**
+ * Classifies a companion discussion document.
+ *
+ * Discussion terms = terms the LLM finds in the discussion body (with the
+ * parent post as framing context) ∪ terms mirrored from the parent post.
+ *
+ *   1. Drop every assignment except `admin` (LLM, backfill and old mirror rows).
+ *   2. Classify the discussion body against existing terms only — new terms
+ *      are never proposed from comment text.
+ *   3. Re-mirror the parent's terms as `parent_mirror`.
+ *
+ * Triggered when the discussion body changes (`process-document`) and again
+ * whenever the parent post is classified (new parent context + parent terms).
+ *
+ * The admin-only preservation applies regardless of replaceAllAssignments.
+ */
+async function classifyDiscussionDocument(
+  doc: Document,
+): Promise<ClassifyDocumentResult> {
+  const parentDocumentId = await resolveDiscussionParentDocumentId({
+    workspaceId: doc.workspaceId,
+    docType: doc.docType,
+    sourceOriginKey: doc.sourceOriginKey,
+    sourceItemId: doc.sourceItemId,
+    metadata: doc.metadata,
+  });
+
+  const [parent] = parentDocumentId
+    ? await db
+        .select({ title: documents.title, rawContent: documents.rawContent })
+        .from(documents)
+        .where(eq(documents.id, parentDocumentId))
+        .limit(1)
+    : [];
+
+  const docContext: ClassifierDocContext = {
+    title: doc.title,
+    rawContent: doc.rawContent,
+    docType: doc.docType,
+    sourceOriginName: doc.sourceOriginName,
+    parentContext: parent
+      ? { title: parent.title, rawContent: parent.rawContent }
+      : undefined,
+  };
+
+  const oldTermIds = await fetchNonAdminTermIds(doc.id);
+  await clearNonAdminAssignments(doc.id);
+
+  const classifierTerms = await loadTermsForClassifier(doc.workspaceId);
+  let assignments: TermAssignment[] = [];
+
+  if (classifierTerms.length > 0) {
+    const classifyPrompt = await resolveWorkspaceSystemPrompt(
+      doc.workspaceId,
+      "classify_terms",
+    );
+    assignments = await selectExistingTermsWithLlm(
+      docContext,
+      classifierTerms,
+      classifyPrompt,
+    );
+    await assignExistingTerms(doc.id, assignments);
+  }
+
+  if (parentDocumentId) {
+    await syncDiscussionDocumentTerms(parentDocumentId);
+  }
+
+  const newTermIds = assignments.map((a) => a.termId);
+  const affectedTermIds = [...new Set([...oldTermIds, ...newTermIds])];
+  await invalidateAffectedDigests(affectedTermIds, doc.publishedAt, doc.dataSourceId);
+
+  if (newTermIds.length > 0) {
+    await assignTermGroupsAfterClassification({
+      workspaceId: doc.workspaceId,
+      termIds: newTermIds,
+      doc: docContext,
+    });
+  }
+
+  return buildClassifyResultFromDocumentTerms(doc.id);
+}
+
+/**
+ * After a parent post is classified, re-run classification on its companion
+ * discussion (if one exists). Discussion classify remirrors parent terms and
+ * re-evaluates the discussion body against the latest parent context.
+ */
+async function classifyCompanionDiscussionIfPresent(
+  parent: Document,
+): Promise<void> {
+  const discussionDocumentId = await findDiscussionDocumentId({
+    workspaceId: parent.workspaceId,
+    sourceOriginKey: parent.sourceOriginKey,
+    sourceItemId: parent.sourceItemId,
+  });
+
+  if (!discussionDocumentId) {
+    return;
+  }
+
+  await classifyDocument({ documentId: discussionDocumentId });
+}
+
+/**
  * Classifies a document against existing terms using an LLM.
  *
  * Steps:
@@ -187,9 +347,10 @@ async function assignProposedTerms(
  * assignments are preserved. Set replaceAllAssignments to clear every
  * existing assignment first (used by manual re-classify).
  *
- * Discussion documents never run the LLM directly. Pipeline classify mirrors
- * the parent post; manual re-classify re-runs classification on the parent
- * and then mirrors the result onto the discussion document.
+ * Discussion documents take a separate path — see classifyDiscussionDocument.
+ * After classifying a parent document, the companion discussion (if any) is
+ * classified again so its own terms and parent_mirror rows stay in sync
+ * with the latest post content and assignments.
  *
  * Digest invalidation runs for every classified document (all documents belong to a dataSource).
  */
@@ -209,31 +370,10 @@ export async function classifyDocument(
   }
 
   if (doc.docType === DISCUSSION_DOC_TYPE) {
-    const parentDocumentId = await resolveDiscussionParentDocumentId({
-      workspaceId: doc.workspaceId,
-      docType: doc.docType,
-      sourceOriginKey: doc.sourceOriginKey,
-      sourceItemId: doc.sourceItemId,
-      metadata: doc.metadata,
-    });
-
-    if (!parentDocumentId) {
-      return { documentId, assignments: [], createdTerms: [] };
-    }
-
-    if (replaceAllAssignments) {
-      await classifyDocument({
-        documentId: parentDocumentId,
-        replaceAllAssignments: true,
-      });
-    } else {
-      await syncDiscussionDocumentTerms(parentDocumentId);
-    }
-
-    return buildClassifyResultFromDocumentTerms(documentId);
+    return classifyDiscussionDocument(doc);
   }
 
-  const docContext = {
+  const docContext: ClassifierDocContext = {
     title: doc.title,
     rawContent: doc.rawContent,
     docType: doc.docType,
@@ -277,22 +417,11 @@ export async function classifyDocument(
       );
     }
   } else {
-    const { assignments: llmAssignments } = await classifyWithLlm(
+    const assignments = await selectExistingTermsWithLlm(
       docContext,
       classifierTerms,
       classifyPrompt,
     );
-
-    const termById = new Map(
-      classifierTerms.map((term) => [term.id, term]),
-    );
-    const assignments: TermAssignment[] = [];
-
-    for (const { id, confidence } of llmAssignments) {
-      const term = termById.get(id);
-      if (!term) continue;
-      assignments.push({ termId: term.id, name: term.name, confidence });
-    }
 
     if (assignments.length > 0) {
       await assignExistingTerms(documentId, assignments);
@@ -329,7 +458,7 @@ export async function classifyDocument(
     });
   }
 
-  await syncDiscussionDocumentTerms(documentId);
+  await classifyCompanionDiscussionIfPresent(doc);
 
   return result;
 }

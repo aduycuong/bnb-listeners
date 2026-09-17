@@ -38,6 +38,8 @@ Query "tất cả" = không filter `job_id` — aggregate mọi partitions.
 
 Digest rows tạo **on-demand** — không pre-fill toàn bộ lịch sử.
 
+**Post + discussion = 1 tài liệu.** `doc_count` gom post và tài liệu `discussion` đi kèm (cùng `workspace_id`/`source_origin_key`/`source_item_id`) thành một; khi cả hai có term thì lấy `quality_score` của post, khi chỉ discussion có thì lấy discussion. Discussion kế thừa `published_at` và `data_source_id` từ post nên luôn rơi vào cùng partition.
+
 ---
 
 ## Cấu hình

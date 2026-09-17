@@ -5,9 +5,10 @@ import { createChatModel } from "@/lib/langchain";
 
 import {
   CLASSIFIER_CONTENT_MAX_CHARS,
+  CLASSIFIER_PARENT_CONTEXT_MAX_CHARS,
   DEFAULT_CLASSIFIER_MODEL,
 } from "../config";
-import type { ClassifierTerm } from "../types";
+import type { ClassifierDocContext, ClassifierTerm } from "../types";
 
 const assignmentSchema = z.object({
   id: z.uuid().describe("Id term từ danh sách được cung cấp"),
@@ -44,13 +45,24 @@ function formatTermsForPrompt(classifierTerms: ClassifierTerm[]): string {
     .join("\n\n");
 }
 
+function formatParentContext(
+  parent: NonNullable<ClassifierDocContext["parentContext"]>,
+): string[] {
+  const excerpt = parent.rawContent.slice(0, CLASSIFIER_PARENT_CONTEXT_MAX_CHARS);
+
+  return [
+    "",
+    "Bài gốc (chỉ là ngữ cảnh — KHÔNG phân loại bài gốc):",
+    parent.title?.trim() ? `Tiêu đề: ${parent.title.trim()}` : null,
+    `Trích đoạn:\n${excerpt}`,
+    "",
+    "Tài liệu dưới đây là phần thảo luận (bình luận) về bài gốc. " +
+      "Chọn term dựa trên nội dung thảo luận; term của bài gốc chỉ chọn khi thảo luận thực sự nói về nó.",
+  ].filter((line): line is string => line !== null);
+}
+
 function buildUserMessage(
-  doc: {
-    title: string | null;
-    rawContent: string;
-    docType: string;
-    sourceOriginName: string;
-  },
+  doc: ClassifierDocContext,
   activeTerms: ClassifierTerm[],
 ): string {
   const contentPreview = doc.rawContent.slice(0, CLASSIFIER_CONTENT_MAX_CHARS);
@@ -58,6 +70,7 @@ function buildUserMessage(
   return [
     "Danh sách term hiện có:",
     formatTermsForPrompt(activeTerms),
+    ...(doc.parentContext ? formatParentContext(doc.parentContext) : []),
     "",
     "Tài liệu:",
     `Loại: ${doc.docType}`,
@@ -65,7 +78,7 @@ function buildUserMessage(
     doc.title?.trim() ? `Tiêu đề: ${doc.title.trim()}` : null,
     `Nội dung:\n${contentPreview}`,
   ]
-    .filter(Boolean)
+    .filter((line): line is string => line !== null)
     .join("\n");
 }
 
@@ -73,12 +86,7 @@ function buildUserMessage(
  * Calls the LLM classifier to match a document against existing terms.
  */
 export async function classifyWithLlm(
-  doc: {
-    title: string | null;
-    rawContent: string;
-    docType: string;
-    sourceOriginName: string;
-  },
+  doc: ClassifierDocContext,
   classifierTerms: ClassifierTerm[],
   systemPrompt: string,
 ): Promise<ClassifyWithLlmResult> {

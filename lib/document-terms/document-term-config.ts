@@ -4,7 +4,12 @@ export const DOCUMENT_TERM_ASSIGNED_BY = {
   adminMerge: "admin_merge",
   llmClassifier: "llm_classifier",
   termBackfill: "term_backfill",
+  /** Copied from the parent post onto its companion discussion document. */
+  parentMirror: "parent_mirror",
 } as const;
+
+export type DocumentTermAssignedBy =
+  (typeof DOCUMENT_TERM_ASSIGNED_BY)[keyof typeof DOCUMENT_TERM_ASSIGNED_BY];
 
 /** Use disable-trigger bulk insert when at least this many documents are affected. */
 export const BULK_ASSIGN_DOCUMENT_TERMS_THRESHOLD = 100;

@@ -18,6 +18,24 @@ Workspace settings còn có **phạm vi thu thập** (`data_collection_scope`) v
 2. Nếu có term khớp, gán ngay kèm confidence.
 3. Nếu không khớp và auto-create bật, LLM đề xuất 0..N term mới (tên kiểu từ khóa + mô tả) theo quy tắc workspace. Tên đã tồn tại thì gán term đó; tên mới thì tạo và gán.
 
+## Discussion documents
+
+Tài liệu `discussion` (gom các bình luận đáng giá của một bài post) được gắn term theo hai nguồn, gộp lại:
+
+1. **Kế thừa từ bài gốc** (`assigned_by = parent_mirror`) — mọi term của post được copy sang discussion. Khi term của post thay đổi (classify lại, backfill, admin gán), chỉ các row `parent_mirror` được thay; term riêng của discussion giữ nguyên.
+2. **Tự phát hiện** (`assigned_by = llm_classifier`) — LLM đọc nội dung thảo luận (kèm tiêu đề + trích đoạn bài gốc làm ngữ cảnh) và chọn term từ danh sách hiện có. **Không** đề xuất/tạo term mới từ nội dung bình luận.
+
+3. **Backfill** (`assigned_by = term_backfill`) — khi admin chạy backfill cho một term, discussion được quét như mọi tài liệu khác, nên thảo luận có thể nhận term mà bài gốc không có. Backfill không bao giờ gỡ row `admin` hoặc `parent_mirror`.
+
+Pipeline classify discussion chạy lại khi:
+
+- **Nội dung discussion đổi** (bình luận mới được chấm là đáng giá) — `process-document` trên discussion.
+- **Post được classify** (nội dung bài gốc đổi, hoặc admin classify lại post) — classify post xong thì classify lại discussion, để term riêng và `parent_mirror` khớp nội dung/term mới của bài gốc.
+
+Mỗi lần đó: xóa mọi assignment **trừ `admin`**, gắn lại theo nguồn 1 và 2. Term admin gán tay trên discussion không bao giờ bị tự động thay đổi.
+
+**Đếm trong digest:** post và discussion của nó được tính là **một** tài liệu cho mỗi term (`doc_count`). Nếu cả hai cùng có term, lấy post; nếu chỉ discussion có, lấy discussion.
+
 ## Admin review
 
 - Xem term do LLM tạo trong danh sách terms (badge **Classifier**).

@@ -3,38 +3,23 @@ import { and, eq } from "drizzle-orm";
 import { documentTerms, documents } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
+import { DOCUMENT_TERM_ASSIGNED_BY } from "@/lib/document-terms/document-term-config";
 import { invalidateTermDigest } from "@/lib/term-digests/services/invalidate-term-digest";
 
 import { DISCUSSION_DOC_TYPE } from "../config";
+import { findDiscussionDocumentId } from "../utils/find-discussion-document-id";
 
 function toDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-async function findDiscussionDocumentId(params: {
-  workspaceId: string;
-  sourceOriginKey: string;
-  sourceItemId: string;
-}): Promise<string | null> {
-  const [discussion] = await db
-    .select({ id: documents.id })
-    .from(documents)
-    .where(
-      and(
-        eq(documents.workspaceId, params.workspaceId),
-        eq(documents.docType, DISCUSSION_DOC_TYPE),
-        eq(documents.sourceOriginKey, params.sourceOriginKey),
-        eq(documents.sourceItemId, params.sourceItemId),
-      ),
-    )
-    .limit(1);
-
-  return discussion?.id ?? null;
-}
-
 /**
  * Mirrors every term assignment from a parent post onto its companion
- * discussion document. Discussion documents are never classified directly.
+ * discussion document as `parent_mirror` rows.
+ *
+ * Only previous `parent_mirror` rows are replaced. Terms the discussion
+ * earned on its own (`llm_classifier`, `admin`, …) are left untouched; when
+ * the parent shares one of those terms the existing row wins (no duplicate).
  */
 export async function syncDiscussionDocumentTerms(
   parentDocumentId: string,
@@ -78,41 +63,46 @@ export async function syncDiscussionDocumentTerms(
     .where(eq(documents.id, discussionDocumentId))
     .limit(1);
 
-  const [parentTerms, oldDiscussionTerms] = await Promise.all([
+  const mirrorFilter = and(
+    eq(documentTerms.documentId, discussionDocumentId),
+    eq(documentTerms.assignedBy, DOCUMENT_TERM_ASSIGNED_BY.parentMirror),
+  );
+
+  const [parentTerms, oldMirrorTerms] = await Promise.all([
     db
       .select({
         termId: documentTerms.termId,
         confidence: documentTerms.confidence,
-        assignedBy: documentTerms.assignedBy,
       })
       .from(documentTerms)
       .where(eq(documentTerms.documentId, parentDocumentId)),
     db
       .select({ termId: documentTerms.termId })
       .from(documentTerms)
-      .where(eq(documentTerms.documentId, discussionDocumentId)),
+      .where(mirrorFilter),
   ]);
 
-  await db
-    .delete(documentTerms)
-    .where(eq(documentTerms.documentId, discussionDocumentId));
+  await db.delete(documentTerms).where(mirrorFilter);
 
   if (parentTerms.length > 0) {
-    await db.insert(documentTerms).values(
-      parentTerms.map((row) => ({
-        documentId: discussionDocumentId,
-        termId: row.termId,
-        confidence: row.confidence,
-        assignedBy: row.assignedBy,
-      })),
-    );
+    await db
+      .insert(documentTerms)
+      .values(
+        parentTerms.map((row) => ({
+          documentId: discussionDocumentId,
+          termId: row.termId,
+          confidence: row.confidence,
+          assignedBy: DOCUMENT_TERM_ASSIGNED_BY.parentMirror,
+        })),
+      )
+      .onConflictDoNothing();
   }
 
   if (discussion?.publishedAt) {
     const dateKey = toDateKey(discussion.publishedAt);
     const affectedTermIds = [
       ...new Set([
-        ...oldDiscussionTerms.map((row) => row.termId),
+        ...oldMirrorTerms.map((row) => row.termId),
         ...parentTerms.map((row) => row.termId),
       ]),
     ];
