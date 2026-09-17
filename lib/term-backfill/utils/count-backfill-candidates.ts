@@ -1,6 +1,7 @@
-import { and, eq, gte, isNotNull, lt, notExists, sql } from "drizzle-orm";
+import { and, eq, gte, isNotNull, lt, ne, notExists, sql } from "drizzle-orm";
 
 import { documentTerms, documents } from "@/db/schema";
+import { DISCUSSION_DOC_TYPE } from "@/lib/comments/config";
 import { db } from "@/lib/db";
 
 import type { TermBackfillScanContext } from "../types";
@@ -31,6 +32,7 @@ export async function countBackfillCandidates(
 export function buildBackfillScanConditions(context: TermBackfillScanContext) {
   const conditions = [
     eq(documents.workspaceId, context.workspaceId),
+    ne(documents.docType, DISCUSSION_DOC_TYPE),
     isNotNull(documents.publishedAt),
     gte(documents.publishedAt, context.newListeningStartedAt),
     lt(documents.publishedAt, context.scanEndAt),

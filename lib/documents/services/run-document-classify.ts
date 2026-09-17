@@ -10,5 +10,8 @@ export async function runDocumentClassify(
   ctx: WorkspaceContext,
 ): Promise<ClassifyDocumentResult> {
   await getDocument({ id: params.id }, ctx);
-  return classifyDocument({ documentId: params.id });
+  return classifyDocument({
+    documentId: params.id,
+    replaceAllAssignments: true,
+  });
 }

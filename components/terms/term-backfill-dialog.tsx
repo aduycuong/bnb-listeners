@@ -18,20 +18,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
-import {
-  chatModelIds,
-  chatModelRegistry,
-  type ChatModelId,
-} from "@/lib/langchain";
+import { ChatModelSelect } from "@/components/llm/chat-model-select";
+import type { ChatModelId } from "@/lib/langchain";
 import { DEFAULT_TERM_BACKFILL_MODEL } from "@/lib/terms/term-backfill-config";
 import type { EstimateTermBackfillResult } from "@/lib/term-backfill/types";
 import type { GetTermResult } from "@/lib/terms/types";
@@ -185,24 +175,14 @@ export function TermBackfillDialog({
 
           <div className="space-y-2">
             <Label htmlFor="backfill-model">Model</Label>
-            <Select
+            <ChatModelSelect
+              id="backfill-model"
               value={model}
               onValueChange={(value) => {
-                setModel(value as ChatModelId);
+                setModel(value);
                 setEstimate(null);
               }}
-            >
-              <SelectTrigger id="backfill-model" className="w-full">
-                <SelectValue placeholder="Select model" />
-              </SelectTrigger>
-              <SelectContent>
-                {chatModelIds.map((modelId) => (
-                  <SelectItem key={modelId} value={modelId}>
-                    {chatModelRegistry[modelId].label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
 
           <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
@@ -212,8 +192,9 @@ export function TermBackfillDialog({
               </Label>
               <p className="text-xs text-muted-foreground">
                 When enabled, documents already linked to this term are also
-                re-evaluated. When disabled, only unassigned documents in the
-                date range are checked.
+                re-evaluated and unlinked when they no longer match. When
+                disabled, only unassigned documents in the date range are
+                checked.
               </p>
             </div>
             <Switch

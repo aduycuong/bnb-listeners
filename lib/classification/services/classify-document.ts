@@ -1,6 +1,9 @@
 import { and, eq } from "drizzle-orm";
 
-import { documentTerms, documents } from "@/db/schema";
+import { documentTerms, documents, terms } from "@/db/schema";
+import { syncDiscussionDocumentTerms } from "@/lib/comments/services/sync-discussion-document-terms";
+import { resolveDiscussionParentDocumentId } from "@/lib/comments/utils/resolve-discussion-parent-document-id";
+import { DISCUSSION_DOC_TYPE } from "@/lib/comments/config";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { invalidateTermDigest } from "@/lib/term-digests/services/invalidate-term-digest";
@@ -25,6 +28,14 @@ const LLM_ASSIGNED_BY = "llm_classifier";
 
 function toDateKey(date: Date): string {
   return date.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+async function fetchDocumentTermIds(documentId: string): Promise<string[]> {
+  const rows = await db
+    .select({ termId: documentTerms.termId })
+    .from(documentTerms)
+    .where(eq(documentTerms.documentId, documentId));
+  return rows.map((r) => r.termId);
 }
 
 async function fetchLlmTermIds(documentId: string): Promise<string[]> {
@@ -58,6 +69,12 @@ async function invalidateAffectedDigests(
   );
 }
 
+async function clearAllAssignments(documentId: string): Promise<void> {
+  await db
+    .delete(documentTerms)
+    .where(eq(documentTerms.documentId, documentId));
+}
+
 async function clearLlmAssignments(documentId: string): Promise<void> {
   await db
     .delete(documentTerms)
@@ -88,6 +105,30 @@ async function assignExistingTerms(
       })),
     )
     .onConflictDoNothing();
+}
+
+async function buildClassifyResultFromDocumentTerms(
+  documentId: string,
+): Promise<ClassifyDocumentResult> {
+  const rows = await db
+    .select({
+      termId: documentTerms.termId,
+      name: terms.name,
+      confidence: documentTerms.confidence,
+    })
+    .from(documentTerms)
+    .innerJoin(terms, eq(documentTerms.termId, terms.id))
+    .where(eq(documentTerms.documentId, documentId));
+
+  return {
+    documentId,
+    assignments: rows.map((row) => ({
+      termId: row.termId,
+      name: row.name,
+      confidence: row.confidence,
+    })),
+    createdTerms: [],
+  };
 }
 
 async function assignProposedTerms(
@@ -142,14 +183,20 @@ async function assignProposedTerms(
  *   3. Assign existing terms, or auto-create proposed terms (0..N) when appropriate.
  *      If a proposed name already exists, assign that term instead.
  *
- * Only prior LLM assignments are replaced; admin assignments are preserved.
+ * By default only prior LLM assignments are replaced; admin and backfill
+ * assignments are preserved. Set replaceAllAssignments to clear every
+ * existing assignment first (used by manual re-classify).
+ *
+ * Discussion documents never run the LLM directly. Pipeline classify mirrors
+ * the parent post; manual re-classify re-runs classification on the parent
+ * and then mirrors the result onto the discussion document.
  *
  * Digest invalidation runs for every classified document (all documents belong to a dataSource).
  */
 export async function classifyDocument(
   params: ClassifyDocumentParams,
 ): Promise<ClassifyDocumentResult> {
-  const { documentId } = params;
+  const { documentId, replaceAllAssignments = false } = params;
 
   const [doc] = await db
     .select()
@@ -161,6 +208,31 @@ export async function classifyDocument(
     throw new NotFoundError("document", documentId);
   }
 
+  if (doc.docType === DISCUSSION_DOC_TYPE) {
+    const parentDocumentId = await resolveDiscussionParentDocumentId({
+      workspaceId: doc.workspaceId,
+      docType: doc.docType,
+      sourceOriginKey: doc.sourceOriginKey,
+      sourceItemId: doc.sourceItemId,
+      metadata: doc.metadata,
+    });
+
+    if (!parentDocumentId) {
+      return { documentId, assignments: [], createdTerms: [] };
+    }
+
+    if (replaceAllAssignments) {
+      await classifyDocument({
+        documentId: parentDocumentId,
+        replaceAllAssignments: true,
+      });
+    } else {
+      await syncDiscussionDocumentTerms(parentDocumentId);
+    }
+
+    return buildClassifyResultFromDocumentTerms(documentId);
+  }
+
   const docContext = {
     title: doc.title,
     rawContent: doc.rawContent,
@@ -168,11 +240,15 @@ export async function classifyDocument(
     sourceOriginName: doc.sourceOriginName,
   };
 
-  // Capture LLM-assigned term IDs before clearing so they can be
-  // invalidated — their doc counts will drop after the reassignment.
-  const oldTermIds = await fetchLlmTermIds(documentId);
+  const oldTermIds = replaceAllAssignments
+    ? await fetchDocumentTermIds(documentId)
+    : await fetchLlmTermIds(documentId);
 
-  await clearLlmAssignments(documentId);
+  if (replaceAllAssignments) {
+    await clearAllAssignments(documentId);
+  } else {
+    await clearLlmAssignments(documentId);
+  }
 
   const [classifierTerms, llmSettings] = await Promise.all([
     loadTermsForClassifier(doc.workspaceId),
@@ -252,6 +328,8 @@ export async function classifyDocument(
       doc: docContext,
     });
   }
+
+  await syncDiscussionDocumentTerms(documentId);
 
   return result;
 }

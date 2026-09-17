@@ -1,5 +1,7 @@
 export type ClassifyDocumentParams = {
   documentId: string;
+  /** When true, remove every existing term assignment before re-classifying. */
+  replaceAllAssignments?: boolean;
 };
 
 export type TermAssignment = {

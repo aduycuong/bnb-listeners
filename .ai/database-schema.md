@@ -508,7 +508,7 @@ Tracks user-triggered backfill jobs that scan older documents and assign matches
 | include_already_assigned | boolean | NO | `false` | When true, re-evaluate documents already assigned to this term |
 | confidence_min | real | NO | — | Minimum LLM confidence to create an assignment |
 | estimate | jsonb | NO | — | Pre-run estimate: `{ documentCount, inputTokens, outputTokens, costUsd }` |
-| result | jsonb | NO | `{}` | Progress: `{ documentsScanned, documentsMatched, inputTokens, outputTokens, costUsd, cursor }` |
+| result | jsonb | NO | `{}` | Progress: `{ documentsScanned, documentsMatched, documentsUnmatched, documentsSkipped, inputTokens, outputTokens, costUsd, cursor }` |
 | error | text | YES | — | Error message when `status = failed` |
 | triggered_by | uuid | YES | — | FK → `users.id` ON DELETE SET NULL |
 | started_at | timestamptz | NO | `now()` | Run start time |

@@ -17,6 +17,7 @@ export type TermBackfillEstimate = {
 export type TermBackfillRunProgress = {
   documentsScanned: number;
   documentsMatched: number;
+  documentsUnmatched: number;
   documentsSkipped: number;
   inputTokens: number;
   outputTokens: number;

@@ -1,10 +1,13 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { documentTerms, termBackfillRuns, terms } from "@/db/schema";
+import { syncDiscussionDocumentTerms } from "@/lib/comments/services/sync-discussion-document-terms";
 import { evaluateDocumentsForTerm } from "@/lib/classification/utils/evaluate-documents-for-term";
 import { DOCUMENT_TERM_ASSIGNED_BY } from "@/lib/document-terms/document-term-config";
+import { fetchDigestPartitionsForDocuments } from "@/lib/document-terms/utils/fetch-digest-partitions-for-documents";
 import { db } from "@/lib/db";
+import { bulkInvalidateTermDigestPartitions } from "@/lib/term-digests/services/bulk-invalidate-term-digest-partitions";
 import { buildEvaluateTermPrompt } from "@/lib/llm/utils/build-system-prompt-from-settings";
 import { parseChatModel, type ChatModelId } from "@/lib/langchain";
 import { addJob } from "@/lib/qstash/services/add-job-service";
@@ -18,7 +21,16 @@ import {
 } from "@/lib/terms/term-backfill-config";
 import { fetchBackfillDocumentBatch } from "../utils/fetch-backfill-document-batch";
 import { computeTokenCostUsd } from "../utils/estimate-backfill-cost";
+import { fetchTermAssignedDocumentIds } from "../utils/fetch-term-assigned-document-ids";
+import type { TermBackfillRunProgress } from "../types";
 import { finalizeTermBackfillRun } from "./finalize-term-backfill-run";
+
+function passesBackfillThreshold(
+  item: { match: boolean; confidence: number },
+  confidenceMin: number,
+): boolean {
+  return item.match && item.confidence >= confidenceMin;
+}
 
 export const processTermBackfillBatchPayloadSchema = z.object({
   runId: z.uuid(),
@@ -150,6 +162,8 @@ export async function processTermBackfillBatch(
   let batchInputTokens = 0;
   let batchOutputTokens = 0;
   let batchMatched = 0;
+  let batchUnmatched = 0;
+  const affectedParentDocumentIds = new Set<string>();
 
   try {
     for (
@@ -168,15 +182,67 @@ export async function processTermBackfillBatch(
       batchInputTokens += evaluation.usage.inputTokens;
       batchOutputTokens += evaluation.usage.outputTokens;
 
-      const matches = evaluation.results.filter(
-        (item) => item.match && item.confidence >= run.confidenceMin,
+      const resultByDocumentId = new Map(
+        evaluation.results.map((item) => [item.documentId, item]),
+      );
+      const assignedDocumentIds = run.includeAlreadyAssigned
+        ? await fetchTermAssignedDocumentIds({
+            termId: run.termId,
+            documentIds: llmBatch.map((doc) => doc.id),
+          })
+        : new Set<string>();
+
+      if (run.includeAlreadyAssigned && assignedDocumentIds.size > 0) {
+        const documentIdsToRemove = [...assignedDocumentIds].filter(
+          (documentId) => {
+            const result = resultByDocumentId.get(documentId);
+            return (
+              result !== undefined &&
+              !passesBackfillThreshold(result, run.confidenceMin)
+            );
+          },
+        );
+
+        if (documentIdsToRemove.length > 0) {
+          await db
+            .delete(documentTerms)
+            .where(
+              and(
+                eq(documentTerms.termId, run.termId),
+                inArray(documentTerms.documentId, documentIdsToRemove),
+              ),
+            );
+
+          const partitions = await fetchDigestPartitionsForDocuments(
+            documentIdsToRemove,
+          );
+
+          await bulkInvalidateTermDigestPartitions({
+            termId: run.termId,
+            partitions,
+          });
+
+          batchUnmatched += documentIdsToRemove.length;
+
+          for (const documentId of documentIdsToRemove) {
+            affectedParentDocumentIds.add(documentId);
+          }
+        }
+      }
+
+      const matches = evaluation.results.filter((item) =>
+        passesBackfillThreshold(item, run.confidenceMin),
       );
 
-      if (matches.length > 0) {
+      const newMatches = matches.filter(
+        (item) => !assignedDocumentIds.has(item.documentId),
+      );
+
+      if (newMatches.length > 0) {
         await db
           .insert(documentTerms)
           .values(
-            matches.map((item) => ({
+            newMatches.map((item) => ({
               documentId: item.documentId,
               termId: run.termId,
               confidence: item.confidence,
@@ -185,8 +251,16 @@ export async function processTermBackfillBatch(
           )
           .onConflictDoNothing();
 
-        batchMatched += matches.length;
+        batchMatched += newMatches.length;
+
+        for (const item of newMatches) {
+          affectedParentDocumentIds.add(item.documentId);
+        }
       }
+    }
+
+    for (const parentDocumentId of affectedParentDocumentIds) {
+      await syncDiscussionDocumentTerms(parentDocumentId);
     }
   } catch (error) {
     const message =
@@ -201,12 +275,14 @@ export async function processTermBackfillBatch(
     documentId: lastDocument.id,
   };
 
-  const totalInputTokens = run.result.inputTokens + batchInputTokens;
-  const totalOutputTokens = run.result.outputTokens + batchOutputTokens;
-  const updatedResult = {
-    documentsScanned: run.result.documentsScanned + documents.length,
-    documentsMatched: run.result.documentsMatched + batchMatched,
-    documentsSkipped: run.result.documentsSkipped,
+  const priorResult = run.result as TermBackfillRunProgress;
+  const totalInputTokens = priorResult.inputTokens + batchInputTokens;
+  const totalOutputTokens = priorResult.outputTokens + batchOutputTokens;
+  const updatedResult: TermBackfillRunProgress = {
+    documentsScanned: priorResult.documentsScanned + documents.length,
+    documentsMatched: priorResult.documentsMatched + batchMatched,
+    documentsUnmatched: (priorResult.documentsUnmatched ?? 0) + batchUnmatched,
+    documentsSkipped: priorResult.documentsSkipped,
     inputTokens: totalInputTokens,
     outputTokens: totalOutputTokens,
     costUsd: computeTokenCostUsd({
@@ -215,7 +291,7 @@ export async function processTermBackfillBatch(
       model,
     }),
     cursor: nextCursor,
-    cancelledAt: run.result.cancelledAt,
+    cancelledAt: priorResult.cancelledAt,
   };
 
   const [updatedRun] = await db

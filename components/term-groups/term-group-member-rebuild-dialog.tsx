@@ -17,20 +17,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
-import {
-  chatModelIds,
-  chatModelRegistry,
-  type ChatModelId,
-} from "@/lib/langchain";
+import { ChatModelSelect } from "@/components/llm/chat-model-select";
+import type { ChatModelId } from "@/lib/langchain";
 import type { EstimateTermGroupMemberRebuildResult } from "@/lib/term-group-member-rebuild/types";
 import { DEFAULT_TERM_GROUP_MEMBER_REBUILD_MODEL } from "@/lib/term-groups/term-group-member-rebuild-config";
 import { TERM_GROUP_CONFIG } from "@/lib/term-groups/term-group-config";
@@ -160,24 +150,14 @@ export function TermGroupMemberRebuildDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="member-rebuild-model">Model</Label>
-            <Select
+            <ChatModelSelect
+              id="member-rebuild-model"
               value={model}
               onValueChange={(value) => {
-                setModel(value as ChatModelId);
+                setModel(value);
                 setEstimate(null);
               }}
-            >
-              <SelectTrigger id="member-rebuild-model" className="w-full">
-                <SelectValue placeholder="Select model" />
-              </SelectTrigger>
-              <SelectContent>
-                {chatModelIds.map((modelId) => (
-                  <SelectItem key={modelId} value={modelId}>
-                    {chatModelRegistry[modelId].label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
 
           <div className="flex items-start justify-between gap-4 rounded-lg border p-3">

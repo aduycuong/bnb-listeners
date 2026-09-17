@@ -107,8 +107,11 @@ export function TermBackfillStatus({
         <p className="text-xs text-muted-foreground">
           {formatNumber(run.result.documentsScanned)} /{" "}
           {formatNumber(run.estimate.documentCount)} scanned ·{" "}
-          {formatNumber(run.result.documentsMatched)} matched ·{" "}
-          {formatUsd(run.result.costUsd)} spent
+          {formatNumber(run.result.documentsMatched)} matched
+          {(run.result.documentsUnmatched ?? 0) > 0
+            ? ` · ${formatNumber(run.result.documentsUnmatched ?? 0)} unmatched`
+            : ""}{" "}
+          · {formatUsd(run.result.costUsd)} spent
         </p>
       </div>
 

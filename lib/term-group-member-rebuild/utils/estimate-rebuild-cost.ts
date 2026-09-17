@@ -1,8 +1,7 @@
-import type { ChatModelId } from "@/lib/langchain";
+import { getChatModelPricing, type ChatModelId } from "@/lib/langchain";
 
 import {
   TERM_GROUP_MEMBER_REBUILD_EXA_TOKENS_PER_QUERY,
-  TERM_GROUP_MEMBER_REBUILD_MODEL_PRICING,
   TERM_GROUP_MEMBER_REBUILD_OUTPUT_TOKENS_PER_TERM,
   TERM_GROUP_MEMBER_REBUILD_SYSTEM_PROMPT_TOKENS,
 } from "@/lib/term-groups/term-group-member-rebuild-config";
@@ -33,7 +32,7 @@ export function estimateRebuildCost(params: {
   const outputTokens =
     termCount * TERM_GROUP_MEMBER_REBUILD_OUTPUT_TOKENS_PER_TERM;
 
-  const pricing = TERM_GROUP_MEMBER_REBUILD_MODEL_PRICING[model];
+  const pricing = getChatModelPricing(model);
   const costUsd =
     (inputTokens / 1_000_000) * pricing.inputPerMTok +
     (outputTokens / 1_000_000) * pricing.outputPerMTok;
@@ -51,7 +50,7 @@ export function computeTokenCostUsd(params: {
   outputTokens: number;
   model: ChatModelId;
 }): number {
-  const pricing = TERM_GROUP_MEMBER_REBUILD_MODEL_PRICING[params.model];
+  const pricing = getChatModelPricing(params.model);
   const costUsd =
     (params.inputTokens / 1_000_000) * pricing.inputPerMTok +
     (params.outputTokens / 1_000_000) * pricing.outputPerMTok;

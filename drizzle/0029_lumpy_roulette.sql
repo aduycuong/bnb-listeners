@@ -1,0 +1,1 @@
+ALTER TABLE "term_backfill_runs" ALTER COLUMN "result" SET DEFAULT '{"documentsScanned":0,"documentsMatched":0,"documentsUnmatched":0,"documentsSkipped":0,"inputTokens":0,"outputTokens":0,"costUsd":0,"cursor":null}'::jsonb;

@@ -7,6 +7,7 @@ import { upsertDocument } from "@/lib/documents/services/upsert-document";
 
 import { DISCUSSION_DOC_TYPE } from "../config";
 import { buildDiscussionContent } from "../utils/build-discussion-content";
+import { syncDiscussionDocumentTerms } from "./sync-discussion-document-terms";
 
 export type SyncDiscussionDocumentResult = {
   discussionDocumentId: string | null;
@@ -98,7 +99,7 @@ export async function syncDiscussionDocument(
     ? `Thảo luận: ${parent.title.trim()}`
     : `Thảo luận về bài ${parent.sourceItemId}`;
 
-  const result = await upsertDocument(
+  const upsertResult = await upsertDocument(
     {
       docType: DISCUSSION_DOC_TYPE,
       sourceOriginKey: parent.sourceOriginKey,
@@ -127,9 +128,11 @@ export async function syncDiscussionDocument(
     userId,
   );
 
+  await syncDiscussionDocumentTerms(parent.id);
+
   return {
-    discussionDocumentId: result.documentId,
-    outcome: result.outcome,
+    discussionDocumentId: upsertResult.documentId,
+    outcome: upsertResult.outcome,
     substantiveCount: substantive.length,
   };
 }

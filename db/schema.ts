@@ -740,6 +740,7 @@ export const termBackfillRuns = pgTable(
       .$type<{
         documentsScanned: number;
         documentsMatched: number;
+        documentsUnmatched?: number;
         documentsSkipped: number;
         inputTokens: number;
         outputTokens: number;
@@ -751,6 +752,7 @@ export const termBackfillRuns = pgTable(
       .default({
         documentsScanned: 0,
         documentsMatched: 0,
+        documentsUnmatched: 0,
         documentsSkipped: 0,
         inputTokens: 0,
         outputTokens: 0,

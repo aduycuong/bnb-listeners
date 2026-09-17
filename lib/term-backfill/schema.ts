@@ -15,7 +15,7 @@ export const termBackfillEstimateBodySchema = z.object({
     .max(1)
     .optional()
     .default(TERM_BACKFILL_QUALITY_MIN),
-  /** When true, re-evaluate documents already assigned to this term. */
+  /** When true, re-evaluate assigned documents and unlink those that no longer match. */
   includeAlreadyAssigned: z.boolean().optional().default(false),
 });
 

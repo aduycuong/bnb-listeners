@@ -16,7 +16,10 @@ export function toTermBackfillRunItem(
     includeAlreadyAssigned: run.includeAlreadyAssigned,
     confidenceMin: run.confidenceMin,
     estimate: run.estimate,
-    result: run.result,
+    result: {
+      ...run.result,
+      documentsUnmatched: run.result.documentsUnmatched ?? 0,
+    },
     error: run.error,
     startedAt: run.startedAt.toISOString(),
     finishedAt: run.finishedAt?.toISOString() ?? null,
