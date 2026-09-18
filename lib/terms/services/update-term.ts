@@ -8,6 +8,7 @@ import type { WorkspaceContext } from "@/lib/workspaces/types";
 import type { UpdateTermParams, UpdateTermResult } from "../types";
 import { assertUniqueTermName } from "../utils/assert-unique-term-name";
 import { normalizeTermDescription } from "../utils/normalize-term-description";
+import { refreshTermEmbeddingsBestEffort } from "../utils/refresh-term-embeddings-best-effort";
 import { toTermListItem } from "../utils/to-term-list-item";
 
 export async function updateTerm(
@@ -46,6 +47,13 @@ export async function updateTerm(
 
   if (!term) {
     throw new NotFoundError("term", id);
+  }
+
+  const embeddingInputChanged =
+    term.name !== existing.name || term.description !== existing.description;
+
+  if (embeddingInputChanged) {
+    await refreshTermEmbeddingsBestEffort([term.id]);
   }
 
   return toTermListItem(term);

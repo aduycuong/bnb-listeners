@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { documents, dataSources } from "@/db/schema";
 import { DISCUSSION_DOC_TYPE } from "@/lib/comments/config";
 import { findDiscussionDocumentId } from "@/lib/comments/utils/find-discussion-document-id";
-import { resolveDiscussionParentDocumentId } from "@/lib/comments/utils/resolve-discussion-parent-document-id";
+import { findDiscussionParentDocument } from "@/lib/comments/utils/find-discussion-parent-document";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
@@ -45,16 +45,14 @@ export async function getDocument(
           sourceOriginKey: row.document.sourceOriginKey,
           sourceItemId: row.document.sourceItemId,
         });
-  const parentDocumentId =
-    row.document.docType === DISCUSSION_DOC_TYPE
-      ? await resolveDiscussionParentDocumentId({
-          workspaceId: ctx.workspaceId,
-          docType: row.document.docType,
-          sourceOriginKey: row.document.sourceOriginKey,
-          sourceItemId: row.document.sourceItemId,
-          metadata: row.document.metadata,
-        })
-      : null;
+  const parent = await findDiscussionParentDocument({
+    workspaceId: ctx.workspaceId,
+    docType: row.document.docType,
+    sourceOriginKey: row.document.sourceOriginKey,
+    sourceItemId: row.document.sourceItemId,
+    metadata: row.document.metadata,
+  });
+  const parentDocumentId = parent?.id ?? null;
 
   return {
     ...row.document,

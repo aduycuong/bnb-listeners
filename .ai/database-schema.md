@@ -169,7 +169,7 @@ Tenant container for documents, terms, and members.
 | slug | text | YES | — | URL-safe identifier |
 | owner_user_id | uuid | NO | — | Owning user (`users.id`) |
 | data_collection_scope | text | NO | `tin tức và dữ liệu về bất động sản` | Domain for relevance scoring and LLM prompts |
-| auto_create_terms | boolean | NO | `true` | When true, AI may propose new terms for unmatched documents |
+| auto_create_terms | boolean | NO | `true` | When true, LLM-proposed terms that match no existing term are created |
 | term_language | text | NO | `auto` | Language for generated term names/descriptions (`term_language` enum) |
 | term_criteria | text | NO | `''` | Multiline rules for new term creation (primary source for auto-created terms) |
 | created_at | timestamptz | NO | `now()` | Row creation time |
@@ -464,7 +464,7 @@ Workspace scope is inherited via `document_id` → `documents.workspace_id`.
 
 ### `terms`
 
-Workspace-scoped keyword labels. Terms are short keywords/tags for filtering — not a fixed subject taxonomy. The LLM can auto-create terms when no existing term matches, primarily following workspace rules (`term_criteria`).
+Workspace-scoped keyword labels. Terms are short keywords/tags for filtering — not a fixed subject taxonomy. The LLM can auto-create terms when a proposed term matches no existing one, primarily following workspace rules (`term_criteria`). Classification matches LLM-proposed terms against existing terms via `embedding`, so the classifier never needs the full term list in its prompt.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -479,6 +479,8 @@ Workspace-scoped keyword labels. Terms are short keywords/tags for filtering —
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 | search_tsv | tsvector | NO | generated | `to_tsvector('simple', coalesce(name,'') || ' ' || coalesce(description,''))` — full-text search over name and description |
+| embedding | vector(1536) | YES | — | `text-embedding-3-small` of `name: description`; refreshed on create/update, backfilled by `npm run terms:embed`. Null terms are skipped by classifier candidate matching |
+| embedding_model | text | YES | — | Model that produced `embedding` |
 
 **Indexes**
 
@@ -489,6 +491,7 @@ Workspace-scoped keyword labels. Terms are short keywords/tags for filtering —
 | `idx_terms_source_document` | `(source_document_id)` | Trace auto-created terms |
 | `idx_terms_active_backfill_run` | `(active_backfill_run_id)` | Resolve active backfill from term |
 | `idx_terms_search_tsv` | GIN `(search_tsv)` | Full-text search on term name and description |
+| `idx_terms_embedding_hnsw` | Partial HNSW `(embedding vector_cosine_ops)` WHERE NOT NULL, m=16, ef_construction=64 | Nearest-term lookup for LLM-proposed terms during classification |
 
 ---
 

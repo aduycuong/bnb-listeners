@@ -38,6 +38,9 @@ export type MergeTermsResult = {
   message: string;
 };
 
+export type RefreshTermEmbeddingsParams = { termIds: string[] };
+export type RefreshTermEmbeddingsResult = { embedded: number };
+
 export type TermListItem = {
   id: string;
   name: string;

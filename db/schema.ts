@@ -679,6 +679,13 @@ export const terms = pgTable(
       (): ReturnType<typeof sql> =>
         sql`to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(description, ''))`,
     ),
+    /**
+     * Embedding of `name + description` used to match LLM-proposed terms
+     * against existing ones during classification. Null until embedded
+     * (backfill with `npm run terms:embed`).
+     */
+    embedding: pgVector1536("embedding"),
+    embeddingModel: text("embedding_model"),
   },
   (table) => [
     uniqueIndex("idx_terms_workspace_name").on(table.workspaceId, table.name),
@@ -686,6 +693,10 @@ export const terms = pgTable(
     index("idx_terms_source_document").on(table.sourceDocumentId),
     index("idx_terms_active_backfill_run").on(table.activeBackfillRunId),
     index("idx_terms_search_tsv").using("gin", table.searchTsv),
+    index("idx_terms_embedding_hnsw")
+      .using("hnsw", table.embedding.op("vector_cosine_ops"))
+      .with({ m: 16, ef_construction: 64 })
+      .where(sql`${table.embedding} IS NOT NULL`),
   ],
 );
 

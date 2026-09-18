@@ -75,7 +75,9 @@ export function buildClassifyTermsPrompt(
 
 Term trong workspace là từ khóa hoặc nhãn ngắn gọn để gắn và lọc tài liệu — không phải danh mục chủ đề cố định.
 
-Nhiệm vụ: đọc tài liệu và danh sách term hiện có, chọn mọi term (theo id) khớp rõ ràng với nội dung.
+Nhiệm vụ: đọc tài liệu và danh sách term ứng viên, chọn mọi term (theo id) khớp rõ ràng với nội dung.
+
+Danh sách chỉ gồm các term đã được lọc sơ là có thể liên quan — không phải toàn bộ term của workspace. Một ứng viên gần về mặt chữ nhưng khác nghĩa (địa danh khác, dự án khác, khái niệm rộng/hẹp hơn) thì không chọn.
 
 Hướng dẫn:
 - Chỉ dùng id có trong danh sách — không tự bịa id.
@@ -91,18 +93,19 @@ export function buildProposeTermPrompt(
   const languageGuideline = buildTermLanguageGuideline(settings.termLanguage);
   const rules = formatTermRules(settings.termCriteria);
 
-  return `Bạn đề xuất term mới (từ khóa/nhãn) cho phạm vi thu thập: ${settings.dataCollectionScope}.
+  return `Bạn đề xuất term (từ khóa/nhãn) cho một tài liệu trong phạm vi thu thập: ${settings.dataCollectionScope}.
 
-Term mới chủ yếu phải tuân theo quy tắc của workspace. Chỉ đề xuất khi thực sự cần — không bắt buộc phải tạo term cho mọi tài liệu.
+Term là từ khóa hoặc nhãn ngắn gọn để gắn và lọc tài liệu — không phải danh mục chủ đề cố định. Đề xuất của bạn sẽ được đối chiếu với term hiện có của workspace: đề xuất khớp term cũ sẽ gán vào term đó, đề xuất mới có thể được tạo thành term mới theo quy tắc workspace.
 
-Nhiệm vụ: trả về 0 đến nhiều term (tên ngắn kiểu từ khóa + mô tả một câu) phù hợp với tài liệu.
+Nhiệm vụ: trả về 0 đến nhiều term (tên ngắn kiểu từ khóa + mô tả một câu) mô tả đúng nội dung tài liệu.
 
 Hướng dẫn:
-- Trả về mảng rỗng khi: tài liệu ngoài phạm vi thu thập, nội dung quá mơ hồ, hoặc quy tắc không cho phép tạo term mới.
-- Có thể đề xuất nhiều term khi tài liệu có nhiều từ khóa/nhãn riêng biệt, mỗi cái đều đáng tạo theo quy tắc.
-- Không trùng tên trong cùng một lần đề xuất; không đề xuất term quá rộng/chung chung.
+- Trả về mảng rỗng khi tài liệu ngoài phạm vi thu thập hoặc nội dung quá mơ hồ để gắn nhãn.
+- Nếu có danh sách term gợi ý và tài liệu khớp term nào trong đó, dùng đúng tên term đó — không đặt tên khác cho cùng một ý.
+- Có thể đề xuất nhiều term khi tài liệu có nhiều từ khóa/nhãn riêng biệt; ưu tiên chính xác hơn gán nhiều.
+- Không trùng ý trong cùng một lần đề xuất; không đề xuất term quá rộng/chung chung.
 - Tên term ngắn, cụ thể, dễ tái sử dụng — ưu tiên dạng từ khóa hơn cụm chủ đề dài.
-- Mô tả giúp admin quyết định giữ, gộp hay xóa term.
+- Mô tả một câu, tối đa 150 ký tự, nêu phạm vi term để phân biệt với term gần nghĩa.
 - ${languageGuideline}${rules}
 - Nếu chưa có quy tắc bổ sung, vẫn bám phạm vi thu thập và nội dung tài liệu.`;
 }

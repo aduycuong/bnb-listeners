@@ -1,5 +1,3 @@
-import { eq } from "drizzle-orm";
-
 import { terms } from "@/db/schema";
 import { CreateFailedError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
@@ -9,6 +7,7 @@ import { TERM_CREATED_BY } from "../term-config";
 import type { CreateTermParams, CreateTermResult } from "../types";
 import { assertUniqueTermName } from "../utils/assert-unique-term-name";
 import { normalizeTermDescription } from "../utils/normalize-term-description";
+import { refreshTermEmbeddingsBestEffort } from "../utils/refresh-term-embeddings-best-effort";
 import { toTermListItem } from "../utils/to-term-list-item";
 
 export async function createTerm(
@@ -33,6 +32,8 @@ export async function createTerm(
   if (!term) {
     throw new CreateFailedError("term");
   }
+
+  await refreshTermEmbeddingsBestEffort([term.id]);
 
   return toTermListItem(term);
 }

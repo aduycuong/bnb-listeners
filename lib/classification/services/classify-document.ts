@@ -3,7 +3,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { documentTerms, documents, terms, type Document } from "@/db/schema";
 import { syncDiscussionDocumentTerms } from "@/lib/comments/services/sync-discussion-document-terms";
 import { findDiscussionDocumentId } from "@/lib/comments/utils/find-discussion-document-id";
-import { resolveDiscussionParentDocumentId } from "@/lib/comments/utils/resolve-discussion-parent-document-id";
+import { findDiscussionParentDocument } from "@/lib/comments/utils/find-discussion-parent-document";
 import { DISCUSSION_DOC_TYPE } from "@/lib/comments/config";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
@@ -11,10 +11,13 @@ import { getEligibleDocumentParts } from "@/lib/document-parts/services/get-elig
 import { DOCUMENT_TERM_ASSIGNED_BY } from "@/lib/document-terms/document-term-config";
 import { invalidateTermDigest } from "@/lib/term-digests/services/invalidate-term-digest";
 import { assignTermGroupsAfterClassification } from "@/lib/term-groups/services/assign-term-groups-after-classification";
+import { buildTermEmbeddingText } from "@/lib/terms/utils/build-term-embedding-text";
+import { embedTermTexts } from "@/lib/terms/utils/embed-term-texts";
 import { findTermByName } from "@/lib/terms/utils/find-term-by-name";
 import { resolveWorkspaceSystemPrompt } from "@/lib/llm/services/resolve-workspace-system-prompt";
 import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace-llm-settings";
 
+import { TERM_DUPLICATE_SIMILARITY } from "../config";
 import type {
   ClassifierDocContext,
   ClassifierTerm,
@@ -27,7 +30,11 @@ import type {
 import { buildClassifierContentFromParts } from "../utils/build-classifier-content-from-parts";
 import { classifyWithLlm } from "../utils/classify-with-llm";
 import { createAutoTerm } from "../utils/create-auto-term";
-import { loadTermsForClassifier } from "../utils/load-terms-for-classifier";
+import {
+  findCandidateTermsByEmbeddings,
+  type TermCandidate,
+} from "../utils/find-candidate-terms-by-embeddings";
+import { loadTermVocabularyHint } from "../utils/load-term-vocabulary-hint";
 import { proposeTermsWithLlm } from "../utils/propose-term-with-llm";
 
 const LLM_ASSIGNED_BY = DOCUMENT_TERM_ASSIGNED_BY.llmClassifier;
@@ -128,7 +135,7 @@ async function clearNonAdminAssignments(documentId: string): Promise<void> {
 }
 
 /**
- * Ask the LLM to pick matching terms from the existing list and map the
+ * Ask the LLM to pick matching terms from the candidate list and map the
  * response back onto known terms (unknown ids are dropped).
  */
 async function selectExistingTermsWithLlm(
@@ -144,10 +151,12 @@ async function selectExistingTermsWithLlm(
 
   const termById = new Map(classifierTerms.map((term) => [term.id, term]));
   const assignments: TermAssignment[] = [];
+  const seen = new Set<string>();
 
   for (const { id, confidence } of llmAssignments) {
     const term = termById.get(id);
-    if (!term) continue;
+    if (!term || seen.has(term.id)) continue;
+    seen.add(term.id);
     assignments.push({ termId: term.id, name: term.name, confidence });
   }
 
@@ -199,47 +208,166 @@ async function buildClassifyResultFromDocumentTerms(
   };
 }
 
-async function assignProposedTerms(
+/** Outcome of propose → embed → retrieve candidates → judge. */
+type ProposalMatch = {
+  proposals: ProposedTerm[];
+  /** Positionally aligned with `proposals`. */
+  embeddings: number[][];
+  /** Positionally aligned with `proposals`; best candidate first. */
+  candidatesByProposal: TermCandidate[][];
+  /** Existing terms the judge confirmed for this document. */
+  assignments: TermAssignment[];
+};
+
+const EMPTY_MATCH: ProposalMatch = {
+  proposals: [],
+  embeddings: [],
+  candidatesByProposal: [],
+  assignments: [],
+};
+
+/**
+ * Shared front half of classification:
+ *
+ *   1. LLM proposes the terms it would tag the document with (guided by the
+ *      workspace's most-used term names).
+ *   2. Proposals are embedded and the nearest existing terms are retrieved
+ *      per proposal — a short candidate list instead of the whole workspace.
+ *   3. The judge LLM sees only those candidates plus the document and decides
+ *      which existing terms apply, with a confidence per assignment.
+ *
+ * Nothing is written here; callers assign and (optionally) create.
+ */
+async function proposeAndJudgeTerms(
+  workspaceId: string,
+  docContext: ClassifierDocContext,
+): Promise<ProposalMatch> {
+  const [proposePrompt, vocabularyHint] = await Promise.all([
+    resolveWorkspaceSystemPrompt(workspaceId, "propose_term"),
+    loadTermVocabularyHint(workspaceId),
+  ]);
+
+  const proposals = dedupeProposals(
+    await proposeTermsWithLlm(docContext, proposePrompt, vocabularyHint),
+  );
+
+  if (proposals.length === 0) {
+    return EMPTY_MATCH;
+  }
+
+  const embeddings = await embedTermTexts(
+    proposals.map(buildTermEmbeddingText),
+  );
+  const candidatesByProposal = await findCandidateTermsByEmbeddings(
+    workspaceId,
+    embeddings,
+  );
+
+  const candidateById = new Map<string, ClassifierTerm>();
+  for (const candidates of candidatesByProposal) {
+    for (const { term } of candidates) {
+      candidateById.set(term.id, term);
+    }
+  }
+
+  let assignments: TermAssignment[] = [];
+
+  if (candidateById.size > 0) {
+    const classifyPrompt = await resolveWorkspaceSystemPrompt(
+      workspaceId,
+      "classify_terms",
+    );
+    assignments = await selectExistingTermsWithLlm(
+      docContext,
+      [...candidateById.values()],
+      classifyPrompt,
+    );
+  }
+
+  return { proposals, embeddings, candidatesByProposal, assignments };
+}
+
+/** Drop blank names and case-insensitive duplicates, keeping first occurrence. */
+function dedupeProposals(proposals: ProposedTerm[]): ProposedTerm[] {
+  const seen = new Set<string>();
+  const result: ProposedTerm[] = [];
+
+  for (const proposal of proposals) {
+    const name = proposal.name.trim();
+    if (!name) continue;
+
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    result.push({ name, description: proposal.description.trim() });
+  }
+
+  return result;
+}
+
+/**
+ * A proposal is "covered" when it already maps onto an existing term:
+ * either the judge assigned one of its candidates, or its best candidate is
+ * so similar that creating a new term would be a duplicate.
+ */
+function isProposalCovered(
+  candidates: TermCandidate[],
+  assignedTermIds: Set<string>,
+): boolean {
+  if (candidates.some((c) => assignedTermIds.has(c.term.id))) {
+    return true;
+  }
+
+  const best = candidates[0];
+  return best !== undefined && best.similarity >= TERM_DUPLICATE_SIMILARITY;
+}
+
+/**
+ * Creates terms for proposals that matched nothing. An exact name hit (e.g. a
+ * term without an embedding yet) is assigned instead of created.
+ */
+async function createTermsForUncoveredProposals(
   workspaceId: string,
   documentId: string,
-  proposedTerms: ProposedTerm[],
-): Promise<ClassifyDocumentResult> {
+  match: ProposalMatch,
+): Promise<{ assignments: TermAssignment[]; createdTerms: CreatedTerm[] }> {
+  const assignedTermIds = new Set(match.assignments.map((a) => a.termId));
   const assignments: TermAssignment[] = [];
   const createdTerms: CreatedTerm[] = [];
-  const seenNames = new Set<string>();
 
-  for (const proposed of proposedTerms) {
-    const name = proposed.name.trim();
-    if (!name) {
+  for (const [index, proposal] of match.proposals.entries()) {
+    const candidates = match.candidatesByProposal[index] ?? [];
+    if (isProposalCovered(candidates, assignedTermIds)) {
       continue;
     }
 
-    const nameKey = name.toLowerCase();
-    if (seenNames.has(nameKey)) {
-      continue;
-    }
-    seenNames.add(nameKey);
-
-    const existing = await findTermByName(workspaceId, name);
+    const existing = await findTermByName(workspaceId, proposal.name);
     if (existing) {
-      assignments.push({
-        termId: existing.id,
-        name: existing.name,
-        confidence: 1,
-      });
+      if (!assignedTermIds.has(existing.id)) {
+        assignedTermIds.add(existing.id);
+        assignments.push({
+          termId: existing.id,
+          name: existing.name,
+          confidence: 1,
+        });
+      }
       continue;
     }
 
-    const createdTerm = await createAutoTerm(workspaceId, documentId, {
-      name,
-      description: proposed.description,
-    });
+    const createdTerm = await createAutoTerm(
+      workspaceId,
+      documentId,
+      proposal,
+      match.embeddings[index] ?? null,
+    );
+    assignedTermIds.add(createdTerm.id);
     createdTerms.push(createdTerm);
   }
 
   await assignExistingTerms(documentId, assignments);
 
-  return { documentId, assignments, createdTerms };
+  return { assignments, createdTerms };
 }
 
 /**
@@ -249,8 +377,8 @@ async function assignProposedTerms(
  * parent post as framing context) ∪ terms mirrored from the parent post.
  *
  *   1. Drop every assignment except `admin` (LLM, backfill and old mirror rows).
- *   2. Classify the discussion body against existing terms only — new terms
- *      are never proposed from comment text.
+ *   2. Propose → match → judge against existing terms only — new terms are
+ *      never created from comment text.
  *   3. Re-mirror the parent's terms as `parent_mirror`.
  *
  * Triggered when the discussion body changes (`process-document`) and again
@@ -261,21 +389,14 @@ async function assignProposedTerms(
 async function classifyDiscussionDocument(
   doc: Document,
 ): Promise<ClassifyDocumentResult> {
-  const parentDocumentId = await resolveDiscussionParentDocumentId({
+  const parent = await findDiscussionParentDocument({
     workspaceId: doc.workspaceId,
     docType: doc.docType,
     sourceOriginKey: doc.sourceOriginKey,
     sourceItemId: doc.sourceItemId,
     metadata: doc.metadata,
   });
-
-  const [parent] = parentDocumentId
-    ? await db
-        .select({ title: documents.title, rawContent: documents.rawContent })
-        .from(documents)
-        .where(eq(documents.id, parentDocumentId))
-        .limit(1)
-    : [];
+  const parentDocumentId = parent?.id ?? null;
 
   const eligibleContent = await loadEligibleContent(doc.id);
 
@@ -292,19 +413,11 @@ async function classifyDiscussionDocument(
   const oldTermIds = await fetchNonAdminTermIds(doc.id);
   await clearNonAdminAssignments(doc.id);
 
-  const classifierTerms = await loadTermsForClassifier(doc.workspaceId);
   let assignments: TermAssignment[] = [];
 
-  if (classifierTerms.length > 0 && eligibleContent) {
-    const classifyPrompt = await resolveWorkspaceSystemPrompt(
-      doc.workspaceId,
-      "classify_terms",
-    );
-    assignments = await selectExistingTermsWithLlm(
-      docContext,
-      classifierTerms,
-      classifyPrompt,
-    );
+  if (eligibleContent) {
+    const match = await proposeAndJudgeTerms(doc.workspaceId, docContext);
+    assignments = match.assignments;
     await assignExistingTerms(doc.id, assignments);
   }
 
@@ -349,16 +462,17 @@ async function classifyCompanionDiscussionIfPresent(
 }
 
 /**
- * Classifies a document against existing terms using an LLM.
+ * Classifies a document into terms using an LLM.
  *
  * Steps:
- *   1. Fetch the document and all terms (including LLM-created ones).
- *   2. Build the classifier input from the document's eligible parts only
- *      (text body + media summaries that passed both score thresholds).
- *      When nothing is eligible the document gets no LLM terms.
- *   3. Ask the LLM to select matching terms; when none fit, optionally propose new terms.
- *   4. Assign existing terms, or auto-create proposed terms (0..N) when appropriate.
- *      If a proposed name already exists, assign that term instead.
+ *   1. Fetch the document and build the classifier input from its eligible
+ *      parts only (text body + media summaries that passed both score
+ *      thresholds). When nothing is eligible the document gets no LLM terms.
+ *   2. LLM proposes 0..N terms for the document (see proposeAndJudgeTerms).
+ *   3. Proposals are embedded; the nearest existing terms become candidates.
+ *   4. A judge LLM picks which candidates truly apply → assigned with confidence.
+ *   5. Proposals that map to no existing term are auto-created (with their
+ *      embedding) when autoCreateTerms is on; an exact name hit is assigned.
  *
  * By default only prior LLM assignments are replaced; admin and backfill
  * assignments are preserved. Set replaceAllAssignments to clear every
@@ -416,57 +530,22 @@ export async function classifyDocument(
     sourceOriginName: doc.sourceOriginName,
   };
 
-  const [classifierTerms, llmSettings] = await Promise.all([
-    loadTermsForClassifier(doc.workspaceId),
+  const [match, llmSettings] = await Promise.all([
+    proposeAndJudgeTerms(doc.workspaceId, docContext),
     getWorkspaceLlmSettings(doc.workspaceId),
   ]);
-  const classifyPrompt = await resolveWorkspaceSystemPrompt(
-    doc.workspaceId,
-    "classify_terms",
-  );
 
-  let result: ClassifyDocumentResult;
+  await assignExistingTerms(documentId, match.assignments);
 
-  if (classifierTerms.length === 0) {
-    if (!llmSettings.autoCreateTerms) {
-      result = { documentId, assignments: [], createdTerms: [] };
-    } else {
-      const proposePrompt = await resolveWorkspaceSystemPrompt(
-        doc.workspaceId,
-        "propose_term",
-      );
-      const proposedTerms = await proposeTermsWithLlm(docContext, proposePrompt);
-      result = await assignProposedTerms(
-        doc.workspaceId,
-        documentId,
-        proposedTerms,
-      );
-    }
-  } else {
-    const assignments = await selectExistingTermsWithLlm(
-      docContext,
-      classifierTerms,
-      classifyPrompt,
-    );
+  const created = llmSettings.autoCreateTerms
+    ? await createTermsForUncoveredProposals(doc.workspaceId, documentId, match)
+    : { assignments: [], createdTerms: [] };
 
-    if (assignments.length > 0) {
-      await assignExistingTerms(documentId, assignments);
-      result = { documentId, assignments, createdTerms: [] };
-    } else if (!llmSettings.autoCreateTerms) {
-      result = { documentId, assignments: [], createdTerms: [] };
-    } else {
-      const proposePrompt = await resolveWorkspaceSystemPrompt(
-        doc.workspaceId,
-        "propose_term",
-      );
-      const proposedTerms = await proposeTermsWithLlm(docContext, proposePrompt);
-      result = await assignProposedTerms(
-        doc.workspaceId,
-        documentId,
-        proposedTerms,
-      );
-    }
-  }
+  const result: ClassifyDocumentResult = {
+    documentId,
+    assignments: [...match.assignments, ...created.assignments],
+    createdTerms: created.createdTerms,
+  };
 
   // Invalidate daily digest rows for every term whose doc count changed.
   const newTermIds = [
