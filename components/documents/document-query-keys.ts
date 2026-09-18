@@ -23,6 +23,12 @@ export const documentChunksQueryKey = (
   documentId: string,
 ) => ["document-chunks", workspaceId, documentId] as const;
 
+export const documentChunkSearchQueryKey = (
+  workspaceId: string,
+  documentId: string,
+  query: string,
+) => ["document-chunk-search", workspaceId, documentId, query] as const;
+
 export const documentCommentsQueryKey = (
   workspaceId: string,
   documentId: string,

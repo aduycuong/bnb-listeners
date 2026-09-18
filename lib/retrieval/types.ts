@@ -1,3 +1,10 @@
+export type RetrievedChunkScores = {
+  rrfScore: number;
+  similarityScore: number;
+  multimodalSimilarityScore: number | null;
+  ftsScore: number | null;
+};
+
 export type RetrievedChunk = {
   id: string;
   content: string;
@@ -8,15 +15,18 @@ export type RetrievedChunk = {
   docType: string;
   sourceOriginName: string;
   publishedAt: string | null;
-  rrfScore: number;
   commentCount: number;
-};
+} & Partial<RetrievedChunkScores>;
+
+export type RetrievedChunkWithScores = RetrievedChunk & RetrievedChunkScores;
 
 export type SearchChunksParams = {
   workspaceId: string;
   query: string;
   limit?: number;
   termIds?: string[];
+  documentId?: string;
+  includeScores?: boolean;
 };
 
 export type GetDocumentCommentsParams = {

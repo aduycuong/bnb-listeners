@@ -13,3 +13,5 @@ Expose scored, classified content so research AI agents can search, filter, and 
 ## Retrieval behavior
 
 Results favor items that passed Score (high quality) and respect term assignments from Classify, ensuring agents always work from a clean, relevant knowledge base.
+
+Search runs hybrid retrieval (text vector + multimodal vector + full-text) and merges ranked lists with **Reciprocal Rank Fusion (RRF)**. See [Retrieval](./retrieval.md) for the RRF formula, config constants, and exposed score fields.

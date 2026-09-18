@@ -29,3 +29,25 @@ export type ListDocumentChunksResult = {
   items: DocumentChunkListItem[];
   total: number;
 };
+
+export type SearchDocumentChunksParams = {
+  id: string;
+  query: string;
+  limit?: number;
+};
+
+export type SearchDocumentChunkItem = {
+  id: string;
+  chunkIndex: number;
+  content: string;
+  qualityScore: number;
+  rrfScore: number;
+  similarityScore: number;
+  multimodalSimilarityScore: number | null;
+  ftsScore: number | null;
+};
+
+export type SearchDocumentChunksResult = {
+  query: string;
+  items: SearchDocumentChunkItem[];
+};
