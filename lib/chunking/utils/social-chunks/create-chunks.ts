@@ -1,90 +1,98 @@
 import { buildContextPrefix } from "./build-context-prefix";
-import { buildMediaSnippet } from "./build-media-snippet";
-import {
-  ATOMIC_MAX_CHARACTERS,
-  MAX_MEDIA_PER_KIND,
-  MEDIA_FALLBACK_TEXT,
-  SOCIAL_CONTENT_STRATEGY,
-} from "./config";
-import { normalizeMediaUrls } from "./normalize-media-urls";
+import { ATOMIC_MAX_CHARACTERS, SOCIAL_CONTENT_STRATEGY } from "./config";
 import { splitContent } from "./split-content";
-import type { CreateChunksParams, CreatedChunk, MediaKind } from "./types";
+import type { ChunkablePart, CreateChunksParams, CreatedChunk } from "./types";
 
 /**
- * Builds chunks from raw social content plus its image and video URLs.
+ * Builds chunks from a document's eligible parts.
  *
- * Standalone by design — no database reads, no network calls, no document
- * lookup — so it can be driven from a dataSource handler, a script, or a test.
- * Pass the result to `createChunkRecords` to get insertable `chunks` rows.
+ * Standalone by design — no database reads, no network calls — so it can be
+ * driven from the pipeline, a script, or a test. Pass the result to
+ * `createChunkRecords` to get insertable `chunks` rows.
  *
- * Text is treated as an atomic unit; each image and video becomes its own chunk
- * carrying `mediaUrl`, paired with a snippet of the post text. Every chunk gets
- * the source context prefix so it stays self-contained once retrieved.
+ * A text part is split into one or more text chunks (atomic when short).
+ * Each media part becomes exactly one chunk whose content is the part's LLM
+ * summary and whose `mediaUrl` points at the archived (R2) copy. Every chunk
+ * gets the source context prefix so it stays self-contained once retrieved.
  */
 export async function createChunks(
   params: CreateChunksParams,
 ): Promise<CreatedChunk[]> {
   const {
-    content,
-    imageUrls,
-    videoUrls,
+    parts,
     context,
     atomicMaxCharacters = ATOMIC_MAX_CHARACTERS,
-    maxMediaPerKind = MAX_MEDIA_PER_KIND,
   } = params;
 
   const contextPrefix = buildContextPrefix(context);
   const hasContextPrefix = contextPrefix.length > 0;
   const chunks: CreatedChunk[] = [];
 
-  const textParts = await splitContent({
-    content,
-    contextPrefixLength: contextPrefix.length,
-    atomicMaxCharacters,
-  });
-
-  for (const [partIndex, part] of textParts.entries()) {
-    chunks.push({
-      chunkIndex: chunks.length,
-      content: withContext(contextPrefix, part),
-      contentType: "text",
-      mediaUrl: null,
-      mediaMetadata: null,
-      metadata: {
-        strategy: SOCIAL_CONTENT_STRATEGY,
-        contentType: "text",
-        hasContextPrefix,
-        partIndex,
-        partCount: textParts.length,
-      },
-    });
-  }
-
-  const snippet = buildMediaSnippet(content);
-
-  function pushMediaChunks(kind: MediaKind, urls: string[]): void {
-    const text = snippet || MEDIA_FALLBACK_TEXT[kind];
-
-    for (const [index, url] of urls.entries()) {
-      chunks.push({
-        chunkIndex: chunks.length,
-        content: withContext(contextPrefix, text),
-        contentType: kind,
-        mediaUrl: url,
-        mediaMetadata: { kind, url, index, count: urls.length },
-        metadata: {
-          strategy: SOCIAL_CONTENT_STRATEGY,
-          contentType: kind,
-          hasContextPrefix,
-        },
+  for (const part of parts) {
+    if (part.contentType === "text") {
+      const pieces = await splitContent({
+        content: part.text,
+        contextPrefixLength: contextPrefix.length,
+        atomicMaxCharacters,
       });
-    }
-  }
 
-  pushMediaChunks("image", normalizeMediaUrls(imageUrls, maxMediaPerKind));
-  pushMediaChunks("video", normalizeMediaUrls(videoUrls, maxMediaPerKind));
+      for (const [splitIndex, piece] of pieces.entries()) {
+        chunks.push({
+          chunkIndex: chunks.length,
+          partId: part.partId,
+          partScore: part.partScore,
+          content: withContext(contextPrefix, piece),
+          contentType: "text",
+          mediaUrl: null,
+          mediaMetadata: null,
+          metadata: {
+            strategy: SOCIAL_CONTENT_STRATEGY,
+            contentType: "text",
+            hasContextPrefix,
+            partIndex: part.partIndex,
+            splitIndex,
+            splitCount: pieces.length,
+          },
+        });
+      }
+
+      continue;
+    }
+
+    const mediaChunk = buildMediaChunk(part, contextPrefix, chunks.length);
+    if (mediaChunk) chunks.push(mediaChunk);
+  }
 
   return chunks;
+}
+
+function buildMediaChunk(
+  part: ChunkablePart,
+  contextPrefix: string,
+  chunkIndex: number,
+): CreatedChunk | null {
+  const text = part.text.trim();
+  if (!text || !part.mediaUrl || part.contentType === "text") return null;
+
+  return {
+    chunkIndex,
+    partId: part.partId,
+    partScore: part.partScore,
+    content: withContext(contextPrefix, text),
+    contentType: part.contentType,
+    mediaUrl: part.mediaUrl,
+    mediaMetadata: {
+      kind: part.contentType,
+      url: part.mediaUrl,
+      sourceUrl: part.sourceUrl,
+    },
+    metadata: {
+      strategy: SOCIAL_CONTENT_STRATEGY,
+      contentType: part.contentType,
+      hasContextPrefix: contextPrefix.length > 0,
+      partIndex: part.partIndex,
+    },
+  };
 }
 
 function withContext(prefix: string, text: string): string {

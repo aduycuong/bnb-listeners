@@ -1,9 +1,9 @@
 /**
- * Cleans a raw media URL list before it becomes chunks: trims, drops blanks and
- * anything that is not http(s), removes duplicates, and caps the count so one
- * gallery post cannot blow up embedding cost.
+ * Cleans a raw media URL list: trims, drops blanks and anything that is not
+ * http(s), removes duplicates, and caps the count so one gallery post cannot
+ * blow up scoring or embedding cost.
  *
- * Order is preserved so `mediaMetadata.index` matches the source ordering.
+ * Order is preserved so downstream indexes match the source ordering.
  */
 export function normalizeMediaUrls(
   urls: string[] | undefined,

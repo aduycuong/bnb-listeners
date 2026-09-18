@@ -68,6 +68,11 @@ export function getEmbeddingStatusBadge(status: string): {
         label: "Pending",
         className: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
       };
+    case "rejected":
+      return {
+        label: "Rejected",
+        className: "bg-orange-500/10 text-orange-700 dark:text-orange-400",
+      };
     case "skipped":
       return {
         label: "Skipped",

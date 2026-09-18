@@ -14,9 +14,10 @@ Workspace settings còn có **phạm vi thu thập** (`data_collection_scope`) v
 
 ## Classification flow
 
-1. Sau khi chấm điểm, LLM đọc tài liệu và chọn term khớp (theo id) từ toàn bộ danh sách term hiện có.
-2. Nếu có term khớp, gán ngay kèm confidence.
-3. Nếu không khớp và auto-create bật, LLM đề xuất 0..N term mới (tên kiểu từ khóa + mô tả) theo quy tắc workspace. Tên đã tồn tại thì gán term đó; tên mới thì tạo và gán.
+1. Chỉ chạy khi tài liệu có ít nhất một **part** đủ điểm (xem [Score](./score.md)). Tài liệu không có part nào đủ điểm bị `rejected` và không được gán term LLM.
+2. LLM đọc **chỉ các part đủ điểm** — phần văn bản nguyên văn cộng tóm tắt của từng ảnh/video đủ điểm (`[Hình ảnh N]: …`) — và chọn term khớp (theo id) từ toàn bộ danh sách term hiện có. Nội dung không được index thì không được dùng để gán term.
+3. Nếu có term khớp, gán ngay kèm confidence.
+4. Nếu không khớp và auto-create bật, LLM đề xuất 0..N term mới (tên kiểu từ khóa + mô tả) theo quy tắc workspace. Tên đã tồn tại thì gán term đó; tên mới thì tạo và gán.
 
 ## Discussion documents
 

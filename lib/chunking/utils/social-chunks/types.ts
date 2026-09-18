@@ -18,37 +18,52 @@ export type ChunkSourceContext = {
   labels?: string[];
 };
 
+/**
+ * One eligible document part, reduced to what the chunker needs.
+ * `text` is the body for text parts and the LLM summary for media parts.
+ */
+export type ChunkablePart = {
+  partId: string;
+  partIndex: number;
+  contentType: ChunkContentType;
+  text: string;
+  /** Stable media URL (R2). Null for text parts. */
+  mediaUrl: string | null;
+  /** Original scraped URL, kept for reference in media_metadata. */
+  sourceUrl: string | null;
+  partScore: number;
+};
+
 export type CreateChunksParams = {
-  content: string;
-  imageUrls?: string[];
-  videoUrls?: string[];
+  parts: ChunkablePart[];
   context?: ChunkSourceContext;
   /** Overrides ATOMIC_MAX_CHARACTERS. */
   atomicMaxCharacters?: number;
-  /** Overrides MAX_MEDIA_PER_KIND. */
-  maxMediaPerKind?: number;
 };
 
 export type CreatedChunkMetadata = {
   strategy: typeof SOCIAL_CONTENT_STRATEGY;
   contentType: ChunkContentType;
   hasContextPrefix: boolean;
-  /** Position within the split content. Text chunks only. */
-  partIndex?: number;
-  /** Total parts the content was split into. Text chunks only. */
-  partCount?: number;
+  /** document_parts.part_index this chunk was built from. */
+  partIndex: number;
+  /** Position within the split text part. Text chunks only. */
+  splitIndex?: number;
+  /** Total pieces the text part was split into. Text chunks only. */
+  splitCount?: number;
 };
 
 export type CreatedChunkMediaMetadata = {
   kind: MediaKind;
   url: string;
-  index: number;
-  count: number;
+  sourceUrl: string | null;
 };
 
 /** Maps 1:1 onto a `chunks` row, minus `documentId` and the embedding columns. */
 export type CreatedChunk = {
   chunkIndex: number;
+  partId: string;
+  partScore: number;
   content: string;
   contentType: ChunkContentType;
   mediaUrl: string | null;
@@ -69,7 +84,6 @@ export type CreateChunkRecordsParams = {
   publishedAt: Date | null;
   chunks: CreatedChunk[];
   termIds?: string[];
-  qualityScore?: number | null;
   /**
    * Seeds the denormalized counters on insert. Later refreshes are handled by
    * trg_sync_chunk_engagement, which only fires on UPDATE of documents.

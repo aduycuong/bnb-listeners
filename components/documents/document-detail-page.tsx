@@ -20,9 +20,11 @@ import {
   scoreDocumentRequest,
 } from "@/components/documents/document-action-request";
 import { DocumentDetailChunks } from "@/components/documents/document-detail-chunks";
+import { DocumentDetailParts } from "@/components/documents/document-detail-parts";
 import { DocumentTypeBadge } from "@/components/documents/document-type-badge";
 import {
   documentChunksQueryKey,
+  documentPartsQueryKey,
   documentQueryKey,
 } from "@/components/documents/document-query-keys";
 import { Button } from "@/components/ui/button";
@@ -245,6 +247,7 @@ export function DocumentDetailPage({
           const result = await scoreDocumentRequest(workspace.id, documentId);
           toast.add({
             title: `Quality score updated to ${Math.round(result.qualityScore * 100)}%.`,
+            description: `${result.eligibleCount} of ${result.parts.length} part${result.parts.length === 1 ? "" : "s"} eligible for indexing.`,
             type: "success",
           });
           break;
@@ -278,6 +281,9 @@ export function DocumentDetailPage({
         }),
         queryClient.invalidateQueries({
           queryKey: documentChunksQueryKey(workspace.id, documentId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: documentPartsQueryKey(workspace.id, documentId),
         }),
       ]);
     } catch (error) {
@@ -453,8 +459,9 @@ export function DocumentDetailPage({
                 </p>
               </div>
               <p className="text-sm text-muted-foreground">
-                Combined quality score from source credibility, completeness,
-                freshness, and relevance dimensions.
+                Highest part score among the parts that passed both the
+                relevance and detail thresholds. See Parts below for the
+                per-part breakdown.
               </p>
             </section>
 
@@ -590,6 +597,8 @@ export function DocumentDetailPage({
           </Tabs>
         </CardContent>
       </Card>
+
+      <DocumentDetailParts workspaceId={workspace.id} documentId={documentId} />
 
       <DocumentDetailChunks
         workspaceId={workspace.id}

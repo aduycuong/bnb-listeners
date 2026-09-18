@@ -1,8 +1,11 @@
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { QUALITY_SCORE_THRESHOLD } from "@/lib/chunking/config";
+import { documents } from "@/db/schema";
+import { deleteDocumentChunks } from "@/lib/chunking/services/delete-document-chunks";
 import { rebuildDocumentChunks } from "@/lib/chunking/services/rebuild-document-chunks";
 import { classifyDocument } from "@/lib/classification/services/classify-document";
+import { db } from "@/lib/db";
 import { scoreDocument } from "@/lib/scoring/services/score-document";
 
 export const processDocumentPayloadSchema = z.object({
@@ -14,14 +17,16 @@ export type ProcessDocumentPayload = z.infer<
 >;
 
 /**
- * QStash dataSource handler: process a newly created document.
+ * QStash dataSource handler: process a newly created or updated document.
  *
  * Steps:
  *   1. Validate payload.
- *   2. Score — compute quality_score across all dimensions.
- *   3. Classify — assign terms via LLM; optionally propose 0..N new terms when none match.
- *   4. Chunk — split content and media, embed, and replace the document's chunks.
- *      Skipped when quality is below the threshold.
+ *   2. Drop the document's existing chunks so nothing stale survives a re-run.
+ *   3. Score — rebuild parts (text + each image/video), archive media on R2,
+ *      score every part independently on relevance + detail.
+ *   4. If no part is eligible: mark the document `rejected` and stop.
+ *   5. Classify — assign terms from the eligible parts only.
+ *   6. Chunk — split and embed the eligible parts, write chunks with term ids.
  */
 export async function processDocument(payload: unknown): Promise<void> {
   const parsed = processDocumentPayloadSchema.safeParse(payload);
@@ -36,19 +41,48 @@ export async function processDocument(payload: unknown): Promise<void> {
 
   console.log(`[process-document] Starting for document ${documentId}`);
 
-  // Step 1: quality scoring
+  // Step 1: clear the index for this document before anything else runs.
+  const { deleted } = await deleteDocumentChunks({ documentId });
+  if (deleted > 0) {
+    console.log(
+      `[process-document] Removed ${deleted} existing chunk(s) for document ${documentId}`,
+    );
+  }
+
+  // Step 2: parts + per-part scoring
   const scoreResult = await scoreDocument({ documentId });
 
-  const dimensionLog = Object.entries(scoreResult.dimensions)
-    .map(([key, { score }]) => `${key}=${score.toFixed(3)}`)
-    .join(" ");
+  for (const part of scoreResult.parts) {
+    const scores =
+      part.relevanceScore != null && part.detailScore != null
+        ? `rel=${part.relevanceScore.toFixed(2)} det=${part.detailScore.toFixed(2)}`
+        : "rel=- det=-";
+    const error = part.scoreError ? ` error="${part.scoreError}"` : "";
+
+    console.log(
+      `[process-document] part=${part.partIndex} type=${part.contentType} ` +
+        `${scores} eligible=${part.isEligible} source=${part.scoreSource}${error}`,
+    );
+  }
 
   console.log(
     `[process-document] Scored document ${documentId}: ` +
-      `quality=${scoreResult.qualityScore} | ${dimensionLog}`,
+      `quality=${scoreResult.qualityScore} eligible=${scoreResult.eligibleCount}/${scoreResult.parts.length}`,
   );
 
-  // Step 2: term classification
+  if (scoreResult.eligibleCount === 0) {
+    await db
+      .update(documents)
+      .set({ embeddingStatus: "rejected" })
+      .where(eq(documents.id, documentId));
+
+    console.log(
+      `[process-document] Document ${documentId} has no eligible part — rejected, skipping classify and chunks`,
+    );
+    return;
+  }
+
+  // Step 3: term classification on eligible parts
   const classifyResult = await classifyDocument({ documentId });
 
   const termLog = classifyResult.assignments
@@ -70,15 +104,7 @@ export async function processDocument(payload: unknown): Promise<void> {
     );
   }
 
-  if (scoreResult.qualityScore < QUALITY_SCORE_THRESHOLD) {
-    console.log(
-      `[process-document] Document ${documentId} below quality threshold ` +
-        `(${scoreResult.qualityScore.toFixed(3)} < ${QUALITY_SCORE_THRESHOLD}) — skipping chunks`,
-    );
-    return;
-  }
-
-  // Step 3: chunk, embed, and replace
+  // Step 4: chunk, embed, and store
   const { chunksCreated, textChunks, mediaChunks } = await rebuildDocumentChunks({
     documentId,
   });

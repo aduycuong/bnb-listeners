@@ -79,6 +79,8 @@ function getEmptyDescription(
   switch (embeddingStatus) {
     case "pending":
       return "The discussion document has not been indexed yet.";
+    case "rejected":
+      return "The discussion did not score high enough on relevance and detail to be indexed.";
     case "skipped":
       return "Discussion indexing was skipped because quality was below the threshold.";
     case "failed":

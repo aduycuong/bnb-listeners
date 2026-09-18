@@ -60,6 +60,7 @@ export async function listDocumentCommentChunks(
   const rows = await db
     .select({
       id: chunks.id,
+      partId: chunks.partId,
       chunkIndex: chunks.chunkIndex,
       content: chunks.content,
       contentType: chunks.contentType,
@@ -75,6 +76,7 @@ export async function listDocumentCommentChunks(
 
   const items: DocumentChunkListItem[] = rows.map((row) => ({
     id: row.id,
+    partId: row.partId,
     chunkIndex: row.chunkIndex,
     content: row.content,
     contentType: row.contentType,

@@ -16,7 +16,7 @@ Each query runs three retrieval methods in parallel, then merges their ranked li
 
 Multimodal search is skipped when `VOYAGE_API_KEY` is missing or the Voyage request fails; text vector + FTS still run.
 
-All sources filter to chunks with `quality_score >= 0.4` (`RETRIEVAL_QUALITY_MIN`).
+All sources filter to chunks with `quality_score >= 0.4` (`RETRIEVAL_QUALITY_MIN`). `chunks.quality_score` is the score of the **part** the chunk came from (see [Score](./score.md)), so a text chunk and an image chunk from the same post can rank differently.
 
 ## Reciprocal Rank Fusion (RRF)
 
@@ -75,7 +75,7 @@ When `includeScores` is true, the search API returns both **fusion rank** and **
 | `similarityScore` | Text cosine similarity: `1 - (embedding <=> query_vector)` |
 | `multimodalSimilarityScore` | Multimodal cosine similarity, or `null` for text-only / missing multimodal vector |
 | `ftsScore` | PostgreSQL `ts_rank(content_tsv, query)` when the chunk matches FTS, otherwise `null` |
-| `qualityScore` | Chunk quality from indexing (not query-specific) |
+| `qualityScore` | Part score of the chunk's originating part (not query-specific) |
 
 **Important:** text and multimodal vector search always return their nearest neighbours up to the candidate limit — there is no minimum similarity cutoff. A low `similarityScore` with a non-zero `rrfScore` usually means the chunk was the "least bad" match in a small pool, not a strong semantic hit. FTS only contributes when keywords match (`ftsScore` not null).
 

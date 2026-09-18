@@ -514,6 +514,66 @@ export const comments = pgTable(
 export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
 
+/**
+ * Scorable units of a document: one text part (the whole body) plus one part
+ * per image and video. Each part is scored independently by an LLM on
+ * relevance and detail; only parts with both scores above the threshold become
+ * chunks. Rebuilt (delete-then-insert) on every process-document run.
+ */
+export const documentParts = pgTable(
+  "document_parts",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    partIndex: integer("part_index").notNull(),
+    /** `text` | `image` | `video` */
+    contentType: text("content_type").notNull(),
+    /** Text body for text parts; original source URL for media parts. */
+    value: text("value").notNull(),
+    /** R2 object key after the media was archived. Media parts only. */
+    storageKey: text("storage_key"),
+    /** Stable public URL on R2 — what vision scoring and embedding actually read. */
+    storageUrl: text("storage_url"),
+    /** LLM scores normalised to [0, 1]. Null until scored. */
+    relevanceScore: real("relevance_score"),
+    detailScore: real("detail_score"),
+    /** (relevance + detail) / 2 — denormalised for querying. */
+    partScore: real("part_score"),
+    /** LLM description of the information the part carries; media chunk content. */
+    summary: text("summary"),
+    /** True when both scores meet their thresholds. */
+    isEligible: boolean("is_eligible").notNull().default(false),
+    /** `llm` | `placeholder` | `failed` — how the score was produced. */
+    scoreSource: text("score_source"),
+    /** Failure reason when score_source = failed (download, vision, …). */
+    scoreError: text("score_error"),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    scoredAt: timestamp("scored_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_document_parts_document_index").on(
+      table.documentId,
+      table.partIndex,
+    ),
+    index("idx_document_parts_document_id").on(table.documentId),
+    index("idx_document_parts_eligible").on(
+      table.documentId,
+      table.isEligible,
+    ),
+  ],
+);
+
+export type DocumentPart = typeof documentParts.$inferSelect;
+export type NewDocumentPart = typeof documentParts.$inferInsert;
+
 export const chunks = pgTable(
   "chunks",
   {
@@ -521,6 +581,10 @@ export const chunks = pgTable(
     documentId: uuid("document_id")
       .notNull()
       .references(() => documents.id, { onDelete: "cascade" }),
+    /** Part this chunk was built from. Null for chunks predating document_parts. */
+    partId: uuid("part_id").references(() => documentParts.id, {
+      onDelete: "set null",
+    }),
     chunkIndex: integer("chunk_index").notNull(),
     content: text("content").notNull(),
     embedding: pgVector1536("embedding").notNull(),
@@ -542,6 +606,7 @@ export const chunks = pgTable(
     mediaMetadata: jsonb("media_metadata").$type<Record<string, unknown>>(),
     embeddingMultimodal: pgVector1024("embedding_multimodal"),
     termIds: uuid("term_ids").array().default([]),
+    /** Part score of the document_part this chunk came from. */
     qualityScore: real("quality_score"),
     /** Denormalized from documents by trg_sync_chunk_engagement — filter/sort without a join. */
     likeCount: integer("like_count").notNull().default(0),
@@ -570,6 +635,7 @@ export const chunks = pgTable(
       sql`${table.metadata} jsonb_path_ops`,
     ),
     index("idx_chunks_document_id").on(table.documentId),
+    index("idx_chunks_part_id").on(table.partId),
     index("idx_chunks_type_recency").on(
       table.docType,
       table.publishedAt.desc(),

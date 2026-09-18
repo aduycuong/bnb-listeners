@@ -19,6 +19,7 @@ import type {
  * Every chunk's content is embedded with the text model because
  * chunks.embedding is NOT NULL. Chunks carrying a mediaUrl are additionally
  * embedded with the multimodal model into chunks.embedding_multimodal.
+ * chunks.quality_score is the score of the part the chunk was built from.
  *
  * A failing multimodal call leaves those chunks with a null multimodal vector
  * rather than failing the whole document: text retrieval still works and the
@@ -34,7 +35,6 @@ export async function createChunkRecords(
     publishedAt,
     chunks,
     termIds = [],
-    qualityScore = null,
     engagement = ZERO_ENGAGEMENT_COUNTS,
   } = params;
 
@@ -50,6 +50,7 @@ export async function createChunkRecords(
 
     return {
       documentId,
+      partId: chunk.partId,
       chunkIndex: chunk.chunkIndex,
       content: chunk.content,
       embedding: textVectors[position],
@@ -70,7 +71,7 @@ export async function createChunkRecords(
         : null,
       embeddingMultimodal: multimodal,
       termIds,
-      qualityScore,
+      qualityScore: chunk.partScore,
       ...engagement,
     };
   });

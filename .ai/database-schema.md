@@ -47,8 +47,29 @@ Used by `documents.embedding_status`.
 | ----- | ----------- |
 | `pending` | Awaiting chunking/embedding |
 | `chunked` | Chunks stored and indexed |
+| `rejected` | Scored, but no part met the quality thresholds — no chunks in the index |
 | `skipped` | Reserved — not currently written by the pipeline |
 | `failed` | Processing error |
+
+### `document_part_content_type`
+
+Used by `document_parts.content_type` and `chunks.content_type`.
+
+| Value | Description |
+| ----- | ----------- |
+| `text` | The document body (one part per document) |
+| `image` | One image attachment |
+| `video` | One video attachment |
+
+### `document_part_score_source`
+
+Used by `document_parts.score_source`.
+
+| Value | Description |
+| ----- | ----------- |
+| `llm` | Scored by the LLM (text model or vision model) |
+| `placeholder` | Not scored — video scoring is not implemented yet; always ineligible |
+| `failed` | Scoring could not run (media download or vision call failed); see `score_error` |
 
 ### `comment_role`
 
@@ -168,7 +189,7 @@ Tenant container for documents, terms, and members.
 - ← `workspace_task_runs.workspace_id`
 - ← `workspace_api_keys.workspace_id`
 
-LLM system prompts (`classify_terms`, `propose_term`, `score_relevance`) are built in code from the columns above via `lib/llm/utils/build-system-prompt-from-settings.ts`.
+LLM system prompts (`classify_terms`, `propose_term`, `score_text_part`, `score_media_part`, `score_comment_stances`) are built in code from the columns above via `lib/llm/utils/build-system-prompt-from-settings.ts`.
 
 A default workspace is created for each user on first sign-in.
 
@@ -257,8 +278,8 @@ One row per ingested item within a workspace. Term assignment is in `document_te
 | title | text | YES | — | Human-readable title |
 | raw_content | text | NO | — | Full raw text |
 | metadata | jsonb | NO | `{}` | Type-specific fields (url, author, …) |
-| embedding_status | text | NO | `pending` | `pending` \| `chunked` \| `skipped` \| `failed` |
-| quality_score | real | YES | — | Weighted average of scoring dimensions (0–1). Null until scored. |
+| embedding_status | text | NO | `pending` | `pending` \| `chunked` \| `rejected` \| `skipped` \| `failed` |
+| quality_score | real | YES | — | Highest `part_score` among eligible `document_parts` (0–1); `0` when no part is eligible. Null until scored. |
 | like_count | integer | NO | `0` | Likes / hearts / favorites / diggs |
 | comment_count | integer | NO | `0` | Comments / replies |
 | share_count | integer | NO | `0` | Shares / retweets / reposts |
@@ -271,7 +292,7 @@ One row per ingested item within a workspace. Term assignment is in `document_te
 | neutral_count | integer | NO | `0` | Debate comments with stance = neutral |
 | source_run_id | uuid | YES | — | FK → `source_runs.id` ON DELETE SET NULL — source run that first created this document |
 | data_source_id | uuid | NO | — | FK → `data_sources.id` ON DELETE CASCADE — data source that owns this document; set on insert only |
-| published_at | timestamptz | YES | — | Source publish date; used for freshness scoring and canonical ordering |
+| published_at | timestamptz | YES | — | Source publish date; canonical ordering and chunk context prefix |
 | created_at | timestamptz | NO | `now()` | Ingestion time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
@@ -307,6 +328,48 @@ Debate and role tallies are written by `score-document-comments` after batch sco
 - → `source_runs.id` (`source_run_id`)
 - → `data_sources.id` (`data_source_id`)
 - ← `comments.document_id`
+- ← `document_parts.document_id`
+
+---
+
+### `document_parts`
+
+Scorable units of a document. `process-document` rebuilds them (delete-then-insert) every run: part 0 is the whole text body, followed by one part per image URL and one per video URL from `documents.metadata.imageUrls` / `videoUrls`. Each part is scored **independently** by an LLM — media parts are scored on the media alone, without the post caption, so a chunk built from an image only enters the index when the image itself carries retrievable information.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| document_id | uuid | NO | — | FK → `documents.id` ON DELETE CASCADE |
+| part_index | integer | NO | — | Order within document; 0 = text |
+| content_type | text | NO | — | `text` \| `image` \| `video` |
+| value | text | NO | — | Text body for text parts; original source URL for media parts |
+| storage_key | text | YES | — | R2 object key once the media has been archived (media only) |
+| storage_url | text | YES | — | Stable public R2 URL — the URL vision scoring and multimodal embedding read |
+| relevance_score | real | YES | — | LLM relevance to the workspace data-collection scope, 0–1 |
+| detail_score | real | YES | — | LLM detail / completeness of the part's own information, 0–1 |
+| part_score | real | YES | — | `(relevance_score + detail_score) / 2` |
+| summary | text | YES | — | LLM description of the information the part carries; becomes the chunk content for media parts |
+| is_eligible | boolean | NO | `false` | `relevance_score ≥ PART_RELEVANCE_MIN AND detail_score ≥ PART_DETAIL_MIN` |
+| score_source | text | YES | — | `llm` \| `placeholder` \| `failed` |
+| score_error | text | YES | — | Failure reason when `score_source = failed` |
+| metadata | jsonb | NO | `{}` | Part-level extras (media content type, byte size, …) |
+| scored_at | timestamptz | YES | — | When the scores were last written |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| `idx_document_parts_document_index` | UNIQUE `(document_id, part_index)` | One row per part position |
+| `idx_document_parts_document_id` | `(document_id)` | List parts for a document |
+| `idx_document_parts_eligible` | `(document_id, is_eligible)` | Select parts to chunk / classify |
+
+Media parts are downloaded and re-uploaded to R2 before scoring because scraped CDN URLs (Facebook `fbcdn`) expire. When the download or the vision call fails the part is stored with `score_source = failed`, `is_eligible = false`, and the reason in `score_error`; the rest of the document still proceeds. Deleting a document removes its R2 objects (`storage_key`) before the row cascade.
+
+**Relations**
+
+- → `documents.id` (`document_id`)
+- ← `chunks.part_id`
 
 ---
 
@@ -361,6 +424,7 @@ RAG query table. One row per retrievable unit: a text chunk, or a single image o
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | document_id | uuid | NO | — | FK → `documents.id` ON DELETE CASCADE |
+| part_id | uuid | YES | — | FK → `document_parts.id` ON DELETE SET NULL — part this chunk was built from |
 | chunk_index | integer | NO | — | Order within document |
 | content | text | NO | — | Chunk text |
 | embedding | vector(1536) | NO | — | text-embedding-3-small |
@@ -371,11 +435,11 @@ RAG query table. One row per retrievable unit: a text chunk, or a single image o
 | embedding_model | text | NO | `text-embedding-3-small` | Model used |
 | embedding_version | text | NO | `v1` | Embedding version tag |
 | content_type | text | NO | `text` | `text` \| `image` \| `video` |
-| media_url | text | YES | — | Image or video URL for media chunks |
-| media_metadata | jsonb | YES | — | Media descriptor (`kind`, `url`, `index`, `count`, embedding model) |
+| media_url | text | YES | — | R2 `storage_url` of the media part (stable, never expires) |
+| media_metadata | jsonb | YES | — | Media descriptor (`kind`, `url`, `sourceUrl`, embedding model) |
 | embedding_multimodal | vector(1024) | YES | — | voyage-multimodal-3.5; media chunks only |
 | term_ids | uuid[] | YES | `{}` | Denormalized term ids for fast filtering |
-| quality_score | real | YES | — | Denormalized from `documents.quality_score` |
+| quality_score | real | YES | — | `part_score` of the originating `document_parts` row |
 | like_count | integer | NO | `0` | Denormalized from `documents.like_count` |
 | comment_count | integer | NO | `0` | Denormalized from `documents.comment_count` |
 | share_count | integer | NO | `0` | Denormalized from `documents.share_count` |
@@ -387,10 +451,10 @@ RAG query table. One row per retrievable unit: a text chunk, or a single image o
 - HNSW on `embedding` (`vector_cosine_ops`, m=16, ef_construction=64)
 - Partial HNSW on `embedding_multimodal` WHERE NOT NULL
 - GIN on `content_tsv`, `term_ids`, `metadata`
-- B-tree on `doc_type`, `content_type`, `published_at`, `document_id`, `quality_score`, `like_count DESC`
+- B-tree on `doc_type`, `content_type`, `published_at`, `document_id`, `part_id`, `quality_score`, `like_count DESC`
 - `(doc_type, published_at DESC)` for type + recency queries
 
-Every chunk has a text `embedding`, including media chunks — their content is the source context plus a snippet of the post body. Media chunks additionally carry `embedding_multimodal` from voyage-multimodal-3.5, which embeds the paired text and media URL together.
+Chunks are built only from eligible `document_parts`. A text part is split into one or more text chunks; each eligible image or video part becomes exactly one media chunk. Every chunk has a text `embedding`, including media chunks — their content is the source context prefix plus the part's LLM `summary` (not the post caption). Media chunks additionally carry `embedding_multimodal` from voyage-multimodal-3.5, which embeds the summary and the R2 media URL together.
 
 Engagement counters are seeded on insert and afterwards kept in step by `trg_sync_chunk_engagement` (see triggers below), so refreshed scrape counts never require re-embedding.
 

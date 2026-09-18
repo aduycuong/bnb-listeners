@@ -2,12 +2,25 @@ import type { WorkspaceLlmSettings } from "@/lib/workspaces/types";
 
 import { buildTermLanguageGuideline } from "./term-language-guideline";
 
-const DEFAULT_SCORE_RELEVANCE_GUIDE = `Thang điểm:
+const PART_SCORE_GUIDE = `Hai thang điểm độc lập, mỗi thang 0–10:
+
+relevance — mức liên quan tới phạm vi thu thập:
   0  = Hoàn toàn không liên quan hoặc spam
-  3  = Liên quan lỏng lẻo hoặc nội dung mỏng
+  3  = Chỉ chạm nhẹ, liên quan lỏng lẻo
   5  = Liên quan vừa phải
-  7  = Liên quan rõ và hữu ích
-  10 = Rất liên quan, có chiều sâu, đúng trọng tâm phạm vi thu thập`;
+  7  = Liên quan rõ, đúng chủ đề
+  10 = Đúng trọng tâm phạm vi thu thập
+
+detail — mức chi tiết / đầy đủ của thông tin mà PHẦN NÀY tự chứa:
+  0  = Không có thông tin (chỉ cảm thán, chào hỏi, emoji, ảnh trang trí)
+  3  = Có một vài thông tin rời rạc, thiếu ngữ cảnh để dùng được
+  5  = Đủ thông tin cơ bản: ai / cái gì / ở đâu / bao nhiêu
+  7  = Chi tiết, có số liệu, mô tả cụ thể, người đọc dùng được ngay
+  10 = Rất đầy đủ, nhiều thông tin cụ thể, có thể trả lời nhiều câu hỏi
+
+summary — 1–3 câu tóm tắt đúng thông tin phần này chứa, không suy diễn, không thêm gì ngoài nội dung. Chuỗi rỗng nếu detail ≤ 2.
+
+Chấm hai thang điểm hoàn toàn độc lập: một phần có thể rất liên quan nhưng không chi tiết, hoặc rất chi tiết nhưng ngoài phạm vi.`;
 
 function formatTermRules(criteria: string): string {
   const lines = criteria
@@ -114,14 +127,26 @@ Hướng dẫn:
 - Không xét term khác — chỉ term được cung cấp.`;
 }
 
-export function buildScoreRelevancePrompt(
+export function buildScoreTextPartPrompt(
   settings: WorkspaceLlmSettings,
 ): string {
-  return `Bạn chấm mức độ liên quan của nội dung với phạm vi thu thập: ${settings.dataCollectionScope}.
+  return `Bạn chấm điểm phần văn bản của một tài liệu thu thập được, theo phạm vi thu thập: ${settings.dataCollectionScope}.
 
-Cho điểm từ 0 đến 10 về mức nội dung có giá trị, đúng phạm vi và đáng lập chỉ mục.
+Chỉ những phần đạt cả hai thang điểm đủ cao mới được đưa vào chỉ mục tìm kiếm, nên hãy chấm chặt: nội dung mỏng, kêu gọi tương tác, quảng cáo chung chung hay ngoài phạm vi phải nhận điểm thấp.
 
-${DEFAULT_SCORE_RELEVANCE_GUIDE}`;
+${PART_SCORE_GUIDE}`;
+}
+
+export function buildScoreMediaPartPrompt(
+  settings: WorkspaceLlmSettings,
+): string {
+  return `Bạn chấm điểm MỘT hình ảnh (hoặc video) đính kèm tài liệu thu thập được, theo phạm vi thu thập: ${settings.dataCollectionScope}.
+
+Bạn KHÔNG được cung cấp caption hay nội dung bài viết — hãy chấm hoàn toàn dựa trên những gì nhìn thấy trong ảnh. Một ảnh chỉ đáng đưa vào chỉ mục khi tự nó chứa thông tin có thể truy xuất: infographic, bảng giá, sơ đồ / mặt bằng, ảnh chụp văn bản hoặc thông báo, biểu đồ, bản đồ có chú thích, ảnh sản phẩm có thông tin rõ. Ảnh minh hoạ, ảnh chân dung, phong cảnh, meme, ảnh cần caption mới hiểu được phải nhận detail thấp.
+
+summary chỉ mô tả thông tin đọc được / nhìn thấy trong ảnh (chữ, số liệu, đối tượng, địa điểm nếu có chú thích) — không đoán bối cảnh bài viết.
+
+${PART_SCORE_GUIDE}`;
 }
 
 export function buildScoreCommentStancesPrompt(

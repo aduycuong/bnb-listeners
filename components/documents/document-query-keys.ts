@@ -18,6 +18,11 @@ export const documentsQueryKey = (
 export const documentQueryKey = (workspaceId: string, documentId: string) =>
   ["document", workspaceId, documentId] as const;
 
+export const documentPartsQueryKey = (
+  workspaceId: string,
+  documentId: string,
+) => ["document-parts", workspaceId, documentId] as const;
+
 export const documentChunksQueryKey = (
   workspaceId: string,
   documentId: string,

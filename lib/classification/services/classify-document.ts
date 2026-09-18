@@ -7,6 +7,7 @@ import { resolveDiscussionParentDocumentId } from "@/lib/comments/utils/resolve-
 import { DISCUSSION_DOC_TYPE } from "@/lib/comments/config";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
+import { getEligibleDocumentParts } from "@/lib/document-parts/services/get-eligible-document-parts";
 import { DOCUMENT_TERM_ASSIGNED_BY } from "@/lib/document-terms/document-term-config";
 import { invalidateTermDigest } from "@/lib/term-digests/services/invalidate-term-digest";
 import { assignTermGroupsAfterClassification } from "@/lib/term-groups/services/assign-term-groups-after-classification";
@@ -23,6 +24,7 @@ import type {
   ProposedTerm,
   TermAssignment,
 } from "../types";
+import { buildClassifierContentFromParts } from "../utils/build-classifier-content-from-parts";
 import { classifyWithLlm } from "../utils/classify-with-llm";
 import { createAutoTerm } from "../utils/create-auto-term";
 import { loadTermsForClassifier } from "../utils/load-terms-for-classifier";
@@ -84,6 +86,16 @@ async function invalidateAffectedDigests(
       invalidateTermDigest({ termId, dateKey, dataSourceId: documentJobId }),
     ),
   );
+}
+
+/**
+ * Classifier input built only from parts that passed both score thresholds.
+ * Null when nothing is eligible.
+ */
+async function loadEligibleContent(documentId: string): Promise<string | null> {
+  const parts = await getEligibleDocumentParts(documentId);
+  const content = buildClassifierContentFromParts(parts);
+  return content || null;
 }
 
 async function clearAllAssignments(documentId: string): Promise<void> {
@@ -265,9 +277,11 @@ async function classifyDiscussionDocument(
         .limit(1)
     : [];
 
+  const eligibleContent = await loadEligibleContent(doc.id);
+
   const docContext: ClassifierDocContext = {
     title: doc.title,
-    rawContent: doc.rawContent,
+    rawContent: eligibleContent ?? "",
     docType: doc.docType,
     sourceOriginName: doc.sourceOriginName,
     parentContext: parent
@@ -281,7 +295,7 @@ async function classifyDiscussionDocument(
   const classifierTerms = await loadTermsForClassifier(doc.workspaceId);
   let assignments: TermAssignment[] = [];
 
-  if (classifierTerms.length > 0) {
+  if (classifierTerms.length > 0 && eligibleContent) {
     const classifyPrompt = await resolveWorkspaceSystemPrompt(
       doc.workspaceId,
       "classify_terms",
@@ -339,8 +353,11 @@ async function classifyCompanionDiscussionIfPresent(
  *
  * Steps:
  *   1. Fetch the document and all terms (including LLM-created ones).
- *   2. Ask the LLM to select matching terms; when none fit, optionally propose new terms.
- *   3. Assign existing terms, or auto-create proposed terms (0..N) when appropriate.
+ *   2. Build the classifier input from the document's eligible parts only
+ *      (text body + media summaries that passed both score thresholds).
+ *      When nothing is eligible the document gets no LLM terms.
+ *   3. Ask the LLM to select matching terms; when none fit, optionally propose new terms.
+ *   4. Assign existing terms, or auto-create proposed terms (0..N) when appropriate.
  *      If a proposed name already exists, assign that term instead.
  *
  * By default only prior LLM assignments are replaced; admin and backfill
@@ -373,13 +390,6 @@ export async function classifyDocument(
     return classifyDiscussionDocument(doc);
   }
 
-  const docContext: ClassifierDocContext = {
-    title: doc.title,
-    rawContent: doc.rawContent,
-    docType: doc.docType,
-    sourceOriginName: doc.sourceOriginName,
-  };
-
   const oldTermIds = replaceAllAssignments
     ? await fetchDocumentTermIds(documentId)
     : await fetchLlmTermIds(documentId);
@@ -389,6 +399,22 @@ export async function classifyDocument(
   } else {
     await clearLlmAssignments(documentId);
   }
+
+  const eligibleContent = await loadEligibleContent(documentId);
+
+  // Nothing passed the score thresholds — no chunks will exist, so no terms either.
+  if (!eligibleContent) {
+    await invalidateAffectedDigests(oldTermIds, doc.publishedAt, doc.dataSourceId);
+    await classifyCompanionDiscussionIfPresent(doc);
+    return { documentId, assignments: [], createdTerms: [] };
+  }
+
+  const docContext: ClassifierDocContext = {
+    title: doc.title,
+    rawContent: eligibleContent,
+    docType: doc.docType,
+    sourceOriginName: doc.sourceOriginName,
+  };
 
   const [classifierTerms, llmSettings] = await Promise.all([
     loadTermsForClassifier(doc.workspaceId),

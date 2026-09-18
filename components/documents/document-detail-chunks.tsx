@@ -102,19 +102,30 @@ function getContentTypeBadge(contentType: string) {
 
 function formatChunkPart(metadata: Record<string, unknown>) {
   const partIndex = metadata.partIndex;
-  const partCount = metadata.partCount;
+  const splitIndex = metadata.splitIndex;
+  const splitCount = metadata.splitCount;
 
-  if (typeof partIndex === "number" && typeof partCount === "number") {
-    return `Part ${partIndex + 1} of ${partCount}`;
+  if (typeof partIndex !== "number") {
+    return null;
   }
 
-  return null;
+  if (
+    typeof splitIndex === "number" &&
+    typeof splitCount === "number" &&
+    splitCount > 1
+  ) {
+    return `Part ${partIndex} · piece ${splitIndex + 1} of ${splitCount}`;
+  }
+
+  return `Part ${partIndex}`;
 }
 
 function getEmptyDescription(embeddingStatus: string) {
   switch (embeddingStatus) {
     case "pending":
       return "This document has not been indexed yet.";
+    case "rejected":
+      return "No part of this document scored high enough on relevance and detail to be indexed.";
     case "skipped":
       return "Indexing was skipped because quality was below the threshold.";
     case "failed":
@@ -219,6 +230,7 @@ function resolveSearchResultChunk(
 
   return {
     id: searchItem.id,
+    partId: null,
     chunkIndex: searchItem.chunkIndex,
     content: searchItem.content,
     contentType: "text",

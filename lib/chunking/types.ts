@@ -4,9 +4,20 @@ export type RebuildDocumentChunksParams = {
 
 export type RebuildDocumentChunksResult = {
   documentId: string;
+  /** Parts that passed both score thresholds and were offered to the chunker. */
+  eligibleParts: number;
   chunksCreated: number;
   textChunks: number;
   mediaChunks: number;
+};
+
+export type DeleteDocumentChunksParams = {
+  documentId: string;
+};
+
+export type DeleteDocumentChunksResult = {
+  documentId: string;
+  deleted: number;
 };
 
 export type ListDocumentChunksParams = {
@@ -15,6 +26,7 @@ export type ListDocumentChunksParams = {
 
 export type DocumentChunkListItem = {
   id: string;
+  partId: string | null;
   chunkIndex: number;
   content: string;
   contentType: string;
