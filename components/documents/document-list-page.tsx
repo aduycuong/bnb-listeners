@@ -4,12 +4,13 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ChevronDownIcon, SearchIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  ResourceListRow,
-  type ResourceListRowItem,
-} from "@/components/dashboard/resource-list-page";
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
 import { DocumentDataSourceFilter } from "@/components/documents/document-data-source-filter";
+import {
+  DOCUMENT_LIST_ITEM_SKELETON_CLASS,
+  DocumentListItemCard,
+  documentCardItemToListRowItem,
+} from "@/components/documents/document-list-item-card";
 import { DocumentDataSourceGroupFilter } from "@/components/documents/document-data-source-group-filter";
 import {
   DocumentTermFilterSelect,
@@ -36,15 +37,11 @@ import {
   LIST_SORT_OPTIONS,
   type ListSortOption,
 } from "@/lib/dashboard/filter-sort-list-items";
-import {
-  DOCUMENT_CONFIG,
-  getDocumentHref,
-  getEmbeddingStatusBadge,
-} from "@/lib/documents/document-config";
+import { DOCUMENT_CONFIG } from "@/lib/documents/document-config";
 import { DOCUMENT_LIST_PAGE_SIZE } from "@/lib/documents/document-list-config";
+import { toDocumentCardItem } from "@/lib/documents/utils/to-document-card-item";
 import type { DocumentTermFilterMode } from "@/lib/documents/document-term-filter-config";
 import type {
-  DocumentListItem,
   DocumentTermSummary,
   ListDocumentsResult,
 } from "@/lib/documents/types";
@@ -129,35 +126,6 @@ async function fetchJobs(workspaceId: string): Promise<ListDataSourcesResult> {
   return data;
 }
 
-function truncateContent(content: string, maxLength = 120) {
-  const trimmed = content.trim();
-  if (trimmed.length <= maxLength) {
-    return trimmed;
-  }
-
-  return `${trimmed.slice(0, maxLength).trimEnd()}…`;
-}
-
-function toListRowItem(doc: DocumentListItem): ResourceListRowItem {
-  const statusBadge = getEmbeddingStatusBadge(doc.embeddingStatus);
-
-  return {
-    id: doc.id,
-    name: doc.title?.trim() || doc.sourceItemId,
-    subtitle: [doc.sourceOriginName, doc.docType, doc.dataSourceName ? `from ${doc.dataSourceName}` : null]
-      .filter(Boolean)
-      .join(" · "),
-    description: truncateContent(doc.rawContent),
-    date: doc.publishedAt ?? doc.createdAt,
-    meta:
-      doc.qualityScore != null
-        ? `Quality ${Math.round(doc.qualityScore * 100)}%`
-        : undefined,
-    badges: [statusBadge],
-    terms: doc.terms,
-  };
-}
-
 export function DocumentListPage({
   workspace,
   workspaceIndex,
@@ -213,9 +181,24 @@ export function DocumentListPage({
     [documentsQuery.data?.pages],
   );
 
+  const cardItems = useMemo(
+    () => documents.map(toDocumentCardItem),
+    [documents],
+  );
+
   const listItems = useMemo(
-    () => filterSortListItems(documents.map(toListRowItem), keyword, sort),
-    [documents, keyword, sort],
+    () =>
+      filterSortListItems(
+        cardItems.map(documentCardItemToListRowItem),
+        keyword,
+        sort,
+      ),
+    [cardItems, keyword, sort],
+  );
+
+  const cardItemsById = useMemo(
+    () => new Map(cardItems.map((item) => [item.id, item])),
+    [cardItems],
   );
 
   const jobs = jobsQuery.data?.items ?? [];
@@ -368,7 +351,7 @@ export function DocumentListPage({
           <ul className="flex flex-col gap-2.5">
             {Array.from({ length: 4 }).map((_, index) => (
               <li key={index}>
-                <Skeleton className="h-18.5 w-full rounded-xl" />
+                <Skeleton className={DOCUMENT_LIST_ITEM_SKELETON_CLASS} />
               </li>
             ))}
           </ul>
@@ -399,19 +382,26 @@ export function DocumentListPage({
             </p>
 
             <ul className="flex flex-col gap-2.5">
-              {listItems.map((item) => (
-                <li key={item.id}>
-                  <ResourceListRow
-                    item={item}
-                    href={getDocumentHref(workspaceIndex, item.id)}
-                  />
-                </li>
-              ))}
+              {listItems.map((item) => {
+                const document = cardItemsById.get(item.id);
+                if (!document) {
+                  return null;
+                }
+
+                return (
+                  <li key={item.id}>
+                    <DocumentListItemCard
+                      document={document}
+                      workspaceIndex={workspaceIndex}
+                    />
+                  </li>
+                );
+              })}
 
               {isFetchingMore
                 ? Array.from({ length: 2 }).map((_, index) => (
                     <li key={`loading-${index}`}>
-                      <Skeleton className="h-18.5 w-full rounded-xl" />
+                      <Skeleton className={DOCUMENT_LIST_ITEM_SKELETON_CLASS} />
                     </li>
                   ))
                 : null}

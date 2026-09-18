@@ -19,6 +19,7 @@ export async function fetchDocumentTermNamesMap(
       documentId: documentTerms.documentId,
       id: terms.id,
       name: terms.name,
+      assignedBy: documentTerms.assignedBy,
     })
     .from(documentTerms)
     .innerJoin(terms, eq(documentTerms.termId, terms.id))
@@ -27,7 +28,11 @@ export async function fetchDocumentTermNamesMap(
 
   for (const row of rows) {
     const current = map.get(row.documentId) ?? [];
-    current.push({ id: row.id, name: row.name });
+    current.push({
+      id: row.id,
+      name: row.name,
+      assignedBy: row.assignedBy,
+    });
     map.set(row.documentId, current);
   }
 

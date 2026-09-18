@@ -1,11 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ImageIcon, TypeIcon, VideoIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, ImageIcon, TypeIcon, VideoIcon } from "lucide-react";
+import { useState } from "react";
 
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
 import { documentChunksQueryKey } from "@/components/documents/document-query-keys";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/toast";
 import type { ListDocumentChunksResult } from "@/lib/chunking/types";
 import { cn } from "@/lib/utils";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
@@ -70,15 +73,6 @@ function formatChunkPart(metadata: Record<string, unknown>) {
   return null;
 }
 
-function truncateContent(content: string, maxLength = 280) {
-  const trimmed = content.trim();
-  if (trimmed.length <= maxLength) {
-    return trimmed;
-  }
-
-  return `${trimmed.slice(0, maxLength).trimEnd()}…`;
-}
-
 function getEmptyDescription(embeddingStatus: string) {
   switch (embeddingStatus) {
     case "pending":
@@ -90,6 +84,43 @@ function getEmptyDescription(embeddingStatus: string) {
     default:
       return "No chunks were created for this document.";
   }
+}
+
+function CopyChunkIdButton({ chunkId }: { chunkId: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copyChunkId() {
+    try {
+      await navigator.clipboard.writeText(chunkId);
+      setCopied(true);
+      toast.add({
+        title: "Chunk ID copied.",
+        type: "success",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.add({
+        title: "Could not copy chunk ID.",
+        type: "error",
+      });
+    }
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      aria-label="Copy chunk ID"
+      onClick={() => void copyChunkId()}
+    >
+      {copied ? (
+        <CheckIcon className="size-3.5 text-green-600" />
+      ) : (
+        <CopyIcon className="size-3.5" />
+      )}
+    </Button>
+  );
 }
 
 export function DocumentDetailChunks({
@@ -154,6 +185,7 @@ export function DocumentDetailChunks({
                     <span className="text-xs font-medium text-muted-foreground">
                       #{chunk.chunkIndex + 1}
                     </span>
+                    <CopyChunkIdButton chunkId={chunk.id} />
                     <span
                       className={cn(
                         "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
@@ -176,8 +208,8 @@ export function DocumentDetailChunks({
                     ) : null}
                   </div>
 
-                  <p className="text-sm whitespace-pre-wrap">
-                    {truncateContent(chunk.content)}
+                  <p className="text-sm wrap-break-word whitespace-pre-wrap">
+                    {chunk.content.trim()}
                   </p>
 
                   {chunk.mediaUrl ? (
@@ -186,7 +218,7 @@ export function DocumentDetailChunks({
                       target="_blank"
                       rel="noreferrer noopener"
                       title={chunk.mediaUrl}
-                      className="mt-2 block max-w-full truncate text-xs text-primary underline-offset-4 hover:underline"
+                      className="mt-2 block max-w-full break-all text-xs text-primary underline-offset-4 hover:underline"
                     >
                       {chunk.mediaUrl}
                     </a>

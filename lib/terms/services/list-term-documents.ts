@@ -2,6 +2,7 @@ import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 
 import { dataSources, documentTerms, documents, terms } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
+import { fetchDocumentTermNamesMap } from "@/lib/documents/utils/fetch-document-term-names-map";
 import { db } from "@/lib/db";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
@@ -67,11 +68,15 @@ export async function listTermDocuments(
   const rows = await db
     .select({
       id: documents.id,
+      docType: documents.docType,
       title: documents.title,
+      rawContent: documents.rawContent,
       sourceOriginName: documents.sourceOriginName,
       sourceItemId: documents.sourceItemId,
+      embeddingStatus: documents.embeddingStatus,
       dataSourceName: dataSources.name,
       publishedAt: documents.publishedAt,
+      createdAt: documents.createdAt,
       confidence: documentTerms.confidence,
       qualityScore: documents.qualityScore,
     })
@@ -88,17 +93,25 @@ export async function listTermDocuments(
 
   const pageRows = rows.slice(0, limit);
   const hasMore = rows.length > limit;
+  const termsByDocumentId = await fetchDocumentTermNamesMap(
+    pageRows.map((row) => row.id),
+  );
 
   return {
     items: pageRows.map((row) => ({
       id: row.id,
+      docType: row.docType,
       title: row.title,
+      rawContent: row.rawContent,
       sourceOriginName: row.sourceOriginName,
       sourceItemId: row.sourceItemId,
+      embeddingStatus: row.embeddingStatus,
       dataSourceName: row.dataSourceName,
       publishedAt: row.publishedAt?.toISOString() ?? null,
+      createdAt: row.createdAt.toISOString(),
       confidence: row.confidence,
       qualityScore: row.qualityScore,
+      terms: termsByDocumentId.get(row.id) ?? [],
     })),
     hasMore,
     offset,

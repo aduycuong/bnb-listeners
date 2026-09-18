@@ -11,6 +11,24 @@ export const DOCUMENT_TERM_ASSIGNED_BY = {
 export type DocumentTermAssignedBy =
   (typeof DOCUMENT_TERM_ASSIGNED_BY)[keyof typeof DOCUMENT_TERM_ASSIGNED_BY];
 
+export const DOCUMENT_TERM_ASSIGNED_BY_LABELS: Record<
+  DocumentTermAssignedBy,
+  string
+> = {
+  [DOCUMENT_TERM_ASSIGNED_BY.admin]: "Admin",
+  [DOCUMENT_TERM_ASSIGNED_BY.adminMerge]: "Admin merge",
+  [DOCUMENT_TERM_ASSIGNED_BY.llmClassifier]: "Classifier",
+  [DOCUMENT_TERM_ASSIGNED_BY.termBackfill]: "Term backfill",
+  [DOCUMENT_TERM_ASSIGNED_BY.parentMirror]: "Parent mirror",
+};
+
+export function getDocumentTermAssignedByLabel(assignedBy: string): string {
+  return (
+    DOCUMENT_TERM_ASSIGNED_BY_LABELS[assignedBy as DocumentTermAssignedBy] ??
+    assignedBy.replaceAll("_", " ")
+  );
+}
+
 /** Use disable-trigger bulk insert when at least this many documents are affected. */
 export const BULK_ASSIGN_DOCUMENT_TERMS_THRESHOLD = 100;
 

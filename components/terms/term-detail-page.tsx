@@ -331,6 +331,7 @@ export function TermDetailPage({
           dataSourceIds={dataSourceIds}
           search={search}
           totalLoaded={documents.length}
+          workspaceIndex={workspaceIndex}
           isInitialLoading={documentsQuery.isLoading}
           isFetchingMore={documentsQuery.isFetchingNextPage}
           errorMessage={documentsQuery.error?.message}
@@ -340,7 +341,6 @@ export function TermDetailPage({
           onLoadMore={() => {
             void documentsQuery.fetchNextPage();
           }}
-          onDocumentClick={openDocument}
         />
     </div>
   );

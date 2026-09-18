@@ -1,13 +1,17 @@
 "use client";
 
 import { SearchIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
-import { DocumentDataSourceFilter } from "@/components/documents/document-data-source-filter";
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
-import { TermDocumentRow } from "@/components/terms/term-document-row";
+import { DocumentDataSourceFilter } from "@/components/documents/document-data-source-filter";
+import {
+  DOCUMENT_LIST_ITEM_SKELETON_CLASS,
+  DocumentListItemCard,
+} from "@/components/documents/document-list-item-card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toDocumentCardItemFromTermDocument } from "@/lib/documents/utils/to-document-card-item";
 import { TERM_CONFIG } from "@/lib/terms/term-config";
 import type { TermDocumentListItem } from "@/lib/terms/types";
 import type { DataSourceListItem } from "@/lib/data-sources/types";
@@ -18,6 +22,7 @@ type TermDetailDocumentsProps = {
   dataSourceIds: string[];
   search: string;
   totalLoaded: number;
+  workspaceIndex: number;
   isInitialLoading: boolean;
   isFetchingMore: boolean;
   errorMessage?: string;
@@ -25,7 +30,6 @@ type TermDetailDocumentsProps = {
   onJobIdsChange: (dataSourceIds: string[]) => void;
   onSearchChange: (search: string) => void;
   onLoadMore: () => void;
-  onDocumentClick: (documentId: string) => void;
 };
 
 export function TermDetailDocuments({
@@ -34,6 +38,7 @@ export function TermDetailDocuments({
   dataSourceIds,
   search,
   totalLoaded,
+  workspaceIndex,
   isInitialLoading,
   isFetchingMore,
   errorMessage,
@@ -41,12 +46,16 @@ export function TermDetailDocuments({
   onJobIdsChange,
   onSearchChange,
   onLoadMore,
-  onDocumentClick,
 }: TermDetailDocumentsProps) {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const hasSearch = search.trim().length > 0;
   const showEmptyState =
     !isInitialLoading && !errorMessage && documents.length === 0;
+
+  const cardItems = useMemo(
+    () => documents.map(toDocumentCardItemFromTermDocument),
+    [documents],
+  );
 
   useEffect(() => {
     const sentinel = loadMoreRef.current;
@@ -108,7 +117,7 @@ export function TermDetailDocuments({
         <ul className="flex flex-col gap-2.5">
           {Array.from({ length: 4 }).map((_, index) => (
             <li key={index}>
-              <Skeleton className="h-16 w-full rounded-xl" />
+              <Skeleton className={DOCUMENT_LIST_ITEM_SKELETON_CLASS} />
             </li>
           ))}
         </ul>
@@ -132,11 +141,11 @@ export function TermDetailDocuments({
           </p>
 
           <ul className="flex flex-col gap-2.5">
-            {documents.map((document) => (
+            {cardItems.map((document) => (
               <li key={document.id}>
-                <TermDocumentRow
+                <DocumentListItemCard
                   document={document}
-                  onClick={() => onDocumentClick(document.id)}
+                  workspaceIndex={workspaceIndex}
                 />
               </li>
             ))}
@@ -144,7 +153,7 @@ export function TermDetailDocuments({
             {isFetchingMore
               ? Array.from({ length: 2 }).map((_, index) => (
                   <li key={`loading-${index}`}>
-                    <Skeleton className="h-16 w-full rounded-xl" />
+                    <Skeleton className={DOCUMENT_LIST_ITEM_SKELETON_CLASS} />
                   </li>
                 ))
               : null}

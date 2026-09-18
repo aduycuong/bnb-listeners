@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
+import { DocumentTypeBadge } from "@/components/documents/document-type-badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -40,6 +41,7 @@ export type ResourceListRowItem = {
   date: string;
   subtitle?: ReactNode;
   meta?: string;
+  docType?: string;
   badges?: ResourceListBadge[];
   terms?: ResourceListTermTag[];
   leading?: {
@@ -111,6 +113,7 @@ export function ResourceListRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <p className="truncate font-medium">{item.name}</p>
+          {item.docType ? <DocumentTypeBadge docType={item.docType} /> : null}
           {item.badges?.map((badge) => (
             <span
               key={badge.label}

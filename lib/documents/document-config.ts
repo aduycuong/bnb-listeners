@@ -1,4 +1,8 @@
+import { DISCUSSION_DOC_TYPE } from "@/lib/comments/config";
+
 export const DOCUMENT_SEGMENT = "documents";
+
+export const DOCUMENT_TYPE_POST = "post" as const;
 
 export const DOCUMENT_CONFIG = {
   segment: DOCUMENT_SEGMENT,
@@ -19,6 +23,34 @@ export function getDocumentHref(
   }
 
   return `${base}/${parts.join("/")}`;
+}
+
+export function getDocumentTypeBadge(docType: string): {
+  label: string;
+  className: string;
+} {
+  switch (docType) {
+    case DISCUSSION_DOC_TYPE:
+      return {
+        label: "Discussion",
+        className:
+          "bg-amber-500/15 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300",
+      };
+    case DOCUMENT_TYPE_POST:
+      return {
+        label: "Post",
+        className:
+          "bg-blue-500/15 text-blue-900 dark:bg-blue-500/20 dark:text-blue-300",
+      };
+    default:
+      return {
+        label: docType
+          .split("_")
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(" "),
+        className: "bg-muted text-muted-foreground",
+      };
+  }
 }
 
 export function getEmbeddingStatusBadge(status: string): {

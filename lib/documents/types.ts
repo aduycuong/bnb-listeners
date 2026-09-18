@@ -39,6 +39,9 @@ export type GetDocumentResult = Document & {
   dataSourceId: string | null;
   dataSourceName: string | null;
   sourceType: string | null;
+  terms: DocumentTermSummary[];
+  discussionDocumentId: string | null;
+  parentDocumentId: string | null;
 };
 
 export type ListDocumentsParams = {
@@ -55,6 +58,25 @@ export type ListDocumentsParams = {
 export type DocumentTermSummary = {
   id: string;
   name: string;
+  /** Present when loaded from document_terms; omitted in term filter selections. */
+  assignedBy?: string;
+};
+
+/** Shared shape for document list cards in the UI. */
+export type DocumentCardItem = {
+  id: string;
+  docType: string;
+  title: string | null;
+  rawContent: string;
+  sourceOriginName: string;
+  sourceItemId: string;
+  embeddingStatus: string;
+  dataSourceName: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  qualityScore: number | null;
+  terms: DocumentTermSummary[];
+  confidence?: number;
 };
 
 export type DocumentListItem = {

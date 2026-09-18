@@ -19,19 +19,29 @@ import {
   refreshDocumentFromSourceRequest,
   scoreDocumentRequest,
 } from "@/components/documents/document-action-request";
-import { DocumentDetailCommentChunks } from "@/components/documents/document-detail-comment-chunks";
-import { DocumentDetailComments } from "@/components/documents/document-detail-comments";
 import { DocumentDetailChunks } from "@/components/documents/document-detail-chunks";
+import { DocumentTypeBadge } from "@/components/documents/document-type-badge";
 import {
   documentChunksQueryKey,
   documentQueryKey,
 } from "@/components/documents/document-query-keys";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { toast } from "@/components/ui/toast";
 import {
   canRefreshFromSource,
-  canUpdateComments,
   DOCUMENT_ACTION_LABELS,
   getRefreshFromSourceActionLabel,
 } from "@/lib/documents/document-action-config";
@@ -47,7 +57,10 @@ import {
   getDataSourceMenuHref,
 } from "@/lib/data-sources/data-source-menu-config";
 import { isSourceType } from "@/lib/data-sources/constants";
+import { getDocumentTermAssignedByLabel } from "@/lib/document-terms/document-term-config";
+import { getTermHref } from "@/lib/terms/term-config";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
+import { cn } from "@/lib/utils";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
 type DocumentDetailPageProps = {
@@ -133,6 +146,30 @@ function formatClassifyToast(result: ClassifyDocumentResult): {
   };
 }
 
+function DetailRow({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: ReactNode;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1 py-3 first:pt-0 sm:flex-row sm:items-start sm:gap-8">
+      <dt className="w-36 shrink-0 text-sm text-muted-foreground">{label}</dt>
+      <dd
+        className={cn(
+          "min-w-0 text-sm font-medium wrap-break-word whitespace-pre-wrap",
+          mono && "font-mono text-xs break-all",
+        )}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
 function DetailField({
   label,
   value,
@@ -156,6 +193,10 @@ function DetailField({
       </div>
     </div>
   );
+}
+
+function pageContainerClassName() {
+  return "mx-auto w-full max-w-7xl px-4 py-8 md:px-8";
 }
 
 export function DocumentDetailPage({
@@ -183,7 +224,6 @@ export function DocumentDetailPage({
     document?.title?.trim() || document?.sourceItemId || "Document details";
   const refreshLabel = getRefreshFromSourceActionLabel(document?.sourceType);
   const refreshEnabled = canRefreshFromSource(document?.sourceType);
-  const updateCommentsEnabled = canUpdateComments(document?.sourceType);
 
   async function runAction(action: DocumentAction) {
     setPendingAction(action);
@@ -253,10 +293,11 @@ export function DocumentDetailPage({
 
   if (documentQuery.isLoading) {
     return (
-      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 md:px-8">
+      <div className={`${pageContainerClassName()} space-y-6`}>
         <Skeleton className="h-8 w-32" />
         <Skeleton className="h-10 w-2/3" />
-        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full" />
         <Skeleton className="h-64 w-full" />
       </div>
     );
@@ -264,7 +305,7 @@ export function DocumentDetailPage({
 
   if (documentQuery.error || !document) {
     return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-8">
+      <div className={pageContainerClassName()}>
         <ResourceListEmpty
           title="Could not load document"
           description={documentQuery.error?.message ?? "Document not found."}
@@ -276,8 +317,8 @@ export function DocumentDetailPage({
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-8">
-      <div className="mb-6 space-y-4">
+    <div className={`${pageContainerClassName()} space-y-8`}>
+      <div className="space-y-4">
         <Button
           nativeButton={false}
           variant="ghost"
@@ -292,6 +333,7 @@ export function DocumentDetailPage({
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+            <DocumentTypeBadge docType={document.docType} />
             {statusBadge ? (
               <span
                 className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${statusBadge.className}`}
@@ -305,156 +347,249 @@ export function DocumentDetailPage({
             details.
           </p>
         </div>
-
-        {canEdit ? (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={!refreshEnabled || pendingAction !== null}
-              onClick={() => void runAction("refresh")}
-            >
-              {pendingAction === "refresh" ? (
-                <Loader2Icon className="animate-spin" data-icon="inline-start" />
-              ) : (
-                <RefreshCwIcon data-icon="inline-start" />
-              )}
-              {pendingAction === "refresh" ? "Fetching…" : refreshLabel}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={pendingAction !== null}
-              onClick={() => void runAction("score")}
-            >
-              {pendingAction === "score" ? (
-                <Loader2Icon className="animate-spin" data-icon="inline-start" />
-              ) : (
-                <SparklesIcon data-icon="inline-start" />
-              )}
-              {pendingAction === "score" ? "Scoring…" : DOCUMENT_ACTION_LABELS.score}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={pendingAction !== null}
-              onClick={() => void runAction("classify")}
-            >
-              {pendingAction === "classify" ? (
-                <Loader2Icon className="animate-spin" data-icon="inline-start" />
-              ) : (
-                <TagsIcon data-icon="inline-start" />
-              )}
-              {pendingAction === "classify"
-                ? "Classifying…"
-                : DOCUMENT_ACTION_LABELS.classify}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={pendingAction !== null}
-              onClick={() => void runAction("chunks")}
-            >
-              {pendingAction === "chunks" ? (
-                <Loader2Icon className="animate-spin" data-icon="inline-start" />
-              ) : (
-                <LayersIcon data-icon="inline-start" />
-              )}
-              {pendingAction === "chunks"
-                ? "Indexing…"
-                : DOCUMENT_ACTION_LABELS.chunks}
-            </Button>
-          </div>
-        ) : null}
       </div>
 
-      <div className="space-y-4 rounded-xl border bg-card p-4 md:p-6">
-        <DetailField label="Document type" value={document.docType} />
-        <DetailField label="Source key" value={document.sourceOriginKey} mono />
-        <DetailField label="Source name" value={document.sourceOriginName} />
-        <DetailField label="Source ID" value={document.sourceItemId} mono />
-
-        <DetailField
-          label="Job run"
-          value={
-            document.sourceRunId ? (
-              <>
-                <span>{document.sourceRunId}</span>
-                {document.dataSourceName ? (
-                  <p className="mt-1 font-sans text-sm text-muted-foreground">
-                    Created by{" "}
-                    {jobHref ? (
-                      <Link
-                        href={jobHref}
-                        className="text-foreground underline underline-offset-2"
-                      >
-                        {document.dataSourceName}
-                      </Link>
+      <Card>
+        <CardHeader>
+          <CardTitle>Overview</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="divide-y">
+            <section className="pb-6">
+              <dl className="divide-y divide-border">
+                <DetailRow
+                  label="Document type"
+                  value={<DocumentTypeBadge docType={document.docType} />}
+                />
+                <DetailRow
+                  label="Source key"
+                  value={document.sourceOriginKey}
+                  mono
+                />
+                <DetailRow label="Source name" value={document.sourceOriginName} />
+                <DetailRow label="Source ID" value={document.sourceItemId} mono />
+                <DetailRow
+                  label="Job run"
+                  value={
+                    document.sourceRunId ? (
+                      <>
+                        <span>{document.sourceRunId}</span>
+                        {document.dataSourceName ? (
+                          <p className="mt-1 font-sans text-xs font-normal text-muted-foreground">
+                            Created by{" "}
+                            {jobHref ? (
+                              <Link
+                                href={jobHref}
+                                className="text-foreground underline underline-offset-2"
+                              >
+                                {document.dataSourceName}
+                              </Link>
+                            ) : (
+                              document.dataSourceName
+                            )}
+                          </p>
+                        ) : null}
+                      </>
                     ) : (
-                      document.dataSourceName
-                    )}
-                  </p>
+                      "Created manually"
+                    )
+                  }
+                  mono
+                />
+                {document.title ? (
+                  <DetailRow label="Title" value={document.title} />
                 ) : null}
-              </>
-            ) : (
-              "Created manually"
-            )
-          }
-          mono
-        />
+                <DetailRow
+                  label="Published at"
+                  value={formatDateTime(document.publishedAt)}
+                />
+                <DetailRow
+                  label="Created at"
+                  value={formatDateTime(document.createdAt)}
+                />
+              </dl>
+            </section>
 
-        {document.title ? (
-          <DetailField label="Title" value={document.title} />
-        ) : null}
+            <section className="space-y-3 py-6">
+              <h3 className="text-sm font-medium">Terms attached</h3>
+              {document.terms.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No terms assigned yet. Use Classify to match this document to
+                  workspace terms.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {document.terms.map((term) => (
+                    <li
+                      key={term.id}
+                      className="flex flex-wrap items-center gap-x-2 gap-y-1"
+                    >
+                      <Link
+                        href={getTermHref(workspaceIndex, term.id)}
+                        className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-900 transition-colors hover:bg-violet-100 dark:border-violet-900/60 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-950/60"
+                      >
+                        {term.name}
+                      </Link>
+                      <span className="text-xs text-muted-foreground">
+                        assigned by{" "}
+                        {getDocumentTermAssignedByLabel(term.assignedBy ?? "unknown")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
-        <DetailField
-          label="Published at"
-          value={formatDateTime(document.publishedAt)}
-        />
-        <DetailField
-          label="Created at"
-          value={formatDateTime(document.createdAt)}
-        />
-        <DetailField label="Content" value={document.rawContent} />
-        <DetailField
-          label="Metadata"
-          value={formatMetadata(document.metadata)}
-          mono
-        />
+            <section className="space-y-3 py-6">
+              <h3 className="text-sm font-medium">Info score</h3>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Quality score
+                </p>
+                <p className="text-3xl font-semibold tracking-tight">
+                  {document.qualityScore != null
+                    ? `${Math.round(document.qualityScore * 100)}%`
+                    : "—"}
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Combined quality score from source credibility, completeness,
+                freshness, and relevance dimensions.
+              </p>
+            </section>
 
-        {document.qualityScore != null ? (
-          <DetailField
-            label="Quality score"
-            value={`${Math.round(document.qualityScore * 100)}%`}
-          />
-        ) : null}
+            <section className="space-y-3 pt-6">
+              <h3 className="text-sm font-medium">Actions</h3>
+              {canEdit ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!refreshEnabled || pendingAction !== null}
+                    onClick={() => void runAction("refresh")}
+                  >
+                    {pendingAction === "refresh" ? (
+                      <Loader2Icon className="animate-spin" data-icon="inline-start" />
+                    ) : (
+                      <RefreshCwIcon data-icon="inline-start" />
+                    )}
+                    {pendingAction === "refresh" ? "Fetching…" : refreshLabel}
+                  </Button>
 
-        <DetailField
-          label="Engagement"
-          value={`${document.likeCount} likes · ${document.commentCount} comments · ${document.shareCount} shares · ${document.viewCount} views`}
-        />
-      </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={pendingAction !== null}
+                    onClick={() => void runAction("score")}
+                  >
+                    {pendingAction === "score" ? (
+                      <Loader2Icon className="animate-spin" data-icon="inline-start" />
+                    ) : (
+                      <SparklesIcon data-icon="inline-start" />
+                    )}
+                    {pendingAction === "score"
+                      ? "Scoring…"
+                      : DOCUMENT_ACTION_LABELS.score}
+                  </Button>
 
-      <DocumentDetailComments
-        workspaceId={workspace.id}
-        documentId={documentId}
-        canEdit={canEdit}
-        updateEnabled={updateCommentsEnabled}
-      />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={pendingAction !== null}
+                    onClick={() => void runAction("classify")}
+                  >
+                    {pendingAction === "classify" ? (
+                      <Loader2Icon className="animate-spin" data-icon="inline-start" />
+                    ) : (
+                      <TagsIcon data-icon="inline-start" />
+                    )}
+                    {pendingAction === "classify"
+                      ? "Classifying…"
+                      : DOCUMENT_ACTION_LABELS.classify}
+                  </Button>
 
-      <DocumentDetailCommentChunks
-        workspaceId={workspace.id}
-        documentId={documentId}
-        canEdit={canEdit}
-        updateEnabled={updateCommentsEnabled}
-      />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={pendingAction !== null}
+                    onClick={() => void runAction("chunks")}
+                  >
+                    {pendingAction === "chunks" ? (
+                      <Loader2Icon className="animate-spin" data-icon="inline-start" />
+                    ) : (
+                      <LayersIcon data-icon="inline-start" />
+                    )}
+                    {pendingAction === "chunks"
+                      ? "Indexing…"
+                      : DOCUMENT_ACTION_LABELS.chunks}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  You need edit access to run document actions.
+                </p>
+              )}
+            </section>
+          </div>
+
+          {document.discussionDocumentId || document.parentDocumentId ? (
+            <div className="flex flex-wrap gap-4 border-t pt-4">
+              {document.discussionDocumentId ? (
+                <Link
+                  href={getDocumentHref(workspaceIndex, document.discussionDocumentId)}
+                  className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  View discussion document
+                </Link>
+              ) : null}
+              {document.parentDocumentId ? (
+                <Link
+                  href={getDocumentHref(workspaceIndex, document.parentDocumentId)}
+                  className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  View parent document
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Content</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="content">
+            <TabsList>
+              <TabsTrigger value="content">Content & engagement</TabsTrigger>
+              <TabsTrigger value="metadata">Metadata</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="content" className="mt-4 space-y-4">
+              <div className="rounded-md border bg-muted/30 px-4 py-3 text-sm whitespace-pre-wrap">
+                {document.rawContent.trim() || "—"}
+              </div>
+              <DetailField
+                label="Engagement"
+                value={`${document.likeCount} likes · ${document.commentCount} comments · ${document.shareCount} shares · ${document.viewCount} views`}
+              />
+            </TabsContent>
+
+            <TabsContent value="metadata" className="mt-4">
+              <DetailField
+                label="Metadata"
+                value={formatMetadata(document.metadata)}
+                mono
+              />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
 
       <DocumentDetailChunks
         workspaceId={workspace.id}

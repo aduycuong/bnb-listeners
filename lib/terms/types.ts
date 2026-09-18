@@ -1,5 +1,6 @@
 import type { z } from "zod";
 
+import type { DocumentTermSummary } from "@/lib/documents/types";
 import type {
   createTermBodySchema,
   mergeTermsBodySchema,
@@ -175,13 +176,18 @@ export type ListTermDocumentsParams = {
 
 export type TermDocumentListItem = {
   id: string;
+  docType: string;
   title: string | null;
+  rawContent: string;
   sourceOriginName: string;
   sourceItemId: string;
+  embeddingStatus: string;
   dataSourceName: string | null;
   publishedAt: string | null;
+  createdAt: string;
   confidence: number;
   qualityScore: number | null;
+  terms: DocumentTermSummary[];
 };
 
 export type ListTermDocumentsResult = {
