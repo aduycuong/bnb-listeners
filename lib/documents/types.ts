@@ -70,6 +70,7 @@ export type DocumentCardItem = {
   rawContent: string;
   sourceOriginName: string;
   sourceItemId: string;
+  authorName: string | null;
   embeddingStatus: string;
   dataSourceName: string | null;
   publishedAt: string | null;
@@ -87,6 +88,7 @@ export type DocumentListItem = {
   sourceItemId: string;
   title: string | null;
   rawContent: string;
+  authorName: string | null;
   embeddingStatus: string;
   qualityScore: number | null;
   likeCount: number;
@@ -115,8 +117,13 @@ export type UpsertDocumentParams = {
   sourceOriginKey: string;
   sourceOriginName: string;
   sourceItemId: string;
-  title?: string;
+  /** Omit for sources without a real title (social posts); never synthesize one. */
+  title?: string | null;
   rawContent: string;
+  /** Post author display name; refreshed on every upsert like metadata. */
+  authorName?: string | null;
+  /** Set only for `discussion` documents — the post the discussion was built from. */
+  parentDocumentId?: string | null;
   metadata?: Record<string, unknown>;
   /** Refreshed on every upsert, including the unchanged path — never triggers a re-embed. */
   engagement?: EngagementCounts;

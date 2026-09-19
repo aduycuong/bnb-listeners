@@ -55,6 +55,10 @@ import {
 import type { ClassifyDocumentResult } from "@/lib/classification/types";
 import type { GetDocumentResult } from "@/lib/documents/types";
 import {
+  ANONYMOUS_AUTHOR_LABEL,
+  buildDocumentHeading,
+} from "@/lib/documents/utils/build-document-heading";
+import {
   getDataSourceMenuConfigByJobType,
   getDataSourceMenuHref,
 } from "@/lib/data-sources/data-source-menu-config";
@@ -222,8 +226,7 @@ export function DocumentDetailPage({
     ? getEmbeddingStatusBadge(document.embeddingStatus)
     : null;
   const jobHref = document ? resolveJobHref(workspaceIndex, document) : null;
-  const title =
-    document?.title?.trim() || document?.sourceItemId || "Document details";
+  const title = document ? buildDocumentHeading(document) : "Document details";
   const refreshLabel = getRefreshFromSourceActionLabel(document?.sourceType);
   const refreshEnabled = canRefreshFromSource(document?.sourceType);
 
@@ -401,6 +404,10 @@ export function DocumentDetailPage({
                     )
                   }
                   mono
+                />
+                <DetailRow
+                  label="Author"
+                  value={document.authorName?.trim() || ANONYMOUS_AUTHOR_LABEL}
                 />
                 {document.title ? (
                   <DetailRow label="Title" value={document.title} />

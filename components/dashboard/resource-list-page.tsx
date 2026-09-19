@@ -39,6 +39,8 @@ export type ResourceListRowItem = {
   name: string;
   description?: string;
   date: string;
+  /** Skip the right-column date when the row already shows it elsewhere (e.g. in `name`). */
+  hideDate?: boolean;
   subtitle?: ReactNode;
   meta?: string;
   docType?: string;
@@ -150,14 +152,18 @@ export function ResourceListRow({
         ) : null}
       </div>
 
-      <div className="hidden shrink-0 text-right sm:block">
-        {item.meta ? (
-          <p className="text-xs text-muted-foreground">{item.meta}</p>
-        ) : null}
-        <p className="text-xs text-muted-foreground">
-          {formatListDate(item.date)}
-        </p>
-      </div>
+      {item.meta || !item.hideDate ? (
+        <div className="hidden shrink-0 text-right sm:block">
+          {item.meta ? (
+            <p className="text-xs text-muted-foreground">{item.meta}</p>
+          ) : null}
+          {item.hideDate ? null : (
+            <p className="text-xs text-muted-foreground">
+              {formatListDate(item.date)}
+            </p>
+          )}
+        </div>
+      ) : null}
     </>
   );
 

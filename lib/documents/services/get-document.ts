@@ -50,6 +50,7 @@ export async function getDocument(
     docType: row.document.docType,
     sourceOriginKey: row.document.sourceOriginKey,
     sourceItemId: row.document.sourceItemId,
+    parentDocumentId: row.document.parentDocumentId,
     metadata: row.document.metadata,
   });
   const parentDocumentId = parent?.id ?? null;

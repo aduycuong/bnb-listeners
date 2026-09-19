@@ -275,8 +275,10 @@ One row per ingested item within a workspace. Term assignment is in `document_te
 | source_origin_key | text | NO | — | Stable platform/source id |
 | source_origin_name | text | NO | — | Human-readable source label |
 | source_item_id | text | NO | — | External item id (not a URL) |
-| title | text | YES | — | Human-readable title |
+| title | text | YES | — | Optional human-readable title. Social posts have none; the UI renders author + date instead |
 | raw_content | text | NO | — | Full raw text |
+| author_name | text | YES | — | Post author display name, mirrored from `metadata.authorName`; discussions inherit the parent's author |
+| parent_document_id | uuid | YES | — | FK → `documents.id` ON DELETE CASCADE — for `discussion` docs, the post the discussion was built from; null otherwise |
 | metadata | jsonb | NO | `{}` | Type-specific fields (url, author, …) |
 | embedding_status | text | NO | `pending` | `pending` \| `chunked` \| `rejected` \| `skipped` \| `failed` |
 | quality_score | real | YES | — | Highest `part_score` among eligible `document_parts` (0–1); `0` when no part is eligible. Null until scored. |
@@ -312,6 +314,7 @@ One row per ingested item within a workspace. Term assignment is in `document_te
 | `idx_documents_status` | `(embedding_status)` WHERE `<> 'chunked'` | Embedding job queue |
 | `idx_documents_quality_score` | `(quality_score)` | Filter/sort by quality |
 | `idx_documents_source_run_id` | `(source_run_id)` | Documents created by a source run |
+| `idx_documents_parent_document_id` | `(parent_document_id)` | Find a post's discussion document / cascade on parent delete |
 | `idx_documents_data_source_id` | `(data_source_id)` | Documents by owning data source |
 | `idx_documents_workspace_data_source` | `(workspace_id, data_source_id)` | Filter/list documents by data source |
 | `idx_documents_engagement` | `(workspace_id, like_count DESC)` | Rank a workspace's posts by popularity |
@@ -327,6 +330,7 @@ Debate and role tallies are written by `score-document-comments` after batch sco
 
 - → `source_runs.id` (`source_run_id`)
 - → `data_sources.id` (`data_source_id`)
+- → `documents.id` (`parent_document_id`, discussion → parent post)
 - ← `comments.document_id`
 - ← `document_parts.document_id`
 

@@ -131,6 +131,7 @@ export async function listDocuments(
         sourceItemId: documents.sourceItemId,
         title: documents.title,
         rawContent: documents.rawContent,
+        authorName: documents.authorName,
         embeddingStatus: documents.embeddingStatus,
         qualityScore: documents.qualityScore,
         likeCount: documents.likeCount,

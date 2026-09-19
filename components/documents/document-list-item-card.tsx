@@ -6,6 +6,7 @@ import {
 } from "@/components/dashboard/resource-list-page";
 import { getDocumentHref, getEmbeddingStatusBadge } from "@/lib/documents/document-config";
 import type { DocumentCardItem } from "@/lib/documents/types";
+import { buildDocumentHeading } from "@/lib/documents/utils/build-document-heading";
 
 export const DOCUMENT_LIST_ITEM_SKELETON_CLASS = "h-18.5 w-full rounded-xl";
 
@@ -34,7 +35,8 @@ export function documentCardItemToListRowItem(
 
   return {
     id: document.id,
-    name: document.title?.trim() || document.sourceItemId,
+    // Header already carries the date, so the right-column date is hidden.
+    name: buildDocumentHeading(document),
     subtitle: [
       document.sourceOriginName,
       document.dataSourceName ? `from ${document.dataSourceName}` : null,
@@ -44,6 +46,7 @@ export function documentCardItemToListRowItem(
     docType: document.docType,
     description: truncateContent(document.rawContent),
     date: document.publishedAt ?? document.createdAt,
+    hideDate: true,
     meta: metaParts.length > 0 ? metaParts.join(" · ") : undefined,
     badges: [statusBadge],
     terms: document.terms,

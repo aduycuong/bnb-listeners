@@ -5,6 +5,7 @@ import {
   tsvector,
 } from "@/db/pgvector";
 import {
+  type AnyPgColumn,
   boolean,
   date,
   index,
@@ -345,8 +346,19 @@ export const documents = pgTable(
     sourceOriginKey: text("source_origin_key").notNull(),
     sourceOriginName: text("source_origin_name").notNull(),
     sourceItemId: text("source_item_id").notNull(),
+    /** Optional; social posts have none — the UI renders author + date instead. */
     title: text("title"),
     rawContent: text("raw_content").notNull(),
+    /** Display name of the post author, mirrored from `metadata.authorName`. */
+    authorName: text("author_name"),
+    /**
+     * For `discussion` documents: the post this discussion was built from.
+     * Null for every other doc type. Deleting the parent removes the discussion.
+     */
+    parentDocumentId: uuid("parent_document_id").references(
+      (): AnyPgColumn => documents.id,
+      { onDelete: "cascade" },
+    ),
     metadata: jsonb("metadata")
       .$type<Record<string, unknown>>()
       .notNull()
@@ -419,6 +431,7 @@ export const documents = pgTable(
       .where(sql`${table.embeddingStatus} <> 'chunked'`),
     index("idx_documents_quality_score").on(table.qualityScore),
     index("idx_documents_source_run_id").on(table.sourceRunId),
+    index("idx_documents_parent_document_id").on(table.parentDocumentId),
     index("idx_documents_data_source_id").on(table.dataSourceId),
     index("idx_documents_workspace_data_source").on(
       table.workspaceId,

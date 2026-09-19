@@ -13,7 +13,7 @@ import type { UpsertDocumentParams, UpsertDocumentResult } from "../types";
  *   inserted   — no existing document found; created and process-document dispatched.
  *   updated    — rawContent changed; embeddingStatus reset to "pending" and
  *                process-document dispatched.
- *   unchanged  — rawContent identical; metadata and engagement refreshed only.
+ *   unchanged  — rawContent identical; metadata, authorName and engagement refreshed only.
  *                No re-embed, no QStash dispatch — chunk engagement is mirrored
  *                by trg_sync_chunk_engagement.
  *
@@ -50,8 +50,10 @@ export async function upsertDocument(
         sourceOriginKey: params.sourceOriginKey,
         sourceOriginName: params.sourceOriginName,
         sourceItemId: params.sourceItemId,
-        title: params.title,
+        title: params.title ?? null,
         rawContent: params.rawContent,
+        authorName: params.authorName ?? null,
+        parentDocumentId: params.parentDocumentId ?? null,
         metadata: params.metadata ?? {},
         ...engagement,
         publishedAt: newPublishedAt,
@@ -80,8 +82,10 @@ export async function upsertDocument(
     await db
       .update(documents)
       .set({
-        title: params.title,
+        title: params.title ?? null,
         rawContent: params.rawContent,
+        authorName: params.authorName ?? null,
+        parentDocumentId: params.parentDocumentId ?? null,
         metadata: params.metadata ?? {},
         ...engagement,
         publishedAt: newPublishedAt,
@@ -98,10 +102,14 @@ export async function upsertDocument(
     return { documentId: existing.id, outcome: "updated" };
   }
 
-  // rawContent unchanged — refresh metadata and engagement only, skip re-embed.
+  // rawContent unchanged — refresh metadata, author and engagement only, skip re-embed.
   await db
     .update(documents)
-    .set({ metadata: params.metadata ?? {}, ...engagement })
+    .set({
+      metadata: params.metadata ?? {},
+      authorName: params.authorName ?? null,
+      ...engagement,
+    })
     .where(eq(documents.id, existing.id));
 
   return { documentId: existing.id, outcome: "unchanged" };

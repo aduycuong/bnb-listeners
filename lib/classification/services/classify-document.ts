@@ -204,7 +204,7 @@ async function proposeAndJudgeTerms(
   const proposals = dedupeProposals(
     await proposeTermsWithLlm(docContext, proposePrompt, vocabularyHint),
   );
-console.log('proposals', proposals);
+
   if (proposals.length === 0) {
     return [];
   }
@@ -349,6 +349,7 @@ async function classifyDiscussionDocument(
     docType: doc.docType,
     sourceOriginKey: doc.sourceOriginKey,
     sourceItemId: doc.sourceItemId,
+    parentDocumentId: doc.parentDocumentId,
     metadata: doc.metadata,
   });
   const parentDocumentId = parent?.id ?? null;

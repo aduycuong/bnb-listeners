@@ -95,18 +95,18 @@ export async function syncDiscussionDocument(
   }
 
   const rawContent = buildDiscussionContent(substantive);
-  const title = parent.title?.trim()
-    ? `Thảo luận: ${parent.title.trim()}`
-    : `Thảo luận về bài ${parent.sourceItemId}`;
 
+  // No synthesized title: the UI renders "Thảo luận bài đăng của <author> · <date>"
+  // from authorName (inherited from the parent) and publishedAt.
   const upsertResult = await upsertDocument(
     {
       docType: DISCUSSION_DOC_TYPE,
       sourceOriginKey: parent.sourceOriginKey,
       sourceOriginName: parent.sourceOriginName,
       sourceItemId: parent.sourceItemId,
-      title,
       rawContent,
+      authorName: parent.authorName,
+      parentDocumentId: parent.id,
       metadata: {
         parentDocumentId: parent.id,
         parentDocType: parent.docType,

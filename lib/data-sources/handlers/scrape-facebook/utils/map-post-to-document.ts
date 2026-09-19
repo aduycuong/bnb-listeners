@@ -21,6 +21,9 @@ type MapPostToDocumentOptions = {
  *   sourceOriginKey  = caller-supplied — canonical URL of the group or page
  *   sourceItemId   = post_id         — Bright Data's stable post identifier
  *   sourceOriginName = group_name      — human-readable group / page name
+ *   title      = none            — Facebook posts have no title; the UI shows
+ *                                  author + date instead
+ *   authorName = user_username_raw — also kept in metadata.authorName
  *   rawContent = post body only  — author, engagement and source context are
  *                                  columns and metadata, not embedded text
  */
@@ -29,15 +32,16 @@ export function mapPostToDocument({
   post,
 }: MapPostToDocumentOptions): Omit<UpsertDocumentParams, "dataSourceId" | "sourceRunId"> {
   const sourceOriginName = post.group_name?.trim() || "Facebook";
+  const metadata = buildPostMetadata(post);
 
   return {
     docType: "post",
     sourceOriginKey,
     sourceOriginName,
     sourceItemId: post.post_id,
-    title: buildPostTitle(post),
     rawContent: post.content.trim(),
-    metadata: buildPostMetadata(post),
+    authorName: metadata.authorName,
+    metadata,
     engagement: {
       likeCount: post.likes,
       commentCount: post.num_comments,
@@ -46,11 +50,4 @@ export function mapPostToDocument({
     },
     publishedAt: post.date_posted ?? undefined,
   };
-}
-
-function buildPostTitle(post: BrightDataFacebookPost): string {
-  const author = post.user_username_raw?.trim() || "Ẩn danh";
-  const body = post.content.trim().replace(/\s+/g, " ");
-  const preview = body.length > 80 ? `${body.slice(0, 80)}…` : body;
-  return `${author}: ${preview}`;
 }

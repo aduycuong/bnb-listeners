@@ -12,14 +12,16 @@ export type DiscussionParentDocument = Pick<
 
 /**
  * Single-query lookup of a discussion's parent post. Returns null when the
- * document is not a discussion. Prefers `metadata.parentDocumentId` and falls
- * back to matching the non-discussion sibling by source origin/item.
+ * document is not a discussion. Prefers the `parent_document_id` column, then
+ * legacy `metadata.parentDocumentId`, and finally falls back to matching the
+ * non-discussion sibling by source origin/item.
  */
 export async function findDiscussionParentDocument(params: {
   workspaceId: string;
   docType: string;
   sourceOriginKey: string;
   sourceItemId: string;
+  parentDocumentId: string | null;
   metadata: unknown;
 }): Promise<DiscussionParentDocument | null> {
   if (params.docType !== DISCUSSION_DOC_TYPE) {
@@ -34,9 +36,10 @@ export async function findDiscussionParentDocument(params: {
     typeof metadata.parentDocumentId === "string"
       ? metadata.parentDocumentId
       : null;
+  const knownParentId = params.parentDocumentId ?? metadataParentId;
 
-  const where = metadataParentId
-    ? eq(documents.id, metadataParentId)
+  const where = knownParentId
+    ? eq(documents.id, knownParentId)
     : and(
         eq(documents.workspaceId, params.workspaceId),
         ne(documents.docType, DISCUSSION_DOC_TYPE),

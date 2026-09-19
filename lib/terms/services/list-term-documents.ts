@@ -22,6 +22,7 @@ function buildSearchCondition(search?: string) {
 
   return or(
     ilike(documents.title, pattern),
+    ilike(documents.authorName, pattern),
     ilike(documents.sourceOriginName, pattern),
     ilike(documents.sourceItemId, pattern),
     ilike(documents.rawContent, pattern),
@@ -73,6 +74,7 @@ export async function listTermDocuments(
       rawContent: documents.rawContent,
       sourceOriginName: documents.sourceOriginName,
       sourceItemId: documents.sourceItemId,
+      authorName: documents.authorName,
       embeddingStatus: documents.embeddingStatus,
       dataSourceName: dataSources.name,
       publishedAt: documents.publishedAt,
@@ -105,6 +107,7 @@ export async function listTermDocuments(
       rawContent: row.rawContent,
       sourceOriginName: row.sourceOriginName,
       sourceItemId: row.sourceItemId,
+      authorName: row.authorName,
       embeddingStatus: row.embeddingStatus,
       dataSourceName: row.dataSourceName,
       publishedAt: row.publishedAt?.toISOString() ?? null,

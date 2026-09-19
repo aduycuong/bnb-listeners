@@ -184,6 +184,7 @@ export type TermDocumentListItem = {
   rawContent: string;
   sourceOriginName: string;
   sourceItemId: string;
+  authorName: string | null;
   embeddingStatus: string;
   dataSourceName: string | null;
   publishedAt: string | null;
