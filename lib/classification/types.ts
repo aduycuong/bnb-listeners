@@ -20,6 +20,32 @@ export type ProposedTerm = {
   description: string;
 };
 
+/**
+ * Final, validated outcome for one LLM proposal after the judge step and the
+ * duplicate-similarity hard rule. `proposalIndex` points back into the
+ * proposal list so every decision is traceable.
+ */
+export type ProposalDecision =
+  | {
+      proposalIndex: number;
+      kind: "existing";
+      termId: string;
+      name: string;
+      confidence: number;
+    }
+  | {
+      proposalIndex: number;
+      kind: "new";
+      proposal: ProposedTerm;
+      /** Embedding of the proposal, reused when the term is created. */
+      embedding: number[] | null;
+      confidence: number;
+    }
+  | {
+      proposalIndex: number;
+      kind: "skip";
+    };
+
 export type ClassifyDocumentResult = {
   documentId: string;
   /** Terms assigned from the existing term list. */

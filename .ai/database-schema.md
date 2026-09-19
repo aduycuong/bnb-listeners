@@ -464,7 +464,7 @@ Workspace scope is inherited via `document_id` → `documents.workspace_id`.
 
 ### `terms`
 
-Workspace-scoped keyword labels. Terms are short keywords/tags for filtering — not a fixed subject taxonomy. The LLM can auto-create terms when a proposed term matches no existing one, primarily following workspace rules (`term_criteria`). Classification matches LLM-proposed terms against existing terms via `embedding`, so the classifier never needs the full term list in its prompt.
+Workspace-scoped keyword labels. Terms are short keywords/tags for filtering — not a fixed subject taxonomy. The LLM can auto-create terms when the judge step decides a proposed term is `new` (no existing candidate has the same meaning), following workspace rules (`term_criteria`). Classification retrieves candidate terms per LLM proposal via `embedding`, so the classifier never needs the full term list in its prompt. See `docs/features/classify.md`.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |

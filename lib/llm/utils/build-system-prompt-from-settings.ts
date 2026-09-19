@@ -71,20 +71,26 @@ Hướng dẫn:
 export function buildClassifyTermsPrompt(
   settings: WorkspaceLlmSettings,
 ): string {
-  return `Bạn là bộ gán term (từ khóa/nhãn) cho phạm vi thu thập: ${settings.dataCollectionScope}.
+  const rules = formatTermRules(settings.termCriteria);
+
+  return `Bạn là bộ phán quyết term (từ khóa/nhãn) cho phạm vi thu thập: ${settings.dataCollectionScope}.
 
 Term trong workspace là từ khóa hoặc nhãn ngắn gọn để gắn và lọc tài liệu — không phải danh mục chủ đề cố định.
 
-Nhiệm vụ: đọc tài liệu và danh sách term ứng viên, chọn mọi term (theo id) khớp rõ ràng với nội dung.
+Đầu vào: một tài liệu và danh sách term được đề xuất cho chính tài liệu đó (bước trước sinh ra). Mỗi đề xuất đi kèm nhóm term hiện có gần nghĩa nhất trong workspace — đã lọc sơ theo embedding, có thể rỗng.
 
-Danh sách chỉ gồm các term đã được lọc sơ là có thể liên quan — không phải toàn bộ term của workspace. Một ứng viên gần về mặt chữ nhưng khác nghĩa (địa danh khác, dự án khác, khái niệm rộng/hẹp hơn) thì không chọn.
+Nhiệm vụ: với MỖI đề xuất, trả đúng một quyết định:
+- existing — tài liệu thực sự nói về một term hiện có trong nhóm của đề xuất đó → trả termId của term đó. Luôn chọn existing khi term hiện có cùng nghĩa với đề xuất, kể cả khi tên khác nhau — không tạo bản sao.
+- new — tài liệu thực sự nói về đề xuất này, và KHÔNG term hiện có nào trong nhóm cùng nghĩa. Khác địa danh, khác dự án, hoặc phạm vi rộng/hẹp khác nhau là khác nghĩa. Term mới phải đáng để lọc tài liệu và tuân theo quy tắc tạo term của workspace.
+- skip — đề xuất quá hẹp, quá chung, chỉ được nhắc lướt qua, hoặc không đáng là term.
 
 Hướng dẫn:
-- Chỉ dùng id có trong danh sách — không tự bịa id.
-- Gán một hoặc nhiều term khi tài liệu liên quan trực tiếp tới từ khóa/nhãn đó.
+- termId chỉ được lấy trong nhóm của chính đề xuất đó — không bịa id, không lấy id từ nhóm khác.
+- Độ tương đồng đi kèm chỉ là gợi ý lọc sơ; quyết định theo nghĩa và nội dung tài liệu.
+- Hai đề xuất có thể cùng trỏ về một term hiện có — trả existing cho cả hai.
 - Ưu tiên term cụ thể hơn khi cả term rộng và hẹp đều phù hợp.
-- confidence 0.9+ khi khớp rõ; 0.6–0.8 khi liên quan nhưng không phải trọng tâm.
-- Trả về mảng assignments rỗng nếu không có term nào trong danh sách phù hợp.`;
+- confidence là mức tài liệu thực sự nói về term đó: 0.9+ khi khớp rõ; 0.6–0.8 khi liên quan nhưng không phải trọng tâm; 0 khi skip.
+- Trả đúng một quyết định cho mỗi đề xuất, giữ nguyên proposalIndex.${rules}`;
 }
 
 export function buildProposeTermPrompt(

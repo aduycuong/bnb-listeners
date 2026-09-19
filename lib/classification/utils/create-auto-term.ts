@@ -12,12 +12,15 @@ const LLM_ASSIGNED_BY = "llm_classifier";
  *
  * The proposal's embedding is stored with the term so it is immediately a
  * candidate for later documents without a second embedding request.
+ * `confidence` is the judge's confidence that the document is about the
+ * new term (defaults to 1).
  */
 export async function createAutoTerm(
   workspaceId: string,
   documentId: string,
   proposed: ProposedTerm,
   embedding: number[] | null,
+  confidence = 1,
 ): Promise<CreatedTerm> {
   const [term] = await db
     .insert(terms)
@@ -44,7 +47,7 @@ export async function createAutoTerm(
     .values({
       documentId,
       termId: term.id,
-      confidence: 1,
+      confidence,
       assignedBy: LLM_ASSIGNED_BY,
     })
     .onConflictDoNothing();

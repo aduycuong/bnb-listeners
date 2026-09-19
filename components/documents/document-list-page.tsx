@@ -243,7 +243,7 @@ export function DocumentListPage({
   ]);
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-8">
         <div className="mb-6 space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">
             {DOCUMENT_CONFIG.listTitle}
