@@ -20,6 +20,12 @@ export type ProposedTerm = {
   description: string;
 };
 
+/** One of the workspace's most-used terms, shown to the propose step. */
+export type TermVocabularyHint = {
+  name: string;
+  description: string | null;
+};
+
 /**
  * Final, validated outcome for one LLM proposal after the judge step and the
  * duplicate-similarity hard rule. `proposalIndex` points back into the

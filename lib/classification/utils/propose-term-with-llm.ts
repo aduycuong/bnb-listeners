@@ -10,7 +10,11 @@ import {
   MAX_PROPOSED_TERMS_PER_DOCUMENT,
   PROPOSED_TERM_DESCRIPTION_MAX_CHARS,
 } from "../config";
-import type { ClassifierDocContext, ProposedTerm } from "../types";
+import type {
+  ClassifierDocContext,
+  ProposedTerm,
+  TermVocabularyHint,
+} from "../types";
 
 const proposedTermItemSchema = z.object({
   name: z
@@ -36,14 +40,18 @@ export const proposeTermsResponseSchema = z.object({
     ),
 });
 
-function formatVocabularyHint(termNames: string[]): string[] {
-  if (termNames.length === 0) {
+function formatVocabularyHintItem(hint: TermVocabularyHint): string {
+  return hint.description ? `- ${hint.name} — ${hint.description}` : `- ${hint.name}`;
+}
+
+function formatVocabularyHint(hints: TermVocabularyHint[]): string[] {
+  if (hints.length === 0) {
     return [];
   }
 
   return [
-    "Term đang dùng nhiều trong workspace (gợi ý cách đặt tên — nếu tài liệu khớp term nào ở đây, dùng đúng tên đó):",
-    termNames.map((name) => `- ${name}`).join("\n"),
+    "Term đang dùng nhiều trong workspace (tên — mô tả phạm vi). Đây là gợi ý cách đặt tên, KHÔNG phải danh sách đóng:",
+    hints.map(formatVocabularyHintItem).join("\n"),
     "",
   ];
 }
@@ -65,7 +73,7 @@ function formatParentContext(
 
 function buildUserMessage(
   doc: ClassifierDocContext,
-  vocabularyHint: string[],
+  vocabularyHint: TermVocabularyHint[],
 ): string {
   const contentPreview = doc.rawContent.slice(0, CLASSIFIER_CONTENT_MAX_CHARS);
 
@@ -87,13 +95,15 @@ function buildUserMessage(
  *
  * Proposals are matched against existing terms by embedding similarity and a
  * judge call before anything is assigned or created, so this step does not
- * need to know the full term list — `vocabularyHint` (most-used term names)
- * is enough to keep naming consistent. May return an empty list.
+ * need to know the full term list — `vocabularyHint` (most-used terms with
+ * their descriptions) is enough to keep naming consistent. The hint never
+ * caps the output: a response may mix hint terms and brand-new terms. May
+ * return an empty list.
  */
 export async function proposeTermsWithLlm(
   doc: ClassifierDocContext,
   systemPrompt: string,
-  vocabularyHint: string[],
+  vocabularyHint: TermVocabularyHint[],
 ): Promise<ProposedTerm[]> {
   const model = createChatModel(DEFAULT_CLASSIFIER_MODEL, { temperature: 0 });
   const structured = model.withStructuredOutput(proposeTermsResponseSchema);

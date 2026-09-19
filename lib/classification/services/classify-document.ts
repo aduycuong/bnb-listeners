@@ -180,7 +180,7 @@ async function buildClassifyResultFromDocumentTerms(
  * Shared front half of classification:
  *
  *   1. LLM proposes the terms it would tag the document with (guided by the
- *      workspace's most-used term names).
+ *      workspace's most-used terms — names and descriptions).
  *   2. Proposals are embedded and the nearest existing terms are retrieved
  *      per proposal — a short candidate list instead of the whole workspace.
  *   3. The judge LLM sees each proposal together with its own candidates and
@@ -204,7 +204,7 @@ async function proposeAndJudgeTerms(
   const proposals = dedupeProposals(
     await proposeTermsWithLlm(docContext, proposePrompt, vocabularyHint),
   );
-
+console.log('proposals', proposals);
   if (proposals.length === 0) {
     return [];
   }

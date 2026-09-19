@@ -103,17 +103,20 @@ export function buildProposeTermPrompt(
 
 Term là từ khóa hoặc nhãn ngắn gọn để gắn và lọc tài liệu — không phải danh mục chủ đề cố định. Đề xuất của bạn sẽ được đối chiếu với term hiện có của workspace: đề xuất khớp term cũ sẽ gán vào term đó, đề xuất mới có thể được tạo thành term mới theo quy tắc workspace.
 
-Nhiệm vụ: trả về 0 đến nhiều term (tên ngắn kiểu từ khóa + mô tả một câu) mô tả đúng nội dung tài liệu.
+Nhiệm vụ: trả về 0 đến nhiều term (tên ngắn kiểu từ khóa + mô tả một câu) mô tả đúng nội dung tài liệu. Hãy liệt kê ĐẦY ĐỦ mọi từ khóa/nhãn riêng biệt mà tài liệu thực sự nói tới.
+
+Về danh sách term gợi ý (nếu có trong tin nhắn):
+- Đó là gợi ý cách đặt tên, KHÔNG phải danh sách đóng và KHÔNG giới hạn số term bạn trả về.
+- Nếu tài liệu khớp term nào trong đó, dùng đúng tên term đó — không đặt tên khác cho cùng một ý. Đối chiếu mô tả kèm theo để chắc là cùng phạm vi; nếu khác phạm vi (khác địa danh, khác dự án, rộng/hẹp khác nhau) thì đề xuất term mới.
+- Việc dùng term gợi ý KHÔNG thay thế việc đề xuất term mới: nếu tài liệu còn ý nào chưa có trong danh sách gợi ý, vẫn đề xuất term mới cho ý đó. Một lần trả về có thể gồm cả term gợi ý lẫn term mới.
 
 Hướng dẫn:
 - Trả về mảng rỗng khi tài liệu ngoài phạm vi thu thập hoặc nội dung quá mơ hồ để gắn nhãn.
-- Nếu có danh sách term gợi ý và tài liệu khớp term nào trong đó, dùng đúng tên term đó — không đặt tên khác cho cùng một ý.
-- Có thể đề xuất nhiều term khi tài liệu có nhiều từ khóa/nhãn riêng biệt; ưu tiên chính xác hơn gán nhiều.
+- Đề xuất nhiều term khi tài liệu có nhiều từ khóa/nhãn riêng biệt; ưu tiên chính xác hơn gán nhiều, nhưng không bỏ sót ý rõ ràng chỉ vì đã khớp được term gợi ý.
 - Không trùng ý trong cùng một lần đề xuất; không đề xuất term quá rộng/chung chung.
 - Tên term ngắn, cụ thể, dễ tái sử dụng — ưu tiên dạng từ khóa hơn cụm chủ đề dài.
 - Mô tả một câu, tối đa 150 ký tự, nêu phạm vi term để phân biệt với term gần nghĩa.
-- ${languageGuideline}${rules}
-- Nếu chưa có quy tắc bổ sung, vẫn bám phạm vi thu thập và nội dung tài liệu.`;
+- ${languageGuideline}${rules}`;
 }
 
 export function buildEvaluateTermPrompt(

@@ -19,7 +19,7 @@ Mỗi term có một **embedding** (`terms.embedding`, `text-embedding-3-small`,
 Classifier **không** đưa toàn bộ danh sách term vào prompt — chi phí và độ chính xác không phụ thuộc số term trong workspace.
 
 1. Chỉ chạy khi tài liệu có ít nhất một **part** đủ điểm (xem [Score](./score.md)). Tài liệu không có part nào đủ điểm bị `rejected` và không được gán term LLM. LLM chỉ đọc **các part đủ điểm** — phần văn bản nguyên văn cộng tóm tắt của từng ảnh/video đủ điểm (`[Hình ảnh N]: …`). Nội dung không được index thì không được dùng để gán term.
-2. **Propose** — LLM đề xuất 0..10 term (tên kiểu từ khóa + mô tả ≤ 150 ký tự) mô tả tài liệu, theo quy tắc workspace. Prompt kèm tên của tối đa 30 term đang dùng nhiều nhất trong workspace làm gợi ý từ vựng, để đề xuất dùng đúng tên term cũ khi khớp.
+2. **Propose** — LLM đề xuất 0..10 term (tên kiểu từ khóa + mô tả ≤ 150 ký tự) mô tả tài liệu, theo quy tắc workspace. Prompt kèm tên + mô tả của tối đa 30 term đang dùng nhiều nhất trong workspace làm gợi ý từ vựng, để đề xuất dùng đúng tên term cũ khi khớp (mô tả giúp LLM phân biệt term gần nghĩa nhưng khác phạm vi). Gợi ý này không phải danh sách đóng: một lần đề xuất có thể gồm cả term gợi ý lẫn term mới cho các ý chưa có trong gợi ý.
 3. **Embed & tìm ứng viên** — mỗi đề xuất được embed; với mỗi đề xuất lấy tối đa 5 term gần nhất theo cosine similarity, chỉ giữ term có similarity ≥ 0.6. Ứng viên được giữ **theo từng đề xuất**, không gộp chung.
 4. **Judge** — LLM đọc tài liệu và từng đề xuất **kèm nhóm ứng viên của riêng nó** (tên, mô tả, similarity), rồi trả đúng một quyết định cho mỗi đề xuất:
    - `existing` — tài liệu nói về một term hiện có trong nhóm → gán term đó (theo id) với confidence.
