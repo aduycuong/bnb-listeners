@@ -54,18 +54,19 @@ Hướng dẫn:
 export function buildClassifyTermGroupsPrompt(
   settings: WorkspaceLlmSettings,
 ): string {
-  return `Bạn gán term vào các term group (nhóm phân loại) trong phạm vi thu thập: ${settings.dataCollectionScope}.
+  return `Bạn đánh giá term (từ khóa/nhãn) mới tạo thuộc những term group nào trong phạm vi thu thập: ${settings.dataCollectionScope}.
 
 Term group là nhóm do admin tạo để tổ chức terms — ví dụ "Dự án", "Khu vực", "Chủ đề". Một term có thể thuộc nhiều group khi thực sự phù hợp, nhưng không nên gán lan man.
 
-Nhiệm vụ: với mỗi term vừa được gán cho tài liệu, chọn group (theo id) mà term đó nên thuộc về dựa trên tên/mô tả term và nội dung tài liệu.
+Nhiệm vụ: với mỗi term trong danh sách, xét từng group hiện có và trả về các cặp (termId, groupId, confidence) mà term thực sự thuộc group đó, dựa trên tên/mô tả term và tên/mô tả group.
 
 Hướng dẫn:
-- Chỉ dùng id group có trong danh sách — không tự bịa id.
-- Chỉ gán khi term thực sự thuộc loại/nhóm đó (vd. term tên dự án cụ thể → group "Dự án").
+- Chỉ dùng id term và id group có trong danh sách — không tự bịa id.
+- Chỉ trả về một cặp khi term khớp rõ ràng với tiêu chí/loại của group (vd. term tên dự án cụ thể → group "Dự án").
 - Không gán term chung/chủ đề rộng vào group hẹp như "Dự án" trừ khi term đại diện một dự án cụ thể.
-- Mỗi term có thể có 0, 1 hoặc vài group — ưu tiên chính xác hơn gán nhiều.
-- Trả về groupIds rỗng khi không có group phù hợp.`;
+- confidence 0.9+ khi khớp rõ; 0.75–0.85 khi khả dĩ nhưng cần thêm ngữ cảnh; dưới 0.75 khi không chắc.
+- Khi tên term mơ hồ (tên riêng, viết tắt, dự án/địa danh không rõ), tra cứu web trước khi quyết định.
+- Mỗi term có thể có 0, 1 hoặc vài group — ưu tiên chính xác hơn gán nhiều. Bỏ qua term không thuộc group nào.`;
 }
 
 export function buildClassifyTermsPrompt(

@@ -1,25 +1,32 @@
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { terms } from "@/db/schema";
 import { db } from "@/lib/db";
-import { classifyTermGroupsWithLlm } from "@/lib/classification/utils/classify-term-groups-with-llm";
-import type { ClassifiedTermForGroups } from "@/lib/classification/types";
 import { resolveWorkspaceSystemPrompt } from "@/lib/llm/services/resolve-workspace-system-prompt";
+import {
+  DEFAULT_TERM_GROUP_MEMBER_REBUILD_MODEL,
+  TERM_GROUP_MEMBER_REBUILD_CONFIDENCE_MIN,
+} from "@/lib/term-groups/term-group-member-rebuild-config";
 
+import type { ClassifiedTermForGroups } from "../types";
 import { applyLlmTermGroupAssignments } from "../utils/apply-llm-term-group-assignments";
+import { evaluateTermsForTermGroups } from "../utils/evaluate-terms-for-term-groups";
 import { loadTermGroupsForClassifier } from "../utils/load-term-groups-for-classifier";
 
 type AssignTermGroupsAfterClassificationParams = {
   workspaceId: string;
+  /** Ids of terms created during this classification run. */
   termIds: string[];
-  doc: {
-    title: string | null;
-    rawContent: string;
-    docType: string;
-    sourceOriginName: string;
-  };
 };
 
+/**
+ * Assigns freshly created terms to the workspace's term groups.
+ *
+ * Runs the same evaluator as the member rebuild (agent + Exa web research
+ * when configured + confidence threshold), but for every group at once, and
+ * only for terms that were just created — existing terms already went through
+ * this step when they were created, or are curated via rebuild/admin.
+ */
 export async function assignTermGroupsAfterClassification(
   params: AssignTermGroupsAfterClassificationParams,
 ): Promise<void> {
@@ -41,7 +48,10 @@ export async function assignTermGroupsAfterClassification(
     })
     .from(terms)
     .where(
-      inArray(terms.id, uniqueTermIds),
+      and(
+        eq(terms.workspaceId, params.workspaceId),
+        inArray(terms.id, uniqueTermIds),
+      ),
     );
 
   const classifiedTerms: ClassifiedTermForGroups[] = termRows.map((row) => ({
@@ -59,12 +69,17 @@ export async function assignTermGroupsAfterClassification(
     "classify_term_groups",
   );
 
-  const assignments = await classifyTermGroupsWithLlm(
-    params.doc,
+  const evaluations = await evaluateTermsForTermGroups(
     classifiedTerms,
     groups,
     prompt,
+    DEFAULT_TERM_GROUP_MEMBER_REBUILD_MODEL,
+    true,
   );
 
-  await applyLlmTermGroupAssignments(params.workspaceId, assignments);
+  await applyLlmTermGroupAssignments({
+    workspaceId: params.workspaceId,
+    evaluations,
+    confidenceMin: TERM_GROUP_MEMBER_REBUILD_CONFIDENCE_MIN,
+  });
 }

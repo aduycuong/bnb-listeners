@@ -7,11 +7,7 @@ import {
   MAX_GROUPS_PER_TERM,
   TERM_GROUP_ASSIGNED_BY,
 } from "../term-group-config";
-
-export type LlmTermGroupAssignment = {
-  termId: string;
-  groupIds: string[];
-};
+import type { TermGroupMembershipEvaluation } from "./evaluate-terms-for-term-groups";
 
 async function countTermGroupMemberships(termId: string): Promise<number> {
   const [row] = await db
@@ -23,32 +19,34 @@ async function countTermGroupMemberships(termId: string): Promise<number> {
 }
 
 /**
- * Insert LLM-suggested group memberships. Respects MAX_GROUPS_PER_TERM and
- * skips groups the term already belongs to.
+ * Insert LLM-evaluated group memberships for freshly created terms.
+ *
+ * Mirrors the member rebuild apply step: drops memberships below
+ * `confidenceMin`, respects MAX_GROUPS_PER_TERM, and skips groups the term
+ * already belongs to. Never removes existing memberships.
  */
-export async function applyLlmTermGroupAssignments(
-  workspaceId: string,
-  assignments: LlmTermGroupAssignment[],
-): Promise<void> {
-  if (assignments.length === 0) {
+export async function applyLlmTermGroupAssignments(params: {
+  workspaceId: string;
+  evaluations: TermGroupMembershipEvaluation[];
+  confidenceMin: number;
+}): Promise<void> {
+  const accepted = params.evaluations.filter(
+    (item) => item.confidence >= params.confidenceMin,
+  );
+
+  if (accepted.length === 0) {
     return;
   }
 
-  const termIds = [...new Set(assignments.map((item) => item.termId))];
-  const groupIds = [
-    ...new Set(assignments.flatMap((item) => item.groupIds)),
-  ];
-
-  if (groupIds.length === 0) {
-    return;
-  }
+  const termIds = [...new Set(accepted.map((item) => item.termId))];
+  const groupIds = [...new Set(accepted.map((item) => item.groupId))];
 
   const validTerms = await db
     .select({ id: terms.id })
     .from(terms)
     .where(
       and(
-        eq(terms.workspaceId, workspaceId),
+        eq(terms.workspaceId, params.workspaceId),
         inArray(terms.id, termIds),
       ),
     );
@@ -60,12 +58,24 @@ export async function applyLlmTermGroupAssignments(
     .from(termGroups)
     .where(
       and(
-        eq(termGroups.workspaceId, workspaceId),
+        eq(termGroups.workspaceId, params.workspaceId),
         inArray(termGroups.id, groupIds),
       ),
     );
 
   const validGroupIds = new Set(validGroups.map((row) => row.id));
+
+  // Highest confidence first so the MAX_GROUPS_PER_TERM cap keeps the best fits.
+  const byTerm = new Map<string, TermGroupMembershipEvaluation[]>();
+  for (const item of accepted) {
+    if (!validTermIds.has(item.termId) || !validGroupIds.has(item.groupId)) {
+      continue;
+    }
+
+    const list = byTerm.get(item.termId) ?? [];
+    list.push(item);
+    byTerm.set(item.termId, list);
+  }
 
   const rowsToInsert: Array<{
     termGroupId: string;
@@ -73,26 +83,20 @@ export async function applyLlmTermGroupAssignments(
     assignedBy: string;
   }> = [];
 
-  for (const assignment of assignments) {
-    if (!validTermIds.has(assignment.termId)) {
-      continue;
-    }
-
-    let membershipCount = await countTermGroupMemberships(assignment.termId);
+  for (const [termId, items] of byTerm) {
+    let membershipCount = await countTermGroupMemberships(termId);
     const existingGroups = await db
       .select({ termGroupId: termGroupMembers.termGroupId })
       .from(termGroupMembers)
-      .where(eq(termGroupMembers.termId, assignment.termId));
+      .where(eq(termGroupMembers.termId, termId));
     const existingGroupIds = new Set(
       existingGroups.map((row) => row.termGroupId),
     );
 
-    for (const groupId of assignment.groupIds) {
-      if (!validGroupIds.has(groupId)) {
-        continue;
-      }
+    const sorted = [...items].sort((a, b) => b.confidence - a.confidence);
 
-      if (existingGroupIds.has(groupId)) {
+    for (const item of sorted) {
+      if (existingGroupIds.has(item.groupId)) {
         continue;
       }
 
@@ -101,11 +105,11 @@ export async function applyLlmTermGroupAssignments(
       }
 
       rowsToInsert.push({
-        termGroupId: groupId,
-        termId: assignment.termId,
+        termGroupId: item.groupId,
+        termId,
         assignedBy: TERM_GROUP_ASSIGNED_BY.llmClassifier,
       });
-      existingGroupIds.add(groupId);
+      existingGroupIds.add(item.groupId);
       membershipCount += 1;
     }
   }

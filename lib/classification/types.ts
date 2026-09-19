@@ -81,9 +81,3 @@ export type ClassifierTerm = {
   name: string;
   description: string | null;
 };
-
-export type ClassifiedTermForGroups = {
-  id: string;
-  name: string;
-  description: string | null;
-};

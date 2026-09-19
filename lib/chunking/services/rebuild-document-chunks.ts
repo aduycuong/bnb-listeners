@@ -48,7 +48,6 @@ export async function rebuildDocumentChunks(
     context: {
       author: readString(doc.metadata, "authorName"),
       sourceOriginName: doc.sourceOriginName,
-      publishedAt: doc.publishedAt,
     },
   });
 

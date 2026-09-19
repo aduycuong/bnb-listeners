@@ -8,12 +8,11 @@ export type ChunkContentType = "text" | MediaKind;
 
 /**
  * Source context prepended to every chunk before embedding, so a chunk lifted
- * out of its document still says who posted it, where, and when.
+ * out of its document still says who posted it and where.
  */
 export type ChunkSourceContext = {
   author?: string | null;
   sourceOriginName?: string | null;
-  publishedAt?: Date | string | null;
   /** Extra labels appended to the context line, e.g. ["thắc mắc", "Đà Lạt"]. */
   labels?: string[];
 };

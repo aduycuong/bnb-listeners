@@ -385,14 +385,8 @@ async function classifyDiscussionDocument(
   const affectedTermIds = [...new Set([...oldTermIds, ...newTermIds])];
   await invalidateAffectedDigests(affectedTermIds, doc.publishedAt, doc.dataSourceId);
 
-  if (newTermIds.length > 0) {
-    await assignTermGroupsAfterClassification({
-      workspaceId: doc.workspaceId,
-      termIds: newTermIds,
-      doc: docContext,
-    });
-  }
-
+  // No term-group step here: discussions never create terms, and only
+  // freshly created terms are evaluated against groups.
   return buildClassifyResultFromDocumentTerms(doc.id);
 }
 
@@ -431,6 +425,9 @@ async function classifyCompanionDiscussionIfPresent(
  *      (≥ TERM_DUPLICATE_SIMILARITY) always wins over `new`.
  *   5. `new` decisions are auto-created (with their embedding) when
  *      autoCreateTerms is on; an exact name hit is assigned instead.
+ *   6. Freshly created terms are evaluated against the workspace's term
+ *      groups (same agent + web research + confidence threshold as the
+ *      member rebuild). Existing terms are not re-evaluated here.
  *
  * By default only prior LLM assignments are replaced; admin and backfill
  * assignments are preserved. Set replaceAllAssignments to clear every
@@ -513,18 +510,21 @@ export async function classifyDocument(
   };
 
   // Invalidate daily digest rows for every term whose doc count changed.
+  const createdTermIds = result.createdTerms.map((t) => t.id);
   const newTermIds = [
     ...result.assignments.map((a) => a.termId),
-    ...result.createdTerms.map((t) => t.id),
+    ...createdTermIds,
   ];
   const affectedTermIds = [...new Set([...oldTermIds, ...newTermIds])];
   await invalidateAffectedDigests(affectedTermIds, doc.publishedAt, doc.dataSourceId);
 
-  if (newTermIds.length > 0) {
+  // Only freshly created terms get evaluated against term groups — existing
+  // terms already went through this when they were created (or are curated
+  // via admin / member rebuild).
+  if (createdTermIds.length > 0) {
     await assignTermGroupsAfterClassification({
       workspaceId: doc.workspaceId,
-      termIds: newTermIds,
-      doc: docContext,
+      termIds: createdTermIds,
     });
   }
 

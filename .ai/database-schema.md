@@ -292,7 +292,7 @@ One row per ingested item within a workspace. Term assignment is in `document_te
 | neutral_count | integer | NO | `0` | Debate comments with stance = neutral |
 | source_run_id | uuid | YES | — | FK → `source_runs.id` ON DELETE SET NULL — source run that first created this document |
 | data_source_id | uuid | NO | — | FK → `data_sources.id` ON DELETE CASCADE — data source that owns this document; set on insert only |
-| published_at | timestamptz | YES | — | Source publish date; canonical ordering and chunk context prefix |
+| published_at | timestamptz | YES | — | Source publish date; canonical ordering, denormalized onto `chunks.published_at` |
 | created_at | timestamptz | NO | `now()` | Ingestion time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
@@ -454,7 +454,7 @@ RAG query table. One row per retrievable unit: a text chunk, or a single image o
 - B-tree on `doc_type`, `content_type`, `published_at`, `document_id`, `part_id`, `quality_score`, `like_count DESC`
 - `(doc_type, published_at DESC)` for type + recency queries
 
-Chunks are built only from eligible `document_parts`. A text part is split into one or more text chunks; each eligible image or video part becomes exactly one media chunk. Every chunk has a text `embedding`, including media chunks — their content is the source context prefix plus the part's LLM `summary` (not the post caption). Media chunks additionally carry `embedding_multimodal` from voyage-multimodal-3.5, which embeds the summary and the R2 media URL together.
+Chunks are built only from eligible `document_parts`. A text part is split into one or more text chunks; each eligible image or video part becomes exactly one media chunk. Every chunk has a text `embedding`, including media chunks — their content is the source context prefix (`[Tác giả: … | Nguồn: …]`; the publish date is stored in `published_at` but deliberately not embedded in `content`) plus the part's LLM `summary` (not the post caption). Media chunks additionally carry `embedding_multimodal` from voyage-multimodal-3.5, which embeds the summary and the R2 media URL together.
 
 Engagement counters are seeded on insert and afterwards kept in step by `trg_sync_chunk_engagement` (see triggers below), so refreshed scrape counts never require re-embedding.
 
