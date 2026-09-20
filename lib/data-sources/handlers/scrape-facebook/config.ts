@@ -6,9 +6,9 @@ export const DEFAULT_MAX_COMMENTS = 100;
 export const FACEBOOK_COMMENT_SCRAPE_MAX_ATTEMPTS = 3;
 
 export const FACEBOOK_COMMENT_SCRAPE_DELAYS_SECONDS = {
-  first: 15 * 60,
-  afterNewComments: 30 * 60,
-  afterNoNewComments: 60 * 60,
+  first: 60 * 60, // 1 hour
+  afterNewComments: 12 * 60 * 60, // 12 hours
+  afterNoNewComments: 24 * 60 * 60, // 24 hours
 } as const;
 
 export function readScrapePostComments(
