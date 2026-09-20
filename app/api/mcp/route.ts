@@ -38,11 +38,11 @@ async function resolveWorkspaceContext(request: NextRequest) {
 
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    const ctx = await resolveWorkspaceContext(request);
+    await resolveWorkspaceContext(request);
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
     });
-    const mcp = buildMcpServer(ctx);
+    const mcp = buildMcpServer();
     await mcp.connect(transport);
     return transport.handleRequest(request);
   } catch (error) {
