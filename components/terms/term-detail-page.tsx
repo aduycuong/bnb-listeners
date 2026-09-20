@@ -219,7 +219,7 @@ export function TermDetailPage({
       ),
     initialPageParam: 0,
     getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? lastPage.offset + lastPage.items.length : undefined,
+      lastPage.hasMore ? lastPage.offset + lastPage.rootCount : undefined,
   });
 
   const jobsQuery = useQuery({

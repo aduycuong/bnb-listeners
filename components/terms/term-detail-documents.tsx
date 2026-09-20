@@ -5,13 +5,12 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
 import { DocumentDataSourceFilter } from "@/components/documents/document-data-source-filter";
-import {
-  DOCUMENT_LIST_ITEM_SKELETON_CLASS,
-  DocumentListItemCard,
-} from "@/components/documents/document-list-item-card";
+import { DocumentGroupedList } from "@/components/documents/document-grouped-list";
+import { DOCUMENT_LIST_ITEM_SKELETON_CLASS } from "@/components/documents/document-list-item-card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toDocumentCardItemFromTermDocument } from "@/lib/documents/utils/to-document-card-item";
+import { groupDocumentCardItemsInOrder } from "@/lib/documents/utils/order-document-list-by-parent";
 import { TERM_CONFIG } from "@/lib/terms/term-config";
 import type { TermDocumentListItem } from "@/lib/terms/types";
 import type { DataSourceListItem } from "@/lib/data-sources/types";
@@ -57,6 +56,11 @@ export function TermDetailDocuments({
     [documents],
   );
 
+  const documentGroups = useMemo(
+    () => groupDocumentCardItemsInOrder(cardItems),
+    [cardItems],
+  );
+
   useEffect(() => {
     const sentinel = loadMoreRef.current;
     if (!sentinel || !hasNextPage || isFetchingMore) {
@@ -77,7 +81,7 @@ export function TermDetailDocuments({
   }, [hasNextPage, isFetchingMore, onLoadMore]);
 
   return (
-    <section className="space-y-4">
+    <section className="min-w-0 space-y-4">
       <div className="space-y-1">
         <h2 className="text-lg font-semibold tracking-tight">
           {TERM_CONFIG.detailDocumentsTitle}
@@ -87,15 +91,17 @@ export function TermDetailDocuments({
         </p>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <DocumentDataSourceFilter
-          dataSources={jobs}
-          dataSourceIds={dataSourceIds}
-          onDataSourceIdsChange={onJobIdsChange}
-          disabled={isInitialLoading}
-        />
+      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] sm:items-center">
+        <div className="min-w-0">
+          <DocumentDataSourceFilter
+            dataSources={jobs}
+            dataSourceIds={dataSourceIds}
+            onDataSourceIdsChange={onJobIdsChange}
+            disabled={isInitialLoading}
+          />
+        </div>
 
-        <div className="relative min-w-0 flex-1">
+        <div className="relative min-w-0">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
@@ -140,24 +146,11 @@ export function TermDetailDocuments({
             {totalLoaded} document{totalLoaded === 1 ? "" : "s"} loaded
           </p>
 
-          <ul className="flex flex-col gap-2.5">
-            {cardItems.map((document) => (
-              <li key={document.id}>
-                <DocumentListItemCard
-                  document={document}
-                  workspaceIndex={workspaceIndex}
-                />
-              </li>
-            ))}
-
-            {isFetchingMore
-              ? Array.from({ length: 2 }).map((_, index) => (
-                  <li key={`loading-${index}`}>
-                    <Skeleton className={DOCUMENT_LIST_ITEM_SKELETON_CLASS} />
-                  </li>
-                ))
-              : null}
-          </ul>
+          <DocumentGroupedList
+            groups={documentGroups}
+            workspaceIndex={workspaceIndex}
+            isFetchingMore={isFetchingMore}
+          />
 
           <div ref={loadMoreRef} className="h-8" aria-hidden />
         </>

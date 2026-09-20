@@ -6,11 +6,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
 import { DocumentDataSourceFilter } from "@/components/documents/document-data-source-filter";
-import {
-  DOCUMENT_LIST_ITEM_SKELETON_CLASS,
-  DocumentListItemCard,
-  documentCardItemToListRowItem,
-} from "@/components/documents/document-list-item-card";
+import { DocumentGroupedList } from "@/components/documents/document-grouped-list";
+import { DOCUMENT_LIST_ITEM_SKELETON_CLASS } from "@/components/documents/document-list-item-card";
 import { DocumentDataSourceGroupFilter } from "@/components/documents/document-data-source-group-filter";
 import {
   DocumentTermFilterSelect,
@@ -33,12 +30,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  filterSortListItems,
   LIST_SORT_OPTIONS,
   type ListSortOption,
 } from "@/lib/dashboard/filter-sort-list-items";
 import { DOCUMENT_CONFIG } from "@/lib/documents/document-config";
 import { DOCUMENT_LIST_PAGE_SIZE } from "@/lib/documents/document-list-config";
+import { buildDocumentListGroups } from "@/lib/documents/utils/build-document-list-groups";
 import { toDocumentCardItem } from "@/lib/documents/utils/to-document-card-item";
 import type { DocumentTermFilterMode } from "@/lib/documents/document-term-filter-config";
 import type {
@@ -163,7 +160,7 @@ export function DocumentListPage({
       fetchDocuments(workspace.id, filters, pageParam),
     initialPageParam: 0,
     getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? lastPage.offset + lastPage.items.length : undefined,
+      lastPage.hasMore ? lastPage.offset + lastPage.rootCount : undefined,
   });
 
   const jobsQuery = useQuery({
@@ -186,19 +183,18 @@ export function DocumentListPage({
     [documents],
   );
 
-  const listItems = useMemo(
-    () =>
-      filterSortListItems(
-        cardItems.map(documentCardItemToListRowItem),
-        keyword,
-        sort,
-      ),
+  const documentListGroups = useMemo(
+    () => buildDocumentListGroups(cardItems, keyword, sort),
     [cardItems, keyword, sort],
   );
 
-  const cardItemsById = useMemo(
-    () => new Map(cardItems.map((item) => [item.id, item])),
-    [cardItems],
+  const filteredDocumentCount = useMemo(
+    () =>
+      documentListGroups.reduce(
+        (count, group) => count + 1 + group.children.length,
+        0,
+      ),
+    [documentListGroups],
   );
 
   const jobs = jobsQuery.data?.items ?? [];
@@ -213,7 +209,7 @@ export function DocumentListPage({
   const awaitingTermSelection =
     termFilterMode === "selected" && selectedTerms.length === 0;
   const showEmptyState =
-    !isInitialLoading && !errorMessage && listItems.length === 0;
+    !isInitialLoading && !errorMessage && documentListGroups.length === 0;
 
   useEffect(() => {
     const sentinel = loadMoreRef.current;
@@ -377,35 +373,15 @@ export function DocumentListPage({
           <>
             <p className="mb-3 text-xs text-muted-foreground">
               {hasKeyword
-                ? `${listItems.length} matching of ${totalDocuments}`
+                ? `${filteredDocumentCount} matching of ${totalDocuments}`
                 : `${totalDocuments} document${totalDocuments === 1 ? "" : "s"}`}
             </p>
 
-            <ul className="flex flex-col gap-2.5">
-              {listItems.map((item) => {
-                const document = cardItemsById.get(item.id);
-                if (!document) {
-                  return null;
-                }
-
-                return (
-                  <li key={item.id}>
-                    <DocumentListItemCard
-                      document={document}
-                      workspaceIndex={workspaceIndex}
-                    />
-                  </li>
-                );
-              })}
-
-              {isFetchingMore
-                ? Array.from({ length: 2 }).map((_, index) => (
-                    <li key={`loading-${index}`}>
-                      <Skeleton className={DOCUMENT_LIST_ITEM_SKELETON_CLASS} />
-                    </li>
-                  ))
-                : null}
-            </ul>
+            <DocumentGroupedList
+              groups={documentListGroups}
+              workspaceIndex={workspaceIndex}
+              isFetchingMore={isFetchingMore}
+            />
 
             <div ref={loadMoreRef} className="h-8" aria-hidden />
           </>

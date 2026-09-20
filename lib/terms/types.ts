@@ -179,6 +179,7 @@ export type ListTermDocumentsParams = {
 
 export type TermDocumentListItem = {
   id: string;
+  parentDocumentId: string | null;
   docType: string;
   title: string | null;
   rawContent: string;
@@ -197,8 +198,12 @@ export type TermDocumentListItem = {
 export type ListTermDocumentsResult = {
   items: TermDocumentListItem[];
   hasMore: boolean;
+  /** Offset of display-root groups (not flat document rows). */
   offset: number;
+  /** Page size in display-root groups (not flat document rows). */
   limit: number;
+  /** Display-root groups returned on this page. */
+  rootCount: number;
 };
 
 export type FindTopTermsParams = {

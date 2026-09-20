@@ -4,6 +4,7 @@ import type { TermDocumentListItem } from "@/lib/terms/types";
 export function toDocumentCardItem(doc: DocumentListItem): DocumentCardItem {
   return {
     id: doc.id,
+    parentDocumentId: doc.parentDocumentId,
     docType: doc.docType,
     title: doc.title,
     rawContent: doc.rawContent,
@@ -24,6 +25,7 @@ export function toDocumentCardItemFromTermDocument(
 ): DocumentCardItem {
   return {
     id: doc.id,
+    parentDocumentId: doc.parentDocumentId,
     docType: doc.docType,
     title: doc.title,
     rawContent: doc.rawContent,

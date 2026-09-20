@@ -65,6 +65,7 @@ export type DocumentTermSummary = {
 /** Shared shape for document list cards in the UI. */
 export type DocumentCardItem = {
   id: string;
+  parentDocumentId: string | null;
   docType: string;
   title: string | null;
   rawContent: string;
@@ -82,6 +83,7 @@ export type DocumentCardItem = {
 
 export type DocumentListItem = {
   id: string;
+  parentDocumentId: string | null;
   docType: string;
   sourceOriginKey: string;
   sourceOriginName: string;
@@ -108,8 +110,12 @@ export type ListDocumentsResult = {
   items: DocumentListItem[];
   total: number;
   hasMore: boolean;
+  /** Offset of display-root groups (not flat document rows). */
   offset: number;
+  /** Page size in display-root groups (not flat document rows). */
   limit: number;
+  /** Display-root groups returned on this page. */
+  rootCount: number;
 };
 
 export type UpsertDocumentParams = {
