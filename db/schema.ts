@@ -618,14 +618,8 @@ export const chunks = pgTable(
     mediaUrl: text("media_url"),
     mediaMetadata: jsonb("media_metadata").$type<Record<string, unknown>>(),
     embeddingMultimodal: pgVector1024("embedding_multimodal"),
-    termIds: uuid("term_ids").array().default([]),
     /** Part score of the document_part this chunk came from. */
     qualityScore: real("quality_score"),
-    /** Denormalized from documents by trg_sync_chunk_engagement — filter/sort without a join. */
-    likeCount: integer("like_count").notNull().default(0),
-    commentCount: integer("comment_count").notNull().default(0),
-    shareCount: integer("share_count").notNull().default(0),
-    viewCount: integer("view_count").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -639,7 +633,6 @@ export const chunks = pgTable(
       .with({ m: 16, ef_construction: 64 })
       .where(sql`${table.embeddingMultimodal} IS NOT NULL`),
     index("idx_chunks_content_tsv").using("gin", table.contentTsv),
-    index("idx_chunks_term_ids").using("gin", table.termIds),
     index("idx_chunks_doc_type").on(table.docType),
     index("idx_chunks_content_type").on(table.contentType),
     index("idx_chunks_published_at").on(table.publishedAt.desc()),
@@ -654,7 +647,6 @@ export const chunks = pgTable(
       table.publishedAt.desc(),
     ),
     index("idx_chunks_quality_score").on(table.qualityScore),
-    index("idx_chunks_like_count").on(table.likeCount.desc()),
   ],
 );
 

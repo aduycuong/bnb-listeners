@@ -33,7 +33,6 @@ export type DocumentChunkListItem = {
   mediaUrl: string | null;
   metadata: Record<string, unknown>;
   mediaMetadata: Record<string, unknown> | null;
-  termIds: string[] | null;
   createdAt: string;
 };
 

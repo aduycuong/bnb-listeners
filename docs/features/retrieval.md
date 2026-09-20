@@ -83,4 +83,5 @@ When `includeScores` is true, the search API returns both **fusion rank** and **
 
 - [Serve](./serve.md) — product-facing retrieval behaviour
 - [Score](./score.md) — quality gating (`RETRIEVAL_QUALITY_MIN`)
-- [Chunk term sync](../ops/chunk-term-sync.md) — `term_ids` filter on chunks
+
+Term filtering (`termIds`) is applied as `c.document_id IN (SELECT document_id FROM document_terms WHERE term_id = ANY(...))` inside each candidate CTE — chunks carry no denormalized term or engagement columns.

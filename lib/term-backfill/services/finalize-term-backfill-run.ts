@@ -4,11 +4,6 @@ import { terms } from "@/db/schema";
 import type { TermBackfillRun } from "@/db/schema";
 import { db } from "@/lib/db";
 import { fetchDigestPartitionsForDocuments } from "@/lib/document-terms/utils/fetch-digest-partitions-for-documents";
-import {
-  disableChunkTermTrigger,
-  enableChunkTermTrigger,
-} from "@/lib/document-terms/utils/chunk-term-trigger";
-import { syncChunkTermsForDocuments } from "@/lib/document-terms/utils/sync-chunk-terms-for-documents";
 import { bulkInvalidateTermDigestPartitions } from "@/lib/term-digests/services/bulk-invalidate-term-digest-partitions";
 
 import { fetchBackfillAssignedDocumentIds } from "../utils/fetch-backfill-assigned-document-ids";
@@ -25,18 +20,6 @@ export async function finalizeTermBackfillRun(params: {
   });
 
   if (assignedDocumentIds.length > 0) {
-    let triggerDisabled = false;
-
-    try {
-      await disableChunkTermTrigger();
-      triggerDisabled = true;
-      await syncChunkTermsForDocuments(assignedDocumentIds);
-    } finally {
-      if (triggerDisabled) {
-        await enableChunkTermTrigger();
-      }
-    }
-
     const partitions = await fetchDigestPartitionsForDocuments(
       assignedDocumentIds,
     );

@@ -1,5 +1,4 @@
 import type { NewChunk } from "@/db/schema";
-import { ZERO_ENGAGEMENT_COUNTS } from "@/lib/common/engagement-counts";
 import { APIError } from "@/lib/exposers/api-error";
 
 import { EMBEDDING_MODEL, EMBEDDING_VERSION } from "../../config";
@@ -29,14 +28,7 @@ import type {
 export async function createChunkRecords(
   params: CreateChunkRecordsParams,
 ): Promise<NewChunk[]> {
-  const {
-    documentId,
-    docType,
-    publishedAt,
-    chunks,
-    termIds = [],
-    engagement = ZERO_ENGAGEMENT_COUNTS,
-  } = params;
+  const { documentId, docType, publishedAt, chunks } = params;
 
   if (chunks.length === 0) return [];
 
@@ -70,9 +62,7 @@ export async function createChunkRecords(
           }
         : null,
       embeddingMultimodal: multimodal,
-      termIds,
       qualityScore: chunk.partScore,
-      ...engagement,
     };
   });
 }

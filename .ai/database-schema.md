@@ -422,7 +422,7 @@ Individual social-media comments on a parent post. Kept out of the document pipe
 
 ### `chunks`
 
-RAG query table. One row per retrievable unit: a text chunk, or a single image or video from the source post. `term_ids` and the engagement counters are denormalized from other tables (see triggers below).
+RAG query table. One row per retrievable unit: a text chunk, or a single image or video from the source post. Term assignments and engagement counters are **not** denormalized here — retrieval reads them from `document_terms` / `documents` via the existing join.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -442,25 +442,20 @@ RAG query table. One row per retrievable unit: a text chunk, or a single image o
 | media_url | text | YES | — | R2 `storage_url` of the media part (stable, never expires) |
 | media_metadata | jsonb | YES | — | Media descriptor (`kind`, `url`, `sourceUrl`, embedding model) |
 | embedding_multimodal | vector(1024) | YES | — | voyage-multimodal-3.5; media chunks only |
-| term_ids | uuid[] | YES | `{}` | Denormalized term ids for fast filtering |
 | quality_score | real | YES | — | `part_score` of the originating `document_parts` row |
-| like_count | integer | NO | `0` | Denormalized from `documents.like_count` |
-| comment_count | integer | NO | `0` | Denormalized from `documents.comment_count` |
-| share_count | integer | NO | `0` | Denormalized from `documents.share_count` |
-| view_count | integer | NO | `0` | Denormalized from `documents.view_count` |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 
 **Indexes**
 
 - HNSW on `embedding` (`vector_cosine_ops`, m=16, ef_construction=64)
 - Partial HNSW on `embedding_multimodal` WHERE NOT NULL
-- GIN on `content_tsv`, `term_ids`, `metadata`
-- B-tree on `doc_type`, `content_type`, `published_at`, `document_id`, `part_id`, `quality_score`, `like_count DESC`
+- GIN on `content_tsv`, `metadata`
+- B-tree on `doc_type`, `content_type`, `published_at`, `document_id`, `part_id`, `quality_score`
 - `(doc_type, published_at DESC)` for type + recency queries
 
 Chunks are built only from eligible `document_parts`. A text part is split into one or more text chunks; each eligible image or video part becomes exactly one media chunk. Every chunk has a text `embedding`, including media chunks — their content is the source context prefix (`[Tác giả: … | Nguồn: …]`; the publish date is stored in `published_at` but deliberately not embedded in `content`) plus the part's LLM `summary` (not the post caption). Media chunks additionally carry `embedding_multimodal` from voyage-multimodal-3.5, which embeds the summary and the R2 media URL together.
 
-Engagement counters are seeded on insert and afterwards kept in step by `trg_sync_chunk_engagement` (see triggers below), so refreshed scrape counts never require re-embedding.
+Retrieval filters by term with `document_id IN (SELECT document_id FROM document_terms WHERE term_id = ANY(...))` and reads `comment_count` from the joined `documents` row, so re-classification and engagement refreshes never touch `chunks`.
 
 Workspace scope is inherited via `document_id` → `documents.workspace_id`.
 
@@ -947,12 +942,16 @@ Stores metadata for workspace API keys managed via Unkey. The actual key value i
 
 ## Triggers & functions (manual)
 
-Not represented in Drizzle schema. Reference SQL in `db/manual/triggers.sql`:
+None. The former `trg_sync_chunk_terms` / `trg_sync_chunk_engagement` triggers (and their `sync_chunk_terms()` / `sync_chunk_engagement()` functions) were removed together with the denormalized `chunks` columns they maintained. On databases that still carry them, drop manually:
 
-- `sync_chunk_terms()` — keeps `chunks.term_ids` in sync when `document_terms` changes
-- `sync_chunk_engagement()` — mirrors `documents.{like,comment,share,view}_count` onto that document's chunks; fires only when one of the four counters actually changes
+```sql
+DROP TRIGGER IF EXISTS trg_sync_chunk_terms ON document_terms;
+DROP FUNCTION IF EXISTS sync_chunk_terms();
+DROP TRIGGER IF EXISTS trg_sync_chunk_engagement ON documents;
+DROP FUNCTION IF EXISTS sync_chunk_engagement();
+```
 
-Apply after migrations if not already present.
+Run this **before** the migration that drops the `chunks` columns, otherwise the trigger functions will error on the next `document_terms` / `documents` write.
 
 ---
 

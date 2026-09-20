@@ -14,8 +14,8 @@ import type { UpsertDocumentParams, UpsertDocumentResult } from "../types";
  *   updated    — rawContent changed; embeddingStatus reset to "pending" and
  *                process-document dispatched.
  *   unchanged  — rawContent identical; metadata, authorName and engagement refreshed only.
- *                No re-embed, no QStash dispatch — chunk engagement is mirrored
- *                by trg_sync_chunk_engagement.
+ *                No re-embed, no QStash dispatch — retrieval reads engagement
+ *                counters from documents, so chunks need no update.
  *
  * @param userId  Passed to QStash for audit; defaults to "system" for background
  *                jobs that run without a human session (webhooks, crons).

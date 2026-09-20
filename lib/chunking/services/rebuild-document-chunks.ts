@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { chunks, documentTerms, documents } from "@/db/schema";
+import { chunks, documents } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { getEligibleDocumentParts } from "@/lib/document-parts/services/get-eligible-document-parts";
@@ -58,13 +58,6 @@ export async function rebuildDocumentChunks(
           docType: doc.docType,
           publishedAt: doc.publishedAt,
           chunks: built,
-          termIds: await fetchTermIds(documentId),
-          engagement: {
-            likeCount: doc.likeCount,
-            commentCount: doc.commentCount,
-            shareCount: doc.shareCount,
-            viewCount: doc.viewCount,
-          },
         })
       : [];
 
@@ -119,15 +112,6 @@ function toChunkablePart(part: DocumentPartRow): ChunkablePart | null {
     sourceUrl: part.value,
     partScore,
   };
-}
-
-async function fetchTermIds(documentId: string): Promise<string[]> {
-  const rows = await db
-    .select({ termId: documentTerms.termId })
-    .from(documentTerms)
-    .where(eq(documentTerms.documentId, documentId));
-
-  return rows.map((row) => row.termId);
 }
 
 function readString(

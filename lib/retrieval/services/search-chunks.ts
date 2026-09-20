@@ -26,7 +26,6 @@ type ChunkRow = {
   content: string;
   chunk_index: number;
   quality_score: number;
-  term_ids: string[];
   document_id: string;
   title: string | null;
   doc_type: string;
@@ -82,7 +81,14 @@ export async function searchChunks(
 
   const termFilter =
     termIds && termIds.length > 0
-      ? sql.raw(`AND c.term_ids && ARRAY[${termIds.map((id) => `'${id}'::uuid`).join(",")}]`)
+      ? sql`AND c.document_id IN (
+          SELECT dt.document_id
+          FROM document_terms dt
+          WHERE dt.term_id = ANY(ARRAY[${sql.join(
+            termIds.map((id) => sql`${id}::uuid`),
+            sql`, `,
+          )}])
+        )`
       : sql.raw("");
 
   const documentFilter = documentId
@@ -191,8 +197,7 @@ export async function searchChunks(
       c.content,
       c.chunk_index,
       c.quality_score,
-      c.term_ids,
-      c.comment_count,
+      d.comment_count,
       d.id         AS document_id,
       d.title,
       d.doc_type,

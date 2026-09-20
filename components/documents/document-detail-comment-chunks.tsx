@@ -106,12 +106,6 @@ function CommentChunkCard({ chunk }: { chunk: DocumentChunkListItem }) {
         {partLabel ? (
           <span className="text-[11px] text-muted-foreground">{partLabel}</span>
         ) : null}
-        {chunk.termIds && chunk.termIds.length > 0 ? (
-          <span className="text-[11px] text-muted-foreground">
-            {chunk.termIds.length} term
-            {chunk.termIds.length === 1 ? "" : "s"}
-          </span>
-        ) : null}
       </div>
 
       <p className="text-sm whitespace-pre-wrap">

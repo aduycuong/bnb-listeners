@@ -237,7 +237,6 @@ function resolveSearchResultChunk(
     mediaUrl: null,
     metadata: {},
     mediaMetadata: null,
-    termIds: null,
     createdAt: "",
   };
 }
@@ -265,12 +264,6 @@ function ChunkCard({ chunk }: { chunk: DocumentChunkListItem }) {
         </span>
         {partLabel ? (
           <span className="text-[11px] text-muted-foreground">{partLabel}</span>
-        ) : null}
-        {chunk.termIds && chunk.termIds.length > 0 ? (
-          <span className="text-[11px] text-muted-foreground">
-            {chunk.termIds.length} term
-            {chunk.termIds.length === 1 ? "" : "s"}
-          </span>
         ) : null}
       </div>
 
