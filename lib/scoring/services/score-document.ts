@@ -40,7 +40,7 @@ type ScoredPart = {
  *   2. Media parts: download the source URL and archive it on R2 so the URL
  *      the vision model and the embedder read never expires.
  *   3. Score every part on relevance + detail (text model / vision model /
- *      video placeholder). A part whose archive or scoring fails is stored as
+ *      video model). A part whose archive or scoring fails is stored as
  *      `failed` and ineligible — the document as a whole still proceeds.
  *   4. Persist per-part scores and derive documents.quality_score as the
  *      highest part_score among eligible parts (0 when none).
@@ -196,17 +196,14 @@ async function scorePart(
   }
 
   if (part.contentType === "video") {
-    const scores = await scoreVideoPart({
-      videoUrl: storageUrl,
-      systemPrompt: ctx.mediaPrompt,
-    });
-
-    return {
-      ...archived,
-      scores,
-      scoreSource: "placeholder",
-      scoreError: null,
-    };
+    return runScorer(
+      () =>
+        scoreVideoPart({
+          videoUrl: storageUrl,
+          systemPrompt: ctx.mediaPrompt,
+        }),
+      archived,
+    );
   }
 
   return runScorer(

@@ -1,6 +1,7 @@
 import { ChatAnthropic } from "@langchain/anthropic";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { ChatDeepSeek } from "@langchain/deepseek";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatOpenAI } from "@langchain/openai";
 
 import {
@@ -22,6 +23,7 @@ const alibabaCompatibleBaseUrls = {
 const providerEnvKeys: Record<ChatModelProvider, string> = {
   openai: "OPENAI_API_KEY",
   anthropic: "ANTHROPIC_API_KEY",
+  google: "GEMINI_API_KEY",
   deepseek: "DEEPSEEK_API_KEY",
   alibaba: "ALIBABA_API_KEY",
 };
@@ -29,6 +31,7 @@ const providerEnvKeys: Record<ChatModelProvider, string> = {
 const providerConfigErrors: Record<ChatModelProvider, string> = {
   openai: "OpenAI is not configured. Please set OPENAI_API_KEY.",
   anthropic: "Anthropic is not configured. Please set ANTHROPIC_API_KEY.",
+  google: "Google Gemini is not configured. Please set GEMINI_API_KEY.",
   deepseek: "DeepSeek is not configured. Please set DEEPSEEK_API_KEY.",
   alibaba: "Alibaba DashScope is not configured. Please set ALIBABA_API_KEY.",
 };
@@ -69,6 +72,13 @@ export function createChatModel(
   switch (provider) {
     case "anthropic":
       return new ChatAnthropic({
+        model: definition.modelName,
+        apiKey,
+        ...modelOptions,
+      });
+
+    case "google":
+      return new ChatGoogleGenerativeAI({
         model: definition.modelName,
         apiKey,
         ...modelOptions,

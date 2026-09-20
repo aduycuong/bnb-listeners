@@ -3,12 +3,18 @@ import { z } from "zod";
 export const chatModelProviders = [
   "openai",
   "anthropic",
+  "google",
   "deepseek",
   // "alibaba",
 ] as const;
 
 // export type ChatModelProvider = (typeof chatModelProviders)[number];
-export type ChatModelProvider = "openai" | "anthropic" | "deepseek" | "alibaba";
+export type ChatModelProvider =
+  | "openai"
+  | "anthropic"
+  | "google"
+  | "deepseek"
+  | "alibaba";
 
 /** Keep OpenAI / Anthropic / DeepSeek ids aligned with bnb-chat-agent. */
 export const chatModelIds = [
@@ -20,6 +26,9 @@ export const chatModelIds = [
   "gpt-4.1-mini",
   "claude-sonnet-4-6",
   "claude-opus-4-6",
+  "gemini-3.5-flash-lite",
+  "gemini-3.6-flash",
+  "gemini-3.6-pro",
   "deepseek-v4-flash",
   "deepseek-v4-pro",
   "qwen-turbo",
@@ -55,6 +64,7 @@ export type ChatModelDefinition = {
 const providerLabels: Record<ChatModelProvider, string> = {
   openai: "OpenAI",
   anthropic: "Claude (Anthropic)",
+  google: "Gemini (Google)",
   deepseek: "DeepSeek",
   alibaba: "Qwen (Alibaba DashScope)",
 };
@@ -131,6 +141,33 @@ export const chatModelRegistry: Record<ChatModelId, ChatModelDefinition> = {
     supportsTemperature: true,
     description: "Anthropic flagship for the most complex classification.",
     pricing: { inputPerMTok: 5, outputPerMTok: 25 },
+  },
+  "gemini-3.5-flash-lite": {
+    label: "Gemini 3.5 Flash-Lite",
+    modelName: "gemini-3.5-flash-lite",
+    provider: "google",
+    supportsTemperature: true,
+    description:
+      "Low-latency, cost-efficient Google multimodal model with native image, audio, and video understanding.",
+    pricing: { inputPerMTok: 0.1, outputPerMTok: 0.4 },
+  },
+  "gemini-3.6-flash": {
+    label: "Gemini 3.6 Flash",
+    modelName: "gemini-3.6-flash",
+    provider: "google",
+    supportsTemperature: true,
+    description:
+      "Google multimodal model with native image, audio, and video understanding.",
+    pricing: { inputPerMTok: 0.3, outputPerMTok: 2.5 },
+  },
+  "gemini-3.6-pro": {
+    label: "Gemini 3.6 Pro",
+    modelName: "gemini-3.6-pro",
+    provider: "google",
+    supportsTemperature: true,
+    description:
+      "Google flagship multimodal model for the most demanding video and document analysis.",
+    pricing: { inputPerMTok: 1.25, outputPerMTok: 10 },
   },
   "deepseek-v4-flash": {
     label: "DeepSeek V4 Flash",

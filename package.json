@@ -28,6 +28,7 @@
     "@langchain/anthropic": "^1.5.10",
     "@langchain/core": "^1.2.9",
     "@langchain/deepseek": "^1.1.13",
+    "@langchain/google-genai": "^2.3.2",
     "@langchain/openai": "^1.5.10",
     "@langchain/textsplitters": "^1.0.1",
     "@modelcontextprotocol/sdk": "^1.30.0",
