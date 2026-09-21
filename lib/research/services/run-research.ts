@@ -4,7 +4,11 @@ import { researchRuns } from "@/db/schema";
 import { db } from "@/lib/db";
 import { isExaConfigured } from "@/lib/exa/services/exa-answer";
 
-import { getDepthConfig, RESEARCH_GRAPH_RECURSION_LIMIT } from "../config";
+import {
+  getDepthConfig,
+  RESEARCH_GRAPH_RECURSION_LIMIT,
+  RESEARCH_SYSTEM_USER_ID,
+} from "../config";
 import { buildResearchGraph } from "../graph/build-research-graph";
 import type { DepthLevel, ResearchRunResult } from "../types";
 import { formatFindings } from "../utils/format-findings";
@@ -45,7 +49,11 @@ export async function runResearch(runId: string): Promise<void> {
   try {
     const depth = getDepthConfig(run.depth as DepthLevel);
     const graph = buildResearchGraph({
-      workspaceId: run.workspaceId,
+      workspaceContext: {
+        userId: RESEARCH_SYSTEM_USER_ID,
+        workspaceId: run.workspaceId,
+        permission: "owner",
+      },
       webEnabled: isExaConfigured(),
       maxIterations: depth.maxIterations,
       maxSubQueries: depth.maxSubQueries,
@@ -57,8 +65,8 @@ export async function runResearch(runId: string): Promise<void> {
         query: run.query,
         background: run.background ?? "",
         plan: "",
-        subQueries: [],
-        searchedQueries: [],
+        tasks: [],
+        completedTaskKeys: [],
         findings: [],
         iteration: 0,
         sufficient: false,

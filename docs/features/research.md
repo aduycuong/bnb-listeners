@@ -53,17 +53,26 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  PL[plan] --> S[search]
-  S --> E[evaluate / reflect]
-  E -->|gaps remain AND iteration < max| S
+  PL[plan] --> G[gather]
+  G --> E[evaluate / reflect]
+  E -->|gaps remain AND iteration < max| G
   E -->|coverage sufficient OR max reached| SY[synthesize]
   SY --> DONE[report]
 ```
 
 Nodes:
 
-- **plan** — LLM (fast model) turns `query + context` into sub-questions + initial search queries. Also *derives scope internally* (which terms via `find_top_terms`, time window, whether to use web) — scope is not a user parameter.
-- **search** — per sub-question, run `searchChunks` (workspace-scoped) and, when `isExaConfigured()`, `exaSearch` in parallel. Both feed a unified `findings` list. Merge + dedupe by key: `doc:{documentId}` for internal chunks, `url` for web results.
+- **plan** — LLM (fast model) turns `query + context` into sub-questions + an initial list of **typed tasks** (`researchTaskSchema`). It *derives scope internally* (which task kinds, time window for analytics, whether to use web) — scope is not a user parameter.
+- **gather** — dispatches every pending task to its source runner (`lib/research/sources/run-research-task.ts`) in parallel. All runners return `Finding[]`, which land in the unified `findings` list. Merge + dedupe by `ref`: `doc:{documentId}` for internal chunks, the URL for web results, `analytics:…` for analytics snapshots. Tasks are deduped across iterations by `buildTaskKey` (`completedTaskKeys` in state).
+
+  **Task kinds / sources**
+
+  | task kind | runner | what it does | finding kind |
+  | --- | --- | --- | --- |
+  | `search { query }` | `sources/search-source.ts` | `searchChunks` (workspace-scoped, enriched) + `exaSearch` when `isExaConfigured()`, in parallel | `internal`, `web` |
+  | `term_analytics { query, period }` | `sources/term-analytics-source.ts` | `findTopTerms` (keyword or term-group resolution) → `getTermAnalytics` for the top `RESEARCH_ANALYTICS_MAX_TERMS` → **one** table-style finding (docs, trend, quality, docs over time in ≤ `RESEARCH_ANALYTICS_MAX_BUCKETS` buckets, peak day). Best-effort: failures log and return `[]`. `period` is one of `RESEARCH_TERM_PERIODS` (relative presets only). | `analytics` |
+
+  The plan/evaluate prompts share `buildTaskGuidance()` which tells the LLM when each kind is appropriate (analytics only for volume/trend/ranking questions). Adding a new data source = add a member to `researchTaskSchema`, a runner in `sources/`, a case in `runResearchTask` (exhaustive switch — compile error if missed), and a line in `buildTaskGuidance()`. Graph, evaluate, and synthesize do not change.
 
   > **Why Exa search, not Exa answer:** the graph owns planning/evaluation/synthesis. `/answer` is a black-box mini-RAG (Exa runs its own LLM), which duplicates our loop and returns pre-digested prose that's hard to evaluate/dedupe. `/search` returns raw sources our nodes control uniformly with internal chunks. (`exaAnswer` remains available for quick entity disambiguation but is not the evidence primitive.)
 
@@ -77,11 +86,12 @@ Nodes:
   | `discussion` (any chunk) | `docContext`: parent post text (joined text parts) as the discussion topic |
 
   Image/video chunks get no extra summary — their content already *is* the media's LLM summary. Enrichments are folded into the finding content so they read uniformly with web findings in the prompts.
-- **evaluate / reflect** — LLM (`withStructuredOutput`) scores coverage vs. plan, lists gaps → new queries. Conditional edge loops back to **search** while gaps remain and `iteration < MAX_ITERATIONS`.
-- **synthesize** — LLM (strong model) writes the report with citations, using `formatSources` for numbered `[n] … doc:{id}` references.
+- **evaluate / reflect** — LLM (`withStructuredOutput`) scores coverage vs. plan, lists gaps → new typed tasks (filtered against `completedTaskKeys`). Conditional edge loops back to **gather** while gaps remain and `iteration < MAX_ITERATIONS`.
+- **synthesize** — LLM (strong model) writes the report with citations, using `formatFindings` for numbered `[n]` references. Internal evidence is the primary authority for qualitative claims; analytics evidence is the authority for quantitative claims (volumes, trends, rankings); web only supplements.
 
-**State**: `query`, `context`, `plan`, `subQueries`, `findings` (deduped chunks), `iteration`, `gaps`, `report`, `usage`.
-Guards: `MAX_ITERATIONS` (2–3), `MAX_SUBQUERIES`, graph `recursionLimit`, dedupe by `documentId`, token budget. Fast model for plan/evaluate, strong model for synthesize (via `parseChatModel` + defaults in `config.ts`).
+**State**: `query`, `background`, `plan`, `tasks` (pending, replaced each iteration), `completedTaskKeys`, `findings` (deduped by `ref`), `iteration`, `sufficient`, `gaps`, `report`.
+**Context** (`ResearchGraphContext`): `workspaceContext` (synthetic `WorkspaceContext` with `userId = RESEARCH_SYSTEM_USER_ID`, used by every workspace-scoped service), `webEnabled`, `maxIterations`, `maxSubQueries` (max tasks of any kind per iteration), `synthesizeModel`.
+Guards: `MAX_ITERATIONS` (2–3), `MAX_SUBQUERIES`, graph `recursionLimit`, dedupe by `ref`, token budget. Fast model for plan/evaluate, strong model for synthesize (via `parseChatModel` + defaults in `config.ts`).
 
 ## Tool input (context-centric)
 
@@ -201,7 +211,13 @@ lib/research/
 ├── types.ts                     # ResearchState, ResearchParams, ResearchRun, ResearchReport
 ├── graph/
 │   ├── build-research-graph.ts  # StateGraph + edges + recursionLimit
-│   └── nodes/{plan,search,evaluate,synthesize}.ts
+│   ├── state.ts                 # ResearchStateAnnotation + ResearchGraphContext
+│   └── nodes/{plan,gather,evaluate,synthesize}.ts
+├── sources/                     # one runner per task kind + dispatcher
+│   ├── types.ts                 # ResearchSourceRunner<K> contract
+│   ├── search-source.ts         # internal searchChunks + Exa web
+│   ├── term-analytics-source.ts # findTopTerms → getTermAnalytics → table finding
+│   └── run-research-task.ts     # exhaustive switch: task.kind → runner
 ├── services/
 │   ├── triage-research.ts       # synchronous clarify decision (used by start_research)
 │   ├── start-research.ts        # create run + RTDB job + addJob → { jobId }
@@ -210,8 +226,12 @@ lib/research/
 │   └── get-research-run.ts      # read run for get_research_status
 └── utils/
     ├── build-background.ts       # merge context + clarifications into one background block
-    ├── merge-findings.ts         # dedupe findings across iterations (doc:{id} / url)
-    ├── format-findings.ts        # build synthesis context + numbered sources (internal + web)
+    ├── build-task-guidance.ts    # prompt fragment: task kinds + when to use each (plan/evaluate)
+    ├── build-task-key.ts         # dedupe key for tasks across iterations
+    ├── merge-findings.ts         # dedupe findings across iterations by ref
+    ├── format-findings.ts        # build synthesis context + numbered sources (all kinds)
+    ├── format-finding-kind-label.ts        # citation label per finding kind
+    ├── format-term-analytics-finding.ts    # render analytics snapshot as Markdown table
     └── mirror-research-status.ts # best-effort RTDB status write via getAdminDatabase()
 
 lib/exa/

@@ -636,7 +636,7 @@ QStash job `rebuild-term-group-members-batch` processes terms in chained batches
 
 ### `research_runs`
 
-Tracks deep-research runs started via the `/api/mcp/research` MCP endpoint (`start_research`). A background QStash job runs a LangGraph loop (plan → search → evaluate → synthesize) over workspace chunks plus optional Exa web search, then stores a free-form Markdown report with numbered sources. Read by `get_research_status`.
+Tracks deep-research runs started via the `/api/mcp/research` MCP endpoint (`start_research`). A background QStash job runs a LangGraph loop (plan → gather → evaluate → synthesize) over typed evidence tasks — workspace chunk search, optional Exa web search, and term analytics — then stores a free-form Markdown report with numbered sources. Read by `get_research_status`.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -646,7 +646,7 @@ Tracks deep-research runs started via the `/api/mcp/research` MCP endpoint (`sta
 | query | text | NO | — | Core research goal |
 | background | text | YES | — | Merged user context + clarification answers |
 | depth | text | NO | `standard` | `quick` \| `standard` \| `deep` (effort/latency knob) |
-| result | jsonb | YES | — | On success: `{ report, sources, iterations, findingCount }` |
+| result | jsonb | YES | — | On success: `{ report, sources, iterations, findingCount }`; each source has `kind: internal \| web \| analytics` |
 | error | text | YES | — | Error message when `status = failed` |
 | created_at | timestamptz | NO | `now()` | Run creation time |
 | updated_at | timestamptz | NO | `now()` | Last status update |

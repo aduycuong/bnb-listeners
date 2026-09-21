@@ -883,7 +883,7 @@ export const researchRuns = pgTable(
       report: string;
       sources: Array<{
         index: number;
-        kind: "internal" | "web";
+        kind: "internal" | "web" | "analytics";
         ref: string;
         title: string;
         docType?: string;

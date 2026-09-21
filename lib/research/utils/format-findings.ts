@@ -1,4 +1,5 @@
 import type { Finding, ResearchSource } from "../types";
+import { formatFindingKindLabel } from "./format-finding-kind-label";
 
 /**
  * Turns the accumulated findings into a numbered context block for the
@@ -22,7 +23,7 @@ export function formatFindings(findings: Finding[]): {
     .map((finding, i) => {
       const meta = [
         finding.title,
-        finding.kind === "web" ? "web" : finding.docType,
+        formatFindingKindLabel(finding.kind, finding.docType),
         finding.publishedAt
           ? new Date(finding.publishedAt).toLocaleDateString("en-US", {
               dateStyle: "medium",

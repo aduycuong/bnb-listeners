@@ -1,4 +1,9 @@
+import type { z } from "zod";
+
 import type { ChatModelId } from "@/lib/langchain";
+
+import type { RESEARCH_TERM_PERIODS } from "./config";
+import type { researchTaskSchema } from "./schema";
 
 /** Semantic effort knob controlling loop limits and synthesis model. */
 export type DepthLevel = "quick" | "standard" | "deep";
@@ -18,13 +23,30 @@ export type Clarification = {
   answer: string;
 };
 
+/** Relative period preset accepted by `term_analytics` tasks. */
+export type ResearchTermPeriod = (typeof RESEARCH_TERM_PERIODS)[number];
+
 /**
- * A unified evidence item feeding the research graph — either an internal
- * workspace chunk or an external web result.
+ * One evidence-gathering task produced by the plan/evaluate nodes and
+ * dispatched by the gather node to the matching source runner.
+ */
+export type ResearchTask = z.infer<typeof researchTaskSchema>;
+
+export type ResearchTaskKind = ResearchTask["kind"];
+
+/** Where a finding came from; drives citation labels and prompt guidance. */
+export type FindingKind = "internal" | "web" | "analytics";
+
+/**
+ * A unified evidence item feeding the research graph — an internal workspace
+ * chunk, an external web result, or a computed analytics snapshot.
  */
 export type Finding = {
-  kind: "internal" | "web";
-  /** Stable dedupe/citation key: `doc:{documentId}` (internal) or the URL (web). */
+  kind: FindingKind;
+  /**
+   * Stable dedupe/citation key: `doc:{documentId}` (internal), the URL (web),
+   * or `analytics:{...}` (analytics).
+   */
   ref: string;
   title: string;
   content: string;
@@ -42,7 +64,7 @@ export type FindingAttachment = {
 /** A numbered citation surfaced with the final report. */
 export type ResearchSource = {
   index: number;
-  kind: "internal" | "web";
+  kind: FindingKind;
   ref: string;
   title: string;
   docType?: string;

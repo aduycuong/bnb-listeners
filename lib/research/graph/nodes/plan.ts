@@ -4,25 +4,29 @@ import { createChatModel } from "@/lib/langchain";
 
 import { RESEARCH_FAST_MODEL } from "../../config";
 import { researchPlanSchema } from "../../schema";
+import { buildTaskGuidance } from "../../utils/build-task-guidance";
 import type { ResearchGraphContext, ResearchStateType } from "../state";
 
 const PLAN_SYSTEM_PROMPT = [
   "You are a research planner for a social-listening knowledge base.",
   "Given a research goal and its background, break it into a short plan of",
-  "key sub-questions, then propose concrete search queries to answer them.",
-  "Queries should be specific, in the language most likely used by the source",
-  "content, and cover distinct angles (avoid near-duplicates).",
-].join(" ");
+  "key sub-questions, then propose concrete evidence-gathering tasks to",
+  "answer them. Search queries should be specific, in the language most",
+  "likely used by the source content, and cover distinct angles (avoid",
+  "near-duplicates).",
+  "",
+  buildTaskGuidance(),
+].join("\n");
 
 function buildPlanUserMessage(
   query: string,
   background: string,
-  maxSubQueries: number,
+  maxTasks: number,
 ): string {
   return [
     `Research goal:\n${query}`,
     background ? `\nBackground:\n${background}` : "",
-    `\nProduce at most ${maxSubQueries} search queries.`,
+    `\nProduce at most ${maxTasks} tasks.`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -44,7 +48,7 @@ export function createPlanNode(ctx: ResearchGraphContext) {
 
     return {
       plan: result.plan,
-      subQueries: result.subQueries.slice(0, ctx.maxSubQueries),
+      tasks: result.tasks.slice(0, ctx.maxSubQueries),
     };
   };
 }

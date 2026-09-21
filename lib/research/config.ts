@@ -1,9 +1,16 @@
 import type { ChatModelId } from "@/lib/langchain";
+import type { TermCardPeriodPreset } from "@/lib/terms/term-card-config";
 
 import type { DepthConfig, DepthLevel } from "./types";
 
 /** QStash job that runs a research run in the background. */
 export const RESEARCH_QSTASH_JOB_NAME = "run-research";
+
+/**
+ * Synthetic actor used in the `WorkspaceContext` passed to workspace-scoped
+ * services from the background worker (no real user session).
+ */
+export const RESEARCH_SYSTEM_USER_ID = "research";
 
 /** Default depth when the caller does not specify one. */
 export const DEFAULT_DEPTH: DepthLevel = "standard";
@@ -34,6 +41,25 @@ export const RESEARCH_ATTACHMENT_SUMMARY_MAX_CHARS = 300;
 
 /** Max media attachments listed per post text finding. */
 export const RESEARCH_MAX_ATTACHMENTS = 8;
+
+/**
+ * Period presets the planner may pick for `term_analytics` tasks. Relative
+ * presets only — the LLM never passes raw dates.
+ */
+export const RESEARCH_TERM_PERIODS = [
+  "last_7_days",
+  "last_30_days",
+  "this_week",
+  "last_week",
+  "this_month",
+  "last_month",
+] as const satisfies readonly TermCardPeriodPreset[];
+
+/** Max terms included in one term-analytics finding. */
+export const RESEARCH_ANALYTICS_MAX_TERMS = 8;
+
+/** Max time buckets rendered per term in the analytics table. */
+export const RESEARCH_ANALYTICS_MAX_BUCKETS = 6;
 
 /**
  * How long `start_research` waits inline for a result before returning just
