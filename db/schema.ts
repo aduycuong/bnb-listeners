@@ -868,6 +868,50 @@ export const termBackfillRuns = pgTable(
 export type TermBackfillRun = typeof termBackfillRuns.$inferSelect;
 export type NewTermBackfillRun = typeof termBackfillRuns.$inferInsert;
 
+export const researchRuns = pgTable(
+  "research_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("pending"),
+    query: text("query").notNull(),
+    background: text("background"),
+    depth: text("depth").notNull().default("standard"),
+    result: jsonb("result").$type<{
+      report: string;
+      sources: Array<{
+        index: number;
+        kind: "internal" | "web";
+        ref: string;
+        title: string;
+        docType?: string;
+        publishedAt: string | null;
+      }>;
+      iterations: number;
+      findingCount: number;
+    }>(),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_research_runs_workspace_created").on(
+      table.workspaceId,
+      table.createdAt.desc(),
+    ),
+  ],
+);
+
+export type ResearchRun = typeof researchRuns.$inferSelect;
+export type NewResearchRun = typeof researchRuns.$inferInsert;
+
 export const termGroupMemberRebuildRuns = pgTable(
   "term_group_member_rebuild_runs",
   {

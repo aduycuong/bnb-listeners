@@ -36,6 +36,12 @@ type ChunkRow = {
   multimodal_similarity_score: number | null;
   fts_score: number | null;
   comment_count: number;
+  like_count: number;
+  share_count: number;
+  view_count: number;
+  content_type: string;
+  media_url: string | null;
+  parent_document_id: string | null;
 };
 
 /**
@@ -198,6 +204,12 @@ export async function searchChunks(
       c.chunk_index,
       c.quality_score,
       d.comment_count,
+      d.like_count,
+      d.share_count,
+      d.view_count,
+      c.content_type,
+      c.media_url,
+      d.parent_document_id,
       d.id         AS document_id,
       d.title,
       d.doc_type,
@@ -226,6 +238,12 @@ export async function searchChunks(
         ? new Date(row.published_at).toISOString()
         : null,
       commentCount: Number(row.comment_count),
+      likeCount: Number(row.like_count),
+      shareCount: Number(row.share_count),
+      viewCount: Number(row.view_count),
+      contentType: row.content_type,
+      mediaUrl: row.media_url ?? null,
+      parentDocumentId: row.parent_document_id ?? null,
     };
 
     if (includeScores) {

@@ -6,6 +6,8 @@ import { scrapeFacebookDocumentComments } from "@/lib/data-sources/services/scra
 import { SCRAPE_FACEBOOK_DOCUMENT_COMMENTS_JOB_NAME } from "@/lib/data-sources/handlers/scrape-facebook/config";
 import { processTermGroupMemberRebuildBatch } from "@/lib/term-group-member-rebuild/services/process-term-group-member-rebuild-batch";
 import { processTermBackfillBatch } from "@/lib/term-backfill/services/process-term-backfill-batch";
+import { RESEARCH_QSTASH_JOB_NAME } from "@/lib/research/config";
+import { handleResearchJob } from "@/lib/research/services/handle-research-job";
 import { bulkDrainTermDigests } from "@/lib/term-digests/services/bulk-drain-term-digests";
 import { recomputeTermDigests } from "@/lib/term-digests/services/recompute-term-digests";
 import { TERM_GROUP_MEMBER_REBUILD_QSTASH_JOB_NAME } from "@/lib/term-groups/term-group-member-rebuild-config";
@@ -90,4 +92,10 @@ export const qstashJobHandlers: Record<string, QstashJobHandler> = {
    * Payload: { documentId: string, attempt: number, maxComments: number }
    */
   [SCRAPE_FACEBOOK_DOCUMENT_COMMENTS_JOB_NAME]: scrapeFacebookDocumentComments,
+
+  /**
+   * Background deep-research run: plan → search → evaluate → synthesize.
+   * Payload: { runId: string }
+   */
+  [RESEARCH_QSTASH_JOB_NAME]: handleResearchJob,
 };

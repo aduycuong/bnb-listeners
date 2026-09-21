@@ -634,6 +634,34 @@ QStash job `rebuild-term-group-members-batch` processes terms in chained batches
 
 ---
 
+### `research_runs`
+
+Tracks deep-research runs started via the `/api/mcp/research` MCP endpoint (`start_research`). A background QStash job runs a LangGraph loop (plan → search → evaluate → synthesize) over workspace chunks plus optional Exa web search, then stores a free-form Markdown report with numbered sources. Read by `get_research_status`.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key; also the `jobId` returned to callers (unguessable) |
+| workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
+| status | text | NO | `pending` | `pending` \| `running` \| `succeeded` \| `failed` |
+| query | text | NO | — | Core research goal |
+| background | text | YES | — | Merged user context + clarification answers |
+| depth | text | NO | `standard` | `quick` \| `standard` \| `deep` (effort/latency knob) |
+| result | jsonb | YES | — | On success: `{ report, sources, iterations, findingCount }` |
+| error | text | YES | — | Error message when `status = failed` |
+| created_at | timestamptz | NO | `now()` | Run creation time |
+| updated_at | timestamptz | NO | `now()` | Last status update |
+| finished_at | timestamptz | YES | — | Terminal (succeeded/failed) time |
+
+**Indexes**
+
+| Index | Columns | Purpose |
+| ----- | ------- | ------- |
+| `idx_research_runs_workspace_created` | `(workspace_id, created_at DESC)` | Run history per workspace |
+
+Status is also mirrored best-effort to Firebase RTDB at `jobs/{id}` for live UI; the DB row is the source of truth. QStash job `run-research` executes one run per message.
+
+---
+
 ### `dim_dates`
 
 Static calendar dimension table. Pre-populated for 10–20 years (~3 650–7 300 rows). Never updated after initial seed. Pre-computes period-start anchors so rollup GROUP BY avoids runtime `date_trunc` calls.

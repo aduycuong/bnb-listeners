@@ -16,6 +16,16 @@ export type RetrievedChunk = {
   sourceOriginName: string;
   publishedAt: string | null;
   commentCount: number;
+  /** Engagement counters mirrored from the parent document. */
+  likeCount: number;
+  shareCount: number;
+  viewCount: number;
+  /** Chunk media kind: `text` | `image` | `video`. */
+  contentType: string;
+  /** Archived (R2) media URL for media chunks; null for text chunks. */
+  mediaUrl: string | null;
+  /** For `discussion` documents: the parent post id; null otherwise. */
+  parentDocumentId: string | null;
 } & Partial<RetrievedChunkScores>;
 
 export type RetrievedChunkWithScores = RetrievedChunk & RetrievedChunkScores;
