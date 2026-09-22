@@ -12,6 +12,14 @@ import {
 
 export type CreateChatModelOptions = {
   temperature?: number;
+  /** Upper bound on generated tokens; needed for long outputs like HTML docs. */
+  maxTokens?: number;
+  /**
+   * Reasoning effort for OpenAI reasoning models (gpt-5.x, gpt-6, o-series).
+   * Lower effort leaves more of the token budget for the visible output.
+   * Ignored by non-reasoning models and other providers.
+   */
+  reasoningEffort?: "low" | "medium" | "high";
 };
 
 const alibabaCompatibleBaseUrls = {
@@ -68,6 +76,8 @@ export function createChatModel(
 
   const temperature = options?.temperature ?? 0.2;
   const modelOptions = definition.supportsTemperature ? { temperature } : {};
+  const maxTokens = options?.maxTokens;
+  const maxTokensOption = maxTokens ? { maxTokens } : {};
 
   switch (provider) {
     case "anthropic":
@@ -75,6 +85,7 @@ export function createChatModel(
         model: definition.modelName,
         apiKey,
         ...modelOptions,
+        ...maxTokensOption,
       });
 
     case "google":
@@ -82,6 +93,7 @@ export function createChatModel(
         model: definition.modelName,
         apiKey,
         ...modelOptions,
+        ...(maxTokens ? { maxOutputTokens: maxTokens } : {}),
       });
 
     case "deepseek":
@@ -90,6 +102,7 @@ export function createChatModel(
         apiKey,
         modelKwargs: deepSeekStructuredOutputModelKwargs,
         ...modelOptions,
+        ...maxTokensOption,
       });
 
     case "alibaba": {
@@ -107,14 +120,48 @@ export function createChatModel(
           baseURL: alibabaCompatibleBaseUrls[region],
         },
         ...modelOptions,
+        ...maxTokensOption,
       });
     }
 
-    default:
+    default: {
+      // Newer OpenAI reasoning models (e.g. gpt-5.x, gpt-6, o-series) reject
+      // `max_tokens` and require `max_completion_tokens`. These are exactly the
+      // models that do not support `temperature`. Reasoning tokens also count
+      // against that budget, so keeping effort low preserves room for output.
+      const isReasoningModel = !definition.supportsTemperature;
+
+      // LangChain only auto-routes `max_completion_tokens` for models it
+      // recognizes as reasoning (o-series, gpt-5*); newer ones like gpt-6 are
+      // not recognized and would wrongly get `max_tokens`. Cover that gap by
+      // passing the correct param ourselves via `modelKwargs`.
+      const name = definition.modelName;
+      const langchainKnowsReasoning =
+        /^o\d/.test(name) ||
+        (name.startsWith("gpt-5") && !name.startsWith("gpt-5-chat"));
+
+      const extraKwargs: Record<string, unknown> = {};
+      const tokenOption: { maxTokens?: number } = {};
+      if (maxTokens) {
+        if (isReasoningModel && !langchainKnowsReasoning) {
+          extraKwargs.max_completion_tokens = maxTokens;
+        } else {
+          tokenOption.maxTokens = maxTokens;
+        }
+      }
+      if (isReasoningModel && options?.reasoningEffort) {
+        extraKwargs.reasoning_effort = options.reasoningEffort;
+      }
+      const modelKwargsOption =
+        Object.keys(extraKwargs).length > 0 ? { modelKwargs: extraKwargs } : {};
+
       return new ChatOpenAI({
         model: definition.modelName,
         apiKey,
         ...modelOptions,
+        ...tokenOption,
+        ...modelKwargsOption,
       });
+    }
   }
 }

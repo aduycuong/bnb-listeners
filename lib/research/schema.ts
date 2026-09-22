@@ -9,6 +9,15 @@ export const researchJobPayloadSchema = z.object({
 
 export type ResearchJobPayload = z.infer<typeof researchJobPayloadSchema>;
 
+/** Payload dispatched to the QStash HTML-generation job handler. */
+export const generateResearchHtmlJobPayloadSchema = z.object({
+  runId: z.uuid(),
+});
+
+export type GenerateResearchHtmlJobPayload = z.infer<
+  typeof generateResearchHtmlJobPayloadSchema
+>;
+
 /** Evidence-gathering task: semantic/keyword search over internal + web. */
 const searchTaskSchema = z.object({
   kind: z.literal("search"),
@@ -107,6 +116,16 @@ export const startResearchBodySchema = z.object({
 
 /** Structured output of the synchronous triage step. */
 export const researchTriageSchema = z.object({
+  relevant: z
+    .boolean()
+    .describe(
+      "True when the research goal falls within (or plausibly overlaps) the workspace data-collection scope.",
+    ),
+  irrelevanceReason: z
+    .string()
+    .describe(
+      "One short sentence, in the language of the research goal, explaining why the goal is outside the workspace scope. Empty string when relevant.",
+    ),
   clear: z
     .boolean()
     .describe("True when the request is clear enough to research without asking."),

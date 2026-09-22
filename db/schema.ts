@@ -898,6 +898,11 @@ export const researchRuns = pgTable(
       findingCount: number;
     }>(),
     error: text("error"),
+    reportHtml: text("report_html"),
+    htmlStatus: text("html_status"),
+    htmlError: text("html_error"),
+    htmlModel: text("html_model"),
+    htmlFinishedAt: timestamp("html_finished_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

@@ -81,6 +81,16 @@ export type ResearchRunResult = {
 
 export type ResearchStatus = "pending" | "running" | "succeeded" | "failed";
 
+/**
+ * Lifecycle of the HTML presentation, tracked independently from the run
+ * `status`. `null` means it was never requested (e.g. legacy runs).
+ */
+export type ResearchHtmlStatus =
+  | "pending"
+  | "running"
+  | "succeeded"
+  | "failed";
+
 // --- Service params / results -------------------------------------------------
 
 export type StartResearchParams = {
@@ -96,6 +106,7 @@ export type StartResearchParams = {
 };
 
 export type StartResearchResult =
+  | { status: "out_of_scope"; reason: string }
   | { status: "needs_clarification"; questions: string[] }
   | { status: "started"; jobId: string }
   | {
@@ -108,13 +119,15 @@ export type StartResearchResult =
 export type TriageResearchParams = {
   query: string;
   background: string;
+  /** Workspace `dataCollectionScope`; the goal must relate to it to proceed. */
+  workspaceScope: string;
   mode: ClarificationMode;
 };
 
-export type TriageResearchResult = {
-  needsClarification: boolean;
-  questions: string[];
-};
+export type TriageResearchResult =
+  | { outcome: "out_of_scope"; reason: string }
+  | { outcome: "needs_clarification"; questions: string[] }
+  | { outcome: "proceed" };
 
 export type GetResearchRunParams = {
   workspaceId: string;
@@ -133,6 +146,9 @@ export type GetResearchRunResult =
       depth: DepthLevel;
       result: ResearchRunResult | null;
       error: string | null;
+      reportHtml: string | null;
+      htmlStatus: ResearchHtmlStatus | null;
+      htmlError: string | null;
       createdAt: string;
       updatedAt: string;
       finishedAt: string | null;
@@ -160,5 +176,15 @@ export type DeleteResearchRunParams = {
 
 export type DeleteResearchRunResult = {
   id: string;
+  message: string;
+};
+
+export type RebuildResearchHtmlParams = {
+  runId: string;
+};
+
+export type RebuildResearchHtmlResult = {
+  id: string;
+  htmlStatus: ResearchHtmlStatus;
   message: string;
 };

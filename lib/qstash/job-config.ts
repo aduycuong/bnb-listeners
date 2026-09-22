@@ -6,7 +6,11 @@ import { scrapeFacebookDocumentComments } from "@/lib/data-sources/services/scra
 import { SCRAPE_FACEBOOK_DOCUMENT_COMMENTS_JOB_NAME } from "@/lib/data-sources/handlers/scrape-facebook/config";
 import { processTermGroupMemberRebuildBatch } from "@/lib/term-group-member-rebuild/services/process-term-group-member-rebuild-batch";
 import { processTermBackfillBatch } from "@/lib/term-backfill/services/process-term-backfill-batch";
-import { RESEARCH_QSTASH_JOB_NAME } from "@/lib/research/config";
+import {
+  GENERATE_RESEARCH_HTML_QSTASH_JOB_NAME,
+  RESEARCH_QSTASH_JOB_NAME,
+} from "@/lib/research/config";
+import { handleGenerateResearchHtmlJob } from "@/lib/research/services/handle-generate-research-html-job";
 import { handleResearchJob } from "@/lib/research/services/handle-research-job";
 import { bulkDrainTermDigests } from "@/lib/term-digests/services/bulk-drain-term-digests";
 import { recomputeTermDigests } from "@/lib/term-digests/services/recompute-term-digests";
@@ -98,4 +102,10 @@ export const qstashJobHandlers: Record<string, QstashJobHandler> = {
    * Payload: { runId: string }
    */
   [RESEARCH_QSTASH_JOB_NAME]: handleResearchJob,
+
+  /**
+   * Renders a succeeded run's Markdown report into a self-contained HTML
+   * presentation (ECharts charts). Payload: { runId: string }
+   */
+  [GENERATE_RESEARCH_HTML_QSTASH_JOB_NAME]: handleGenerateResearchHtmlJob,
 };

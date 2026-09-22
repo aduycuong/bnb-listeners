@@ -8,7 +8,7 @@ import { useState } from "react";
 
 import { ResourceListEmpty } from "@/components/dashboard/resource-list-empty";
 import { ResearchDeleteDialog } from "@/components/research/research-delete-dialog";
-import { ResearchReport } from "@/components/research/research-report";
+import { ResearchPresentation } from "@/components/research/research-presentation";
 import {
   researchRunQueryKey,
   researchRunsQueryKey,
@@ -59,8 +59,17 @@ export function ResearchDetailPage({
     queryKey: researchRunQueryKey(workspace.id, runId),
     queryFn: () => fetchResearchRun(workspace.id, runId),
     refetchInterval: (query) => {
-      const status = query.state.data?.status;
+      const data = query.state.data;
+      const status = data?.status;
       if (status === "pending" || status === "running") {
+        return 3000;
+      }
+
+      // Keep polling while the HTML presentation job is still working.
+      if (
+        status === "succeeded" &&
+        (data?.htmlStatus === "pending" || data?.htmlStatus === "running")
+      ) {
         return 3000;
       }
 
@@ -164,7 +173,14 @@ export function ResearchDetailPage({
         <ResearchStatusBanner status={run.status} error={run.error} />
 
         {run.status === "succeeded" && run.result ? (
-          <ResearchReport result={run.result} />
+          <ResearchPresentation
+            workspaceId={workspace.id}
+            runId={runId}
+            canEdit={canEdit}
+            reportHtml={run.reportHtml}
+            htmlStatus={run.htmlStatus}
+            htmlError={run.htmlError}
+          />
         ) : null}
 
         {!isActive && run.status !== "succeeded" && run.status !== "failed" ? (

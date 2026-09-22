@@ -1,6 +1,7 @@
 import type {
   GetResearchRunResult,
   ListResearchRunsResult,
+  RebuildResearchHtmlResult,
   StartResearchBody,
   StartResearchResult,
 } from "@/lib/research/types";
@@ -59,6 +60,27 @@ export async function deleteResearchRunRequest(
   if (!res.ok) {
     throw new Error(getErrorMessage(data));
   }
+}
+
+export async function rebuildResearchHtmlRequest(
+  workspaceId: string,
+  runId: string,
+): Promise<RebuildResearchHtmlResult> {
+  const res = await workspaceFetch(
+    workspaceId,
+    `/api/research-runs/${runId}/html`,
+    { method: "POST" },
+  );
+  const data = (await res.json()) as RebuildResearchHtmlResult & {
+    error?: string;
+    message?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(getErrorMessage(data));
+  }
+
+  return data;
 }
 
 export async function startResearchRunRequest(

@@ -18,6 +18,7 @@ export type ChatModelProvider =
 
 /** Keep OpenAI / Anthropic / DeepSeek ids aligned with bnb-chat-agent. */
 export const chatModelIds = [
+  "gpt-6-astra",
   "gpt-5.5",
   "gpt-5.5-pro",
   "gpt-4.1",
@@ -75,6 +76,15 @@ const providerLabels: Record<ChatModelProvider, string> = {
  * listeners-only for term backfill via DashScope.
  */
 export const chatModelRegistry: Record<ChatModelId, ChatModelDefinition> = {
+  "gpt-6-astra": {
+    label: "GPT-6 Astra",
+    modelName: "gpt-6-astra",
+    provider: "openai",
+    supportsTemperature: false,
+    description:
+      "OpenAI flagship model for the hardest reasoning, coding, and document creation.",
+    pricing: { inputPerMTok: 10, outputPerMTok: 50 },
+  },
   "gpt-5.5": {
     label: "GPT-5.5",
     modelName: "gpt-5.5",

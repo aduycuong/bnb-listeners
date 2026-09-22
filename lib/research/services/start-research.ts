@@ -1,6 +1,7 @@
 import { researchRuns } from "@/db/schema";
 import { db } from "@/lib/db";
 import { addJob } from "@/lib/qstash/services/add-job-service";
+import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace-llm-settings";
 
 import {
   DEFAULT_DEPTH,
@@ -55,9 +56,10 @@ async function waitForResult(
 
 /**
  * Entry point for the `start_research` MCP tool. Runs synchronous triage
- * (approach A); when the request is ambiguous it returns clarifying questions
- * instead of enqueueing. Otherwise it creates a `research_runs` row and
- * dispatches the background QStash job, returning the run id as `jobId`.
+ * (approach A): goals unrelated to the workspace `dataCollectionScope` are
+ * rejected outright; ambiguous requests return clarifying questions instead
+ * of enqueueing. Otherwise it creates a `research_runs` row and dispatches
+ * the background QStash job, returning the run id as `jobId`.
  */
 export async function startResearch(
   params: StartResearchParams,
@@ -65,13 +67,20 @@ export async function startResearch(
   const background = buildBackground(params.context, params.clarifications);
   const mode = params.clarificationMode ?? "ask";
 
+  const settings = await getWorkspaceLlmSettings(params.workspaceId);
+
   const triage = await triageResearch({
     query: params.query,
     background,
+    workspaceScope: settings.dataCollectionScope,
     mode,
   });
 
-  if (triage.needsClarification) {
+  if (triage.outcome === "out_of_scope") {
+    return { status: "out_of_scope", reason: triage.reason };
+  }
+
+  if (triage.outcome === "needs_clarification") {
     return { status: "needs_clarification", questions: triage.questions };
   }
 

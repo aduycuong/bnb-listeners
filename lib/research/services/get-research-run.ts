@@ -8,6 +8,7 @@ import type {
   DepthLevel,
   GetResearchRunParams,
   GetResearchRunResult,
+  ResearchHtmlStatus,
   ResearchStatus,
 } from "../types";
 
@@ -43,6 +44,9 @@ export async function getResearchRun(
     depth: run.depth as DepthLevel,
     result: run.result ?? null,
     error: run.error,
+    reportHtml: run.reportHtml ?? null,
+    htmlStatus: (run.htmlStatus as ResearchHtmlStatus | null) ?? null,
+    htmlError: run.htmlError ?? null,
     createdAt: run.createdAt.toISOString(),
     updatedAt: run.updatedAt.toISOString(),
     finishedAt: run.finishedAt?.toISOString() ?? null,

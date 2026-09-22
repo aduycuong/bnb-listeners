@@ -4,33 +4,85 @@ import type { MessageContent } from "@langchain/core/messages";
 import { createChatModel } from "@/lib/langchain";
 
 import { formatFindings } from "../../utils/format-findings";
+import {
+  applyMediaPlaceholders,
+  collectParenthesizedUrls,
+  createMediaPlaceholderMap,
+  finalizeMarkdownMedia,
+  type MediaPlaceholderMap,
+} from "../../utils/media-placeholders";
 import type { ResearchGraphContext, ResearchStateType } from "../state";
 
 const SYNTHESIZE_SYSTEM_PROMPT = [
-  "You are a research analyst. Write a clear, visually rich, well-structured",
-  "answer in free-form Markdown that directly addresses the research goal,",
-  "grounded only in the provided evidence. Internal workspace evidence is the",
-  "primary authority: base conclusions, recommendations, and examples on it.",
-  "Use web evidence only to supplement, provide broader context, or clarify",
-  "internal evidence; do not let it override or dilute relevant internal",
-  "evidence. Analytics evidence (term statistics tables) is the authority for",
-  "quantitative statements — volumes, trends, growth, rankings over time;",
-  "quote its numbers precisely, keep or condense its table, and never infer",
-  "counts from qualitative findings. Start with a short summary, then",
-  "supporting sections.",
-  "Prefer visual and structured presentation over text-only prose: preserve",
-  "every relevant Markdown image already present in the evidence, placing it",
-  "near the finding it supports. When an internal finding lists an image",
-  "attachment with a URL, render it as Markdown image syntax",
-  "`![descriptive alt text](url)` instead of dropping it or leaving it as plain",
-  "text. Retain relevant tables, metrics, comparisons, and concise bullet lists",
-  "when they make the evidence easier to scan. Do not invent, alter, or use",
-  "image URLs that are not in the evidence; link relevant videos rather than",
-  "claiming to embed them. Cite evidence inline using bracketed numbers like",
-  "[1], [2] that match the numbered sources. Do not invent facts or sources.",
-  "If the evidence is insufficient, say so and state any assumptions. Match the",
-  "language of the research goal.",
+  "Bạn là chuyên gia phân tích nghiên cứu. Viết câu trả lời rõ ràng, giàu hình ảnh,",
+  "có cấu trúc tốt bằng Markdown tự do, trực tiếp giải quyết mục tiêu nghiên cứu,",
+  "chỉ dựa trên bằng chứng được cung cấp. Bằng chứng nội bộ trong workspace là",
+  "nguồn tham chiếu chính: đặt kết luận, khuyến nghị và ví dụ dựa trên đó.",
+  "Chỉ dùng bằng chứng web để bổ sung, cung cấp bối cảnh rộng hơn hoặc làm rõ",
+  "bằng chứng nội bộ; không để nó lấn át hoặc làm loãng bằng chứng nội bộ liên quan.",
+  "Bằng chứng analytics (bảng thống kê thuật ngữ) là cơ sở cho các phát biểu định lượng",
+  "— khối lượng, xu hướng, tăng trưởng, xếp hạng theo thời gian; trích dẫn số liệu chính xác,",
+  "giữ hoặc rút gọn bảng, và không suy ra con số từ các phát hiện định tính.",
+  "Bắt đầu bằng tóm tắt ngắn, sau đó là các phần hỗ trợ.",
+  "Ưu tiên trình bày trực quan và có cấu trúc thay vì chỉ văn bản thuần khi bằng chứng",
+  "nội bộ hỗ trợ: chỉ giữ ảnh Markdown từ các phát hiện nội bộ trong workspace,",
+  "đặt mỗi ảnh gần phát hiện mà nó hỗ trợ. URL ảnh/video trong bằng chứng đã được",
+  "thay bằng mã ngắn dạng `media://N`; luôn dùng nguyên mã đó làm URL, ví dụ",
+  "`![mô tả alt](media://3)`. Không tự viết URL thật, không sửa hay bịa mã;",
+  "hệ thống sẽ thay mã bằng URL thật sau. Khi một phát hiện nội bộ liệt kê",
+  "tệp đính kèm ảnh kèm mã, hiển thị bằng cú pháp Markdown `![mô tả alt](media://N)`",
+  "thay vì bỏ qua hoặc để dạng văn bản thuần.",
+  "Bằng chứng web chỉ là văn bản bổ sung — dùng để mở rộng bối cảnh hoặc làm rõ",
+  "phát hiện nội bộ, nhưng không bao giờ đưa ảnh, URL ảnh hay cú pháp ảnh Markdown",
+  "từ nguồn web. Giữ các bảng, chỉ số, so sánh và danh sách gạch đầu dòng ngắn gọn",
+  "khi chúng giúp bằng chứng dễ đọc hơn. Liên kết",
+  "video liên quan thay vì giả vờ nhúng chúng. Trích dẫn bằng chứng nội tuyến",
+  "bằng số trong ngoặc vuông như [1], [2] khớp với nguồn đã đánh số.",
+  "Không bịa sự thật hay nguồn. Nếu bằng chứng không đủ, hãy nói rõ và nêu",
+  "các giả định. Viết bằng ngôn ngữ của mục tiêu nghiên cứu.",
 ].join(" ");
+
+/** Removes Markdown image syntax so web findings stay text-only for synthesis. */
+function stripMarkdownImages(text: string): string {
+  return text.replace(/!\[[^\]]*\]\([^)]+\)/g, "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
+ * Builds the `media://N` map from every URL surfaced in internal findings
+ * (image chunks and attachment lines). Only internal findings carry media the
+ * model is allowed to embed; web images are stripped, not tokenised.
+ */
+function buildMediaMap(state: ResearchStateType): MediaPlaceholderMap {
+  return createMediaPlaceholderMap(
+    state.findings
+      .filter((finding) => finding.kind === "internal")
+      .flatMap((finding) => collectParenthesizedUrls(finding.content)),
+  );
+}
+
+/**
+ * Prepares findings for the prompt: web findings lose their images, internal
+ * findings get real media URLs swapped for short tokens. The model must never
+ * see a real ~90-char R2 URL — copying them is where UUIDs get spliced
+ * together (see `media-placeholders.ts`).
+ */
+function findingsForSynthesis(
+  state: ResearchStateType,
+  mediaMap: MediaPlaceholderMap,
+) {
+  return state.findings.map((finding) => {
+    if (finding.kind === "web") {
+      return { ...finding, content: stripMarkdownImages(finding.content) };
+    }
+    if (finding.kind === "internal") {
+      return {
+        ...finding,
+        content: applyMediaPlaceholders(finding.content, mediaMap),
+      };
+    }
+    return finding;
+  });
+}
 
 function extractText(content: MessageContent): string {
   if (typeof content === "string") return content;
@@ -50,9 +102,9 @@ function buildSynthesizeUserMessage(
   context: string,
 ): string {
   return [
-    `Research goal:\n${state.query}`,
-    state.background ? `\nBackground:\n${state.background}` : "",
-    `\nNumbered evidence:\n${context || "(no evidence found)"}`,
+    `Mục tiêu nghiên cứu:\n${state.query}`,
+    state.background ? `\nBối cảnh:\n${state.background}` : "",
+    `\nBằng chứng đã đánh số:\n${context || "(không tìm thấy bằng chứng)"}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -62,12 +114,13 @@ export function createSynthesizeNode(ctx: ResearchGraphContext) {
   return async (
     state: ResearchStateType,
   ): Promise<Partial<ResearchStateType>> => {
-    const { context } = formatFindings(state.findings);
+    const mediaMap = buildMediaMap(state);
+    const { context } = formatFindings(findingsForSynthesis(state, mediaMap));
 
     if (state.findings.length === 0) {
       return {
         report:
-          "No relevant information was found in the workspace knowledge base or web sources for this research goal.",
+          "Không tìm thấy thông tin liên quan trong cơ sở tri thức workspace hoặc nguồn web cho mục tiêu nghiên cứu này.",
       };
     }
 
@@ -77,6 +130,10 @@ export function createSynthesizeNode(ctx: ResearchGraphContext) {
       new HumanMessage(buildSynthesizeUserMessage(state, context)),
     ]);
 
-    return { report: extractText(response.content) };
+    // Swap tokens back to real URLs and drop any image the model pointed at a
+    // URL we never issued (a hand-written / spliced URL is always broken).
+    return {
+      report: finalizeMarkdownMedia(extractText(response.content), mediaMap),
+    };
   };
 }

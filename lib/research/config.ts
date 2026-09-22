@@ -6,6 +6,9 @@ import type { DepthConfig, DepthLevel } from "./types";
 /** QStash job that runs a research run in the background. */
 export const RESEARCH_QSTASH_JOB_NAME = "run-research";
 
+/** QStash job that turns a succeeded run's Markdown report into HTML. */
+export const GENERATE_RESEARCH_HTML_QSTASH_JOB_NAME = "generate-research-html";
+
 /**
  * Synthetic actor used in the `WorkspaceContext` passed to workspace-scoped
  * services from the background worker (no real user session).
@@ -20,6 +23,32 @@ export const RESEARCH_FAST_MODEL: ChatModelId = "gpt-4.1-mini";
 
 /** Strong model for the final synthesis at standard/deep depth. */
 export const RESEARCH_STRONG_MODEL: ChatModelId = "gpt-4.1";
+
+/**
+ * Code-capable model used to render the HTML presentation. Claude excels at
+ * clean, self-contained HTML/CSS + chart code. `deep` runs upgrade to a
+ * stronger model. Change these to switch the presentation model.
+ */
+export const RESEARCH_HTML_MODEL: ChatModelId = "gpt-6-astra";
+export const RESEARCH_HTML_DEEP_MODEL: ChatModelId = "gpt-6-astra";
+
+/**
+ * Upper bound on generated tokens for the HTML document. For OpenAI reasoning
+ * models this budget is shared with reasoning tokens, so keep it generous.
+ */
+export const RESEARCH_HTML_MAX_TOKENS = 32_000;
+
+/**
+ * Reasoning effort for the HTML step. Rendering Markdown into HTML is a
+ * formatting task, not deep reasoning — low effort leaves more of the token
+ * budget for the actual HTML output. Ignored by non-reasoning models.
+ */
+export const RESEARCH_HTML_REASONING_EFFORT = "low" as const;
+
+/** Picks the HTML presentation model based on the run's depth. */
+export function getResearchHtmlModel(depth: DepthLevel): ChatModelId {
+  return depth === "deep" ? RESEARCH_HTML_DEEP_MODEL : RESEARCH_HTML_MODEL;
+}
 
 /** Internal chunks fetched per sub-query. */
 export const RESEARCH_INTERNAL_LIMIT = 8;

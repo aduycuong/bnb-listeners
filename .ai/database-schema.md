@@ -638,6 +638,8 @@ QStash job `rebuild-term-group-members-batch` processes terms in chained batches
 
 Tracks deep-research runs started via the `/api/mcp/research` MCP endpoint (`start_research`). A background QStash job runs a LangGraph loop (plan → gather → evaluate → synthesize) over typed evidence tasks — workspace chunk search, optional Exa web search, and term analytics — then stores a free-form Markdown report with numbered sources. Read by `get_research_status`.
 
+Once a run reaches `status = succeeded`, a second QStash job (`generate-research-html`) turns the Markdown report into a self-contained, chart-rich HTML presentation (ECharts via CDN) tracked independently via the `html_*` columns; `status` stays `succeeded` throughout, so the MCP channel is unaffected and never waits on the HTML step.
+
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key; also the `jobId` returned to callers (unguessable) |
@@ -651,6 +653,11 @@ Tracks deep-research runs started via the `/api/mcp/research` MCP endpoint (`sta
 | depth | text | NO | `standard` | `quick` \| `standard` \| `deep` (effort/latency knob) |
 | result | jsonb | YES | — | On success: `{ report, sources, iterations, findingCount }`; each source has `kind: internal \| web \| analytics` |
 | error | text | YES | — | Error message when `status = failed` |
+| report_html | text | YES | — | Self-contained HTML presentation generated from `result.report` |
+| html_status | text | YES | — | `null` = not requested; `pending` \| `running` \| `succeeded` \| `failed` — lifecycle of the HTML presentation job |
+| html_error | text | YES | — | Error message when `html_status = failed` |
+| html_model | text | YES | — | Chat model id used to generate `report_html` |
+| html_finished_at | timestamptz | YES | — | Terminal (succeeded/failed) time of the HTML job |
 | created_at | timestamptz | NO | `now()` | Run creation time |
 | updated_at | timestamptz | NO | `now()` | Last status update |
 | finished_at | timestamptz | YES | — | Terminal (succeeded/failed) time |
@@ -661,7 +668,7 @@ Tracks deep-research runs started via the `/api/mcp/research` MCP endpoint (`sta
 | ----- | ------- | ------- |
 | `idx_research_runs_workspace_created` | `(workspace_id, created_at DESC)` | Run history per workspace |
 
-Status is also mirrored best-effort to Firebase RTDB at `jobs/{id}` for live UI; the DB row is the source of truth. QStash job `run-research` executes one run per message.
+Status is also mirrored best-effort to Firebase RTDB at `jobs/{id}` for live UI; the DB row is the source of truth. QStash job `run-research` executes one run per message; QStash job `generate-research-html` builds the HTML presentation per succeeded run (idempotent; re-runnable via the dashboard "Rebuild" action).
 
 ---
 

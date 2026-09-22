@@ -17,6 +17,7 @@ export function registerStartResearchTool(
         "Bắt đầu một phiên nghiên cứu sâu (deep research) trên dữ liệu mạng xã hội đã thu thập của workspace, " +
         "kèm tra cứu web bổ sung khi cần. Quy trình tự động: lập kế hoạch → tìm kiếm → đánh giá → tìm thêm → tổng hợp báo cáo có trích dẫn. " +
         "Chạy nền và trả về jobId; dùng get_research_status để lấy kết quả. " +
+        "Nếu chủ đề không liên quan đến phạm vi thu thập dữ liệu của workspace, tool từ chối ngay và không tạo phiên nghiên cứu. " +
         "Nếu yêu cầu chưa đủ rõ, tool có thể trả về danh sách câu hỏi làm rõ — hãy trả lời rồi gọi lại kèm 'clarifications' (và gửi lại 'query'+'context' như cũ).",
       inputSchema: {
         query: z
@@ -66,6 +67,19 @@ export function registerStartResearchTool(
         clarificationMode: clarificationMode ?? undefined,
         depth: depth ?? undefined,
       });
+
+      if (result.status === "out_of_scope") {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text:
+                "Không thực hiện nghiên cứu: chủ đề không liên quan đến phạm vi thu thập dữ liệu của workspace này.\n" +
+                `Lý do: ${result.reason}`,
+            },
+          ],
+        };
+      }
 
       if (result.status === "needs_clarification") {
         const questions = result.questions

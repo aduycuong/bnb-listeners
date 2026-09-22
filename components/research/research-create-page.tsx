@@ -133,6 +133,15 @@ export function ResearchCreatePage({
         clarifications,
       });
 
+      if (result.status === "out_of_scope") {
+        toast.add({
+          title: "Research not started: topic is outside this workspace's scope.",
+          description: result.reason,
+          type: "error",
+        });
+        return;
+      }
+
       if (result.status === "needs_clarification") {
         setClarificationQuestions(result.questions);
         setClarificationAnswers(

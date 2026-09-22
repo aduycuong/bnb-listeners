@@ -3,8 +3,10 @@ import { eq } from "drizzle-orm";
 import { researchRuns } from "@/db/schema";
 import { db } from "@/lib/db";
 import { isExaConfigured } from "@/lib/exa/services/exa-answer";
+import { addJob } from "@/lib/qstash/services/add-job-service";
 
 import {
+  GENERATE_RESEARCH_HTML_QSTASH_JOB_NAME,
   getDepthConfig,
   RESEARCH_GRAPH_RECURSION_LIMIT,
   RESEARCH_SYSTEM_USER_ID,
@@ -54,7 +56,7 @@ export async function runResearch(runId: string): Promise<void> {
         workspaceId: run.workspaceId,
         permission: "owner",
       },
-      webEnabled: false,
+      webEnabled: isExaConfigured(),
       maxIterations: depth.maxIterations,
       maxSubQueries: depth.maxSubQueries,
       synthesizeModel: depth.synthesizeModel,
@@ -90,6 +92,8 @@ export async function runResearch(runId: string): Promise<void> {
         status: "succeeded",
         result,
         error: null,
+        htmlStatus: "pending",
+        htmlError: null,
         finishedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -99,6 +103,15 @@ export async function runResearch(runId: string): Promise<void> {
       runId,
       workspaceId: run.workspaceId,
       status: "succeeded",
+    });
+
+    // Kick off the HTML presentation as a separate job. The run is already
+    // `succeeded`, so the MCP channel never waits on this step; failures here
+    // are isolated to `html_status` and do not affect the run.
+    await addJob({
+      jobName: GENERATE_RESEARCH_HTML_QSTASH_JOB_NAME,
+      payload: { runId },
+      userId: RESEARCH_SYSTEM_USER_ID,
     });
   } catch (error) {
     const message =

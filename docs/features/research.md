@@ -39,6 +39,8 @@ understand the request → plan → search → evaluate → search more → synt
 flowchart LR
   C[MCP client] -->|start_research| R[/api/mcp/research/]
   R --> T{triage}
+  T -->|unrelated to workspace scope| X[out_of_scope: reason]
+  X --> C
   T -->|ambiguous| Q[needs_clarification: questions]
   Q --> C
   T -->|clear / assume| ST[start-research: create run + addJob]
@@ -88,6 +90,7 @@ Nodes:
   Image/video chunks get no extra summary — their content already *is* the media's LLM summary. Enrichments are folded into the finding content so they read uniformly with web findings in the prompts.
 - **evaluate / reflect** — LLM (`withStructuredOutput`) scores coverage vs. plan, lists gaps → new typed tasks (filtered against `completedTaskKeys`). Conditional edge loops back to **gather** while gaps remain and `iteration < MAX_ITERATIONS`.
 - **synthesize** — LLM (strong model) writes the report with citations, using `formatFindings` for numbered `[n]` references. Internal evidence is the primary authority for qualitative claims; analytics evidence is the authority for quantitative claims (volumes, trends, rankings); web only supplements.
+  Media URLs never reach the model verbatim: `utils/media-placeholders.ts` swaps every archived URL in internal findings for a short `media://N` token before prompting and restores it afterwards (`finalizeMarkdownMedia`). Reason: R2 URLs are ~90 chars with two UUIDs sharing the same workspace prefix, and when the model copies dozens of them it splices the prefix of one onto the tail of another (spotted in run `d0866974-…`, e.g. `documents/457622e0-6416-4e4d-483c-94e2-742beb931037/1.jpg`). Any image left pointing at a URL/token we did not issue is stripped instead of shipped broken. The HTML step (`generate-research-html.ts`) applies the same tokenise → restore → strip (`finalizeHtmlMedia`) to the Markdown report it renders.
 
 **State**: `query`, `background`, `plan`, `tasks` (pending, replaced each iteration), `completedTaskKeys`, `findings` (deduped by `ref`), `iteration`, `sufficient`, `gaps`, `report`.
 **Context** (`ResearchGraphContext`): `workspaceContext` (synthetic `WorkspaceContext` with `userId = RESEARCH_SYSTEM_USER_ID`, used by every workspace-scoped service), `webEnabled`, `maxIterations`, `maxSubQueries` (max tasks of any kind per iteration), `synthesizeModel`.
@@ -164,10 +167,11 @@ Two MCP tools on the research server:
 
 ### `start_research`
 
-Runs triage synchronously, then either asks for clarification or enqueues the job. After enqueueing it **waits inline up to ~30s** (polling the DB every ~2.5s) for the worker to finish: if the run succeeds within the window it returns the report immediately (`completed`); otherwise it hands back the `jobId` (`started`) and the QStash worker keeps running. The QStash job is always the sole executor — the inline wait only observes, so there is no double execution.
+Runs triage synchronously: first checks the goal against the workspace `dataCollectionScope` (irrelevant goals are rejected with `out_of_scope` regardless of `clarificationMode`, no run is created), then either asks for clarification or enqueues the job. After enqueueing it **waits inline up to ~30s** (polling the DB every ~2.5s) for the worker to finish: if the run succeeds within the window it returns the report immediately (`completed`); otherwise it hands back the `jobId` (`started`) and the QStash worker keeps running. The QStash job is always the sole executor — the inline wait only observes, so there is no double execution.
 
 ```ts
 type StartResearchResult =
+  | { status: "out_of_scope"; reason: string }
   | { status: "needs_clarification"; questions: string[] }
   | { status: "started"; jobId: string }
   | { status: "completed"; jobId: string; report: string; sources: ResearchSource[] };
@@ -178,9 +182,10 @@ Config: `RESEARCH_INLINE_WAIT_MS` (30s), `RESEARCH_POLL_INTERVAL_MS` (2.5s). The
 Clarify round-trip (approach A, stateless before enqueue):
 
 1. Client calls `start_research({ query, context })`.
-2. If triage finds it ambiguous and `clarificationMode !== "off"` → `{ status: "needs_clarification", questions }`.
-3. User answers → client calls `start_research({ query, context, clarifications: [...] })`.
-4. Clear (or `mode = "assume"`) → create `research_runs` row + `addJob` → `{ status: "started", jobId }`.
+2. If triage finds the goal unrelated to the workspace scope → `{ status: "out_of_scope", reason }` (stop).
+3. If triage finds it ambiguous and `clarificationMode === "ask"` → `{ status: "needs_clarification", questions }`.
+4. User answers → client calls `start_research({ query, context, clarifications: [...] })`.
+5. Clear (or `mode = "assume"`) → create `research_runs` row + `addJob` → `{ status: "started", jobId }`.
 
 ### `get_research_status`
 
