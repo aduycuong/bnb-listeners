@@ -1,6 +1,6 @@
 import { TERM_CARD_PERIOD_LABELS } from "@/lib/terms/term-card-config";
 import type {
-  FindTopTermsResult,
+  FindRelevantTopTermsResult,
   TermAnalyticsDailyPoint,
   TermAnalyticsItem,
 } from "@/lib/terms/types";
@@ -8,8 +8,7 @@ import type {
 import { RESEARCH_ANALYTICS_MAX_BUCKETS } from "../config";
 
 type FormatTermAnalyticsFindingParams = {
-  query: string;
-  topTerms: FindTopTermsResult;
+  topTerms: FindRelevantTopTermsResult;
   analyticsByTermId: Map<string, TermAnalyticsItem>;
 };
 
@@ -57,14 +56,16 @@ function formatPeakDay(daily: TermAnalyticsDailyPoint[]): string {
   return peak ? `${peak.dateKey} (${peak.docCount})` : "–";
 }
 
-function describeScope(topTerms: FindTopTermsResult, query: string): string {
-  if (topTerms.resolvedMode === "term_group" && topTerms.termGroup) {
-    return `term group "${topTerms.termGroup.name}"`;
+function describeScope(topTerms: FindRelevantTopTermsResult): string {
+  if (!topTerms.query) {
+    return "all workspace terms";
   }
-  if (topTerms.searchKeyword) {
-    return `keyword "${topTerms.searchKeyword}"`;
-  }
-  return query.trim() ? `keyword "${query.trim()}"` : "all workspace terms";
+
+  const coverage = topTerms.exhausted
+    ? `all ${topTerms.termsScanned} active terms`
+    : `the top ${topTerms.termsScanned} active terms`;
+
+  return `topic "${topTerms.query}" — ${topTerms.items.length} relevant term(s) selected by LLM from ${coverage}`;
 }
 
 /**
@@ -75,13 +76,13 @@ function describeScope(topTerms: FindTopTermsResult, query: string): string {
 export function formatTermAnalyticsFinding(
   params: FormatTermAnalyticsFindingParams,
 ): string {
-  const { query, topTerms, analyticsByTermId } = params;
+  const { topTerms, analyticsByTermId } = params;
   const { period } = topTerms;
   const periodLabel = TERM_CARD_PERIOD_LABELS[period.preset];
 
   const header = [
     `Term analytics · ${periodLabel} (${period.startDate} → ${period.endDate})`,
-    `Scope: ${describeScope(topTerms, query)}; ranked by trend score.`,
+    `Scope: ${describeScope(topTerms)}; ranked by trend score.`,
     "Docs = documents matched to the term in the window; Trend = summed daily trend score (higher = accelerating); Quality = average quality score (0–1).",
   ].join("\n");
 

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -55,14 +55,17 @@ type ResearchCreateFormValues = z.infer<typeof researchCreateFormSchema>;
 type ResearchCreatePageProps = {
   workspace: WorkspaceListItem;
   workspaceIndex: number;
+  mode?: "create" | "rerun";
   initialValues?: Partial<ResearchCreateFormValues>;
 };
 
 export function ResearchCreatePage({
   workspace,
   workspaceIndex,
+  mode = "create",
   initialValues,
 }: ResearchCreatePageProps) {
+  const isRerun = mode === "rerun";
   const router = useRouter();
   const listHref = getResearchHref(workspaceIndex);
   const [submitting, setSubmitting] = useState(false);
@@ -82,6 +85,25 @@ export function ResearchCreatePage({
       clarificationMode: initialValues?.clarificationMode ?? "ask",
     },
   });
+
+  useEffect(() => {
+    if (!initialValues) {
+      return;
+    }
+
+    form.reset({
+      query: initialValues.query ?? "",
+      context: initialValues.context ?? "",
+      depth: initialValues.depth ?? "standard",
+      clarificationMode: initialValues.clarificationMode ?? "ask",
+    });
+  }, [
+    form,
+    initialValues?.query,
+    initialValues?.context,
+    initialValues?.depth,
+    initialValues?.clarificationMode,
+  ]);
 
   async function onSubmit(values: ResearchCreateFormValues) {
     setSubmitting(true);
@@ -150,10 +172,12 @@ export function ResearchCreatePage({
           Back to research
         </Button>
         <h1 className="text-2xl font-semibold tracking-tight">
-          {RESEARCH_CONFIG.formTitle}
+          {isRerun ? RESEARCH_CONFIG.formRerunTitle : RESEARCH_CONFIG.formTitle}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {RESEARCH_CONFIG.formDescription}
+          {isRerun
+            ? RESEARCH_CONFIG.formRerunDescription
+            : RESEARCH_CONFIG.formDescription}
         </p>
       </div>
 
@@ -315,6 +339,8 @@ export function ResearchCreatePage({
                 </>
               ) : clarificationQuestions.length > 0 ? (
                 "Submit answers"
+              ) : isRerun ? (
+                "Start rerun"
               ) : (
                 "Start research"
               )}

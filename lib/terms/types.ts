@@ -227,6 +227,43 @@ export type FindTopTermsResult = {
   items: FindTopTermsItem[];
 };
 
+export type TermSelectionCriteria = {
+  /** Traits a term must satisfy to be included in the result. */
+  include: string;
+  /** Terms to reject even if they relate to the query. */
+  exclude: string;
+};
+
+export type FindRelevantTopTermsParams = {
+  /** Topic / keyword the terms must relate to. Empty = top terms by trend, no LLM. */
+  query: string;
+  /** LLM-produced acceptance and rejection rules for candidate terms. */
+  selectionCriteria?: TermSelectionCriteria;
+  period: ResolvedTermCardPeriod;
+  /** Max relevant terms to return. Defaults to `TOP_TERMS_DEFAULT_LIMIT`. */
+  limit?: number;
+  /** Let the relevance agent call Exa for ambiguous terms. Defaults to `isExaConfigured()`. */
+  enableWebResearch?: boolean;
+};
+
+export type FindRelevantTopTermsItem = FindTopTermsItem & {
+  /** LLM relevance confidence (0–1); null when the query was empty (no evaluation). */
+  confidence: number | null;
+};
+
+export type FindRelevantTopTermsResult = {
+  query: string;
+  period: ResolvedTermCardPeriod;
+  /** Relevant terms in trend-score order, at most `limit`. */
+  items: FindRelevantTopTermsItem[];
+  /** Active terms fetched and evaluated in this run. */
+  termsScanned: number;
+  /** True when every active term in the period was evaluated (or the scan cap was hit). */
+  exhausted: boolean;
+  /** `exa_answer` tool calls made by the relevance agent. */
+  webQueries: number;
+};
+
 export type TermAnalyticsDailyPoint = {
   dateKey: string;
   docCount: number;

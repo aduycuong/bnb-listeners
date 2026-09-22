@@ -21,13 +21,31 @@ const searchTaskSchema = z.object({
 });
 
 /** Evidence-gathering task: quantitative term statistics over a period. */
+const termSelectionCriteriaSchema = z.object({
+  include: z
+    .string()
+    .min(1)
+    .describe(
+      "Required traits a tracked term must satisfy. State whether it must be a concrete named entity, a category, a brand, a location, etc.",
+    ),
+  exclude: z
+    .string()
+    .min(1)
+    .describe(
+      "Terms to reject even when related to the subject. Use 'None' only when every related term should be included.",
+    ),
+});
+
 const termAnalyticsTaskSchema = z.object({
   kind: z.literal("term_analytics"),
   query: z
     .string()
     .describe(
-      "Keyword, topic, or term-group name whose tracked terms should be measured. Empty string = top terms across the whole workspace.",
+      "Subject used to identify candidate tracked terms. Empty string = top terms across the whole workspace and requires unrestricted selection criteria.",
     ),
+  selectionCriteria: termSelectionCriteriaSchema.describe(
+    "Mandatory criteria for accepting or rejecting candidate tracked terms. Fill every field from the research goal and background.",
+  ),
   period: z
     .enum(RESEARCH_TERM_PERIODS)
     .describe("Statistics window (relative preset)."),

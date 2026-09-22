@@ -54,7 +54,7 @@ export async function runResearch(runId: string): Promise<void> {
         workspaceId: run.workspaceId,
         permission: "owner",
       },
-      webEnabled: isExaConfigured(),
+      webEnabled: false,
       maxIterations: depth.maxIterations,
       maxSubQueries: depth.maxSubQueries,
       synthesizeModel: depth.synthesizeModel,

@@ -127,6 +127,8 @@ export type GetResearchRunResult =
       found: true;
       status: ResearchStatus;
       query: string;
+      context: string | null;
+      clarificationMode: ClarificationMode;
       background: string | null;
       depth: DepthLevel;
       result: ResearchRunResult | null;

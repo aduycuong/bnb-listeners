@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeftIcon, Loader2Icon, RotateCcwIcon, Trash2Icon } from "lucide-react";
+import { ArrowLeftIcon, RotateCcwIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -13,20 +13,18 @@ import {
   researchRunQueryKey,
   researchRunsQueryKey,
 } from "@/components/research/research-query-keys";
-import {
-  fetchResearchRun,
-  startResearchRunRequest,
-} from "@/components/research/research-request";
+import { fetchResearchRun } from "@/components/research/research-request";
 import { ResearchStatusBanner } from "@/components/research/research-status-banner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/components/ui/toast";
 import {
   getResearchDepthLabel,
   getResearchHref,
+  getResearchRerunHref,
   getResearchStatusBadgeClass,
   getResearchStatusLabel,
 } from "@/lib/research/research-config";
+import { getResearchRunFormContext } from "@/lib/research/utils/get-research-run-form-context";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 
 type ResearchDetailPageProps = {
@@ -54,7 +52,6 @@ export function ResearchDetailPage({
   const router = useRouter();
   const queryClient = useQueryClient();
   const canEdit = workspace.permission !== "read";
-  const [rerunning, setRerunning] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const listHref = getResearchHref(workspaceIndex);
 
@@ -72,46 +69,8 @@ export function ResearchDetailPage({
   });
 
   const run = runQuery.data;
+  const formContext = run ? getResearchRunFormContext(run) : "";
   const isActive = run?.status === "pending" || run?.status === "running";
-
-  async function handleRerun() {
-    if (!run || !canEdit) {
-      return;
-    }
-
-    setRerunning(true);
-
-    try {
-      const result = await startResearchRunRequest(workspace.id, {
-        query: run.query,
-        context: run.background ?? undefined,
-        depth: run.depth,
-        clarificationMode: "off",
-      });
-
-      if (result.status === "needs_clarification") {
-        router.push(
-          `${getResearchHref(workspaceIndex, "new")}?query=${encodeURIComponent(run.query)}`,
-        );
-        return;
-      }
-
-      await queryClient.invalidateQueries({
-        queryKey: researchRunsQueryKey(workspace.id),
-      });
-
-      toast.add({ title: "Research rerun started.", type: "success" });
-      router.push(getResearchHref(workspaceIndex, result.jobId));
-    } catch (error) {
-      toast.add({
-        title:
-          error instanceof Error ? error.message : "Could not rerun research.",
-        type: "error",
-      });
-    } finally {
-      setRerunning(false);
-    }
-  }
 
   if (runQuery.isLoading) {
     return (
@@ -163,9 +122,9 @@ export function ResearchDetailPage({
               </span>
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">{run.query}</h1>
-            {run.background ? (
+            {formContext ? (
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {run.background}
+                {formContext}
               </p>
             ) : null}
           </div>
@@ -173,22 +132,14 @@ export function ResearchDetailPage({
           {canEdit ? (
             <div className="flex shrink-0 flex-wrap gap-2">
               <Button
-                type="button"
                 variant="outline"
-                onClick={() => void handleRerun()}
-                disabled={rerunning || isActive}
+                nativeButton={false}
+                render={
+                  <Link href={getResearchRerunHref(workspaceIndex, runId)} />
+                }
               >
-                {rerunning ? (
-                  <>
-                    <Loader2Icon className="animate-spin" data-icon="inline-start" />
-                    Rerunning…
-                  </>
-                ) : (
-                  <>
-                    <RotateCcwIcon data-icon="inline-start" />
-                    Rerun
-                  </>
-                )}
+                <RotateCcwIcon data-icon="inline-start" />
+                Rerun
               </Button>
               <Button
                 type="button"

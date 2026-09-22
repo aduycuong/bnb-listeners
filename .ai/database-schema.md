@@ -644,7 +644,10 @@ Tracks deep-research runs started via the `/api/mcp/research` MCP endpoint (`sta
 | workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
 | status | text | NO | `pending` | `pending` \| `running` \| `succeeded` \| `failed` |
 | query | text | NO | — | Core research goal |
-| background | text | YES | — | Merged user context + clarification answers |
+| context | text | YES | — | User-provided background from the create form (rerun pre-fill source) |
+| clarification_mode | text | NO | `ask` | `ask` \| `assume` \| `off` — how triage handles ambiguous requests |
+| clarifications | jsonb | YES | — | Answered clarifying Q&A from the create flow: `[{ question, answer }]` |
+| background | text | YES | — | Derived merged context + clarifications for the LangGraph worker |
 | depth | text | NO | `standard` | `quick` \| `standard` \| `deep` (effort/latency knob) |
 | result | jsonb | YES | — | On success: `{ report, sources, iterations, findingCount }`; each source has `kind: internal \| web \| analytics` |
 | error | text | YES | — | Error message when `status = failed` |

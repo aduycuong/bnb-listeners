@@ -4,6 +4,7 @@ import { researchRuns } from "@/db/schema";
 import { db } from "@/lib/db";
 
 import type {
+  ClarificationMode,
   DepthLevel,
   GetResearchRunParams,
   GetResearchRunResult,
@@ -36,6 +37,8 @@ export async function getResearchRun(
     found: true,
     status: run.status as ResearchStatus,
     query: run.query,
+    context: run.context,
+    clarificationMode: (run.clarificationMode ?? "ask") as ClarificationMode,
     background: run.background,
     depth: run.depth as DepthLevel,
     result: run.result ?? null,

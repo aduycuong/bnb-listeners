@@ -77,11 +77,19 @@ export async function startResearch(
 
   const depth = params.depth ?? DEFAULT_DEPTH;
 
+  const clarifications =
+    params.clarifications?.filter(
+      (item) => item.question.trim() && item.answer.trim(),
+    ) ?? [];
+
   const [run] = await db
     .insert(researchRuns)
     .values({
       workspaceId: params.workspaceId,
       query: params.query,
+      context: params.context?.trim() || null,
+      clarificationMode: mode,
+      clarifications: clarifications.length > 0 ? clarifications : null,
       background: background || null,
       depth,
       status: "pending",

@@ -70,9 +70,9 @@ Nodes:
   | task kind | runner | what it does | finding kind |
   | --- | --- | --- | --- |
   | `search { query }` | `sources/search-source.ts` | `searchChunks` (workspace-scoped, enriched) + `exaSearch` when `isExaConfigured()`, in parallel | `internal`, `web` |
-  | `term_analytics { query, period }` | `sources/term-analytics-source.ts` | `findTopTerms` (keyword or term-group resolution) → `getTermAnalytics` for the top `RESEARCH_ANALYTICS_MAX_TERMS` → **one** table-style finding (docs, trend, quality, docs over time in ≤ `RESEARCH_ANALYTICS_MAX_BUCKETS` buckets, peak day). Best-effort: failures log and return `[]`. `period` is one of `RESEARCH_TERM_PERIODS` (relative presets only). | `analytics` |
+  | `term_analytics { query, selectionCriteria, period }` | `sources/term-analytics-source.ts` | `findRelevantTopTerms` (scans the period's active terms in trend order, `TOP_TERMS_LLM_BATCH_SIZE` per LLM agent call with an `exa_answer` tool for ambiguous names, until `RESEARCH_ANALYTICS_MAX_TERMS` terms satisfy the LLM-produced include/exclude criteria, terms run out, or `TOP_TERMS_MAX_SCANNED` is hit; empty query = unrestricted workspace top terms by trend without LLM) → `getTermAnalytics` → **one** table-style finding (docs, trend, quality, docs over time in ≤ `RESEARCH_ANALYTICS_MAX_BUCKETS` buckets, peak day). Best-effort: failures log and return `[]`. `period` is one of `RESEARCH_TERM_PERIODS` (relative presets only). | `analytics` |
 
-  The plan/evaluate prompts share `buildTaskGuidance()` which tells the LLM when each kind is appropriate (analytics only for volume/trend/ranking questions). Adding a new data source = add a member to `researchTaskSchema`, a runner in `sources/`, a case in `runResearchTask` (exhaustive switch — compile error if missed), and a line in `buildTaskGuidance()`. Graph, evaluate, and synthesize do not change.
+  The plan/evaluate prompts share `buildTaskGuidance()` which tells the LLM when each kind is appropriate (analytics only for volume/trend/ranking questions). For each analytics task, the LLM must produce `selectionCriteria.include` and `selectionCriteria.exclude`; they are mandatory predicates, so the relevance agent can distinguish entities of the requested type from merely related information. Adding a new data source = add a member to `researchTaskSchema`, a runner in `sources/`, a case in `runResearchTask` (exhaustive switch — compile error if missed), and a line in `buildTaskGuidance()`. Graph, evaluate, and synthesize do not change.
 
   > **Why Exa search, not Exa answer:** the graph owns planning/evaluation/synthesis. `/answer` is a black-box mini-RAG (Exa runs its own LLM), which duplicates our loop and returns pre-digested prose that's hard to evaluate/dedupe. `/search` returns raw sources our nodes control uniformly with internal chunks. (`exaAnswer` remains available for quick entity disambiguation but is not the evidence primitive.)
 
@@ -216,7 +216,7 @@ lib/research/
 ├── sources/                     # one runner per task kind + dispatcher
 │   ├── types.ts                 # ResearchSourceRunner<K> contract
 │   ├── search-source.ts         # internal searchChunks + Exa web
-│   ├── term-analytics-source.ts # findTopTerms → getTermAnalytics → table finding
+│   ├── term-analytics-source.ts # findRelevantTopTerms (LLM relevance scan) → getTermAnalytics → table finding
 │   └── run-research-task.ts     # exhaustive switch: task.kind → runner
 ├── services/
 │   ├── triage-research.ts       # synchronous clarify decision (used by start_research)

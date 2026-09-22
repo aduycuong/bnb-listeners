@@ -13,7 +13,13 @@ export function buildTaskKey(task: ResearchTask): string {
     case "search":
       return `search:${normalizeQuery(task.query)}`;
     case "term_analytics":
-      return `term_analytics:${task.period}:${normalizeQuery(task.query) || "*"}`;
+      return [
+        "term_analytics",
+        task.period,
+        normalizeQuery(task.query) || "*",
+        normalizeQuery(task.selectionCriteria.include),
+        normalizeQuery(task.selectionCriteria.exclude),
+      ].join(":");
     default: {
       const exhaustive: never = task;
       throw new Error(`Unsupported research task: ${JSON.stringify(exhaustive)}`);

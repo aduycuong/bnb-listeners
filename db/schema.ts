@@ -877,6 +877,11 @@ export const researchRuns = pgTable(
       .references(() => workspaces.id, { onDelete: "cascade" }),
     status: text("status").notNull().default("pending"),
     query: text("query").notNull(),
+    context: text("context"),
+    clarificationMode: text("clarification_mode").notNull().default("ask"),
+    clarifications: jsonb("clarifications").$type<
+      Array<{ question: string; answer: string }>
+    >(),
     background: text("background"),
     depth: text("depth").notNull().default("standard"),
     result: jsonb("result").$type<{

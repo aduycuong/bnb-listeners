@@ -1,12 +1,16 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 
 import { ResearchCreatePage } from "@/components/research/research-create-page";
 import { ResearchDetailPage } from "@/components/research/research-detail-page";
 import { ResearchListPage } from "@/components/research/research-list-page";
+import { researchRunQueryKey } from "@/components/research/research-query-keys";
+import { fetchResearchRun } from "@/components/research/research-request";
 import { useWorkspaceRouteContext } from "@/hooks/use-workspace-route-context";
-import type { DepthLevel } from "@/lib/research/types";
+import { getResearchRunFormContext } from "@/lib/research/utils/get-research-run-form-context";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type ResearchListRoutePageProps = {
   workspaceIndexParam: string;
@@ -50,23 +54,48 @@ export function ResearchCreateRoutePage({
     );
   }
 
-  const query = searchParams.get("query") ?? undefined;
-  const context = searchParams.get("context") ?? undefined;
-  const depth = searchParams.get("depth");
-  const parsedDepth =
-    depth === "quick" || depth === "standard" || depth === "deep"
-      ? depth
-      : undefined;
+  const fromRunId = searchParams.get("fromRunId")?.trim() || undefined;
+
+  const sourceRunQuery = useQuery({
+    queryKey: researchRunQueryKey(workspace.id, fromRunId ?? ""),
+    queryFn: () => fetchResearchRun(workspace.id, fromRunId!),
+    enabled: Boolean(fromRunId),
+  });
+
+  if (fromRunId && sourceRunQuery.isLoading) {
+    return (
+      <div className="mx-auto w-full max-w-2xl space-y-4 px-4 py-8 md:px-8">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
+
+  if (fromRunId && sourceRunQuery.error) {
+    return (
+      <div className="flex h-full items-center justify-center px-4 text-sm text-destructive">
+        {sourceRunQuery.error.message}
+      </div>
+    );
+  }
+
+  const sourceRun = sourceRunQuery.data;
 
   return (
     <ResearchCreatePage
       workspace={workspace}
       workspaceIndex={workspaceIndex}
-      initialValues={{
-        query,
-        context,
-        depth: parsedDepth as DepthLevel | undefined,
-      }}
+      mode={fromRunId ? "rerun" : "create"}
+      initialValues={
+        sourceRun
+          ? {
+              query: sourceRun.query,
+              context: getResearchRunFormContext(sourceRun),
+              depth: sourceRun.depth,
+              clarificationMode: sourceRun.clarificationMode,
+            }
+          : undefined
+      }
     />
   );
 }

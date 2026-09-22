@@ -14,7 +14,17 @@ export const RESEARCH_CONFIG = {
   formTitle: "Start research",
   formDescription:
     "Describe what you want to learn. The system will plan, gather evidence, and synthesize a report.",
+  formRerunTitle: "Rerun research",
+  formRerunDescription:
+    "Review and adjust the inputs, then start a new run with the updated settings.",
 } as const;
+
+export function getResearchRerunHref(
+  workspaceIndex: number,
+  fromRunId: string,
+): string {
+  return `${getResearchHref(workspaceIndex, "new")}?fromRunId=${encodeURIComponent(fromRunId)}`;
+}
 
 export function getResearchHref(
   workspaceIndex: number,
