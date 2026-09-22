@@ -93,7 +93,7 @@ export async function startResearch(
   await addJob({
     jobName: RESEARCH_QSTASH_JOB_NAME,
     payload: { runId },
-    userId: "mcp",
+    userId: params.userId ?? "mcp",
   });
 
   await mirrorResearchStatus({
@@ -101,6 +101,10 @@ export async function startResearch(
     workspaceId: params.workspaceId,
     status: "pending",
   });
+
+  if (params.waitForResult === false) {
+    return { status: "started", jobId: runId };
+  }
 
   // Fast path: wait briefly for the worker to finish before handing back the
   // jobId. The QStash job keeps running regardless of this window.

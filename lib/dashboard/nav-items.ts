@@ -3,6 +3,7 @@ import {
   FilesIcon,
   FolderTreeIcon,
   LayersIcon,
+  SearchIcon,
   SettingsIcon,
   TagsIcon,
 } from "lucide-react";
@@ -10,6 +11,7 @@ import {
 import { DOCUMENT_SEGMENT } from "@/lib/documents/document-config";
 import { DATA_SOURCE_GROUP_SEGMENT } from "@/lib/data-source-groups/data-source-group-config";
 import { DATA_SOURCE_MENU_NAV_ITEMS } from "@/lib/data-sources/data-source-menu-config";
+import { RESEARCH_SEGMENT } from "@/lib/research/research-config";
 import { TERM_GROUP_SEGMENT } from "@/lib/term-groups/term-group-config";
 import { TERM_SEGMENT } from "@/lib/terms/term-config";
 
@@ -21,6 +23,11 @@ export const DASHBOARD_NAV_ITEMS = [
     labelKey: "nav.termGroups",
     segment: TERM_GROUP_SEGMENT,
     icon: FolderTreeIcon,
+  },
+  {
+    labelKey: "nav.research",
+    segment: RESEARCH_SEGMENT,
+    icon: SearchIcon,
   },
   {
     labelKey: "nav.dataSourceGroups",

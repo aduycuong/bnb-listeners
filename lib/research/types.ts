@@ -85,6 +85,9 @@ export type ResearchStatus = "pending" | "running" | "succeeded" | "failed";
 
 export type StartResearchParams = {
   workspaceId: string;
+  userId?: string;
+  /** When false, return `{ status: "started", jobId }` immediately after enqueue. */
+  waitForResult?: boolean;
   query: string;
   context?: string;
   clarifications?: Clarification[];
@@ -124,6 +127,36 @@ export type GetResearchRunResult =
       found: true;
       status: ResearchStatus;
       query: string;
+      background: string | null;
+      depth: DepthLevel;
       result: ResearchRunResult | null;
       error: string | null;
+      createdAt: string;
+      updatedAt: string;
+      finishedAt: string | null;
     };
+
+export type ResearchRunListItem = {
+  id: string;
+  query: string;
+  status: ResearchStatus;
+  depth: DepthLevel;
+  createdAt: string;
+  finishedAt: string | null;
+  findingCount: number | null;
+};
+
+export type ListResearchRunsResult = {
+  items: ResearchRunListItem[];
+};
+
+export type StartResearchBody = Omit<StartResearchParams, "workspaceId" | "userId">;
+
+export type DeleteResearchRunParams = {
+  runId: string;
+};
+
+export type DeleteResearchRunResult = {
+  id: string;
+  message: string;
+};

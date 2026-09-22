@@ -4,6 +4,7 @@ import { researchRuns } from "@/db/schema";
 import { db } from "@/lib/db";
 
 import type {
+  DepthLevel,
   GetResearchRunParams,
   GetResearchRunResult,
   ResearchStatus,
@@ -35,7 +36,12 @@ export async function getResearchRun(
     found: true,
     status: run.status as ResearchStatus,
     query: run.query,
+    background: run.background,
+    depth: run.depth as DepthLevel,
     result: run.result ?? null,
     error: run.error,
+    createdAt: run.createdAt.toISOString(),
+    updatedAt: run.updatedAt.toISOString(),
+    finishedAt: run.finishedAt?.toISOString() ?? null,
   };
 }

@@ -71,6 +71,22 @@ export const researchEvaluationSchema = z.object({
     ),
 });
 
+/** Request body for starting a research run from the dashboard API. */
+export const startResearchBodySchema = z.object({
+  query: z.string().min(1, { error: "Query is required." }),
+  context: z.string().optional(),
+  clarifications: z
+    .array(
+      z.object({
+        question: z.string().min(1),
+        answer: z.string().min(1),
+      }),
+    )
+    .optional(),
+  clarificationMode: z.enum(["ask", "assume", "off"]).optional(),
+  depth: z.enum(["quick", "standard", "deep"]).optional(),
+});
+
 /** Structured output of the synchronous triage step. */
 export const researchTriageSchema = z.object({
   clear: z

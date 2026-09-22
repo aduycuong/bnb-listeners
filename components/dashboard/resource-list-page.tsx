@@ -68,6 +68,7 @@ type ResourceListPageProps = {
   renderItemActions?: (item: ResourceListRowItem) => ReactNode;
   isLoading?: boolean;
   errorMessage?: string;
+  containerClassName?: string;
 };
 
 function formatListDate(value: string) {
@@ -211,6 +212,7 @@ export function ResourceListPage({
   renderItemActions,
   isLoading = false,
   errorMessage,
+  containerClassName = "max-w-3xl",
 }: ResourceListPageProps) {
   const [keyword, setKeyword] = useState("");
   const [sort, setSort] = useState<ListSortOption>("date-desc");
@@ -228,7 +230,7 @@ export function ResourceListPage({
   const canCreate = Boolean(onCreateClick || createHref);
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-8">
+    <div className={cn("mx-auto w-full px-4 py-8 md:px-8", containerClassName)}>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
