@@ -19,7 +19,8 @@
     "chunks:rebuild": "tsx scripts/rebuild-chunks.ts",
     "terms:embed": "tsx scripts/embed-terms.ts",
     "db:seed-system-schedules": "tsx scripts/seed-system-schedules.ts",
-    "firebase:set-user-role": "tsx scripts/set-firebase-user-role.ts"
+    "firebase:set-user-role": "tsx scripts/set-firebase-user-role.ts",
+    "test:local-qwen": "tsx scripts/test-local-qwen.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1135.0",

@@ -1,6 +1,16 @@
 /** Abort a media download that takes longer than this. */
 export const MEDIA_DOWNLOAD_TIMEOUT_MS = 30_000;
 
+/**
+ * How many times to attempt a download. Facebook CDN hosts often reset the
+ * first TCP/TLS connection (`TypeError: fetch failed`); later attempts on
+ * the same host succeed.
+ */
+export const MEDIA_DOWNLOAD_ATTEMPTS = 3;
+
+/** Backoff between retryable download attempts, one entry per retry. */
+export const MEDIA_DOWNLOAD_RETRY_DELAYS_MS = [250, 800] as const;
+
 /** Size caps per media kind. Larger files are rejected before upload. */
 export const MEDIA_MAX_BYTES = {
   image: 15 * 1024 * 1024,

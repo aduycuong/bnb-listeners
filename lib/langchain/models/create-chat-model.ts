@@ -34,6 +34,7 @@ const providerEnvKeys: Record<ChatModelProvider, string> = {
   google: "GEMINI_API_KEY",
   deepseek: "DEEPSEEK_API_KEY",
   alibaba: "ALIBABA_API_KEY",
+  local: "LOCAL_QWEN_API_KEY",
 };
 
 const providerConfigErrors: Record<ChatModelProvider, string> = {
@@ -42,11 +43,23 @@ const providerConfigErrors: Record<ChatModelProvider, string> = {
   google: "Google Gemini is not configured. Please set GEMINI_API_KEY.",
   deepseek: "DeepSeek is not configured. Please set DEEPSEEK_API_KEY.",
   alibaba: "Alibaba DashScope is not configured. Please set ALIBABA_API_KEY.",
+  local: "Local Qwen is not configured. Please set LOCAL_QWEN_API_KEY.",
 };
 
 /** DeepSeek V4 defaults to thinking mode, which rejects forced tool_choice. */
 const deepSeekStructuredOutputModelKwargs = {
   thinking: { type: "disabled" as const },
+};
+
+/**
+ * Local Qwen3-VL thinking tokens eat the completion budget and truncate
+ * structured JSON (`finish_reason: "length"`). Cover both Ollama (`think`)
+ * and vLLM / Qwen OpenAI-compat (`chat_template_kwargs.enable_thinking`).
+ */
+const localQwenStructuredOutputModelKwargs = {
+  think: false,
+  enable_thinking: false,
+  chat_template_kwargs: { enable_thinking: false },
 };
 
 function getProviderApiKey(provider: ChatModelProvider): string | undefined {
@@ -104,6 +117,25 @@ export function createChatModel(
         ...modelOptions,
         ...maxTokensOption,
       });
+
+    case "local": {
+      if (!definition.baseURL) {
+        throw new Error(
+          `Local chat model "${model}" is missing a baseURL in the registry.`,
+        );
+      }
+
+      return new ChatOpenAI({
+        model: definition.modelName,
+        apiKey,
+        configuration: {
+          baseURL: definition.baseURL,
+        },
+        modelKwargs: localQwenStructuredOutputModelKwargs,
+        ...modelOptions,
+        ...maxTokensOption,
+      });
+    }
 
     case "alibaba": {
       const region =

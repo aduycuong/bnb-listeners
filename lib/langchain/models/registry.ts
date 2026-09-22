@@ -5,6 +5,7 @@ export const chatModelProviders = [
   "anthropic",
   "google",
   "deepseek",
+  "local",
   // "alibaba",
 ] as const;
 
@@ -14,7 +15,8 @@ export type ChatModelProvider =
   | "anthropic"
   | "google"
   | "deepseek"
-  | "alibaba";
+  | "alibaba"
+  | "local";
 
 /** Keep OpenAI / Anthropic / DeepSeek ids aligned with bnb-chat-agent. */
 export const chatModelIds = [
@@ -38,6 +40,7 @@ export const chatModelIds = [
   "qwen-flash",
   "qwen-long",
   "qwen3-max",
+  "local-qwen3-vl",
 ] as const;
 
 export type ChatModelId = (typeof chatModelIds)[number];
@@ -60,6 +63,8 @@ export type ChatModelDefinition = {
   supportsTemperature: boolean;
   description: string;
   pricing: ChatModelPricing;
+  /** OpenAI-compatible API root, without `/chat/completions`. */
+  baseURL?: string;
 };
 
 const providerLabels: Record<ChatModelProvider, string> = {
@@ -68,6 +73,7 @@ const providerLabels: Record<ChatModelProvider, string> = {
   google: "Gemini (Google)",
   deepseek: "DeepSeek",
   alibaba: "Qwen (Alibaba DashScope)",
+  local: "Local (OpenAI-compatible)",
 };
 
 /**
@@ -243,6 +249,16 @@ export const chatModelRegistry: Record<ChatModelId, ChatModelDefinition> = {
     supportsTemperature: true,
     description: "Latest-generation Qwen flagship model.",
     pricing: { inputPerMTok: 1.2, outputPerMTok: 6 },
+  },
+  "local-qwen3-vl": {
+    label: "Local Qwen3-VL 8B",
+    modelName: "qwen3-vl:8b",
+    provider: "local",
+    supportsTemperature: true,
+    description:
+      "Self-hosted Qwen3-VL 8B via OpenAI-compatible endpoint. Requires LOCAL_QWEN_API_KEY.",
+    pricing: { inputPerMTok: 0, outputPerMTok: 0 },
+    baseURL: "https://vl.macmedia.com.vn/v1",
   },
 };
 

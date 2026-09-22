@@ -3,7 +3,9 @@ import { isR2Configured } from "@/lib/r2/utils/get-r2-s3-client";
 import { normalizeContentType } from "@/lib/r2/utils/normalize-content-type";
 
 import {
+  MEDIA_DOWNLOAD_ATTEMPTS,
   MEDIA_DOWNLOAD_HEADERS,
+  MEDIA_DOWNLOAD_RETRY_DELAYS_MS,
   MEDIA_DOWNLOAD_TIMEOUT_MS,
   MEDIA_MAX_BYTES,
 } from "../config";
@@ -67,6 +69,38 @@ export async function archiveMediaUrl(
 async function download(
   sourceUrl: string,
 ): Promise<{ body: Buffer; contentType: string }> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= MEDIA_DOWNLOAD_ATTEMPTS; attempt++) {
+    try {
+      return await downloadOnce(sourceUrl);
+    } catch (error) {
+      lastError = error;
+      if (
+        attempt === MEDIA_DOWNLOAD_ATTEMPTS ||
+        !isRetryableDownloadError(error)
+      ) {
+        throw error;
+      }
+
+      const delay =
+        MEDIA_DOWNLOAD_RETRY_DELAYS_MS[attempt - 1] ??
+        MEDIA_DOWNLOAD_RETRY_DELAYS_MS.at(-1) ??
+        800;
+
+      console.warn(
+        `[archive-media-url] attempt ${attempt}/${MEDIA_DOWNLOAD_ATTEMPTS} failed (${describeDownloadError(error)}); retrying in ${delay}ms`,
+      );
+      await sleep(delay);
+    }
+  }
+
+  throw lastError;
+}
+
+async function downloadOnce(
+  sourceUrl: string,
+): Promise<{ body: Buffer; contentType: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), MEDIA_DOWNLOAD_TIMEOUT_MS);
 
@@ -76,6 +110,7 @@ async function download(
     response = await fetch(sourceUrl, {
       headers: MEDIA_DOWNLOAD_HEADERS,
       redirect: "follow",
+      cache: "no-store",
       signal: controller.signal,
     });
   } catch (error) {
@@ -90,7 +125,7 @@ async function download(
 
     throw new MediaArchiveError(
       "MEDIA_DOWNLOAD_FAILED",
-      error instanceof Error ? error.message : String(error),
+      describeDownloadError(error),
     );
   }
 
@@ -120,9 +155,40 @@ async function download(
 
     throw new MediaArchiveError(
       "MEDIA_DOWNLOAD_FAILED",
-      error instanceof Error ? error.message : String(error),
+      describeDownloadError(error),
     );
   } finally {
     clearTimeout(timer);
   }
+}
+
+function isRetryableDownloadError(error: unknown): boolean {
+  if (!(error instanceof MediaArchiveError)) return false;
+  if (error.code !== "MEDIA_DOWNLOAD_FAILED") return false;
+
+  if (/^HTTP (429|502|503|504)\b/.test(error.message)) return true;
+
+  // Node/undici surfaces connection resets, IPv6 failures, and TLS
+  // handshake drops as TypeError("fetch failed") — not as HTTP status.
+  return !error.message.startsWith("HTTP ");
+}
+
+function describeDownloadError(error: unknown): string {
+  if (error instanceof MediaArchiveError) return error.message;
+  if (!(error instanceof Error)) return String(error);
+
+  const cause = error.cause;
+  if (cause instanceof Error) {
+    const code =
+      "code" in cause && typeof cause.code === "string" ? cause.code : null;
+    return code
+      ? `${error.message} (${code}: ${cause.message})`
+      : `${error.message} (${cause.message})`;
+  }
+
+  return error.message;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
