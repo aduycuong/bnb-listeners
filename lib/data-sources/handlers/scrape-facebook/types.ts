@@ -38,7 +38,10 @@ export const brightDataFacebookPostSchema = z.object({
   post_type: z.string().optional(),
   price: z.unknown().nullable().optional(),
   location: z.unknown().nullable().optional(),
-  hashtags: z.array(z.string()).default([]),
+  hashtags: z
+    .array(z.string())
+    .nullish()
+    .transform((value) => value ?? []),
   publisher_image_url: z.url().nullable().optional(),
   /** Non-null when the post was made by a Page (rather than a personal profile). */
   delegate_page_id: z.string().nullable().optional(),
