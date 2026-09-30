@@ -1,9 +1,30 @@
 {
+  "accountMenu": {
+    "openMenu": "Mở menu tài khoản",
+    "profile": "Hồ sơ",
+    "userFallback": "Tài khoản",
+    "admin": "Lịch hệ thống"
+  },
+  "workspacePermission": {
+    "owner": "Chủ sở hữu",
+    "edit": "Chỉnh sửa",
+    "read": "Xem"
+  },
+  "header": {
+    "home": "Tổng quan",
+    "homeAriaLabel": "Về trang tổng quan",
+    "create": "Tạo mới",
+    "detail": "Chi tiết",
+    "documentDetail": "Tài liệu",
+    "termDetail": "Term",
+    "dataSourceGroupDetail": "Nhóm nguồn dữ liệu",
+    "researchRunDetail": "Lượt nghiên cứu",
+    "dataSourceDetail": "Job"
+  },
   "nav": {
     "overview": "Tổng quan",
     "documents": "Tài liệu",
     "terms": "Terms",
-    "termGroups": "Term Groups",
     "research": "Nghiên cứu",
     "dataSourceGroups": "Nhóm nguồn dữ liệu",
     "facebook-page": "Trang Facebook",

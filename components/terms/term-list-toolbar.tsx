@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { DataSourceListItem } from "@/lib/data-sources/types";
-import type { TermGroupListItem } from "@/lib/term-groups/types";
 import {
   TERM_CARD_PERIOD_LABELS,
   TERM_CARD_PERIOD_PRESETS,
@@ -26,23 +25,19 @@ import { TERM_CONFIG } from "@/lib/terms/term-config";
 import { cn } from "@/lib/utils";
 
 const ALL_JOBS_LABEL = "All jobs";
-const ALL_GROUPS_LABEL = "All groups";
 
 type TermListToolbarProps = {
   period: TermCardPeriodPreset;
   sort: TermCardSort;
   dataSourceIds: string[];
   jobs: DataSourceListItem[];
-  groups: TermGroupListItem[];
   search: string;
-  groupId?: string;
   customStartDate?: string;
   customEndDate?: string;
   onPeriodChange: (period: TermCardPeriodPreset) => void;
   onSortChange: (sort: TermCardSort) => void;
   onJobIdsChange: (dataSourceIds: string[]) => void;
   onSearchChange: (search: string) => void;
-  onGroupIdChange: (groupId: string | undefined) => void;
   onCustomRangeApply: (range: { startDate: string; endDate: string }) => void;
   /** Disables period/sort/job controls while data loads — search stays editable. */
   controlsDisabled?: boolean;
@@ -102,27 +97,20 @@ export function TermListToolbar({
   sort,
   dataSourceIds,
   jobs,
-  groups,
   search,
-  groupId,
   customStartDate,
   customEndDate,
   onPeriodChange,
   onSortChange,
   onJobIdsChange,
   onSearchChange,
-  onGroupIdChange,
   onCustomRangeApply,
   controlsDisabled = false,
 }: TermListToolbarProps) {
   const periodLabel = getPeriodLabel(period, customStartDate, customEndDate);
   const sortLabel = TERM_CARD_SORT_LABELS[sort];
-  const groupLabel =
-    groups.find((group) => group.id === groupId)?.name ?? ALL_GROUPS_LABEL;
   const allDataSourceIds = jobs.map((dataSource) => dataSource.id);
   const allJobsSelected = isAllJobsSelected(dataSourceIds);
-
-  const filterControlCount = groups.length > 0 ? 3 : 2;
 
   return (
     <>
@@ -138,14 +126,7 @@ export function TermListToolbar({
           />
         </div>
 
-        <div
-          className={cn(
-            "grid min-w-0 grid-cols-1 gap-3",
-            filterControlCount === 3
-              ? "sm:grid-cols-2 lg:grid-cols-3"
-              : "sm:grid-cols-2",
-          )}
-        >
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="min-w-0">
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -182,48 +163,7 @@ export function TermListToolbar({
             </DropdownMenu>
           </div>
 
-          {groups.length > 0 ? (
-            <div className="min-w-0">
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      variant="outline"
-                      className="w-full min-w-0 justify-between gap-2"
-                      disabled={controlsDisabled}
-                    />
-                  }
-                >
-                  <span className="min-w-0 truncate">{groupLabel}</span>
-                  <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-44">
-                  <DropdownMenuRadioGroup
-                    value={groupId ?? "all"}
-                    onValueChange={(value) =>
-                      onGroupIdChange(value === "all" ? undefined : value)
-                    }
-                  >
-                    <DropdownMenuRadioItem value="all">
-                      {ALL_GROUPS_LABEL}
-                    </DropdownMenuRadioItem>
-                    {groups.map((group) => (
-                      <DropdownMenuRadioItem key={group.id} value={group.id}>
-                        {group.name}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ) : null}
-
-          <div
-            className={cn(
-              "min-w-0",
-              filterControlCount === 3 && "sm:col-span-2 lg:col-span-1",
-            )}
-          >
+          <div className="min-w-0">
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={

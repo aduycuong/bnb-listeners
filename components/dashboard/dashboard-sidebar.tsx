@@ -4,11 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useT } from "next-i18next/client";
 
-import { LanguageSelector } from "@/components/dashboard/language-selector";
-import { LogoutButton } from "@/components/dashboard/logout-button";
-import { SettingsMenu } from "@/components/dashboard/settings-menu";
-import { ThemeModeToggle } from "@/components/dashboard/theme-mode-toggle";
-import { AdminNavLink } from "@/components/admin/admin-nav-link";
+import { AccountMenu } from "@/components/dashboard/account-menu";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
 import {
   Sidebar,
@@ -16,7 +12,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -36,6 +31,9 @@ type DashboardSidebarProps = {
   workspaceIndex: number;
 };
 
+const sidebarItemClassName =
+  "h-[34px]! text-[15px]! font-normal text-sidebar-foreground/80 [&_svg]:size-[17px]! group-data-[collapsible=icon]:[&_svg]:size-[17px]! data-active:font-normal data-active:text-sidebar-foreground";
+
 export function DashboardSidebar({
   workspace,
   workspaces,
@@ -46,7 +44,7 @@ export function DashboardSidebar({
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
-      <SidebarHeader className="border-b border-sidebar-border">
+      <SidebarHeader className="px-3">
         <WorkspaceSwitcher
           activeWorkspace={workspace}
           workspaces={workspaces}
@@ -55,10 +53,9 @@ export function DashboardSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>{t("nav.workspace")}</SidebarGroupLabel>
+        <SidebarGroup className="px-3 py-2">
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-0.5">
               {DASHBOARD_NAV_ITEMS.map(({ labelKey, segment, icon: Icon }) => {
                 const label = t(labelKey);
                 const href = getDashboardNavHref(workspaceIndex, segment);
@@ -69,6 +66,7 @@ export function DashboardSidebar({
                     <SidebarMenuButton
                       tooltip={label}
                       isActive={isActive}
+                      className={sidebarItemClassName}
                       render={<Link href={href} />}
                     >
                       <Icon />
@@ -82,15 +80,13 @@ export function DashboardSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-2">
-        <div className="flex items-center justify-center gap-1">
-          <AdminNavLink />
-          <SettingsMenu workspaceIndex={workspaceIndex} />
-          <LanguageSelector />
-          <ThemeModeToggle />
-          <LogoutButton />
-        </div>
+      <SidebarFooter className="px-3">
+        <AccountMenu
+          workspaceIndex={workspaceIndex}
+          permission={workspace.permission}
+        />
       </SidebarFooter>
+
       <SidebarRail />
     </Sidebar>
   );

@@ -5,7 +5,6 @@ export type TermCardsQueryFilters = {
   endDate?: string;
   dataSourceIds?: string[];
   search?: string;
-  groupId?: string;
 };
 
 export type TermDocumentsQueryFilters = {

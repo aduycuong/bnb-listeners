@@ -1,9 +1,30 @@
 {
+  "accountMenu": {
+    "openMenu": "Open account menu",
+    "profile": "Profile",
+    "userFallback": "Account",
+    "admin": "System schedules"
+  },
+  "workspacePermission": {
+    "owner": "Owner",
+    "edit": "Edit",
+    "read": "View"
+  },
+  "header": {
+    "home": "Overview",
+    "homeAriaLabel": "Go to overview",
+    "create": "Create",
+    "detail": "Details",
+    "documentDetail": "Document",
+    "termDetail": "Term",
+    "dataSourceGroupDetail": "Data source group",
+    "researchRunDetail": "Research run",
+    "dataSourceDetail": "Job"
+  },
   "nav": {
     "overview": "Overview",
     "documents": "Documents",
     "terms": "Terms",
-    "termGroups": "Term groups",
     "research": "Research",
     "dataSourceGroups": "Data source groups",
     "facebook-page": "Facebook page",

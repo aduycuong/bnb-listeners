@@ -21,6 +21,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { APP_ICON_SRC } from "@/lib/dashboard/app-icon";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { cn } from "@/lib/utils";
 
@@ -49,22 +50,24 @@ export function WorkspaceSwitcher({
             render={
               <SidebarMenuButton
                 size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                tooltip={activeWorkspace.name}
+                className={cn(
+                  "font-normal text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground",
+                  "group-data-[collapsible=icon]:hover:bg-transparent group-data-[collapsible=icon]:active:bg-transparent group-data-[collapsible=icon]:data-open:bg-transparent group-data-[collapsible=icon]:data-open:hover:bg-transparent group-data-[collapsible=icon]:data-popup-open:bg-transparent group-data-[collapsible=icon]:data-[state=open]:bg-transparent",
+                )}
               />
             }
           >
-            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-              <span className="text-sm font-semibold">
-                {activeWorkspace.name.charAt(0)}
-              </span>
-            </div>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{activeWorkspace.name}</span>
-              <span className="truncate text-xs capitalize text-muted-foreground">
-                {activeWorkspace.permission}
-              </span>
-            </div>
-            <ChevronsUpDownIcon className="ml-auto size-4 text-muted-foreground" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={APP_ICON_SRC}
+              alt=""
+              className="size-8 shrink-0"
+            />
+            <span className="truncate font-medium group-data-[collapsible=icon]:hidden">
+              {activeWorkspace.name}
+            </span>
+            <ChevronsUpDownIcon className="ml-auto size-3.5 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="min-w-56 rounded-lg"
@@ -87,15 +90,7 @@ export function WorkspaceSwitcher({
                   }}
                   className="gap-2 p-2"
                 >
-                  <div className="flex size-6 items-center justify-center rounded-md border bg-background text-xs font-medium">
-                    {workspace.name.charAt(0)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="block truncate">{workspace.name}</span>
-                    <span className="block truncate text-xs capitalize text-muted-foreground">
-                      {workspace.permission}
-                    </span>
-                  </div>
+                  <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
                   <span
                     className={cn(
                       "ml-auto size-2 rounded-full bg-primary",

@@ -10,7 +10,6 @@ import { db } from "@/lib/db";
 import { getEligibleDocumentParts } from "@/lib/document-parts/services/get-eligible-document-parts";
 import { DOCUMENT_TERM_ASSIGNED_BY } from "@/lib/document-terms/document-term-config";
 import { invalidateTermDigest } from "@/lib/term-digests/services/invalidate-term-digest";
-import { assignTermGroupsAfterClassification } from "@/lib/term-groups/services/assign-term-groups-after-classification";
 import { buildTermEmbeddingText } from "@/lib/terms/utils/build-term-embedding-text";
 import { embedTermTexts } from "@/lib/terms/utils/embed-term-texts";
 import { findTermByName } from "@/lib/terms/utils/find-term-by-name";
@@ -386,8 +385,6 @@ async function classifyDiscussionDocument(
   const affectedTermIds = [...new Set([...oldTermIds, ...newTermIds])];
   await invalidateAffectedDigests(affectedTermIds, doc.publishedAt, doc.dataSourceId);
 
-  // No term-group step here: discussions never create terms, and only
-  // freshly created terms are evaluated against groups.
   return buildClassifyResultFromDocumentTerms(doc.id);
 }
 
@@ -518,16 +515,6 @@ export async function classifyDocument(
   ];
   const affectedTermIds = [...new Set([...oldTermIds, ...newTermIds])];
   await invalidateAffectedDigests(affectedTermIds, doc.publishedAt, doc.dataSourceId);
-
-  // Only freshly created terms get evaluated against term groups — existing
-  // terms already went through this when they were created (or are curated
-  // via admin / member rebuild).
-  if (createdTermIds.length > 0) {
-    await assignTermGroupsAfterClassification({
-      workspaceId: doc.workspaceId,
-      termIds: createdTermIds,
-    });
-  }
 
   await classifyCompanionDiscussionIfPresent(doc);
 

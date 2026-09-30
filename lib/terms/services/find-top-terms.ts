@@ -1,9 +1,6 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { TERM_GROUP_TOP_TERMS_LIMIT } from "@/lib/term-groups/term-group-config";
-import { listTermGroupTopTerms } from "@/lib/term-groups/services/list-term-group-top-terms";
-import { listTermGroups } from "@/lib/term-groups/services/list-term-groups";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 import type { FindTopTermsParams, FindTopTermsResult } from "../types";
 import {
@@ -20,7 +17,7 @@ type KeywordTopTermRow = {
   trend_score: number | null;
 };
 
-const DEFAULT_LIMIT = TERM_GROUP_TOP_TERMS_LIMIT;
+const DEFAULT_LIMIT = 10;
 
 async function listTopTermsByTrendScore(
   params: {
@@ -65,75 +62,34 @@ export async function findTopTerms(
   const normalizedQuery = params.query.trim();
   const includeAllTerms = normalizedQuery.length === 0;
 
-  let mode: FindTopTermsResult["resolvedMode"] = "keyword_search";
-  let termGroup: FindTopTermsResult["termGroup"];
   let searchKeyword: string | undefined;
 
   if (!includeAllTerms) {
-    const { items: groups } = await listTermGroups({}, ctx);
-    const llmResolution = await resolveTopTermsQueryWithLlm(normalizedQuery, groups);
-
     searchKeyword = normalizeTermSearchQuery(normalizedQuery);
+    const llmResolution = await resolveTopTermsQueryWithLlm(normalizedQuery);
 
-    if (llmResolution?.mode === "term_group" && llmResolution.termGroupId) {
-      const matchedGroup = groups.find((group) => group.id === llmResolution.termGroupId);
-      if (matchedGroup) {
-        mode = "term_group";
-        termGroup = { id: matchedGroup.id, name: matchedGroup.name };
-        searchKeyword = undefined;
-      }
-    }
-
-    if (mode === "keyword_search" && llmResolution?.searchKeyword) {
+    if (llmResolution?.searchKeyword) {
       searchKeyword = normalizeTermSearchQuery(llmResolution.searchKeyword);
     }
   }
 
-  if (mode === "keyword_search") {
-    const rows = await listTopTermsByTrendScore({
-      search: searchKeyword,
-      workspaceId: ctx.workspaceId,
-      startDate: period.startDate,
-      endDate: period.endDate,
-      limit: DEFAULT_LIMIT,
-    });
-
-    return {
-      resolvedMode: mode,
-      searchKeyword,
-      period,
-      items: rows.map((row) => ({
-        id: row.id,
-        name: row.name,
-        description: row.description,
-        docCount: row.doc_count,
-        trendScore: row.trend_score,
-      })),
-    };
-  }
-
-  const groupResult = await listTermGroupTopTerms(
-    {
-      id: termGroup!.id,
-      period: period.preset,
-      startDate: period.startDate,
-      endDate: period.endDate,
-      sort: "trend",
-      limit: DEFAULT_LIMIT,
-    },
-    ctx,
-  );
+  const rows = await listTopTermsByTrendScore({
+    search: searchKeyword,
+    workspaceId: ctx.workspaceId,
+    startDate: period.startDate,
+    endDate: period.endDate,
+    limit: DEFAULT_LIMIT,
+  });
 
   return {
-    resolvedMode: mode,
-    termGroup,
+    searchKeyword,
     period,
-    items: groupResult.items.map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      docCount: item.digest.docCount,
-      trendScore: item.digest.trendScore,
+    items: rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      docCount: row.doc_count,
+      trendScore: row.trend_score,
     })),
   };
 }

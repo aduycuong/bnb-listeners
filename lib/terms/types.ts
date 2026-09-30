@@ -72,18 +72,12 @@ export type TermCardSparklinePoint = {
   docCount: number;
 };
 
-export type TermCardGroup = {
-  id: string;
-  name: string;
-};
-
 export type TermCardItem = {
   id: string;
   name: string;
   description: string | null;
   createdBy: string;
   createdAt: string;
-  groups: TermCardGroup[];
   digest: TermCardDigest;
   sparkline: TermCardSparklinePoint[];
 };
@@ -105,8 +99,6 @@ export type ListTermCardsParams = {
   dataSourceIds?: string[];
   /** Full-text search over term name and description. */
   search?: string;
-  /** Filter to terms that belong to this group. */
-  groupId?: string;
 };
 
 export type ListTermsParams = {
@@ -220,8 +212,6 @@ export type FindTopTermsItem = {
 };
 
 export type FindTopTermsResult = {
-  resolvedMode: "term_group" | "keyword_search";
-  termGroup?: { id: string; name: string };
   searchKeyword?: string;
   period: ResolvedTermCardPeriod;
   items: FindTopTermsItem[];

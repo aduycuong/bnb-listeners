@@ -4,15 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 
 import { DashboardCounterCards } from "@/components/dashboard/dashboard-counter-cards";
 import { DashboardIngestionChart } from "@/components/dashboard/dashboard-ingestion-chart";
-import { DashboardTermGroupSection } from "@/components/dashboard/dashboard-term-group-section";
 import type { GetDashboardOverviewResult } from "@/lib/dashboard/types";
-import type { GetDashboardTermGroupsResult } from "@/lib/dashboard/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
 type DashboardHomeProps = {
   workspace: WorkspaceListItem;
-  workspaceIndex: number;
 };
 
 async function fetchOverview(
@@ -23,23 +20,10 @@ async function fetchOverview(
   return res.json() as Promise<GetDashboardOverviewResult>;
 }
 
-async function fetchTermGroups(
-  workspaceId: string,
-): Promise<GetDashboardTermGroupsResult> {
-  const res = await workspaceFetch(workspaceId, "/api/dashboard/term-groups");
-  if (!res.ok) throw new Error("Failed to load term groups");
-  return res.json() as Promise<GetDashboardTermGroupsResult>;
-}
-
-export function DashboardHome({ workspace, workspaceIndex }: DashboardHomeProps) {
+export function DashboardHome({ workspace }: DashboardHomeProps) {
   const overviewQuery = useQuery({
     queryKey: ["dashboard", "overview", workspace.id],
     queryFn: () => fetchOverview(workspace.id),
-  });
-
-  const termGroupsQuery = useQuery({
-    queryKey: ["dashboard", "term-groups", workspace.id],
-    queryFn: () => fetchTermGroups(workspace.id),
   });
 
   return (
@@ -60,17 +44,6 @@ export function DashboardHome({ workspace, workspaceIndex }: DashboardHomeProps)
         data={overviewQuery.data}
         isLoading={overviewQuery.isLoading}
       />
-
-      <div className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          Trending keywords by group · last 30 days
-        </h2>
-        <DashboardTermGroupSection
-          data={termGroupsQuery.data}
-          isLoading={termGroupsQuery.isLoading}
-          workspaceIndex={workspaceIndex}
-        />
-      </div>
     </div>
   );
 }

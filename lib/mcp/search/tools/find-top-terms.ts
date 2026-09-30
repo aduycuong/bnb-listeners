@@ -11,13 +11,11 @@ function formatTopTermsResult(
   result: Awaited<ReturnType<typeof findTopTerms>>,
 ): string {
   const headerLines = [
-    `Mode: ${result.resolvedMode === "term_group" ? "term group" : "keyword search"}`,
-    result.termGroup ? `Term group: ${result.termGroup.name} (${result.termGroup.id})` : null,
     result.searchKeyword
       ? `Search keyword: ${result.searchKeyword}`
       : "Search keyword: (all terms)",
     `Period: ${result.period.preset} (${result.period.startDate} → ${result.period.endDate})`,
-  ].filter(Boolean);
+  ];
 
   if (result.items.length === 0) {
     return `${headerLines.join("\n")}\n\nNo matching terms found.`;

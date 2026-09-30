@@ -40,7 +40,6 @@ const listTermCardsQuerySchema = z
         z.array(z.uuid()).optional(),
       ),
     search: z.string().trim().optional(),
-    groupId: z.uuid().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.period !== "custom") {
