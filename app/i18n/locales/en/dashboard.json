@@ -30,7 +30,18 @@
     "facebook-page": "Facebook page",
     "website": "Website",
     "workspace": "Workspace",
+    "workspaces": "Workspaces",
+    "workspacesHomeAriaLabel": "Go to workspaces",
     "settings": "Settings"
+  },
+  "workspacesPage": {
+    "title": "Workspaces",
+    "description": "Choose a workspace to open documents, terms, and listening tools.",
+    "create": "Create workspace",
+    "emptyTitle": "No workspaces yet",
+    "emptyDescription": "Create a workspace to start collecting and analyzing social data.",
+    "loadErrorTitle": "Could not load workspaces",
+    "noScope": "No collection scope set"
   },
   "settingsMenu": {
     "profile": "Profile"

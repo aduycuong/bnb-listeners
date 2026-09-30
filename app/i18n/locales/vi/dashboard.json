@@ -30,7 +30,18 @@
     "facebook-page": "Trang Facebook",
     "website": "Website",
     "workspace": "Không gian làm việc",
+    "workspaces": "Workspaces",
+    "workspacesHomeAriaLabel": "Về danh sách workspace",
     "settings": "Cài đặt"
+  },
+  "workspacesPage": {
+    "title": "Workspaces",
+    "description": "Chọn workspace để mở tài liệu, terms và công cụ listening.",
+    "create": "Tạo workspace",
+    "emptyTitle": "Chưa có workspace",
+    "emptyDescription": "Tạo workspace để bắt đầu thu thập và phân tích dữ liệu.",
+    "loadErrorTitle": "Không tải được workspace",
+    "noScope": "Chưa đặt phạm vi thu thập"
   },
   "settingsMenu": {
     "profile": "Hồ sơ"

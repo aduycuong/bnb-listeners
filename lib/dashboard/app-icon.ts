@@ -1,1 +1,1 @@
-export const APP_ICON_SRC = "/listeners.svg";
+export const APP_ICON_SRC = "/favicon.svg";

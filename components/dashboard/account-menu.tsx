@@ -48,6 +48,10 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { SUPPORTED_LANGUAGES } from "@/lib/i18n/constants";
+import {
+  sidebarAccountMenuButtonClassName,
+  sidebarPrimaryMediaClassName,
+} from "@/lib/dashboard/sidebar-menu-styles";
 import type { WorkspacePermission } from "@/lib/workspaces/types";
 
 const THEME_OPTIONS = [
@@ -57,8 +61,8 @@ const THEME_OPTIONS = [
 ] as const;
 
 type AccountMenuProps = {
-  workspaceIndex: number;
-  permission: WorkspacePermission;
+  workspaceIndex?: number | null;
+  permission?: WorkspacePermission | null;
 };
 
 async function fetchAuthMe(): Promise<{ role: string }> {
@@ -82,7 +86,10 @@ function getUserInitials(displayName: string) {
   return displayName.slice(0, 2).toUpperCase() || "?";
 }
 
-export function AccountMenu({ workspaceIndex, permission }: AccountMenuProps) {
+export function AccountMenu({
+  workspaceIndex = null,
+  permission = null,
+}: AccountMenuProps) {
   const { t: tDashboard } = useT("dashboard");
   const { t: tCommon } = useT("common");
   const { user, signOut } = useAuth();
@@ -104,8 +111,13 @@ export function AccountMenu({ workspaceIndex, permission }: AccountMenuProps) {
     user?.displayName?.trim() ||
     user?.email?.split("@")[0]?.trim() ||
     tDashboard("accountMenu.userFallback");
-  const roleLabel = tDashboard(`workspacePermission.${permission}`);
-  const profileHref = `/w/${workspaceIndex}/settings/profile`;
+  const roleLabel = permission
+    ? tDashboard(`workspacePermission.${permission}`)
+    : tDashboard("accountMenu.userFallback");
+  const profileHref =
+    workspaceIndex === null || workspaceIndex === undefined
+      ? null
+      : `/w/${workspaceIndex}/settings/profile`;
   const isAdmin = authMe?.role === "admin";
 
   async function handleSignOut() {
@@ -129,19 +141,19 @@ export function AccountMenu({ workspaceIndex, permission }: AccountMenuProps) {
                 <SidebarMenuButton
                   size="lg"
                   tooltip={displayName}
-                  className="font-normal text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                  className={sidebarAccountMenuButtonClassName}
                   aria-label={tDashboard("accountMenu.openMenu")}
                 />
               }
             >
-              <Avatar className="size-8 shrink-0">
+              <Avatar className={sidebarPrimaryMediaClassName}>
                 {user?.photoURL ? (
                   <AvatarImage src={user.photoURL} alt={displayName} />
                 ) : null}
                 <AvatarFallback>{getUserInitials(displayName)}</AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left group-data-[collapsible=icon]:hidden">
-                <span className="truncate text-sm">{displayName}</span>
+              <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
+                <span className="truncate">{displayName}</span>
                 <span className="truncate text-xs text-muted-foreground">
                   {roleLabel}
                 </span>
@@ -166,19 +178,27 @@ export function AccountMenu({ workspaceIndex, permission }: AccountMenuProps) {
                   <DropdownMenuSeparator />
                 </>
               ) : null}
-              <DropdownMenuGroup>
-                <DropdownMenuItem render={<Link href={profileHref} />}>
-                  <UserIcon />
-                  {tDashboard("accountMenu.profile")}
-                </DropdownMenuItem>
-                {isAdmin ? (
-                  <DropdownMenuItem render={<Link href="/admin/system-schedules" />}>
-                    <ShieldIcon />
-                    {tDashboard("accountMenu.admin")}
-                  </DropdownMenuItem>
-                ) : null}
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
+              {profileHref || isAdmin ? (
+                <>
+                  <DropdownMenuGroup>
+                    {profileHref ? (
+                      <DropdownMenuItem render={<Link href={profileHref} />}>
+                        <UserIcon />
+                        {tDashboard("accountMenu.profile")}
+                      </DropdownMenuItem>
+                    ) : null}
+                    {isAdmin ? (
+                      <DropdownMenuItem
+                        render={<Link href="/admin/system-schedules" />}
+                      >
+                        <ShieldIcon />
+                        {tDashboard("accountMenu.admin")}
+                      </DropdownMenuItem>
+                    ) : null}
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
               <DropdownMenuGroup>
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>

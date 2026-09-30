@@ -39,6 +39,7 @@ export default function WorkspaceLayout({
     <>
       <WorkspaceIndexPersist workspaceIndex={workspaceIndex} />
       <DashboardShell
+        mode="workspace"
         workspace={workspace}
         workspaces={workspaces}
         workspaceIndex={workspaceIndex}

@@ -29,7 +29,7 @@ export const getWorkspaceRouteContext = cache(
     });
 
     if (workspaces.length === 0) {
-      redirect("/sign-in");
+      redirect("/");
     }
 
     const workspaceIndex =

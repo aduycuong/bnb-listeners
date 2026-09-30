@@ -23,7 +23,7 @@ export type UseWorkspaceRouteContextResult = {
   error: Error | null;
 };
 
-async function fetchWorkspaces(): Promise<ListWorkspacesForUserResult> {
+export async function fetchWorkspaces(): Promise<ListWorkspacesForUserResult> {
   const res = await fetch("/api/workspaces");
   const data = (await res.json()) as ListWorkspacesForUserResult & {
     error?: string;
@@ -60,7 +60,7 @@ export function useWorkspaceRouteContext(
 
   useEffect(() => {
     if (hasNoWorkspaces) {
-      router.replace("/sign-in");
+      router.replace("/");
       return;
     }
 
