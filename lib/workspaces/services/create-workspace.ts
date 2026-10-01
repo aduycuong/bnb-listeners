@@ -1,5 +1,6 @@
 import { workspaceMembers, workspaces } from "@/db/schema";
 import { db } from "@/lib/db";
+import { createDefaultProject } from "@/lib/projects/services/create-default-project";
 
 import type { CreateWorkspaceParams, CreateWorkspaceResult } from "../types";
 import { resolveUniqueWorkspaceSlug } from "../utils/resolve-unique-workspace-slug";
@@ -35,6 +36,11 @@ export async function createWorkspace(
     userId: params.userId,
     permission: "owner",
     grantedBy: params.userId,
+  });
+
+  await createDefaultProject({
+    workspaceId: workspace.id,
+    name: workspace.name,
   });
 
   return {

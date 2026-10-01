@@ -5,14 +5,12 @@ export type { WorkspacePermission, TermLanguage };
 
 export type WorkspaceLlmSettings = {
   dataCollectionScope: string;
-  autoCreateTerms: boolean;
-  termLanguage: TermLanguage;
-  termCriteria: string;
 };
 
 export type WorkspaceContext = {
   userId: string;
   workspaceId: string;
+  projectId: string | null;
   permission: WorkspacePermission;
   role?: string;
 };
@@ -24,9 +22,6 @@ export type WorkspaceListItem = {
   ownerUserId: string;
   permission: WorkspacePermission;
   dataCollectionScope: string;
-  autoCreateTerms: boolean;
-  termLanguage: TermLanguage;
-  termCriteria: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -69,17 +64,11 @@ export type UpdateWorkspaceGeneralResult = {
 export type UpdateWorkspaceLlmSettingsParams = {
   workspaceId: string;
   dataCollectionScope: string;
-  autoCreateTerms: boolean;
-  termLanguage: TermLanguage;
-  termCriteria: string;
 };
 
 export type UpdateWorkspaceLlmSettingsResult = {
   id: string;
   dataCollectionScope: string;
-  autoCreateTerms: boolean;
-  termLanguage: TermLanguage;
-  termCriteria: string;
   updatedAt: string;
   message: string;
 };

@@ -41,9 +41,10 @@ export const TERM_MERGE_MAX_SOURCES = 50;
 
 export function getTermHref(
   workspaceIndex: number,
+  projectIndex: number,
   ...parts: string[]
 ): string {
-  const base = `/w/${workspaceIndex}/${TERM_SEGMENT}`;
+  const base = `/w/${workspaceIndex}/p/${projectIndex}/${TERM_SEGMENT}`;
   if (parts.length === 0) {
     return base;
   }

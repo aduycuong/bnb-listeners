@@ -4,12 +4,12 @@ import { terms } from "@/db/schema";
 import { db } from "@/lib/db";
 
 export async function findTermByName(
-  workspaceId: string,
+  projectId: string,
   name: string,
   excludeId?: string,
 ): Promise<{ id: string; name: string } | null> {
   const conditions = [
-    eq(terms.workspaceId, workspaceId),
+    eq(terms.projectId, projectId),
     eq(terms.name, name),
   ];
 

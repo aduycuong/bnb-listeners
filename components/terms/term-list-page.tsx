@@ -31,6 +31,8 @@ import type {
   ListTermCardsResult,
 } from "@/lib/terms/types";
 import type { ListDataSourcesResult } from "@/lib/data-sources/types";
+import type { ProjectListItem } from "@/lib/projects/types";
+import { projectFetch } from "@/lib/projects/utils/project-fetch";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { cn } from "@/lib/utils";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
@@ -38,10 +40,13 @@ import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 type TermListPageProps = {
   workspace: WorkspaceListItem;
   workspaceIndex: number;
+  project: ProjectListItem;
+  projectIndex: number;
 };
 
 async function fetchTermCards(
   workspaceId: string,
+  projectId: string,
   filters: TermCardsQueryFilters,
   offset: number,
 ): Promise<ListTermCardsResult> {
@@ -70,8 +75,9 @@ async function fetchTermCards(
     params.set("search", search);
   }
 
-  const res = await workspaceFetch(
+  const res = await projectFetch(
     workspaceId,
+    projectId,
     `/api/terms/cards?${params.toString()}`,
   );
   const data = (await res.json()) as ListTermCardsResult & {
@@ -104,7 +110,12 @@ function TermCardSkeleton() {
   return <Skeleton className="h-72 w-full max-w-sm rounded-xl" />;
 }
 
-export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
+export function TermListPage({
+  workspace,
+  workspaceIndex,
+  project,
+  projectIndex,
+}: TermListPageProps) {
   const canEdit = workspace.permission !== "read";
   const queryClient = useQueryClient();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -149,9 +160,9 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
   );
 
   const cardsQuery = useInfiniteQuery({
-    queryKey: termCardsQueryKey(workspace.id, filters),
+    queryKey: termCardsQueryKey(workspace.id, project.id, filters),
     queryFn: ({ pageParam = 0 }) =>
-      fetchTermCards(workspace.id, filters, pageParam),
+      fetchTermCards(workspace.id, project.id, filters, pageParam),
     initialPageParam: 0,
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? lastPage.offset + lastPage.items.length : undefined,
@@ -199,7 +210,7 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
 
   async function refreshTerms() {
     await queryClient.invalidateQueries({
-      queryKey: termCardsQueryKey(workspace.id, filters),
+      queryKey: termCardsQueryKey(workspace.id, project.id, filters),
     });
   }
 
@@ -417,7 +428,7 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
                 <TermCard
                   key={term.id}
                   term={term}
-                  href={getTermHref(workspaceIndex, term.id)}
+                  href={getTermHref(workspaceIndex, projectIndex, term.id)}
                   canEdit={canEdit}
                   selected={selectedIds.includes(term.id)}
                   onEdit={openEdit}
@@ -442,6 +453,7 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
         open={formOpen}
         onOpenChange={setFormOpen}
         workspaceId={workspace.id}
+        projectId={project.id}
         term={editingTerm}
         onSaved={refreshTerms}
       />
@@ -450,6 +462,7 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         workspaceId={workspace.id}
+        projectId={project.id}
         term={deletingTerm}
         onDeleted={handleDeleted}
       />
@@ -458,6 +471,7 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
         open={bulkDeleteOpen}
         onOpenChange={setBulkDeleteOpen}
         workspaceId={workspace.id}
+        projectId={project.id}
         terms={selectedTerms}
         onDeleted={handleBulkDeleted}
       />
@@ -466,6 +480,7 @@ export function TermListPage({ workspace, workspaceIndex }: TermListPageProps) {
         open={mergeOpen}
         onOpenChange={setMergeOpen}
         workspaceId={workspace.id}
+        projectId={project.id}
         terms={selectedTerms}
         onMerged={handleMerged}
       />

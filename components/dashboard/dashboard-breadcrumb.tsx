@@ -28,8 +28,7 @@ export function DashboardBreadcrumb() {
           const isLast = index === items.length - 1;
           const label = t(item.labelKey);
           const isHome = item.labelKey === "header.home";
-          const isWorkspaces = item.labelKey === "nav.workspaces";
-          const showLeadingIcon = (isHome || isWorkspaces) && items.length === 1;
+          const showLeadingIcon = isHome && items.length === 1;
 
           return (
             <Fragment key={`${item.labelKey}-${index}`}>
@@ -51,11 +50,7 @@ export function DashboardBreadcrumb() {
                     render={<Link href={item.href} />}
                     className="inline-flex min-w-0 items-center gap-1.5"
                     aria-label={
-                      isHome
-                        ? t("header.homeAriaLabel")
-                        : isWorkspaces
-                          ? t("nav.workspacesHomeAriaLabel")
-                          : undefined
+                      isHome ? t("header.homeAriaLabel") : undefined
                     }
                   >
                     {isHome ? (

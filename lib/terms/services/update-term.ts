@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { terms } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
+import { requireProjectId } from "@/lib/projects/utils/require-project-id";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type { UpdateTermParams, UpdateTermResult } from "../types";
@@ -16,11 +17,12 @@ export async function updateTerm(
   ctx: WorkspaceContext,
 ): Promise<UpdateTermResult> {
   const { id, ...rest } = params;
+  const projectId = requireProjectId(ctx);
 
   const [existing] = await db
     .select()
     .from(terms)
-    .where(and(eq(terms.id, id), eq(terms.workspaceId, ctx.workspaceId)))
+    .where(and(eq(terms.id, id), eq(terms.projectId, projectId)))
     .limit(1);
 
   if (!existing) {
@@ -31,7 +33,7 @@ export async function updateTerm(
 
   if (rest.name !== undefined) {
     const name = rest.name.trim();
-    await assertUniqueTermName(ctx.workspaceId, name, id);
+    await assertUniqueTermName(projectId, name, id);
     updates.name = name;
   }
 
@@ -42,7 +44,7 @@ export async function updateTerm(
   const [term] = await db
     .update(terms)
     .set(updates)
-    .where(and(eq(terms.id, id), eq(terms.workspaceId, ctx.workspaceId)))
+    .where(and(eq(terms.id, id), eq(terms.projectId, projectId)))
     .returning();
 
   if (!term) {

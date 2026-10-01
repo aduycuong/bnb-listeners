@@ -53,9 +53,6 @@ export const workspaces = pgTable(
     dataCollectionScope: text("data_collection_scope")
       .notNull()
       .default("tin tức và dữ liệu về bất động sản"),
-    autoCreateTerms: boolean("auto_create_terms").notNull().default(true),
-    termLanguage: text("term_language").notNull().default("auto"),
-    termCriteria: text("term_criteria").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -100,6 +97,38 @@ export const workspaceMembers = pgTable(
 
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 export type NewWorkspaceMember = typeof workspaceMembers.$inferInsert;
+
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    autoCreateTerms: boolean("auto_create_terms").notNull().default(true),
+    termLanguage: text("term_language").notNull().default("auto"),
+    termCriteria: text("term_criteria").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("projects_workspace_name_idx").on(
+      table.workspaceId,
+      table.name,
+    ),
+    index("projects_workspace_id_idx").on(table.workspaceId),
+  ],
+);
+
+export type Project = typeof projects.$inferSelect;
+export type NewProject = typeof projects.$inferInsert;
 
 export const dataSources = pgTable(
   "data_sources",
@@ -657,9 +686,9 @@ export const terms = pgTable(
   "terms",
   {
     id: uuid("id").primaryKey().defaultRandom().notNull(),
-    workspaceId: uuid("workspace_id")
+    projectId: uuid("project_id")
       .notNull()
-      .references(() => workspaces.id, { onDelete: "cascade" }),
+      .references(() => projects.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description"),
     createdBy: text("created_by").notNull().default("admin"),
@@ -693,8 +722,8 @@ export const terms = pgTable(
     embeddingModel: text("embedding_model"),
   },
   (table) => [
-    uniqueIndex("idx_terms_workspace_name").on(table.workspaceId, table.name),
-    index("idx_terms_workspace_id").on(table.workspaceId),
+    uniqueIndex("idx_terms_project_name").on(table.projectId, table.name),
+    index("idx_terms_project_id").on(table.projectId),
     index("idx_terms_source_document").on(table.sourceDocumentId),
     index("idx_terms_active_backfill_run").on(table.activeBackfillRunId),
     index("idx_terms_search_tsv").using("gin", table.searchTsv),

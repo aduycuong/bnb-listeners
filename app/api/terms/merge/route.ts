@@ -5,5 +5,5 @@ import { mergeTerms } from "@/lib/terms/services/merge-terms";
 export const POST = createApiHandler(
   { requestBody: mergeTermsBodySchema },
   mergeTerms,
-  { allowedRoles: [], minWorkspacePermission: "edit" },
+  { allowedRoles: [], requireProject: true, minWorkspacePermission: "edit" },
 );

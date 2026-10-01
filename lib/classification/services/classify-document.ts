@@ -1,6 +1,6 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 
-import { documentTerms, documents, terms, type Document } from "@/db/schema";
+import { documentTerms, documents, projects, terms, type Document } from "@/db/schema";
 import { syncDiscussionDocumentTerms } from "@/lib/comments/services/sync-discussion-document-terms";
 import { findDiscussionDocumentId } from "@/lib/comments/utils/find-discussion-document-id";
 import { findDiscussionParentDocument } from "@/lib/comments/utils/find-discussion-parent-document";
@@ -13,8 +13,13 @@ import { invalidateTermDigest } from "@/lib/term-digests/services/invalidate-ter
 import { buildTermEmbeddingText } from "@/lib/terms/utils/build-term-embedding-text";
 import { embedTermTexts } from "@/lib/terms/utils/embed-term-texts";
 import { findTermByName } from "@/lib/terms/utils/find-term-by-name";
-import { resolveWorkspaceSystemPrompt } from "@/lib/llm/services/resolve-workspace-system-prompt";
+import {
+  buildClassifyTermsPrompt,
+  buildProposeTermPrompt,
+  type TermPromptSettings,
+} from "@/lib/llm/utils/build-system-prompt-from-settings";
 import { getWorkspaceLlmSettings } from "@/lib/workspaces/services/get-workspace-llm-settings";
+import { parseTermLanguage } from "@/lib/workspaces/utils/parse-term-language";
 
 import type {
   ClassifierDocContext,
@@ -190,15 +195,47 @@ async function buildClassifyResultFromDocumentTerms(
  *
  * Nothing is written here; callers assign and (optionally) create.
  */
-async function proposeAndJudgeTerms(
+type ListeningProject = {
+  id: string;
+  autoCreateTerms: boolean;
+  termLanguage: string;
+  termCriteria: string;
+};
+
+async function listListeningProjects(
   workspaceId: string,
+): Promise<ListeningProject[]> {
+  return db
+    .select({
+      id: projects.id,
+      autoCreateTerms: projects.autoCreateTerms,
+      termLanguage: projects.termLanguage,
+      termCriteria: projects.termCriteria,
+    })
+    .from(projects)
+    .where(eq(projects.workspaceId, workspaceId))
+    .orderBy(asc(projects.createdAt));
+}
+
+function toTermPromptSettings(
+  dataCollectionScope: string,
+  project: ListeningProject,
+): TermPromptSettings {
+  return {
+    dataCollectionScope,
+    termLanguage: parseTermLanguage(project.termLanguage),
+    termCriteria: project.termCriteria,
+  };
+}
+
+async function proposeAndJudgeTerms(
+  projectId: string,
+  promptSettings: TermPromptSettings,
   docContext: ClassifierDocContext,
 ): Promise<ProposalDecision[]> {
-  const [proposePrompt, judgePrompt, vocabularyHint] = await Promise.all([
-    resolveWorkspaceSystemPrompt(workspaceId, "propose_term"),
-    resolveWorkspaceSystemPrompt(workspaceId, "classify_terms"),
-    loadTermVocabularyHint(workspaceId),
-  ]);
+  const vocabularyHint = await loadTermVocabularyHint(projectId);
+  const proposePrompt = buildProposeTermPrompt(promptSettings);
+  const judgePrompt = buildClassifyTermsPrompt(promptSettings);
 
   const proposals = dedupeProposals(
     await proposeTermsWithLlm(docContext, proposePrompt, vocabularyHint),
@@ -212,7 +249,7 @@ async function proposeAndJudgeTerms(
     proposals.map(buildTermEmbeddingText),
   );
   const candidatesByProposal = await findCandidateTermsByEmbeddings(
-    workspaceId,
+    projectId,
     embeddings,
   );
 
@@ -283,7 +320,7 @@ function collectExistingAssignments(
  * otherwise the term is created with the proposal's embedding and assigned.
  */
 async function createTermsForNewDecisions(
-  workspaceId: string,
+  projectId: string,
   documentId: string,
   decisions: ProposalDecision[],
   alreadyAssignedTermIds: Set<string>,
@@ -295,7 +332,7 @@ async function createTermsForNewDecisions(
   for (const decision of decisions) {
     if (decision.kind !== "new") continue;
 
-    const existing = await findTermByName(workspaceId, decision.proposal.name);
+    const existing = await findTermByName(projectId, decision.proposal.name);
     if (existing) {
       if (!assignedTermIds.has(existing.id)) {
         assignedTermIds.add(existing.id);
@@ -309,7 +346,7 @@ async function createTermsForNewDecisions(
     }
 
     const createdTerm = await createAutoTerm(
-      workspaceId,
+      projectId,
       documentId,
       decision.proposal,
       decision.embedding,
@@ -320,6 +357,56 @@ async function createTermsForNewDecisions(
   }
 
   await assignExistingTerms(documentId, assignments);
+
+  return { assignments, createdTerms };
+}
+
+async function classifyAgainstProjects(params: {
+  listeningProjects: ListeningProject[];
+  dataCollectionScope: string;
+  documentId: string;
+  docContext: ClassifierDocContext;
+  allowCreate: boolean;
+}): Promise<{ assignments: TermAssignment[]; createdTerms: CreatedTerm[] }> {
+  const assignments: TermAssignment[] = [];
+  const createdTerms: CreatedTerm[] = [];
+  const assignedTermIds = new Set<string>();
+
+  for (const project of params.listeningProjects) {
+    const decisions = await proposeAndJudgeTerms(
+      project.id,
+      toTermPromptSettings(params.dataCollectionScope, project),
+      params.docContext,
+    );
+    const existing = collectExistingAssignments(decisions).filter(
+      (assignment) => !assignedTermIds.has(assignment.termId),
+    );
+
+    for (const assignment of existing) {
+      assignedTermIds.add(assignment.termId);
+    }
+
+    assignments.push(...existing);
+    await assignExistingTerms(params.documentId, existing);
+
+    if (!params.allowCreate || !project.autoCreateTerms) {
+      continue;
+    }
+
+    const created = await createTermsForNewDecisions(
+      project.id,
+      params.documentId,
+      decisions,
+      assignedTermIds,
+    );
+
+    for (const assignment of created.assignments) {
+      assignedTermIds.add(assignment.termId);
+    }
+
+    assignments.push(...created.assignments);
+    createdTerms.push(...created.createdTerms);
+  }
 
   return { assignments, createdTerms };
 }
@@ -371,10 +458,18 @@ async function classifyDiscussionDocument(
   let assignments: TermAssignment[] = [];
 
   if (eligibleContent) {
-    const decisions = await proposeAndJudgeTerms(doc.workspaceId, docContext);
-    // `new` decisions are dropped: terms are never created from comment text.
-    assignments = collectExistingAssignments(decisions);
-    await assignExistingTerms(doc.id, assignments);
+    const [listeningProjects, llmSettings] = await Promise.all([
+      listListeningProjects(doc.workspaceId),
+      getWorkspaceLlmSettings(doc.workspaceId),
+    ]);
+    const classified = await classifyAgainstProjects({
+      listeningProjects,
+      dataCollectionScope: llmSettings.dataCollectionScope,
+      documentId: doc.id,
+      docContext,
+      allowCreate: false,
+    });
+    assignments = classified.assignments;
   }
 
   if (parentDocumentId) {
@@ -483,28 +578,23 @@ export async function classifyDocument(
     sourceOriginName: doc.sourceOriginName,
   };
 
-  const [decisions, llmSettings] = await Promise.all([
-    proposeAndJudgeTerms(doc.workspaceId, docContext),
+  const [listeningProjects, llmSettings] = await Promise.all([
+    listListeningProjects(doc.workspaceId),
     getWorkspaceLlmSettings(doc.workspaceId),
   ]);
 
-  const existingAssignments = collectExistingAssignments(decisions);
-  await assignExistingTerms(documentId, existingAssignments);
-
-  // With auto-create off, `new` decisions are dropped.
-  const created = llmSettings.autoCreateTerms
-    ? await createTermsForNewDecisions(
-        doc.workspaceId,
-        documentId,
-        decisions,
-        new Set(existingAssignments.map((a) => a.termId)),
-      )
-    : { assignments: [], createdTerms: [] };
+  const classified = await classifyAgainstProjects({
+    listeningProjects,
+    dataCollectionScope: llmSettings.dataCollectionScope,
+    documentId,
+    docContext,
+    allowCreate: true,
+  });
 
   const result: ClassifyDocumentResult = {
     documentId,
-    assignments: [...existingAssignments, ...created.assignments],
-    createdTerms: created.createdTerms,
+    assignments: classified.assignments,
+    createdTerms: classified.createdTerms,
   };
 
   // Invalidate daily digest rows for every term whose doc count changed.

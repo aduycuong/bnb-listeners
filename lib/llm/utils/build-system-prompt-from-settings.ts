@@ -1,4 +1,11 @@
+import type { TermLanguage } from "@/lib/workspaces/constants";
 import type { WorkspaceLlmSettings } from "@/lib/workspaces/types";
+
+export type TermPromptSettings = {
+  dataCollectionScope: string;
+  termLanguage: TermLanguage;
+  termCriteria: string;
+};
 
 import { buildTermLanguageGuideline } from "./term-language-guideline";
 
@@ -36,19 +43,19 @@ function formatTermRules(criteria: string): string {
 }
 
 export function buildClassifyTermsPrompt(
-  settings: WorkspaceLlmSettings,
+  settings: TermPromptSettings,
 ): string {
   const rules = formatTermRules(settings.termCriteria);
 
   return `Bạn là bộ phán quyết term (từ khóa/nhãn) cho phạm vi thu thập: ${settings.dataCollectionScope}.
 
-Term trong workspace là từ khóa hoặc nhãn ngắn gọn để gắn và lọc tài liệu — không phải danh mục chủ đề cố định.
+Term trong project là từ khóa hoặc nhãn ngắn gọn để gắn và lọc tài liệu — không phải danh mục chủ đề cố định.
 
-Đầu vào: một tài liệu và danh sách term được đề xuất cho chính tài liệu đó (bước trước sinh ra). Mỗi đề xuất đi kèm nhóm term hiện có gần nghĩa nhất trong workspace — đã lọc sơ theo embedding, có thể rỗng.
+Đầu vào: một tài liệu và danh sách term được đề xuất cho chính tài liệu đó (bước trước sinh ra). Mỗi đề xuất đi kèm nhóm term hiện có gần nghĩa nhất trong project — đã lọc sơ theo embedding, có thể rỗng.
 
 Nhiệm vụ: với MỖI đề xuất, trả đúng một quyết định:
 - existing — tài liệu thực sự nói về một term hiện có trong nhóm của đề xuất đó → trả termId của term đó. Luôn chọn existing khi term hiện có cùng nghĩa với đề xuất, kể cả khi tên khác nhau — không tạo bản sao.
-- new — tài liệu thực sự nói về đề xuất này, và KHÔNG term hiện có nào trong nhóm cùng nghĩa. Khác địa danh, khác dự án, hoặc phạm vi rộng/hẹp khác nhau là khác nghĩa. Term mới phải đáng để lọc tài liệu và tuân theo quy tắc tạo term của workspace.
+- new — tài liệu thực sự nói về đề xuất này, và KHÔNG term hiện có nào trong nhóm cùng nghĩa. Khác địa danh, khác dự án, hoặc phạm vi rộng/hẹp khác nhau là khác nghĩa. Term mới phải đáng để lọc tài liệu và tuân theo quy tắc tạo term của project.
 - skip — đề xuất quá hẹp, quá chung, chỉ được nhắc lướt qua, hoặc không đáng là term.
 
 Hướng dẫn:
@@ -61,14 +68,14 @@ Hướng dẫn:
 }
 
 export function buildProposeTermPrompt(
-  settings: WorkspaceLlmSettings,
+  settings: TermPromptSettings,
 ): string {
   const languageGuideline = buildTermLanguageGuideline(settings.termLanguage);
   const rules = formatTermRules(settings.termCriteria);
 
   return `Bạn đề xuất term (từ khóa/nhãn) cho một tài liệu trong phạm vi thu thập: ${settings.dataCollectionScope}.
 
-Term là từ khóa hoặc nhãn ngắn gọn để gắn và lọc tài liệu — không phải danh mục chủ đề cố định. Đề xuất của bạn sẽ được đối chiếu với term hiện có của workspace: đề xuất khớp term cũ sẽ gán vào term đó, đề xuất mới có thể được tạo thành term mới theo quy tắc workspace.
+Term là từ khóa hoặc nhãn ngắn gọn để gắn và lọc tài liệu — không phải danh mục chủ đề cố định. Đề xuất của bạn sẽ được đối chiếu với term hiện có của project: đề xuất khớp term cũ sẽ gán vào term đó, đề xuất mới có thể được tạo thành term mới theo quy tắc project.
 
 Nhiệm vụ: trả về 0 đến nhiều term (tên ngắn kiểu từ khóa + mô tả một câu) mô tả đúng nội dung tài liệu. Hãy liệt kê ĐẦY ĐỦ mọi từ khóa/nhãn riêng biệt mà tài liệu thực sự nói tới.
 

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/common/service-errors";
+import { requireProjectId } from "@/lib/projects/utils/require-project-id";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type {
@@ -115,12 +116,12 @@ function buildChartSeries(
   }));
 }
 
-async function assertTermInWorkspace(termId: string, workspaceId: string) {
+async function assertTermInProject(termId: string, projectId: string) {
   const result = await db.execute<{ id: string }>(sql`
     SELECT id
     FROM terms
     WHERE id = ${termId}::uuid
-      AND workspace_id = ${workspaceId}::uuid
+      AND project_id = ${projectId}::uuid
     LIMIT 1
   `);
 
@@ -133,7 +134,7 @@ export async function getTermChart(
   params: GetTermChartParams,
   ctx: WorkspaceContext,
 ): Promise<GetTermChartResult> {
-  await assertTermInWorkspace(params.id, ctx.workspaceId);
+  await assertTermInProject(params.id, requireProjectId(ctx));
 
   const period = resolveTermDetailChartPeriod({
     preset: params.period,

@@ -77,7 +77,12 @@ export async function bulkInvalidateWorkspaceDigests(
 
   await db.execute(
     buildBulkInvalidateSql(
-      sql`term_id IN (SELECT id FROM terms WHERE workspace_id = ${workspaceId}::uuid)`,
+      sql`term_id IN (
+        SELECT t.id
+        FROM terms t
+        INNER JOIN projects p ON p.id = t.project_id
+        WHERE p.workspace_id = ${workspaceId}::uuid
+      )`,
     ),
   );
 }

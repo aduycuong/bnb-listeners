@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,23 +18,15 @@ import {
 } from "@/components/ui/card";
 import {
   Field,
-  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
 } from "@/components/ui/field";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { workspacesQueryKey } from "@/hooks/use-workspace-route-context";
-import {
-  DEFAULT_DATA_COLLECTION_SCOPE,
-  TERM_LANGUAGE_OPTIONS,
-} from "@/lib/workspaces/constants";
+import { DEFAULT_DATA_COLLECTION_SCOPE } from "@/lib/workspaces/constants";
 import {
   updateWorkspaceLlmSettingsSchema,
   type UpdateWorkspaceLlmSettingsValues,
@@ -46,17 +38,6 @@ type WorkspaceLlmSettingsCardProps = {
   workspace: WorkspaceListItem;
 };
 
-function toFormValues(
-  workspace: WorkspaceListItem,
-): UpdateWorkspaceLlmSettingsValues {
-  return {
-    dataCollectionScope: workspace.dataCollectionScope,
-    autoCreateTerms: workspace.autoCreateTerms,
-    termLanguage: workspace.termLanguage,
-    termCriteria: workspace.termCriteria,
-  };
-}
-
 export function WorkspaceLlmSettingsCard({
   workspace,
 }: WorkspaceLlmSettingsCardProps) {
@@ -65,11 +46,13 @@ export function WorkspaceLlmSettingsCard({
   const canEdit = hasMinWorkspacePermission(workspace.permission, "edit");
   const form = useForm<UpdateWorkspaceLlmSettingsValues>({
     resolver: zodResolver(updateWorkspaceLlmSettingsSchema),
-    defaultValues: toFormValues(workspace),
+    defaultValues: {
+      dataCollectionScope: workspace.dataCollectionScope,
+    },
   });
 
   useEffect(() => {
-    form.reset(toFormValues(workspace));
+    form.reset({ dataCollectionScope: workspace.dataCollectionScope });
   }, [workspace, form]);
 
   async function onSubmit(values: UpdateWorkspaceLlmSettingsValues) {
@@ -82,14 +65,14 @@ export function WorkspaceLlmSettingsCard({
 
     if (!res.ok) {
       toast.add({
-        title: data.message ?? data.error ?? "Could not save LLM settings.",
+        title: data.message ?? data.error ?? "Could not save collection scope.",
         type: "error",
       });
       return;
     }
 
     toast.add({
-      title: data.message ?? "LLM settings saved.",
+      title: data.message ?? "Collection scope saved.",
       type: "success",
     });
     await queryClient.invalidateQueries({ queryKey: workspacesQueryKey });
@@ -98,7 +81,6 @@ export function WorkspaceLlmSettingsCard({
 
   const isSubmitting = form.formState.isSubmitting;
   const disabled = !canEdit || isSubmitting;
-  const autoCreateTerms = form.watch("autoCreateTerms");
 
   return (
     <Card>
@@ -107,10 +89,10 @@ export function WorkspaceLlmSettingsCard({
         onSubmit={form.handleSubmit(onSubmit)}
       >
         <CardHeader>
-          <CardTitle>LLM settings</CardTitle>
+          <CardTitle>Collection scope</CardTitle>
           <CardDescription>
-            Configure data collection scope and automatic term creation for
-            this workspace.
+            Describes what content this workspace collects. Used when scoring
+            documents. Term rules live on each project.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -131,122 +113,10 @@ export function WorkspaceLlmSettingsCard({
                 rows={3}
                 {...form.register("dataCollectionScope")}
               />
-              <FieldDescription>
-                Describes what content this workspace collects. Used when
-                scoring document relevance.
-              </FieldDescription>
               <FieldError
                 errors={[form.formState.errors.dataCollectionScope]}
               />
             </Field>
-
-            <Field
-              orientation="horizontal"
-              data-invalid={
-                !!form.formState.errors.autoCreateTerms || undefined
-              }
-            >
-              <FieldContent>
-                <FieldLabel htmlFor="auto-create-terms">
-                  Auto-create terms
-                </FieldLabel>
-                <FieldDescription>
-                  Khi bật, AI có thể tạo term mới (theo quy tắc bên dưới) cho
-                  tài liệu không khớp term hiện có.
-                </FieldDescription>
-              </FieldContent>
-              <Controller
-                name="autoCreateTerms"
-                control={form.control}
-                render={({ field }) => (
-                  <Switch
-                    id="auto-create-terms"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={disabled}
-                  />
-                )}
-              />
-            </Field>
-
-            {autoCreateTerms ? (
-              <>
-                <Field
-                  data-invalid={
-                    !!form.formState.errors.termLanguage || undefined
-                  }
-                >
-                  <Controller
-                    name="termLanguage"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FieldSet data-slot="radio-group">
-                        <FieldLegend variant="label">Term language</FieldLegend>
-                        <RadioGroup
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={disabled}
-                        >
-                          {TERM_LANGUAGE_OPTIONS.map((option) => (
-                            <Field
-                              key={option.value}
-                              orientation="horizontal"
-                              data-invalid={
-                                !!form.formState.errors.termLanguage ||
-                                undefined
-                              }
-                            >
-                              <RadioGroupItem
-                                value={option.value}
-                                id={`term-language-${option.value}`}
-                                aria-invalid={
-                                  !!form.formState.errors.termLanguage
-                                }
-                                disabled={disabled}
-                              />
-                              <FieldContent>
-                                <FieldLabel
-                                  htmlFor={`term-language-${option.value}`}
-                                >
-                                  {option.label}
-                                </FieldLabel>
-                                <FieldDescription>
-                                  {option.description}
-                                </FieldDescription>
-                              </FieldContent>
-                            </Field>
-                          ))}
-                        </RadioGroup>
-                      </FieldSet>
-                    )}
-                  />
-                  <FieldError errors={[form.formState.errors.termLanguage]} />
-                </Field>
-
-                <Field
-                  data-invalid={
-                    !!form.formState.errors.termCriteria || undefined
-                  }
-                >
-                  <FieldLabel htmlFor="term-criteria">
-                    Quy tắc tạo term
-                  </FieldLabel>
-                  <Textarea
-                    id="term-criteria"
-                    placeholder="Mỗi dòng một quy tắc. Ví dụ: tên term là cụm từ khóa ngắn; không tạo term quá rộng như 'bất động sản'."
-                    aria-invalid={!!form.formState.errors.termCriteria}
-                    disabled={disabled}
-                    rows={4}
-                    {...form.register("termCriteria")}
-                  />
-                  <FieldDescription>
-                    Quy tắc chính khi AI tạo term mới — ưu tiên cao hơn suy luận tự do
-                    của model. Mỗi dòng một quy tắc.
-                  </FieldDescription>
-                  <FieldError errors={[form.formState.errors.termCriteria]} />
-                </Field>
-              </>
-            ) : null}
           </FieldGroup>
         </CardContent>
         {canEdit ? (

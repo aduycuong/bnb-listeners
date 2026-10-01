@@ -1,16 +1,10 @@
-import { TermDetailRoutePage } from "@/components/terms/term-route-pages";
+import { redirect } from "next/navigation";
 
 type PageProps = {
   params: Promise<{ workspaceIndex: string; termId: string }>;
 };
 
-export default async function TermDetailPageRoute({ params }: PageProps) {
+export default async function LegacyTermDetailRedirect({ params }: PageProps) {
   const { workspaceIndex, termId } = await params;
-
-  return (
-    <TermDetailRoutePage
-      workspaceIndexParam={workspaceIndex}
-      termId={termId}
-    />
-  );
+  redirect(`/w/${workspaceIndex}/p/0/terms/${termId}`);
 }

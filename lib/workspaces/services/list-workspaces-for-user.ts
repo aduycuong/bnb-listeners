@@ -4,7 +4,6 @@ import { workspaceMembers, workspaces } from "@/db/schema";
 import { db } from "@/lib/db";
 
 import type { WorkspacePermission } from "../constants";
-import { parseTermLanguage } from "../utils/parse-term-language";
 import type {
   ListWorkspacesForUserParams,
   ListWorkspacesForUserResult,
@@ -20,9 +19,6 @@ export async function listWorkspacesForUser(
       slug: workspaces.slug,
       ownerUserId: workspaces.ownerUserId,
       dataCollectionScope: workspaces.dataCollectionScope,
-      autoCreateTerms: workspaces.autoCreateTerms,
-      termLanguage: workspaces.termLanguage,
-      termCriteria: workspaces.termCriteria,
       memberPermission: workspaceMembers.permission,
       createdAt: workspaces.createdAt,
       updatedAt: workspaces.updatedAt,
@@ -54,9 +50,6 @@ export async function listWorkspacesForUser(
           ? "owner"
           : ((row.memberPermission as WorkspacePermission | null) ?? "read"),
       dataCollectionScope: row.dataCollectionScope,
-      autoCreateTerms: row.autoCreateTerms,
-      termLanguage: parseTermLanguage(row.termLanguage),
-      termCriteria: row.termCriteria,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     })),

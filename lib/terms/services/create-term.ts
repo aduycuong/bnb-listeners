@@ -1,6 +1,7 @@
 import { terms } from "@/db/schema";
 import { CreateFailedError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
+import { requireProjectId } from "@/lib/projects/utils/require-project-id";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import { TERM_CREATED_BY } from "../term-config";
@@ -17,12 +18,14 @@ export async function createTerm(
   const name = params.name.trim();
   const description = normalizeTermDescription(params.description) ?? null;
 
-  await assertUniqueTermName(ctx.workspaceId, name);
+  const projectId = requireProjectId(ctx);
+
+  await assertUniqueTermName(projectId, name);
 
   const [term] = await db
     .insert(terms)
     .values({
-      workspaceId: ctx.workspaceId,
+      projectId,
       name,
       description,
       createdBy: TERM_CREATED_BY.admin,

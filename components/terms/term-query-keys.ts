@@ -19,28 +19,34 @@ export type TermChartQueryFilters = {
   endDate?: string;
 };
 
-export const termsQueryKey = (workspaceId: string) =>
-  ["terms", workspaceId] as const;
+export const termsQueryKey = (workspaceId: string, projectId: string) =>
+  ["terms", workspaceId, projectId] as const;
 
-export const termQueryKey = (workspaceId: string, termId: string) =>
-  ["term", workspaceId, termId] as const;
+export const termQueryKey = (
+  workspaceId: string,
+  projectId: string,
+  termId: string,
+) => ["term", workspaceId, projectId, termId] as const;
 
 export const termChartQueryKey = (
   workspaceId: string,
+  projectId: string,
   termId: string,
   filters: TermChartQueryFilters,
-) => ["term-chart", workspaceId, termId, filters] as const;
+) => ["term-chart", workspaceId, projectId, termId, filters] as const;
 
 export const termDocumentsQueryKey = (
   workspaceId: string,
+  projectId: string,
   termId: string,
   filters: TermDocumentsQueryFilters,
-) => ["term-documents", workspaceId, termId, filters] as const;
+) => ["term-documents", workspaceId, projectId, termId, filters] as const;
 
 export const workspaceJobsQueryKey = (workspaceId: string) =>
   ["workspace-jobs", workspaceId] as const;
 
 export const termCardsQueryKey = (
   workspaceId: string,
+  projectId: string,
   filters: TermCardsQueryFilters,
-) => ["term-cards", workspaceId, filters] as const;
+) => ["term-cards", workspaceId, projectId, filters] as const;

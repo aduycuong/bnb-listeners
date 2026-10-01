@@ -5,5 +5,5 @@ import { cancelTermBackfillRun } from "@/lib/term-backfill/services/cancel-term-
 export const POST = createApiHandler(
   { parameters: termBackfillRunIdParamsSchema },
   cancelTermBackfillRun,
-  { allowedRoles: [], minWorkspacePermission: "edit" },
+  { allowedRoles: [], requireProject: true, minWorkspacePermission: "edit" },
 );

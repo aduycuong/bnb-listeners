@@ -60,7 +60,7 @@ export function useWorkspaceRouteContext(
 
   useEffect(() => {
     if (hasNoWorkspaces) {
-      router.replace("/");
+      router.replace("/sign-in");
       return;
     }
 

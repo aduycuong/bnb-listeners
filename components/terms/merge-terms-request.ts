@@ -1,5 +1,5 @@
 import type { MergeTermsResult } from "@/lib/terms/types";
-import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
+import { projectFetch } from "@/lib/projects/utils/project-fetch";
 
 export type MergeTermsRequestBody =
   | {
@@ -22,9 +22,10 @@ export type MergeTermsRequestResult = {
 
 export async function mergeTermsRequest(
   workspaceId: string,
+  projectId: string,
   body: MergeTermsRequestBody,
 ): Promise<MergeTermsRequestResult> {
-  const res = await workspaceFetch(workspaceId, "/api/terms/merge", {
+  const res = await projectFetch(workspaceId, projectId, "/api/terms/merge", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

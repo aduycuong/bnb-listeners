@@ -1,4 +1,4 @@
-import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
+import { projectFetch } from "@/lib/projects/utils/project-fetch";
 
 export type DeleteTopicRequestResult = {
   ok: boolean;
@@ -7,9 +7,10 @@ export type DeleteTopicRequestResult = {
 
 export async function deleteTermRequest(
   workspaceId: string,
+  projectId: string,
   termId: string,
 ): Promise<DeleteTopicRequestResult> {
-  const res = await workspaceFetch(workspaceId, `/api/terms/${termId}`, {
+  const res = await projectFetch(workspaceId, projectId, `/api/terms/${termId}`, {
     method: "DELETE",
   });
   const data = (await res.json()) as { message?: string; error?: string };

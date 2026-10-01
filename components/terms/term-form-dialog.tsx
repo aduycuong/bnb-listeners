@@ -27,7 +27,7 @@ import { toast } from "@/components/ui/toast";
 import { termFormSchema } from "@/lib/terms/schema";
 import { TERM_CONFIG } from "@/lib/terms/term-config";
 import type { TermFormValues } from "@/lib/terms/types";
-import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
+import { projectFetch } from "@/lib/projects/utils/project-fetch";
 
 type TermFormTarget = {
   id: string;
@@ -46,6 +46,7 @@ type TermFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceId: string;
+  projectId: string;
   term?: TermFormTarget;
   onSaved: () => Promise<void>;
 };
@@ -54,6 +55,7 @@ export function TermFormDialog({
   open,
   onOpenChange,
   workspaceId,
+  projectId,
   term,
   onSaved,
 }: TermFormDialogProps) {
@@ -86,7 +88,7 @@ export function TermFormDialog({
     const url = mode === "create" ? "/api/terms" : `/api/terms/${term?.id}`;
     const method = mode === "create" ? "POST" : "PATCH";
 
-    const res = await workspaceFetch(workspaceId, url, {
+    const res = await projectFetch(workspaceId, projectId, url, {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -152,7 +154,7 @@ export function TermFormDialog({
                 {...form.register("name")}
               />
               <FieldDescription>
-                Must be unique in this workspace.
+                Must be unique in this project.
               </FieldDescription>
               <FieldError errors={[nameError]} />
             </Field>

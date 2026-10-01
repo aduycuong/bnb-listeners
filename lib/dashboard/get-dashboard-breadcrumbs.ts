@@ -69,10 +69,6 @@ export function getDashboardBreadcrumbs(
   const route = getWorkspaceRoute(pathname);
 
   if (!route) {
-    if (pathname === "/" || pathname === "") {
-      return [{ labelKey: "nav.workspaces" }];
-    }
-
     return [{ labelKey: "header.home" }];
   }
 

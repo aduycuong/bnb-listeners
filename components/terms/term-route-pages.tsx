@@ -2,38 +2,49 @@
 
 import { TermDetailPage } from "@/components/terms/term-detail-page";
 import { TermListPage } from "@/components/terms/term-list-page";
-import { useWorkspaceRouteContext } from "@/hooks/use-workspace-route-context";
+import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 
 type TermListRoutePageProps = {
   workspaceIndexParam: string;
+  projectIndexParam: string;
 };
 
 export function TermListRoutePage({
   workspaceIndexParam,
+  projectIndexParam,
 }: TermListRoutePageProps) {
-  const { workspace, workspaceIndex } =
-    useWorkspaceRouteContext(workspaceIndexParam);
+  const { workspace, workspaceIndex, project, projectIndex } =
+    useProjectRouteContext(workspaceIndexParam, projectIndexParam);
 
-  if (!workspace) {
+  if (!workspace || !project) {
     return null;
   }
 
-  return <TermListPage workspace={workspace} workspaceIndex={workspaceIndex} />;
+  return (
+    <TermListPage
+      workspace={workspace}
+      workspaceIndex={workspaceIndex}
+      project={project}
+      projectIndex={projectIndex}
+    />
+  );
 }
 
 type TermDetailRoutePageProps = {
   workspaceIndexParam: string;
+  projectIndexParam: string;
   termId: string;
 };
 
 export function TermDetailRoutePage({
   workspaceIndexParam,
+  projectIndexParam,
   termId,
 }: TermDetailRoutePageProps) {
-  const { workspace, workspaceIndex } =
-    useWorkspaceRouteContext(workspaceIndexParam);
+  const { workspace, workspaceIndex, project, projectIndex } =
+    useProjectRouteContext(workspaceIndexParam, projectIndexParam);
 
-  if (!workspace) {
+  if (!workspace || !project) {
     return null;
   }
 
@@ -41,6 +52,8 @@ export function TermDetailRoutePage({
     <TermDetailPage
       workspace={workspace}
       workspaceIndex={workspaceIndex}
+      project={project}
+      projectIndex={projectIndex}
       termId={termId}
     />
   );

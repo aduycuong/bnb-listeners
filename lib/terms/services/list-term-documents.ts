@@ -8,6 +8,7 @@ import { documentListSortTimestamp } from "@/lib/documents/utils/build-list-docu
 import { fetchDocumentTermNamesMap } from "@/lib/documents/utils/fetch-document-term-names-map";
 import { orderDocumentListPageRows } from "@/lib/documents/utils/order-document-list-page-rows";
 import { db } from "@/lib/db";
+import { requireProjectId } from "@/lib/projects/utils/require-project-id";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import { TERM_DETAIL_DOCUMENTS_PAGE_SIZE } from "../term-detail-chart-config";
@@ -44,11 +45,11 @@ function buildSearchCondition(
   );
 }
 
-async function assertTermInWorkspace(termId: string, workspaceId: string) {
+async function assertTermInProject(termId: string, projectId: string) {
   const [term] = await db
     .select({ id: terms.id })
     .from(terms)
-    .where(and(eq(terms.id, termId), eq(terms.workspaceId, workspaceId)))
+    .where(and(eq(terms.id, termId), eq(terms.projectId, projectId)))
     .limit(1);
 
   if (!term) {
@@ -120,7 +121,7 @@ export async function listTermDocuments(
   params: ListTermDocumentsParams,
   ctx: WorkspaceContext,
 ): Promise<ListTermDocumentsResult> {
-  await assertTermInWorkspace(params.termId, ctx.workspaceId);
+  await assertTermInProject(params.termId, requireProjectId(ctx));
 
   const limit = params.limit ?? TERM_DETAIL_DOCUMENTS_PAGE_SIZE;
   const offset = params.offset ?? 0;

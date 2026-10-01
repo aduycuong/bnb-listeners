@@ -21,6 +21,7 @@ type TermDeleteDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceId: string;
+  projectId: string;
   term?: Pick<TermListItem, "id" | "name">;
   onDeleted: () => Promise<void>;
 };
@@ -29,6 +30,7 @@ export function TermDeleteDialog({
   open,
   onOpenChange,
   workspaceId,
+  projectId,
   term,
   onDeleted,
 }: TermDeleteDialogProps) {
@@ -42,7 +44,7 @@ export function TermDeleteDialog({
     setDeleting(true);
 
     try {
-      const result = await deleteTermRequest(workspaceId, term.id);
+      const result = await deleteTermRequest(workspaceId, projectId, term.id);
 
       if (!result.ok) {
         toast.add({

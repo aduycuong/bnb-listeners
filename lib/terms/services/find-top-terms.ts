@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
+import { assertProjectInWorkspace } from "@/lib/projects/services/assert-project-in-workspace";
+import { requireProjectId } from "@/lib/projects/utils/require-project-id";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 import type { FindTopTermsParams, FindTopTermsResult } from "../types";
 import {
@@ -22,7 +24,7 @@ const DEFAULT_LIMIT = 10;
 async function listTopTermsByTrendScore(
   params: {
     search?: string;
-    workspaceId: string;
+    projectId: string;
     startDate: string;
     endDate: string;
     limit: number;
@@ -44,7 +46,7 @@ async function listTopTermsByTrendScore(
       ON tdd.term_id = t.id
       AND tdd.date_key >= ${params.startDate}::date
       AND tdd.date_key <= ${params.endDate}::date
-    WHERE t.workspace_id = ${params.workspaceId}::uuid
+    WHERE t.project_id = ${params.projectId}::uuid
       ${searchFilter}
     GROUP BY t.id, t.name, t.description, t.search_tsv
     ORDER BY trend_score DESC NULLS LAST, t.name ASC
@@ -58,6 +60,12 @@ export async function findTopTerms(
   params: FindTopTermsParams,
   ctx: WorkspaceContext,
 ): Promise<FindTopTermsResult> {
+  const projectId = requireProjectId(ctx);
+  await assertProjectInWorkspace({
+    workspaceId: ctx.workspaceId,
+    projectId,
+  });
+
   const period = params.period;
   const normalizedQuery = params.query.trim();
   const includeAllTerms = normalizedQuery.length === 0;
@@ -75,7 +83,7 @@ export async function findTopTerms(
 
   const rows = await listTopTermsByTrendScore({
     search: searchKeyword,
-    workspaceId: ctx.workspaceId,
+    projectId,
     startDate: period.startDate,
     endDate: period.endDate,
     limit: DEFAULT_LIMIT,

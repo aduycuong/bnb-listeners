@@ -19,6 +19,7 @@ export async function fetchDocumentTermNamesMap(
       documentId: documentTerms.documentId,
       id: terms.id,
       name: terms.name,
+      projectId: terms.projectId,
       assignedBy: documentTerms.assignedBy,
     })
     .from(documentTerms)
@@ -31,6 +32,7 @@ export async function fetchDocumentTermNamesMap(
     current.push({
       id: row.id,
       name: row.name,
+      projectId: row.projectId,
       assignedBy: row.assignedBy,
     });
     map.set(row.documentId, current);

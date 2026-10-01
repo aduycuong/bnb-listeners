@@ -37,20 +37,25 @@ import type {
   ListTermDocumentsResult,
 } from "@/lib/terms/types";
 import type { ListDataSourcesResult } from "@/lib/data-sources/types";
+import type { ProjectListItem } from "@/lib/projects/types";
+import { projectFetch } from "@/lib/projects/utils/project-fetch";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
 type TermDetailPageProps = {
   workspace: WorkspaceListItem;
   workspaceIndex: number;
+  project: ProjectListItem;
+  projectIndex: number;
   termId: string;
 };
 
 async function fetchTopic(
   workspaceId: string,
+  projectId: string,
   termId: string,
 ): Promise<GetTermResult> {
-  const res = await workspaceFetch(workspaceId, `/api/terms/${termId}`);
+  const res = await projectFetch(workspaceId, projectId, `/api/terms/${termId}`);
   const data = (await res.json()) as GetTermResult & {
     error?: string;
     message?: string;
@@ -65,6 +70,7 @@ async function fetchTopic(
 
 async function fetchTermChart(
   workspaceId: string,
+  projectId: string,
   termId: string,
   filters: TermChartQueryFilters,
 ): Promise<GetTermChartResult> {
@@ -82,8 +88,9 @@ async function fetchTermChart(
     }
   }
 
-  const res = await workspaceFetch(
+  const res = await projectFetch(
     workspaceId,
+    projectId,
     `/api/terms/${termId}/chart?${params.toString()}`,
   );
   const data = (await res.json()) as GetTermChartResult & {
@@ -100,6 +107,7 @@ async function fetchTermChart(
 
 async function fetchTermDocuments(
   workspaceId: string,
+  projectId: string,
   termId: string,
   filters: TermDocumentsQueryFilters,
   offset: number,
@@ -118,8 +126,9 @@ async function fetchTermDocuments(
     params.set("search", search);
   }
 
-  const res = await workspaceFetch(
+  const res = await projectFetch(
     workspaceId,
+    projectId,
     `/api/terms/${termId}/documents?${params.toString()}`,
   );
   const data = (await res.json()) as ListTermDocumentsResult & {
@@ -151,6 +160,8 @@ async function fetchJobs(workspaceId: string): Promise<ListDataSourcesResult> {
 export function TermDetailPage({
   workspace,
   workspaceIndex,
+  project,
+  projectIndex,
   termId,
 }: TermDetailPageProps) {
   const [period, setPeriod] =
@@ -185,8 +196,8 @@ export function TermDetailPage({
     period === "custom" && (!customStartDate || !customEndDate);
 
   const termQuery = useQuery({
-    queryKey: termQueryKey(workspace.id, termId),
-    queryFn: () => fetchTopic(workspace.id, termId),
+    queryKey: termQueryKey(workspace.id, project.id, termId),
+    queryFn: () => fetchTopic(workspace.id, project.id, termId),
     refetchInterval: (query) => {
       const activeRun = query.state.data?.activeBackfillRun;
       if (
@@ -201,18 +212,25 @@ export function TermDetailPage({
   });
 
   const chartQuery = useQuery({
-    queryKey: termChartQueryKey(workspace.id, termId, chartFilters),
-    queryFn: () => fetchTermChart(workspace.id, termId, chartFilters),
+    queryKey: termChartQueryKey(workspace.id, project.id, termId, chartFilters),
+    queryFn: () =>
+      fetchTermChart(workspace.id, project.id, termId, chartFilters),
     enabled: !waitingForCustomRange,
     refetchInterval: (query) =>
       query.state.data?.digest.isStale ? 5000 : false,
   });
 
   const documentsQuery = useInfiniteQuery({
-    queryKey: termDocumentsQueryKey(workspace.id, termId, documentFilters),
+    queryKey: termDocumentsQueryKey(
+      workspace.id,
+      project.id,
+      termId,
+      documentFilters,
+    ),
     queryFn: ({ pageParam = 0 }) =>
       fetchTermDocuments(
         workspace.id,
+        project.id,
         termId,
         documentFilters,
         pageParam,
@@ -258,7 +276,7 @@ export function TermDetailPage({
           title="Could not load term"
           description={termQuery.error?.message ?? "Term not found."}
           actionLabel="Back to terms"
-          actionHref={getTermHref(workspaceIndex)}
+          actionHref={getTermHref(workspaceIndex, projectIndex)}
         />
       </div>
     );
@@ -272,7 +290,7 @@ export function TermDetailPage({
             variant="ghost"
             size="sm"
             className="-ml-2 w-fit"
-            render={<Link href={getTermHref(workspaceIndex)} />}
+            render={<Link href={getTermHref(workspaceIndex, projectIndex)} />}
           >
             <ArrowLeftIcon data-icon="inline-start" />
             Terms
@@ -313,6 +331,7 @@ export function TermDetailPage({
 
         <TermDetailListeningSection
           workspaceId={workspace.id}
+          projectId={project.id}
           term={term}
           canEdit={
             workspace.permission === "edit" ||

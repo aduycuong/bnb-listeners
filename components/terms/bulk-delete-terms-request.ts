@@ -1,5 +1,5 @@
 import type { BulkDeleteTermsResult } from "@/lib/terms/types";
-import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
+import { projectFetch } from "@/lib/projects/utils/project-fetch";
 
 export type BulkDeleteTermsRequestResult = {
   ok: boolean;
@@ -9,9 +9,10 @@ export type BulkDeleteTermsRequestResult = {
 
 export async function bulkDeleteTermsRequest(
   workspaceId: string,
+  projectId: string,
   ids: string[],
 ): Promise<BulkDeleteTermsRequestResult> {
-  const res = await workspaceFetch(workspaceId, "/api/terms/bulk-delete", {
+  const res = await projectFetch(workspaceId, projectId, "/api/terms/bulk-delete", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids }),

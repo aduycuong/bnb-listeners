@@ -7,6 +7,7 @@ import {
 } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { addJob } from "@/lib/qstash/services/add-job-service";
+import { requireProjectId } from "@/lib/projects/utils/require-project-id";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import {
@@ -29,7 +30,11 @@ export async function createTermBackfillRun(
   params: CreateTermBackfillRunParams,
   ctx: WorkspaceContext,
 ): Promise<CreateTermBackfillRunResult> {
-  const term = await loadTermBackfillContext(params.id, ctx.workspaceId);
+  const term = await loadTermBackfillContext(
+    params.id,
+    ctx.workspaceId,
+    requireProjectId(ctx),
+  );
 
   if (term.activeBackfillRunId) {
     throw new UnknownServiceError(

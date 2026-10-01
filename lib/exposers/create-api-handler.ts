@@ -5,6 +5,8 @@ import { getSession } from "@/lib/auth";
 import type { SessionUser } from "@/lib/auth/session";
 import { APIError } from "@/lib/exposers/api-error";
 import { toAPIError } from "@/lib/exposers/to-api-error";
+import { X_PROJECT_ID_HEADER } from "@/lib/projects/constants";
+import { assertProjectInWorkspace } from "@/lib/projects/services/assert-project-in-workspace";
 import {
   X_WORKSPACE_ID_HEADER,
   type WorkspacePermission,
@@ -30,6 +32,7 @@ export async function getApiBody(request: NextRequest) {
 export type CreateApiHandlerOptions = {
   allowedRoles: AllowedRoles;
   requireWorkspace?: boolean;
+  requireProject?: boolean;
   minWorkspacePermission?: WorkspacePermission;
 };
 
@@ -78,6 +81,7 @@ async function resolveWorkspaceContext(params: {
     return {
       userId: params.session.id,
       workspaceId: "",
+      projectId: null,
       permission: "owner",
       role: params.session.role,
     };
@@ -92,9 +96,45 @@ async function resolveWorkspaceContext(params: {
   return {
     userId: params.session.id,
     workspaceId,
+    projectId: null,
     permission,
     role: params.session.role,
   };
+}
+
+async function resolveProjectId(params: {
+  request: NextRequest;
+  workspaceId: string;
+  requireProject: boolean;
+}): Promise<string | null> {
+  const projectId = params.request.headers.get(X_PROJECT_ID_HEADER)?.trim() || null;
+
+  if (!projectId) {
+    if (params.requireProject) {
+      throw new APIError(
+        "ERR_PROJECT_ID_REQUIRED",
+        "X-Project-Id header is required.",
+        400,
+      );
+    }
+
+    return null;
+  }
+
+  if (!params.workspaceId) {
+    throw new APIError(
+      "ERR_WORKSPACE_ID_REQUIRED",
+      "X-Workspace-Id header is required.",
+      400,
+    );
+  }
+
+  await assertProjectInWorkspace({
+    workspaceId: params.workspaceId,
+    projectId,
+  });
+
+  return projectId;
 }
 
 export function createApiHandler<Params, Body, SearchParams, Result>(
@@ -110,6 +150,7 @@ export function createApiHandler<Params, Body, SearchParams, Result>(
   options: CreateApiHandlerOptions = { allowedRoles: [] },
 ) {
   const requireWorkspace = options.requireWorkspace ?? true;
+  const requireProject = options.requireProject ?? false;
   const minWorkspacePermission = options.minWorkspacePermission ?? "read";
 
   return async (
@@ -144,6 +185,11 @@ export function createApiHandler<Params, Body, SearchParams, Result>(
         routeParams,
         requireWorkspace,
         minWorkspacePermission,
+      });
+      workspaceContext.projectId = await resolveProjectId({
+        request,
+        workspaceId: workspaceContext.workspaceId,
+        requireProject,
       });
 
       const result = await handler(

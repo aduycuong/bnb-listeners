@@ -11,17 +11,17 @@ const termIdSchema = z.object({ id: z.uuid() });
 export const GET = createApiHandler(
   { parameters: termIdSchema },
   getTerm,
-  { allowedRoles: [], minWorkspacePermission: "read" },
+  { allowedRoles: [], requireProject: true, minWorkspacePermission: "read" },
 );
 
 export const PATCH = createApiHandler(
   { parameters: termIdSchema, requestBody: updateTermBodySchema },
   updateTerm,
-  { allowedRoles: [], minWorkspacePermission: "edit" },
+  { allowedRoles: [], requireProject: true, minWorkspacePermission: "edit" },
 );
 
 export const DELETE = createApiHandler(
   { parameters: termIdSchema },
   deleteTerm,
-  { allowedRoles: [], minWorkspacePermission: "edit" },
+  { allowedRoles: [], requireProject: true, minWorkspacePermission: "edit" },
 );

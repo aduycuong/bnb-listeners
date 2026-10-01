@@ -4,6 +4,7 @@ import { documents, termBackfillRuns, terms } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { toTermBackfillRunItem } from "@/lib/term-backfill/utils/to-term-backfill-run-item";
+import { requireProjectId } from "@/lib/projects/utils/require-project-id";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type { GetTermParams, GetTermResult } from "../types";
@@ -13,6 +14,7 @@ export async function getTerm(
   params: GetTermParams,
   ctx: WorkspaceContext,
 ): Promise<GetTermResult> {
+  const projectId = requireProjectId(ctx);
   const [row] = await db
     .select({
       term: terms,
@@ -24,7 +26,7 @@ export async function getTerm(
     .from(terms)
     .leftJoin(documents, eq(terms.sourceDocumentId, documents.id))
     .where(
-      and(eq(terms.id, params.id), eq(terms.workspaceId, ctx.workspaceId)),
+      and(eq(terms.id, params.id), eq(terms.projectId, projectId)),
     )
     .limit(1);
 

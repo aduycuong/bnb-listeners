@@ -51,6 +51,7 @@ export const GET = createApiHandler(
     ),
   {
     allowedRoles: [],
+    requireProject: true,
     minWorkspacePermission: "read",
   },
 );

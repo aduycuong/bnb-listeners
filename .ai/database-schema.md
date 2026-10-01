@@ -160,7 +160,7 @@ App user identity, linked to Firebase Auth.
 
 ### `workspaces`
 
-Tenant container for documents, terms, and members.
+Tenant container for members, data sources, documents, and projects.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -169,9 +169,6 @@ Tenant container for documents, terms, and members.
 | slug | text | YES | — | URL-safe identifier |
 | owner_user_id | uuid | NO | — | Owning user (`users.id`) |
 | data_collection_scope | text | NO | `tin tức và dữ liệu về bất động sản` | Domain for relevance scoring and LLM prompts |
-| auto_create_terms | boolean | NO | `true` | When true, LLM-proposed terms that match no existing term are created |
-| term_language | text | NO | `auto` | Language for generated term names/descriptions (`term_language` enum) |
-| term_criteria | text | NO | `''` | Multiline rules for new term creation (primary source for auto-created terms) |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Last update time |
 
@@ -184,16 +181,45 @@ Tenant container for documents, terms, and members.
 
 - ← `workspace_members.workspace_id`
 - ← `documents.workspace_id`
-- ← `terms.workspace_id`
+- ← `projects.workspace_id`
 - ← `data_sources.workspace_id`
 - ← `workspace_task_runs.workspace_id`
 - ← `workspace_api_keys.workspace_id`
 
-LLM system prompts (`classify_terms`, `propose_term`, `score_text_part`, `score_media_part`, `score_comment_stances`) are built in code from the columns above via `lib/llm/utils/build-system-prompt-from-settings.ts`.
+Scoring prompts (`score_text_part`, `score_media_part`, `score_comment_stances`) are built from `data_collection_scope`. Term prompts (`classify_terms`, `propose_term`) also use that scope plus the project's `term_language` and `term_criteria`.
 
-A default workspace is created for each user on first sign-in.
+A default workspace is created for each user on first sign-in. Creating a workspace also creates one default project with the same name.
 
 ---
+
+### `projects`
+
+Social listening scope inside a workspace: one brand, campaign, or similar. Terms belong to a project. Reports will be added later.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
+| name | text | NO | — | Display name, unique per workspace |
+| description | text | YES | — | Brand or campaign description |
+| auto_create_terms | boolean | NO | `true` | When true, LLM-proposed terms that match no existing term in this project are created |
+| term_language | text | NO | `auto` | Language for generated term names/descriptions (`term_language` enum) |
+| term_criteria | text | NO | `''` | Multiline rules for new term creation in this project |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
+
+**Indexes**
+
+- `projects_workspace_name_idx` — UNIQUE on `(workspace_id, name)`
+- `projects_workspace_id_idx` — on `workspace_id`
+
+**Relations**
+
+- ← `terms.project_id`
+
+---
+
+### `workspace_members`
 
 Membership and permission for a user within a workspace.
 
@@ -463,13 +489,13 @@ Workspace scope is inherited via `document_id` → `documents.workspace_id`.
 
 ### `terms`
 
-Workspace-scoped keyword labels. Terms are short keywords/tags for filtering — not a fixed subject taxonomy. The LLM can auto-create terms when the judge step decides a proposed term is `new` (no existing candidate has the same meaning), following workspace rules (`term_criteria`). Classification retrieves candidate terms per LLM proposal via `embedding`, so the classifier never needs the full term list in its prompt. See `docs/features/classify.md`.
+Project-scoped keyword labels. Terms are short keywords/tags for filtering — not a fixed subject taxonomy. The LLM can auto-create terms when the judge step decides a proposed term is `new` (no existing candidate in that project has the same meaning), following the project's `term_criteria`. A document is classified once per project in its workspace. Classification retrieves candidate terms per LLM proposal via `embedding`, so the classifier never needs the full term list in its prompt. See `docs/features/classify.md`.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
-| workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
-| name | text | NO | — | Display name, unique per workspace |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| name | text | NO | — | Display name, unique per project |
 | description | text | YES | — | Term description |
 | created_by | text | NO | `admin` | `admin` or `llm_classifier` |
 | source_document_id | uuid | YES | — | FK → `documents.id` ON DELETE SET NULL — document that triggered auto-creation |
@@ -485,8 +511,8 @@ Workspace-scoped keyword labels. Terms are short keywords/tags for filtering —
 
 | Index | Columns | Purpose |
 | ----- | ------- | ------- |
-| `idx_terms_workspace_name` | UNIQUE `(workspace_id, name)` | Name unique within workspace |
-| `idx_terms_workspace_id` | `(workspace_id)` | List terms in a workspace |
+| `idx_terms_project_name` | UNIQUE `(project_id, name)` | Name unique within project |
+| `idx_terms_project_id` | `(project_id)` | List terms in a project |
 | `idx_terms_source_document` | `(source_document_id)` | Trace auto-created terms |
 | `idx_terms_active_backfill_run` | `(active_backfill_run_id)` | Resolve active backfill from term |
 | `idx_terms_search_tsv` | GIN `(search_tsv)` | Full-text search on term name and description |
@@ -510,7 +536,7 @@ LLM or admin assignments linking documents to terms.
 
 **Indexes:** `(term_id)`, `(document_id)`
 
-Document and term must belong to the same workspace (enforced by application logic).
+The term's project must belong to the same workspace as the document (enforced by application logic).
 
 **Discussion documents.** A `discussion` document's terms are the union of two sources:
 

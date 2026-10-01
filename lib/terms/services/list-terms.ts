@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 
-import { terms } from "@/db/schema";
+import { projects, terms } from "@/db/schema";
 import { db } from "@/lib/db";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
@@ -13,7 +13,11 @@ export async function listTerms(
   ctx: WorkspaceContext,
 ): Promise<ListTermsResult> {
   const normalizedSearch = normalizeTermSearchQuery(params.search);
-  const conditions = [eq(terms.workspaceId, ctx.workspaceId)];
+  const conditions = [eq(projects.workspaceId, ctx.workspaceId)];
+
+  if (ctx.projectId) {
+    conditions.push(eq(terms.projectId, ctx.projectId));
+  }
 
   if (normalizedSearch) {
     conditions.push(
@@ -22,8 +26,9 @@ export async function listTerms(
   }
 
   const rows = await db
-    .select()
+    .select({ term: terms })
     .from(terms)
+    .innerJoin(projects, eq(terms.projectId, projects.id))
     .where(and(...conditions))
     .orderBy(
       normalizedSearch
@@ -32,6 +37,6 @@ export async function listTerms(
     );
 
   return {
-    items: rows.map((row) => toTermListItem(row)),
+    items: rows.map((row) => toTermListItem(row.term)),
   };
 }

@@ -59,6 +59,7 @@ export type DocumentTermSummary = {
   id: string;
   name: string;
   /** Present when loaded from document_terms; omitted in term filter selections. */
+  projectId?: string;
   assignedBy?: string;
 };
 

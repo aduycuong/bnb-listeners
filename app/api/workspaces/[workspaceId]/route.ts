@@ -18,9 +18,6 @@ export const PATCH = createApiHandler(
     updateWorkspaceLlmSettings({
       workspaceId: ctx.workspaceId,
       dataCollectionScope: params.dataCollectionScope,
-      autoCreateTerms: params.autoCreateTerms,
-      termLanguage: params.termLanguage,
-      termCriteria: params.termCriteria,
     }),
   {
     allowedRoles: ["user", "admin"],

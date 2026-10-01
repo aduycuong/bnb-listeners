@@ -1,7 +1,5 @@
 import type { LlmPromptKey } from "../constants";
 import {
-  buildClassifyTermsPrompt,
-  buildProposeTermPrompt,
   buildScoreCommentStancesPrompt,
   buildScoreMediaPartPrompt,
   buildScoreTextPartPrompt,
@@ -16,9 +14,10 @@ export async function resolveWorkspaceSystemPrompt(
 
   switch (promptKey) {
     case "classify_terms":
-      return buildClassifyTermsPrompt(settings);
     case "propose_term":
-      return buildProposeTermPrompt(settings);
+      throw new Error(
+        `${promptKey} is resolved per project, not from workspace settings.`,
+      );
     case "score_text_part":
       return buildScoreTextPartPrompt(settings);
     case "score_media_part":

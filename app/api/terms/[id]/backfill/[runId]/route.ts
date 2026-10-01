@@ -5,5 +5,5 @@ import { getTermBackfillRun } from "@/lib/term-backfill/services/get-term-backfi
 export const GET = createApiHandler(
   { parameters: termBackfillRunIdParamsSchema },
   getTermBackfillRun,
-  { allowedRoles: [], minWorkspacePermission: "read" },
+  { allowedRoles: [], requireProject: true, minWorkspacePermission: "read" },
 );

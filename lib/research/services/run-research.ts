@@ -54,6 +54,7 @@ export async function runResearch(runId: string): Promise<void> {
       workspaceContext: {
         userId: RESEARCH_SYSTEM_USER_ID,
         workspaceId: run.workspaceId,
+        projectId: null,
         permission: "owner",
       },
       webEnabled: isExaConfigured(),

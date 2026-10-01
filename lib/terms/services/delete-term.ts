@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { terms } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
+import { requireProjectId } from "@/lib/projects/utils/require-project-id";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type { DeleteTermParams, DeleteTermResult } from "../types";
@@ -11,13 +12,11 @@ export async function deleteTerm(
   params: DeleteTermParams,
   ctx: WorkspaceContext,
 ): Promise<DeleteTermResult> {
+  const projectId = requireProjectId(ctx);
   const [deleted] = await db
     .delete(terms)
     .where(
-      and(
-        eq(terms.id, params.id),
-        eq(terms.workspaceId, ctx.workspaceId),
-      ),
+      and(eq(terms.id, params.id), eq(terms.projectId, projectId)),
     )
     .returning({ id: terms.id });
 

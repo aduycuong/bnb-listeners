@@ -21,5 +21,5 @@ export const GET = createApiHandler(
 export const POST = createApiHandler(
   { requestBody: createTermBodySchema },
   createTerm,
-  { allowedRoles: [], minWorkspacePermission: "edit" },
+  { allowedRoles: [], requireProject: true, minWorkspacePermission: "edit" },
 );

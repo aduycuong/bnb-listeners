@@ -50,7 +50,8 @@ async function listActiveTermsByTrendScore(params: {
       ON tdd.term_id = t.id
       AND tdd.date_key >= ${params.startDate}::date
       AND tdd.date_key <= ${params.endDate}::date
-    WHERE t.workspace_id = ${params.workspaceId}::uuid
+    INNER JOIN projects p ON p.id = t.project_id
+    WHERE p.workspace_id = ${params.workspaceId}::uuid
     GROUP BY t.id, t.name, t.description
     HAVING SUM(tdd.doc_count) > 0
     ORDER BY trend_score DESC NULLS LAST, t.name ASC, t.id ASC

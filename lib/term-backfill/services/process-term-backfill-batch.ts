@@ -118,7 +118,6 @@ export async function processTermBackfillBatch(
       id: terms.id,
       name: terms.name,
       description: terms.description,
-      workspaceId: terms.workspaceId,
     })
     .from(terms)
     .where(eq(terms.id, run.termId))
@@ -162,7 +161,7 @@ export async function processTermBackfillBatch(
     return;
   }
 
-  const llmSettings = await getWorkspaceLlmSettings(term.workspaceId);
+  const llmSettings = await getWorkspaceLlmSettings(run.workspaceId);
   const systemPrompt = buildEvaluateTermPrompt(llmSettings, {
     name: term.name,
     description: term.description,

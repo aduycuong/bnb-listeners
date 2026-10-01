@@ -40,8 +40,9 @@ export function registerFindTopTermsTool(
     "find_top_terms",
     {
       description:
-        "Tìm top 10 terms (từ khóa/chủ đề đang theo dõi) trong workspace, xếp theo trend score.",
+        "Tìm top 10 terms (từ khóa/chủ đề đang theo dõi) trong một project, xếp theo trend score.",
       inputSchema: {
+        projectId: z.uuid().describe("ID của project social listening."),
         query: z
           .string()
           .describe(
@@ -52,10 +53,10 @@ export function registerFindTopTermsTool(
         period: findTopTermsPeriodSchema,
       },
     },
-    async ({ query, period }) => {
+    async ({ projectId, query, period }) => {
       const result = await findTopTerms(
         { query, period: resolveTermCardPeriod({ preset: period }) },
-        toWorkspaceContext(ctx),
+        toWorkspaceContext(ctx, projectId),
       );
 
       return {

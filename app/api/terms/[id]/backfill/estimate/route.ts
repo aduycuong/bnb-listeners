@@ -12,5 +12,5 @@ export const POST = createApiHandler(
     requestBody: termBackfillEstimateBodySchema,
   },
   estimateTermBackfill,
-  { allowedRoles: [], minWorkspacePermission: "edit" },
+  { allowedRoles: [], requireProject: true, minWorkspacePermission: "edit" },
 );

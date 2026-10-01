@@ -5,6 +5,7 @@ import { NotFoundError, UnknownServiceError } from "@/lib/common/service-errors"
 import { addDocumentTermAssignmentsFromSources } from "@/lib/document-terms/services/add-document-term-assignments-from-sources";
 import { db } from "@/lib/db";
 import { bulkInvalidateTermDigests } from "@/lib/term-digests/services/bulk-invalidate-workspace-digests";
+import { requireProjectId } from "@/lib/projects/utils/require-project-id";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import { TERM_MERGE_MAX_SOURCES } from "../term-config";
@@ -16,9 +17,9 @@ import type {
 import { createTerm } from "./create-term";
 import { deleteTerm } from "./delete-term";
 
-async function loadWorkspaceTerms(
+async function loadProjectTerms(
   termIds: string[],
-  workspaceId: string,
+  projectId: string,
 ): Promise<Map<string, { id: string; name: string }>> {
   if (termIds.length === 0) {
     return new Map();
@@ -27,12 +28,7 @@ async function loadWorkspaceTerms(
   const rows = await db
     .select({ id: terms.id, name: terms.name })
     .from(terms)
-    .where(
-      and(
-        eq(terms.workspaceId, workspaceId),
-        inArray(terms.id, termIds),
-      ),
-    );
+    .where(and(eq(terms.projectId, projectId), inArray(terms.id, termIds)));
 
   return new Map(rows.map((row) => [row.id, row]));
 }
@@ -59,6 +55,7 @@ export async function mergeTerms(
     );
   }
 
+  const projectId = requireProjectId(ctx);
   let targetId = params.targetId;
   let targetName: string;
 
@@ -71,7 +68,7 @@ export async function mergeTerms(
       .select({ id: terms.id, name: terms.name })
       .from(terms)
       .where(
-        and(eq(terms.id, targetId), eq(terms.workspaceId, ctx.workspaceId)),
+        and(eq(terms.id, targetId), eq(terms.projectId, projectId)),
       )
       .limit(1);
 
@@ -84,7 +81,7 @@ export async function mergeTerms(
     throw new UnknownServiceError("Provide either targetId or newTerm.");
   }
 
-  const termById = await loadWorkspaceTerms(sourceIds, ctx.workspaceId);
+  const termById = await loadProjectTerms(sourceIds, projectId);
   const missingSourceIds = sourceIds.filter((id) => !termById.has(id));
 
   if (missingSourceIds.length > 0) {

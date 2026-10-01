@@ -267,6 +267,13 @@
       "when": 1790753462569,
       "tag": "0037_left_madame_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790823069461,
+      "tag": "0038_clear_rocket_racer",
+      "breakpoints": true
     }
   ]
 }

@@ -62,6 +62,7 @@ type TermMergeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceId: string;
+  projectId: string;
   terms: TermMergeItem[];
   onMerged: (result: {
     targetId: string;
@@ -82,6 +83,7 @@ export function TermMergeDialog({
   open,
   onOpenChange,
   workspaceId,
+  projectId,
   terms,
   onMerged,
 }: TermMergeDialogProps) {
@@ -167,6 +169,7 @@ export function TermMergeDialog({
     try {
       const result = await mergeTermsRequest(
         workspaceId,
+        projectId,
         values.targetMode === "existing"
           ? { sourceIds, targetId: values.targetId }
           : {

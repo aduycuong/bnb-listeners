@@ -1,4 +1,5 @@
 import { parseChatModel } from "@/lib/langchain";
+import { requireProjectId } from "@/lib/projects/utils/require-project-id";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import {
@@ -20,7 +21,11 @@ export async function estimateTermBackfill(
   params: EstimateTermBackfillParams,
   ctx: WorkspaceContext,
 ): Promise<EstimateTermBackfillResult> {
-  const term = await loadTermBackfillContext(params.id, ctx.workspaceId);
+  const term = await loadTermBackfillContext(
+    params.id,
+    ctx.workspaceId,
+    requireProjectId(ctx),
+  );
   const newListeningStartedAt = new Date(params.newListeningStartedAt);
   assertValidBackfillListeningDate(newListeningStartedAt, term.createdAt);
 

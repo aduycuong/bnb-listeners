@@ -16,7 +16,7 @@ const LLM_ASSIGNED_BY = "llm_classifier";
  * new term (defaults to 1).
  */
 export async function createAutoTerm(
-  workspaceId: string,
+  projectId: string,
   documentId: string,
   proposed: ProposedTerm,
   embedding: number[] | null,
@@ -25,7 +25,7 @@ export async function createAutoTerm(
   const [term] = await db
     .insert(terms)
     .values({
-      workspaceId,
+      projectId,
       name: proposed.name.trim(),
       description: proposed.description.trim(),
       createdBy: LLM_ASSIGNED_BY,

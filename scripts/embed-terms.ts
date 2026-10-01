@@ -22,7 +22,7 @@ process.env.LANGSMITH_TRACING = "false";
 import { and, eq, isNull, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
-import { terms } from "@/db/schema";
+import { projects, terms } from "@/db/schema";
 import { db } from "@/lib/db";
 import { refreshTermEmbeddings } from "@/lib/terms/services/refresh-term-embeddings";
 
@@ -118,19 +118,27 @@ function buildScopeFilter(options: Options): SQL | undefined {
     conditions.push(isNull(terms.embedding));
   }
 
-  if (options.workspaceId) {
-    conditions.push(eq(terms.workspaceId, options.workspaceId));
-  }
-
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
 async function loadTargetTermIds(options: Options): Promise<string[]> {
-  const rows = await db
-    .select({ id: terms.id })
-    .from(terms)
-    .where(buildScopeFilter(options))
-    .orderBy(terms.createdAt);
+  const scope = buildScopeFilter(options);
+  const rows = options.workspaceId
+    ? await db
+        .select({ id: terms.id })
+        .from(terms)
+        .innerJoin(projects, eq(terms.projectId, projects.id))
+        .where(
+          scope
+            ? and(scope, eq(projects.workspaceId, options.workspaceId))
+            : eq(projects.workspaceId, options.workspaceId),
+        )
+        .orderBy(terms.createdAt)
+    : await db
+        .select({ id: terms.id })
+        .from(terms)
+        .where(scope)
+        .orderBy(terms.createdAt);
 
   return rows.map((row) => row.id);
 }

@@ -68,6 +68,7 @@ export const GET = createApiHandler(
   (params, ctx) => listTermCards(params, ctx),
   {
     allowedRoles: [],
+    requireProject: true,
     minWorkspacePermission: "read",
   },
 );

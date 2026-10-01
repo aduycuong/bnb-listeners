@@ -30,6 +30,7 @@ type TermBackfillDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceId: string;
+  projectId: string;
   term: GetTermResult;
   onStarted: () => Promise<void>;
 };
@@ -59,6 +60,7 @@ export function TermBackfillDialog({
   open,
   onOpenChange,
   workspaceId,
+  projectId,
   term,
   onStarted,
 }: TermBackfillDialogProps) {
@@ -97,6 +99,7 @@ export function TermBackfillDialog({
     try {
       const result = await estimateTermBackfillRequest(
         workspaceId,
+        projectId,
         term.id,
         {
           newListeningStartedAt: dateInputToIso(listeningDate),
@@ -120,7 +123,7 @@ export function TermBackfillDialog({
     setStarting(true);
 
     try {
-      await createTermBackfillRunRequest(workspaceId, term.id, {
+      await createTermBackfillRunRequest(workspaceId, projectId, term.id, {
         newListeningStartedAt: dateInputToIso(listeningDate),
         model,
         includeAlreadyAssigned,

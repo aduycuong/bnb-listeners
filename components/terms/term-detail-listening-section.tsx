@@ -15,6 +15,7 @@ import type { GetTermResult } from "@/lib/terms/types";
 
 type TermDetailListeningSectionProps = {
   workspaceId: string;
+  projectId: string;
   term: GetTermResult;
   canEdit: boolean;
   onTermUpdated: () => Promise<void>;
@@ -29,6 +30,7 @@ function formatDateTime(value: string) {
 
 export function TermDetailListeningSection({
   workspaceId,
+  projectId,
   term,
   canEdit,
   onTermUpdated,
@@ -61,6 +63,7 @@ export function TermDetailListeningSection({
           {term.activeBackfillRun ? (
             <TermBackfillStatus
               workspaceId={workspaceId}
+              projectId={projectId}
               termId={term.id}
               run={term.activeBackfillRun}
               onUpdated={onTermUpdated}
@@ -84,6 +87,7 @@ export function TermDetailListeningSection({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         workspaceId={workspaceId}
+        projectId={projectId}
         term={term}
         onStarted={onTermUpdated}
       />

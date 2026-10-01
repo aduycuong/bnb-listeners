@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
+import { assertProjectInWorkspace } from "@/lib/projects/services/assert-project-in-workspace";
+import { requireProjectId } from "@/lib/projects/utils/require-project-id";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import type {
@@ -101,6 +103,11 @@ export async function getTermAnalytics(
   ctx: WorkspaceContext,
 ): Promise<GetTermAnalyticsResult> {
   const { period, termIds } = params;
+  const projectId = requireProjectId(ctx);
+  await assertProjectInWorkspace({
+    workspaceId: ctx.workspaceId,
+    projectId,
+  });
   const uniqueTermIds = [...new Set(termIds)];
 
   if (uniqueTermIds.length === 0) {
@@ -117,7 +124,7 @@ export async function getTermAnalytics(
     db.execute<TermRow>(sql`
       SELECT id, name
       FROM terms
-      WHERE workspace_id = ${ctx.workspaceId}::uuid
+      WHERE project_id = ${projectId}::uuid
         AND id IN (${termIdList})
       ORDER BY name ASC
     `),

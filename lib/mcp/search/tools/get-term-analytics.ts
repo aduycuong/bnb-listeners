@@ -22,6 +22,7 @@ export function registerGetTermAnalyticsTool(
         "kèm tổng hợp cho cả period. " +
         "Dùng term ID từ kết quả find_top_terms hoặc search_knowledge.",
       inputSchema: {
+        projectId: z.uuid().describe("ID của project chứa các term."),
         termIds: z
           .array(z.uuid())
           .min(1)
@@ -30,10 +31,10 @@ export function registerGetTermAnalyticsTool(
         period: findTopTermsPeriodSchema,
       },
     },
-    async ({ termIds, period }) => {
+    async ({ projectId, termIds, period }) => {
       const result = await getTermAnalytics(
         { termIds, period: resolveTermCardPeriod({ preset: period }) },
-        toWorkspaceContext(ctx),
+        toWorkspaceContext(ctx, projectId),
       );
 
       return {

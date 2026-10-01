@@ -64,6 +64,10 @@ import {
 } from "@/lib/data-sources/data-source-menu-config";
 import { isSourceType } from "@/lib/data-sources/constants";
 import { getDocumentTermAssignedByLabel } from "@/lib/document-terms/document-term-config";
+import {
+  fetchProjects,
+  projectsQueryKey,
+} from "@/hooks/use-project-route-context";
 import { getTermHref } from "@/lib/terms/term-config";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 import { cn } from "@/lib/utils";
@@ -220,6 +224,17 @@ export function DocumentDetailPage({
     queryKey: documentQueryKey(workspace.id, documentId),
     queryFn: () => fetchDocument(workspace.id, documentId),
   });
+  const projectsQuery = useQuery({
+    queryKey: projectsQueryKey(workspace.id),
+    queryFn: () => fetchProjects(workspace.id),
+  });
+
+  function termHref(projectId: string | undefined, termId: string) {
+    const index =
+      projectsQuery.data?.items.findIndex((item) => item.id === projectId) ??
+      0;
+    return getTermHref(workspaceIndex, index < 0 ? 0 : index, termId);
+  }
 
   const document = documentQuery.data;
   const statusBadge = document
@@ -428,7 +443,7 @@ export function DocumentDetailPage({
               {document.terms.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No terms assigned yet. Use Classify to match this document to
-                  workspace terms.
+                  project terms.
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -438,7 +453,7 @@ export function DocumentDetailPage({
                       className="flex flex-wrap items-center gap-x-2 gap-y-1"
                     >
                       <Link
-                        href={getTermHref(workspaceIndex, term.id)}
+                        href={termHref(term.projectId, term.id)}
                         className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-900 transition-colors hover:bg-violet-100 dark:border-violet-900/60 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-950/60"
                       >
                         {term.name}

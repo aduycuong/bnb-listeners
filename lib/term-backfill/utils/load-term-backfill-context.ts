@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 
-import { terms } from "@/db/schema";
+import { projects, terms } from "@/db/schema";
 import { NotFoundError, UnknownServiceError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 
@@ -17,11 +17,12 @@ export type TermBackfillContext = {
 export async function loadTermBackfillContext(
   termId: string,
   workspaceId: string,
+  projectId: string,
 ): Promise<TermBackfillContext> {
   const [term] = await db
     .select({
       id: terms.id,
-      workspaceId: terms.workspaceId,
+      workspaceId: projects.workspaceId,
       name: terms.name,
       description: terms.description,
       createdAt: terms.createdAt,
@@ -29,7 +30,14 @@ export async function loadTermBackfillContext(
       activeBackfillRunId: terms.activeBackfillRunId,
     })
     .from(terms)
-    .where(and(eq(terms.id, termId), eq(terms.workspaceId, workspaceId)))
+    .innerJoin(projects, eq(terms.projectId, projects.id))
+    .where(
+      and(
+        eq(terms.id, termId),
+        eq(terms.projectId, projectId),
+        eq(projects.workspaceId, workspaceId),
+      ),
+    )
     .limit(1);
 
   if (!term) {

@@ -23,7 +23,7 @@ type CandidateRow = {
 };
 
 async function findCandidatesForVector(
-  workspaceId: string,
+  projectId: string,
   vector: number[],
 ): Promise<TermCandidate[]> {
   const vectorLiteral = sql.raw(
@@ -39,7 +39,7 @@ async function findCandidatesForVector(
         t.description,
         1 - (t.embedding <=> ${vectorLiteral}) AS similarity
       FROM terms t
-      WHERE t.workspace_id = ${workspaceId}::uuid
+      WHERE t.project_id = ${projectId}::uuid
         AND t.embedding IS NOT NULL
       ORDER BY t.embedding <=> ${vectorLiteral}
       LIMIT ${TERM_CANDIDATES_PER_PROPOSAL}
@@ -60,10 +60,10 @@ async function findCandidatesForVector(
  * positionally aligned with `vectors`; terms without an embedding are skipped.
  */
 export async function findCandidateTermsByEmbeddings(
-  workspaceId: string,
+  projectId: string,
   vectors: number[][],
 ): Promise<TermCandidate[][]> {
   return Promise.all(
-    vectors.map((vector) => findCandidatesForVector(workspaceId, vector)),
+    vectors.map((vector) => findCandidatesForVector(projectId, vector)),
   );
 }

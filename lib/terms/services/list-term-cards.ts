@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
+import { requireProjectId } from "@/lib/projects/utils/require-project-id";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
 import {
@@ -84,6 +85,7 @@ export async function listTermCards(
   params: ListTermCardsParams,
   ctx: WorkspaceContext,
 ): Promise<ListTermCardsResult> {
+  const projectId = requireProjectId(ctx);
   const limit = params.limit ?? TERM_CARD_PAGE_SIZE;
   const offset = params.offset ?? 0;
   const period = resolveTermCardPeriod({
@@ -133,7 +135,7 @@ export async function listTermCards(
       AND tdd.date_key >= ${querySource.startDate}::date
       AND tdd.date_key <= ${querySource.endDate}::date
       ${jobFilter}
-    WHERE t.workspace_id = ${ctx.workspaceId}::uuid
+    WHERE t.project_id = ${projectId}::uuid
       ${searchFilter}
     GROUP BY
       t.id,

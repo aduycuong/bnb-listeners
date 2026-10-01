@@ -27,6 +27,7 @@ type TermBulkDeleteDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceId: string;
+  projectId: string;
   terms: TopicBulkDeleteItem[];
   onDeleted: (deletedIds: string[]) => Promise<void>;
 };
@@ -35,6 +36,7 @@ export function TermBulkDeleteDialog({
   open,
   onOpenChange,
   workspaceId,
+  projectId,
   terms,
   onDeleted,
 }: TermBulkDeleteDialogProps) {
@@ -54,6 +56,7 @@ export function TermBulkDeleteDialog({
     try {
       const result = await bulkDeleteTermsRequest(
         workspaceId,
+        projectId,
         terms.map((term) => term.id),
       );
 

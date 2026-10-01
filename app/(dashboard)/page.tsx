@@ -1,5 +1,5 @@
-import { WorkspaceListRoutePage } from "@/components/workspace/workspace-list-route-page";
+import { WorkspaceIndexRedirect } from "@/components/workspace/workspace-index-redirect";
 
-export default function RootWorkspacesPage() {
-  return <WorkspaceListRoutePage />;
+export default function DashboardPage() {
+  return <WorkspaceIndexRedirect />;
 }

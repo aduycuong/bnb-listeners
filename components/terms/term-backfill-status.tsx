@@ -10,6 +10,7 @@ import type { TermBackfillRunItem } from "@/lib/term-backfill/types";
 
 type TermBackfillStatusProps = {
   workspaceId: string;
+  projectId: string;
   termId: string;
   run: TermBackfillRunItem;
   onUpdated: () => Promise<void>;
@@ -39,6 +40,7 @@ function getProgressPercent(run: TermBackfillRunItem): number {
 
 export function TermBackfillStatus({
   workspaceId,
+  projectId,
   termId,
   run,
   onUpdated,
@@ -51,7 +53,7 @@ export function TermBackfillStatus({
     setCancelling(true);
 
     try {
-      await cancelTermBackfillRunRequest(workspaceId, termId, run.id);
+      await cancelTermBackfillRunRequest(workspaceId, projectId, termId, run.id);
       toast.add({ title: "Backfill cancelled.", type: "success" });
       await onUpdated();
     } catch (error) {

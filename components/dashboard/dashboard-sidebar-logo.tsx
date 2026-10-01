@@ -16,7 +16,11 @@ import {
 
 const BRAND_TITLE = "BNB Listening";
 
-export function DashboardSidebarLogo() {
+export function DashboardSidebarLogo({
+  workspaceIndex,
+}: {
+  workspaceIndex: number;
+}) {
   const { t } = useT("dashboard");
 
   return (
@@ -28,8 +32,8 @@ export function DashboardSidebarLogo() {
           className={sidebarBrandMenuButtonClassName}
           render={
             <Link
-              href="/"
-              aria-label={t("nav.workspacesHomeAriaLabel")}
+              href={`/w/${workspaceIndex}`}
+              aria-label={t("header.homeAriaLabel")}
             />
           }
         >

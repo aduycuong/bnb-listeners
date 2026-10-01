@@ -5,7 +5,7 @@ import type {
   EstimateTermBackfillResult,
   GetTermBackfillRunResult,
 } from "@/lib/term-backfill/types";
-import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
+import { projectFetch } from "@/lib/projects/utils/project-fetch";
 
 type BackfillRequestBody = {
   newListeningStartedAt: string;
@@ -24,11 +24,13 @@ function getErrorMessage(data: { error?: string; message?: string }, fallback: s
 
 export async function estimateTermBackfillRequest(
   workspaceId: string,
+  projectId: string,
   termId: string,
   body: BackfillRequestBody,
 ): Promise<EstimateTermBackfillResult> {
-  const res = await workspaceFetch(
+  const res = await projectFetch(
     workspaceId,
+    projectId,
     `/api/terms/${termId}/backfill/estimate`,
     {
       method: "POST",
@@ -47,10 +49,11 @@ export async function estimateTermBackfillRequest(
 
 export async function createTermBackfillRunRequest(
   workspaceId: string,
+  projectId: string,
   termId: string,
   body: BackfillRequestBody,
 ): Promise<CreateTermBackfillRunResult> {
-  const res = await workspaceFetch(workspaceId, `/api/terms/${termId}/backfill`, {
+  const res = await projectFetch(workspaceId, projectId, `/api/terms/${termId}/backfill`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -66,11 +69,13 @@ export async function createTermBackfillRunRequest(
 
 export async function getTermBackfillRunRequest(
   workspaceId: string,
+  projectId: string,
   termId: string,
   runId: string,
 ): Promise<GetTermBackfillRunResult> {
-  const res = await workspaceFetch(
+  const res = await projectFetch(
     workspaceId,
+    projectId,
     `/api/terms/${termId}/backfill/${runId}`,
   );
   const data = await parseJson<GetTermBackfillRunResult>(res);
@@ -84,11 +89,13 @@ export async function getTermBackfillRunRequest(
 
 export async function cancelTermBackfillRunRequest(
   workspaceId: string,
+  projectId: string,
   termId: string,
   runId: string,
 ): Promise<CancelTermBackfillRunResult> {
-  const res = await workspaceFetch(
+  const res = await projectFetch(
     workspaceId,
+    projectId,
     `/api/terms/${termId}/backfill/${runId}/cancel`,
     { method: "POST" },
   );
