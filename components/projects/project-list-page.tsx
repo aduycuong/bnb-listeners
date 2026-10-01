@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
+import { useT } from "next-i18next/client";
 import { useState } from "react";
 
 import { CreateProjectDialog } from "@/components/projects/create-project-dialog";
@@ -20,12 +21,14 @@ import {
 } from "@/hooks/use-project-route-context";
 import { useWorkspaceRouteContext } from "@/hooks/use-workspace-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
+import { PROJECT_CASE_ICONS } from "@/lib/projects/project-cases";
 
 type ProjectListPageProps = {
   workspaceIndexParam: string;
 };
 
 export function ProjectListPage({ workspaceIndexParam }: ProjectListPageProps) {
+  const { t } = useT("dashboard");
   const { workspace, workspaceIndex } =
     useWorkspaceRouteContext(workspaceIndexParam);
   const [createOpen, setCreateOpen] = useState(false);
@@ -42,7 +45,7 @@ export function ProjectListPage({ workspaceIndexParam }: ProjectListPageProps) {
   const projects = data?.items ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 md:px-8">
+    <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-5 md:px-7">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">Projects</h1>
@@ -82,7 +85,13 @@ export function ProjectListPage({ workspaceIndexParam }: ProjectListPageProps) {
             >
               <Card className="transition-colors hover:bg-muted/40">
                 <CardHeader>
-                  <CardTitle>{project.name}</CardTitle>
+                  <CardTitle className="flex flex-wrap items-center gap-2">
+                    <span aria-hidden="true">{PROJECT_CASE_ICONS[project.case]}</span>
+                    {project.name}
+                    <span className="rounded-full bg-[var(--tile-sun)] px-2 py-0.5 text-[11.5px] font-semibold text-[var(--tile-sun-foreground)]">
+                      {t(`cases.${project.case}`)}
+                    </span>
+                  </CardTitle>
                   {project.description ? (
                     <CardDescription>{project.description}</CardDescription>
                   ) : null}

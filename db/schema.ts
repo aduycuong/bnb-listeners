@@ -110,6 +110,7 @@ export const projects = pgTable(
     autoCreateTerms: boolean("auto_create_terms").notNull().default(true),
     termLanguage: text("term_language").notNull().default("auto"),
     termCriteria: text("term_criteria").notNull().default(""),
+    listeningCase: text("case").notNull().default("general"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

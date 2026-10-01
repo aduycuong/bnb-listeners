@@ -7,58 +7,65 @@
 
 :root {
   color-scheme: light dark;
-  /* Main canvas — airy off-white (#F9FAFB) */
-  --background: oklch(0.985 0.002 247);
-  --foreground: oklch(0.21 0.034 265);
-  /* Elevated surfaces — white cards on canvas */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.034 265);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.034 265);
-  /* Primary actions — near-black (#111827) */
-  --primary: oklch(0.21 0.034 265);
-  --primary-foreground: oklch(0.985 0 0);
-  /* Secondary / muted fills — soft gray (#F3F4F6) */
-  --secondary: oklch(0.967 0.003 264);
-  --secondary-foreground: oklch(0.21 0.034 265);
-  --muted: oklch(0.967 0.003 264);
-  --muted-foreground: oklch(0.551 0.027 264);
-  --accent: oklch(0.967 0.003 264);
-  --accent-foreground: oklch(0.21 0.034 265);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.928 0.006 264);
-  --input: oklch(0.928 0.006 264);
-  --ring: oklch(0.551 0.027 264);
-  --chart-1: oklch(0.72 0.14 45);
-  --chart-2: oklch(0.68 0.12 230);
-  --chart-3: oklch(0.7 0.12 160);
-  --chart-4: oklch(0.75 0.1 85);
-  --chart-5: oklch(0.65 0.1 300);
-  --radius: 0.75rem;
-  /* Sidebar — slightly darker gray (#F3F4F6) */
-  --sidebar: oklch(0.967 0.003 264);
-  --sidebar-foreground: oklch(0.21 0.034 265);
-  --sidebar-primary: oklch(0.21 0.034 265);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.928 0.006 264);
-  --sidebar-accent-foreground: oklch(0.21 0.034 265);
-  --sidebar-border: oklch(0.928 0.006 264);
-  --sidebar-ring: oklch(0.551 0.027 264);
+  /* Theme C — Nhiệt Đới (light) */
+  --background: #f2faff;
+  --foreground: #0b2545;
+  --card: #ffffff;
+  --card-foreground: #0b2545;
+  --popover: #ffffff;
+  --popover-foreground: #0b2545;
+  --primary: #0091ff;
+  --primary-foreground: #ffffff;
+  --secondary: #eef7fd;
+  --secondary-foreground: #0b2545;
+  --muted: #eef7fd;
+  --muted-foreground: #47627f;
+  --accent: #eef7fd;
+  --accent-foreground: #0b2545;
+  --destructive: #ff6b6b;
+  --border: #d8ebf8;
+  --input: #d8ebf8;
+  --ring: #5cc8ff;
+  --chart-1: #0091ff;
+  --chart-2: #00c9a7;
+  --chart-3: #5cc8ff;
+  --chart-4: #ffc93c;
+  --chart-5: #ff6b6b;
+  --radius: 1rem;
+  --sidebar: #0091ff;
+  --sidebar-foreground: #e6f4ff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #0091ff;
+  --sidebar-accent: rgba(255, 255, 255, 0.16);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.28);
+  --sidebar-ring: #ffc93c;
+  --sidebar-muted: #b3deff;
+  --positive: #06614f;
+  --negative: #9b1c1c;
+  --pos: #00c9a7;
+  --neu: #bbd3e8;
+  --neg: #ff6b6b;
+  --sun: #ffc93c;
+  --tile-blue: #ddf1ff;
+  --tile-mint: #d5f7ef;
+  --tile-sun: #fff1cc;
+  --tile-coral: #ffe3e3;
+  --tile-violet: #ece9ff;
+  --tile-blue-foreground: #0b4a80;
+  --tile-mint-foreground: #06614f;
+  --tile-sun-foreground: #7a5300;
+  --tile-coral-foreground: #9b1c1c;
 }
 
 body {
   margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    Segoe UI,
-    Roboto,
-    sans-serif;
 }
 
 @theme inline {
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-heading);
   --font-sans: var(--font-sans);
+  --color-sidebar-muted: var(--sidebar-muted);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -100,37 +107,54 @@ body {
 }
 
 .dark {
-  --background: oklch(0.16 0.02 265);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.02 265);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.02 265);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.21 0.034 265);
-  --secondary: oklch(0.25 0.02 265);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.25 0.02 265);
-  --muted-foreground: oklch(0.708 0.02 265);
-  --accent: oklch(0.25 0.02 265);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.551 0.027 264);
-  --chart-1: oklch(0.72 0.14 45);
-  --chart-2: oklch(0.68 0.12 230);
-  --chart-3: oklch(0.7 0.12 160);
-  --chart-4: oklch(0.75 0.1 85);
-  --chart-5: oklch(0.65 0.1 300);
-  --sidebar: oklch(0.19 0.02 265);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.985 0 0);
-  --sidebar-primary-foreground: oklch(0.21 0.034 265);
-  --sidebar-accent: oklch(0.25 0.02 265);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264);
+  /* Theme C — Nhiệt Đới (dark) */
+  --background: #06182b;
+  --foreground: #e8f4ff;
+  --card: #0c2540;
+  --card-foreground: #e8f4ff;
+  --popover: #0c2540;
+  --popover-foreground: #e8f4ff;
+  --primary: #0091ff;
+  --primary-foreground: #ffffff;
+  --secondary: #11304f;
+  --secondary-foreground: #e8f4ff;
+  --muted: #11304f;
+  --muted-foreground: #a9c3dc;
+  --accent: #11304f;
+  --accent-foreground: #e8f4ff;
+  --destructive: #ff6b6b;
+  --border: #1c4167;
+  --input: #1c4167;
+  --ring: #5cc8ff;
+  --chart-1: #0091ff;
+  --chart-2: #00c9a7;
+  --chart-3: #5cc8ff;
+  --chart-4: #ffc93c;
+  --chart-5: #ff6b6b;
+  --sidebar: #073a69;
+  --sidebar-foreground: #e6f4ff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #0091ff;
+  --sidebar-accent: rgba(255, 255, 255, 0.16);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.2);
+  --sidebar-ring: #ffc93c;
+  --sidebar-muted: #8cc2ee;
+  --positive: #6ee8cf;
+  --negative: #ffaaaa;
+  --pos: #00c9a7;
+  --neu: #3e5f80;
+  --neg: #ff6b6b;
+  --sun: #ffc93c;
+  --tile-blue: rgba(0, 145, 255, 0.18);
+  --tile-mint: rgba(0, 201, 167, 0.16);
+  --tile-sun: rgba(255, 201, 60, 0.16);
+  --tile-coral: rgba(255, 107, 107, 0.16);
+  --tile-violet: rgba(139, 124, 246, 0.18);
+  --tile-blue-foreground: #8fd0ff;
+  --tile-mint-foreground: #6ee8cf;
+  --tile-sun-foreground: #ffd873;
+  --tile-coral-foreground: #ffaaaa;
 }
 
 @layer base {
@@ -139,8 +163,17 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    font-size: 14.5px;
+    line-height: 1.5;
   }
   html {
     @apply font-sans;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading), sans-serif;
+    letter-spacing: -0.01em;
   }
 }

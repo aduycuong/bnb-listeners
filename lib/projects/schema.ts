@@ -5,11 +5,16 @@ import {
   TERM_LANGUAGES,
 } from "@/lib/workspaces/constants";
 
+import { PROJECT_CASES } from "./project-cases";
+
 export const termLanguageSchema = z.enum(TERM_LANGUAGES);
+
+export const projectCaseSchema = z.enum(PROJECT_CASES);
 
 export const createProjectSchema = z.object({
   name: z.string().trim().min(1, { error: "Project name is required." }),
   description: z.string().trim().optional(),
+  case: projectCaseSchema.optional(),
 });
 
 export const updateProjectSchema = z.object({

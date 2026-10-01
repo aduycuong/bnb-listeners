@@ -19,6 +19,7 @@ export const POST = createApiHandler(
       workspaceId: ctx.workspaceId,
       name: params.name,
       description: params.description,
+      case: params.case,
     }),
   {
     allowedRoles: [],

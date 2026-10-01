@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   CheckIcon,
+  EllipsisIcon,
   LanguagesIcon,
   LogOutIcon,
   MonitorIcon,
@@ -50,7 +51,6 @@ import {
 import { SUPPORTED_LANGUAGES } from "@/lib/i18n/constants";
 import {
   sidebarAccountMenuButtonClassName,
-  sidebarPrimaryMediaClassName,
 } from "@/lib/dashboard/sidebar-menu-styles";
 import type { WorkspacePermission } from "@/lib/workspaces/types";
 
@@ -139,28 +139,34 @@ export function AccountMenu({
             <DropdownMenuTrigger
               render={
                 <SidebarMenuButton
-                  size="lg"
                   tooltip={displayName}
                   className={sidebarAccountMenuButtonClassName}
                   aria-label={tDashboard("accountMenu.openMenu")}
                 />
               }
             >
-              <Avatar className={sidebarPrimaryMediaClassName}>
+              <Avatar className="size-9 shrink-0 shadow-[0_0_0_3px_rgba(255,255,255,0.5)] after:hidden group-data-[collapsible=icon]:size-7 group-data-[collapsible=icon]:shadow-none">
                 {user?.photoURL ? (
                   <AvatarImage src={user.photoURL} alt={displayName} />
                 ) : null}
-                <AvatarFallback>{getUserInitials(displayName)}</AvatarFallback>
+                <AvatarFallback className="bg-(--sun) text-[13px] font-bold text-[#4D3400]">
+                  {getUserInitials(displayName)}
+                </AvatarFallback>
               </Avatar>
-              <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
-                <span className="truncate">{displayName}</span>
-                <span className="truncate text-xs text-muted-foreground">
+              <div className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="truncate text-[13.5px] font-semibold text-white">
+                  {displayName}
+                </span>
+                <span className="truncate text-xs text-sidebar-muted">
                   {roleLabel}
                 </span>
               </div>
+              <div className="grid size-8.5 shrink-0 place-items-center rounded-full border border-white/30 text-white group-data-[collapsible=icon]:hidden">
+                <EllipsisIcon className="size-4" />
+              </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="min-w-56 rounded-lg"
+              className="min-w-56"
               align="end"
               side={isMobile ? "top" : "right"}
               sideOffset={4}

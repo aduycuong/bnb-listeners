@@ -14,10 +14,20 @@ import {
 import { I18nProvider } from "next-i18next/client";
 
 import "./globals.css";
-import { Geist } from "next/font/google";
+import { Lexend, Nunito } from "next/font/google";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+const nunito = Nunito({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-sans",
+});
+
+const lexend = Lexend({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-heading",
+});
 
 initServerI18next(i18nConfig);
 
@@ -43,7 +53,11 @@ export default async function RootLayout({
   const resources = getResources(i18n, ["common", "auth", "dashboard", "forms"]);
 
   return (
-    <html lang={lng} className={cn("font-sans", geist.variable)} suppressHydrationWarning>
+    <html
+      lang={lng}
+      className={cn("font-sans", nunito.variable, lexend.variable)}
+      suppressHydrationWarning
+    >
       <body className="min-h-screen antialiased">
         <I18nProvider language={lng} resources={resources}>
           <ThemeProvider>

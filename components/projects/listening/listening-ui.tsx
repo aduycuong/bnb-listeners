@@ -7,21 +7,21 @@ export const SENTIMENT_META: Record<
 > = {
   negative: {
     label: "Tiêu cực",
-    color: "oklch(0.62 0.17 25)",
-    badge: "bg-rose-500/10 text-rose-700 dark:text-rose-400",
-    text: "text-rose-700 dark:text-rose-400",
+    color: "var(--neg)",
+    badge: "bg-[var(--tile-coral)] text-[var(--tile-coral-foreground)]",
+    text: "text-[var(--negative)]",
   },
   neutral: {
     label: "Trung tính",
-    color: "oklch(0.62 0.03 250)",
+    color: "var(--neu)",
     badge: "bg-muted text-muted-foreground",
     text: "text-muted-foreground",
   },
   positive: {
     label: "Tích cực",
-    color: "oklch(0.62 0.13 155)",
-    badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-    text: "text-emerald-700 dark:text-emerald-400",
+    color: "var(--pos)",
+    badge: "bg-[var(--tile-mint)] text-[var(--tile-mint-foreground)]",
+    text: "text-[var(--positive)]",
   },
 };
 
@@ -120,9 +120,9 @@ export function ShareList({
                 {percent}%
               </span>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+            <div className="h-[11px] overflow-hidden rounded-full bg-muted">
               <div
-                className="h-full rounded-full bg-foreground/70"
+                className="h-full rounded-full bg-primary"
                 style={{ width: `${percent}%` }}
               />
             </div>
@@ -144,8 +144,8 @@ export function DeltaText({
     <span
       className={cn(
         "text-xs font-medium tabular-nums",
-        tone === "up" && "text-emerald-700 dark:text-emerald-400",
-        tone === "down" && "text-rose-700 dark:text-rose-400",
+        tone === "up" && "text-[var(--positive)]",
+        tone === "down" && "text-[var(--negative)]",
         tone === "neutral" && "text-muted-foreground",
       )}
     >

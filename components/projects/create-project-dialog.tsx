@@ -4,8 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useT } from "next-i18next/client";
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,9 +24,19 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { projectsQueryKey } from "@/hooks/use-project-route-context";
+import { PROJECT_CASE_GROUPS } from "@/lib/projects/project-cases";
 import {
   createProjectSchema,
   type CreateProjectFormValues,
@@ -49,9 +60,10 @@ export function CreateProjectDialog({
 }: CreateProjectDialogProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { t } = useT("dashboard");
   const form = useForm<CreateProjectFormValues>({
     resolver: zodResolver(createProjectSchema),
-    defaultValues: { name: "", description: "" },
+    defaultValues: { name: "", description: "", case: "general" },
   });
 
   useEffect(() => {
@@ -113,6 +125,35 @@ export function CreateProjectDialog({
                 {...form.register("name")}
               />
               <FieldError errors={[nameError]} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="project-case">Case</FieldLabel>
+              <Controller
+                control={form.control}
+                name="case"
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? "general"}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger id="project-case" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROJECT_CASE_GROUPS.map((group) => (
+                        <SelectGroup key={group.labelKey}>
+                          <SelectLabel>{t(group.labelKey)}</SelectLabel>
+                          {group.cases.map((item) => (
+                            <SelectItem key={item} value={item}>
+                              {t(`cases.${item}`)}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </Field>
             <Field>
               <FieldLabel htmlFor="project-description">Description</FieldLabel>

@@ -2,17 +2,22 @@
 
 import { AquaDemoDashboard } from "@/components/projects/demo/demo-dashboard";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
-import { getProjectNavHref } from "@/lib/dashboard/nav-items";
+import {
+  getProjectNavHref,
+  type ProjectDemoSection,
+} from "@/lib/dashboard/nav-items";
 
-type ProjectOverviewPageProps = {
+type ProjectSectionPageProps = {
   workspaceIndexParam: string;
   projectIndexParam: string;
+  section: ProjectDemoSection;
 };
 
-export function ProjectOverviewPage({
+export function ProjectSectionPage({
   workspaceIndexParam,
   projectIndexParam,
-}: ProjectOverviewPageProps) {
+  section,
+}: ProjectSectionPageProps) {
   const { project, workspaceIndex, projectIndex } = useProjectRouteContext(
     workspaceIndexParam,
     projectIndexParam,
@@ -27,6 +32,7 @@ export function ProjectOverviewPage({
       projectName={project.name}
       projectDescription={project.description}
       projectCase={project.case}
+      section={section}
       settingsHref={getProjectNavHref(workspaceIndex, projectIndex, "settings")}
     />
   );

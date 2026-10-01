@@ -43,12 +43,8 @@ export function DashboardSidebarLogo({
             alt=""
             className={`${sidebarPrimaryMediaClassName} object-contain`}
           />
-          <span className="min-w-0 truncate font-semibold text-xl">
-            <span className="text-sidebar-foreground">BNB</span>
-            <span className="font-normal text-sidebar-foreground/85">
-              {" "}
-              Listening
-            </span>
+          <span className="min-w-0 truncate text-[19px] font-extrabold tracking-tight text-white">
+            BNB <span className="font-medium text-[#D6F0FF]">Listening</span>
           </span>
         </SidebarMenuButton>
       </SidebarMenuItem>

@@ -40,7 +40,6 @@ export async function createWorkspace(
 
   await createDefaultProject({
     workspaceId: workspace.id,
-    name: workspace.name,
   });
 
   return {

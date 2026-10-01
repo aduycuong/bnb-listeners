@@ -24,15 +24,15 @@ const TONE_STYLE: Record<
 > = {
   alert: {
     icon: TriangleAlertIcon,
-    className: "text-rose-700 dark:text-rose-400",
+    className: "text-[var(--neg)]",
   },
   idea: {
     icon: LightbulbIcon,
-    className: "text-amber-700 dark:text-amber-400",
+    className: "text-[var(--sun)]",
   },
   good: {
     icon: CircleCheckIcon,
-    className: "text-emerald-700 dark:text-emerald-400",
+    className: "text-[var(--pos)]",
   },
 };
 
@@ -69,24 +69,29 @@ export function ListeningSummaryCard({ demo }: ListeningSummaryCardProps) {
   }
 
   return (
-    <Card>
+    <Card className="border-0 bg-[#0B2545] text-[#E6F0FA]">
       <CardHeader>
-        <CardTitle>Tóm tắt kỳ này</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-white">Tóm tắt kỳ này</CardTitle>
+        <CardDescription className="text-[#A7BDD4]">
           Việc nên làm với dữ liệu demo. Hỏi đáp bên dưới cũng là câu trả lời mẫu.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="max-w-4xl text-sm leading-relaxed">{demo.brief}</p>
+        <p className="max-w-4xl text-sm leading-relaxed text-[#CFE3F7]">
+          {demo.brief}
+        </p>
         <div className="grid gap-3 lg:grid-cols-3">
           {demo.insights.map((insight) => {
             const tone = TONE_STYLE[insight.tone];
             const Icon = tone.icon;
 
             return (
-              <div key={insight.text} className="flex gap-2.5 rounded-lg bg-muted/70 px-3 py-2.5">
+              <div
+                key={insight.text}
+                className="flex gap-2.5 rounded-lg bg-white/8 px-3 py-2.5"
+              >
                 <Icon className={`mt-0.5 size-4 shrink-0 ${tone.className}`} />
-                <p className="text-sm leading-snug text-muted-foreground">
+                <p className="text-sm leading-snug text-[#CFE3F7]">
                   {insight.text}
                 </p>
               </div>
@@ -105,8 +110,14 @@ export function ListeningSummaryCard({ demo }: ListeningSummaryCardProps) {
             onChange={(event) => setQuestion(event.target.value)}
             placeholder="Hỏi AI về dữ liệu của bạn..."
             aria-label="Hỏi AI về dữ liệu của bạn"
+            className="border-white/15 bg-white/8 text-white placeholder:text-[#8FB2D6]"
           />
-          <Button type="submit">Hỏi</Button>
+          <Button
+            type="submit"
+            className="bg-[var(--sun)] text-[#4D3400] shadow-none hover:bg-[var(--sun)]/90"
+          >
+            Hỏi
+          </Button>
         </form>
         <div className="flex flex-wrap gap-2">
           {demo.prompts.map((prompt) => (
@@ -115,6 +126,7 @@ export function ListeningSummaryCard({ demo }: ListeningSummaryCardProps) {
               type="button"
               variant="outline"
               size="sm"
+              className="border-white/15 bg-white/8 text-[#E6F0FA] hover:bg-white/12 hover:text-white"
               onClick={() => ask(prompt.label)}
             >
               {prompt.label}
@@ -122,7 +134,7 @@ export function ListeningSummaryCard({ demo }: ListeningSummaryCardProps) {
           ))}
         </div>
         {answer ? (
-          <p className="text-sm leading-relaxed">{answer}</p>
+          <p className="text-sm leading-relaxed text-[#CFE3F7]">{answer}</p>
         ) : null}
       </CardContent>
     </Card>

@@ -188,13 +188,13 @@ Tenant container for members, data sources, documents, and projects.
 
 Scoring prompts (`score_text_part`, `score_media_part`, `score_comment_stances`) are built from `data_collection_scope`. Term prompts (`classify_terms`, `propose_term`) also use that scope plus the project's `term_language` and `term_criteria`.
 
-A default workspace is created for each user on first sign-in. Creating a workspace also creates one default project with the same name.
+A default workspace is created for each user on first sign-in. Creating a workspace seeds five demo listening projects (brand health, campaign, crisis, competitors, and customer feedback).
 
 ---
 
 ### `projects`
 
-Social listening scope inside a workspace: one brand, campaign, or similar. Terms belong to a project. Reports will be added later.
+Social listening scope inside a workspace: one brand, campaign, or similar listening case. Terms belong to a project. Reports will be added later.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -205,6 +205,7 @@ Social listening scope inside a workspace: one brand, campaign, or similar. Term
 | auto_create_terms | boolean | NO | `true` | When true, LLM-proposed terms that match no existing term in this project are created |
 | term_language | text | NO | `auto` | Language for generated term names/descriptions (`term_language` enum) |
 | term_criteria | text | NO | `''` | Multiline rules for new term creation in this project |
+| case | text | NO | `general` | Listening case: `general`, `campaign`, `crisis`, `reputation`, `competitor`, `trend`, `market`, `cx`, `care`, `lead`, `kol`, `employer` |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 

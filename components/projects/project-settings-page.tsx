@@ -3,18 +3,17 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Field,
   FieldContent,
@@ -30,10 +29,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
+import { AquaProjectSettings } from "@/components/projects/demo/demo-settings";
 import {
   projectsQueryKey,
   useProjectRouteContext,
 } from "@/hooks/use-project-route-context";
+import { getProjectNavHref } from "@/lib/dashboard/nav-items";
 import { updateProjectSchema } from "@/lib/projects/schema";
 import type { ProjectListItem } from "@/lib/projects/types";
 import { projectFetch } from "@/lib/projects/utils/project-fetch";
@@ -62,11 +63,10 @@ export function ProjectSettingsPage({
   workspaceIndexParam,
   projectIndexParam,
 }: ProjectSettingsPageProps) {
-  const { workspace, project } = useProjectRouteContext(
-    workspaceIndexParam,
-    projectIndexParam,
-  );
+  const { workspace, project, workspaceIndex, projectIndex } =
+    useProjectRouteContext(workspaceIndexParam, projectIndexParam);
   const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
   const form = useForm<ProjectSettingsValues>({
     resolver: zodResolver(updateProjectSchema),
     defaultValues: {
@@ -94,7 +94,7 @@ export function ProjectSettingsPage({
 
   async function onSubmit(values: ProjectSettingsValues) {
     if (!workspace || !project) {
-      return;
+      return false;
     }
 
     const res = await projectFetch(workspace.id, project.id, `/api/projects/${project.id}`, {
@@ -112,7 +112,7 @@ export function ProjectSettingsPage({
         title: data.message ?? data.error ?? "Could not save project.",
         type: "error",
       });
-      return;
+      return false;
     }
 
     toast.add({
@@ -122,22 +122,35 @@ export function ProjectSettingsPage({
     await queryClient.invalidateQueries({
       queryKey: projectsQueryKey(workspace.id),
     });
+    return true;
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-8">
-      <Card>
-        <form
-          className="flex flex-col gap-(--card-spacing)"
-          onSubmit={form.handleSubmit(onSubmit)}
-        >
-          <CardHeader>
-            <CardTitle>Project settings</CardTitle>
-            <CardDescription>
-              Name this listening project and set how new terms are created.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+    <>
+      <AquaProjectSettings
+        projectName={project.name}
+        projectDescription={project.description}
+        projectCase={project.case}
+        settingsHref={getProjectNavHref(workspaceIndex, projectIndex, "settings")}
+        onEdit={() => setEditing(true)}
+      />
+      <Dialog open={editing} onOpenChange={setEditing}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={form.handleSubmit(async (values) => {
+              const saved = await onSubmit(values);
+              if (saved) {
+                setEditing(false);
+              }
+            })}
+          >
+            <DialogHeader>
+              <DialogTitle>Chỉnh sửa dự án</DialogTitle>
+              <DialogDescription>
+                Tên, mô tả và quy tắc tạo term của dự án này.
+              </DialogDescription>
+            </DialogHeader>
             <FieldGroup>
               <Field data-invalid={!!form.formState.errors.name || undefined}>
                 <FieldLabel htmlFor="project-settings-name">Name</FieldLabel>
@@ -238,23 +251,23 @@ export function ProjectSettingsPage({
                 </>
               ) : null}
             </FieldGroup>
-          </CardContent>
-          {canEdit ? (
-            <CardFooter className="justify-end">
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? (
-                  <>
-                    <Loader2Icon className="animate-spin" data-icon="inline-start" />
-                    Saving…
-                  </>
-                ) : (
-                  "Save"
-                )}
-              </Button>
-            </CardFooter>
-          ) : null}
-        </form>
-      </Card>
-    </div>
+            {canEdit ? (
+              <div className="flex justify-end">
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? (
+                    <>
+                      <Loader2Icon className="animate-spin" data-icon="inline-start" />
+                      Saving…
+                    </>
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
+              </div>
+            ) : null}
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -2,6 +2,7 @@ import type { z } from "zod";
 
 import type { TermLanguage } from "@/lib/workspaces/constants";
 
+import type { ProjectCase } from "./project-cases";
 import type { createProjectSchema, updateProjectSchema } from "./schema";
 
 export type ProjectListItem = {
@@ -9,6 +10,7 @@ export type ProjectListItem = {
   workspaceId: string;
   name: string;
   description: string | null;
+  case: ProjectCase;
   autoCreateTerms: boolean;
   termLanguage: TermLanguage;
   termCriteria: string;

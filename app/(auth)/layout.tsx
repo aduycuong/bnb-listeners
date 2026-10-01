@@ -13,7 +13,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-50 px-4 dark:bg-neutral-900">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       <AuthBrandHeader />
       <div className="mt-8 w-full max-w-100">{children}</div>
     </div>

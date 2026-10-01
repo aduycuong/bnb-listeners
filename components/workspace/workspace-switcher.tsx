@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ChevronsUpDownIcon, LayoutGridIcon, PlusIcon } from "lucide-react";
+import { ChevronDownIcon, PlusIcon } from "lucide-react";
+import { useT } from "next-i18next/client";
 
 import { CreateWorkspaceDialog } from "@/components/workspace/create-workspace-dialog";
 import { Button } from "@/components/ui/button";
@@ -15,14 +16,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SidebarMenu, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import {
-  sidebarNavMenuButtonClassName,
+  sidebarWorkspaceMarkClassName,
   sidebarWorkspaceMenuButtonClassName,
 } from "@/lib/dashboard/sidebar-menu-styles";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
@@ -34,12 +30,23 @@ type WorkspaceSwitcherProps = {
   workspaceIndex: number;
 };
 
+function workspaceInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length >= 2) {
+    return `${parts[0]!.charAt(0)}${parts[1]!.charAt(0)}`.toUpperCase();
+  }
+
+  return name.slice(0, 2).toUpperCase() || "?";
+}
+
 export function WorkspaceSwitcher({
   activeWorkspace,
   workspaces,
   workspaceIndex,
 }: WorkspaceSwitcherProps) {
   const router = useRouter();
+  const { t } = useT("dashboard");
   const { isMobile } = useSidebar();
   const [open, setOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -50,24 +57,24 @@ export function WorkspaceSwitcher({
         <SidebarMenuItem>
           <DropdownMenu open={open} onOpenChange={setOpen}>
             <DropdownMenuTrigger
-              render={
-                <SidebarMenuButton
-                  tooltip={activeWorkspace.name}
-                  className={cn(
-                    sidebarNavMenuButtonClassName,
-                    sidebarWorkspaceMenuButtonClassName,
-                  )}
-                />
-              }
+              className={sidebarWorkspaceMenuButtonClassName}
+              aria-label={activeWorkspace.name}
             >
-              <LayoutGridIcon />
-              <span className="min-w-0 flex-1 truncate font-normal">
-                {activeWorkspace.name}
+              <span className={sidebarWorkspaceMarkClassName}>
+                {workspaceInitials(activeWorkspace.name)}
               </span>
-              <ChevronsUpDownIcon className="ml-auto size-3.5 shrink-0 opacity-70" />
+              <span className="min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="block text-[12px] font-medium text-sidebar-muted">
+                  {t("nav.workspace")}
+                </span>
+                <span className="block truncate text-[13.5px] font-semibold">
+                  {activeWorkspace.name}
+                </span>
+              </span>
+              <ChevronDownIcon className="ml-auto size-4 shrink-0 opacity-80 group-data-[collapsible=icon]:hidden" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="min-w-56 rounded-lg"
+              className="min-w-56"
               align="start"
               side={isMobile ? "bottom" : "right"}
               sideOffset={4}

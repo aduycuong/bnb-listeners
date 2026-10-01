@@ -50,7 +50,6 @@ export async function createDefaultWorkspaceForUser(params: {
 
   await createDefaultProject({
     workspaceId: workspace.id,
-    name,
   });
 
   return { id: workspace.id, created: true };

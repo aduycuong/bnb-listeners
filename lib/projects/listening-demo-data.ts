@@ -141,10 +141,10 @@ const PLACE_WEIGHTS = [
 ] as const;
 
 const EMOTION_COLOR = {
-  anger: "oklch(0.62 0.17 25)",
-  worry: "oklch(0.74 0.12 75)",
-  account: "oklch(0.62 0.03 250)",
-  praise: "oklch(0.62 0.13 155)",
+  anger: "#FF6B6B",
+  worry: "#FFC93C",
+  account: "#BBD3E8",
+  praise: "#00C9A7",
 } as const;
 
 const PERIOD_STORY: Record<

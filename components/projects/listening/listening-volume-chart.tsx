@@ -42,7 +42,7 @@ const chartConfig = {
   },
   competitors: {
     label: "Đối thủ trung bình",
-    color: "oklch(0.72 0.06 230)",
+    color: "#5CC8FF",
   },
 } satisfies ChartConfig;
 
@@ -101,11 +101,11 @@ export function ListeningVolumeChart({ demo }: ListeningVolumeChartProps) {
             </span>
           ))}
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-px w-4 border-t border-dashed border-[oklch(0.72_0.06_230)]" />
+            <span className="h-px w-4 border-t border-dashed border-[#5CC8FF]" />
             Đối thủ trung bình
           </span>
         </div>
-        <ChartContainer config={chartConfig} className="aspect-auto h-72 w-full">
+        <ChartContainer config={chartConfig} className="aspect-auto h-[300px] w-full">
           <ComposedChart data={demo.volume} margin={{ left: 0, right: 8, top: 28 }}>
             <CartesianGrid vertical={false} />
             <XAxis
