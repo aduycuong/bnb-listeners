@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ChevronDownIcon, PlusIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 import { useT } from "next-i18next/client";
 
 import { CreateWorkspaceDialog } from "@/components/workspace/create-workspace-dialog";
