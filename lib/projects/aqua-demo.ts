@@ -119,6 +119,17 @@ const raw = rawJson as unknown as {
   EMOS: string[];
   AUTHORS: [string, string, string, number, string, AquaSentiment, string][];
   SOURCES: [string, string, number, string][];
+  AREAS: {
+    n: string;
+    c: number;
+    r: number;
+    h?: number;
+    m: number;
+    g: number;
+    s: number;
+    p: number;
+    t: string;
+  }[];
   CASES: Record<AquaCaseId, RawCase>;
 };
 
@@ -145,7 +156,32 @@ export const AQUA_SOURCES = raw.SOURCES.map((row) => ({
   reach: row[3],
 }));
 
-export const AQUA_BRAND_NAMES = ["Aqua", "Breeze", "Nami", "Coolo"] as const;
+export type AquaArea = {
+  name: string;
+  column: number;
+  row: number;
+  rowSpan: number;
+  mentions: number;
+  growth: number;
+  nss: number;
+  price: number;
+  topic: string;
+};
+
+export const AQUA_AREAS: AquaArea[] = raw.AREAS.map((area) => ({
+  name: area.n,
+  column: area.c,
+  row: area.r,
+  rowSpan: area.h ?? 1,
+  mentions: area.m,
+  growth: area.g,
+  nss: area.s,
+  price: area.p,
+  topic: area.t,
+}));
+
+export const AQUA_BRAND_NAMES = ["Phát Đạt", "Becamex IDC", "Kim Oanh Group", "Bcons"] as const;
+export const AQUA_BRAND_SHARE = [31, 29, 22, 18] as const;
 export const AQUA_BRAND_COLORS = ["#0091FF", "#FFC93C", "#00C9A7", "#FF6B6B"] as const;
 
 export const AQUA_SENTIMENT_LABEL: Record<AquaSentiment, string> = {
@@ -160,30 +196,14 @@ export const AQUA_ALERT_LABEL: Record<AquaAlertLevel, string> = {
   low: "Thấp",
 };
 
-const CAMPAIGN_ACTUAL = [21540, 3812, 8400000, 960000];
-const CAMPAIGN_TARGET = [25000, 5000, 10000000, 1000000];
-
 function mapCase(id: AquaCaseId, item: RawCase): AquaCase {
-  const kpis = item.kpis.map((row, index) => {
-    if (id !== "campaign" || index > 3) {
-      return {
-        label: row[0],
-        value: row[1],
-        delta: row[2],
-        good: row[3] === 1,
-        tip: row[4],
-      };
-    }
-
-    const percent = Math.round((CAMPAIGN_ACTUAL[index] / CAMPAIGN_TARGET[index]) * 100);
-    return {
-      label: row[0],
-      value: row[1],
-      delta: `${percent}% mục tiêu`,
-      good: percent >= 80,
-      tip: row[4],
-    };
-  });
+  const kpis = item.kpis.map((row) => ({
+    label: row[0],
+    value: row[1],
+    delta: row[2],
+    good: row[3] === 1,
+    tip: row[4],
+  }));
 
   return {
     id,
@@ -270,7 +290,7 @@ export function formatShort(value: number) {
 }
 
 export function kpiHasOwnCompare(delta: string) {
-  return /mục tiêu|Hạng|TB|chuẩn|so với|Mới|nhiệt|Chưa/.test(delta);
+  return /mục tiêu|Hạng|TB|chuẩn|so với|Mới|nhiệt|Chưa|nghi vấn|sàn|ngày/.test(delta);
 }
 
 export function sum(values: number[]) {
@@ -305,19 +325,6 @@ export function formatSigned(value: number, suffix = "") {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value}${suffix}`;
 }
-
-export const CAMPAIGN_PHASE_LABELS = [
-  "Teaser (18/9–21/9)",
-  "Kích hoạt (22/9–26/9)",
-  "Lan tỏa (27/9–10/10)",
-];
-
-export const CAMPAIGN_PROGRESS = [
-  { label: "Lượt đề cập", actual: 21540, target: 25000 },
-  { label: "Nội dung UGC", actual: 3812, target: 5000 },
-  { label: "Tiếp cận", actual: 8400000, target: 10000000 },
-  { label: "Tương tác", actual: 960000, target: 1000000 },
-] as const;
 
 export function channelSentiment(caseId: AquaCaseId) {
   const negBase = caseId === "crisis" ? 38 : caseId === "cx" ? 18 : 8;
@@ -372,16 +379,10 @@ export function discussionHeat(caseId: string) {
 export function crisisVelocity() {
   return Array.from({ length: 48 }, (_, hour) => {
     const raw =
-      hour < 9
-        ? 3 + (hour % 3)
-        : hour < 14
-          ? 10 + (hour - 9) * 8
-          : hour < 23
-            ? 50 + (hour - 14) * 15
-            : hour < 30
-              ? 186 - (hour - 23) * 9
-              : Math.max(74, 123 - (hour - 30) * 3.5);
-    const stamp = new Date(2026, 8, 29, 12 + hour);
+      hour <= 16
+        ? 6 + 94 * (hour / 16) ** 2
+        : Math.max(38, 100 - (hour - 16) * 2.4);
+    const stamp = new Date(2026, 8, 23, 18 + hour);
     return {
       label: `${stamp.getHours()}h`,
       value: Math.round(raw),

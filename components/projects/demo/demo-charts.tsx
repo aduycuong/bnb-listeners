@@ -6,7 +6,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  ComposedChart,
   Legend,
   Line,
   LineChart,
@@ -27,8 +26,8 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import {
+  AQUA_ASPECTS,
   AQUA_BRAND_COLORS,
-  AQUA_BRAND_NAMES,
   AQUA_CHANNEL_COLORS,
   AQUA_CHANNELS,
   AQUA_DAYS,
@@ -70,17 +69,15 @@ export function TrendChart({
   brands: Record<string, number[]> | null;
 }) {
   if (brands) {
+    const names = Object.keys(brands);
     const data = AQUA_DAYS.map((day, index) => ({
       day,
-      Aqua: brands.Aqua[index],
-      Breeze: brands.Breeze[index],
-      Nami: brands.Nami[index],
-      Coolo: brands.Coolo[index],
+      ...Object.fromEntries(names.map((name) => [name, brands[name][index]])),
     }));
     const config = Object.fromEntries(
-      AQUA_BRAND_NAMES.map((name, index) => [
+      names.map((name, index) => [
         name,
-        { label: name, color: AQUA_BRAND_COLORS[index] },
+        { label: name, color: AQUA_BRAND_COLORS[index % AQUA_BRAND_COLORS.length] },
       ]),
     ) satisfies ChartConfig;
 
@@ -92,12 +89,12 @@ export function TrendChart({
           <YAxis tickLine={false} axisLine={false} width={40} />
           <ChartTooltip content={<ChartTooltipContent />} />
           <Legend verticalAlign="top" align="right" iconType="circle" />
-          {AQUA_BRAND_NAMES.map((name, index) => (
+          {names.map((name, index) => (
             <Line
               key={name}
               type="monotone"
               dataKey={name}
-              stroke={AQUA_BRAND_COLORS[index]}
+              stroke={AQUA_BRAND_COLORS[index % AQUA_BRAND_COLORS.length]}
               strokeWidth={index === 0 ? 3 : 2}
               dot={false}
             />
@@ -243,15 +240,14 @@ export function AspectChart({
 }: {
   aspects: { positive: number; negative: number }[];
 }) {
-  const labels = ["Giá", "Chất lượng", "Bao bì", "Giao hàng", "CSKH", "Khuyến mãi"];
-  const data = labels.map((name, index) => ({
+  const data = AQUA_ASPECTS.map((name, index) => ({
     name,
     positive: aspects[index]?.positive ?? 0,
     negative: -(aspects[index]?.negative ?? 0),
   }));
 
   return (
-    <ChartBox height={260} config={sentimentConfig}>
+    <ChartBox height={340} config={sentimentConfig}>
       <BarChart data={data} layout="vertical" stackOffset="sign" margin={{ left: 8 }}>
         <CartesianGrid horizontal={false} stroke="var(--border)" />
         <XAxis
@@ -261,7 +257,7 @@ export function AspectChart({
           tickLine={false}
           axisLine={false}
         />
-        <YAxis type="category" dataKey="name" width={84} tickLine={false} axisLine={false} />
+        <YAxis type="category" dataKey="name" width={148} tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend verticalAlign="top" align="right" iconType="circle" />
         <Bar dataKey="negative" stackId="aspect" fill="var(--neg)" radius={4} />
@@ -351,8 +347,8 @@ export function GaugeChart() {
         <PieChart>
           <Pie
             data={[
-              { name: "score", value: 74 },
-              { name: "rest", value: 26 },
+              { name: "score", value: 60 },
+              { name: "rest", value: 40 },
             ]}
             dataKey="value"
             startAngle={180}
@@ -368,8 +364,8 @@ export function GaugeChart() {
         </PieChart>
       </ChartBox>
       <div className="pointer-events-none absolute inset-x-0 bottom-1 text-center">
-        <b className="block text-[34px] leading-none font-extrabold tracking-tight">74</b>
-        <small className="text-xs text-muted-foreground">/100 · tốt</small>
+        <b className="block text-[34px] leading-none font-extrabold tracking-tight">60</b>
+        <small className="text-xs text-muted-foreground">/100 · khá</small>
       </div>
     </div>
   );
@@ -378,28 +374,28 @@ export function GaugeChart() {
 export function HealthLineChart() {
   const data = ["T5", "T6", "T7", "T8", "T9", "T10"].map((month, index) => ({
     month,
-    Aqua: [64, 66, 69, 68, 71, 74][index],
-    industry: [58, 59, 60, 60, 61, 62][index],
+    developer: [52, 54, 57, 58, 59, 60][index],
+    peers: [55, 55, 56, 56, 57, 57][index],
   }));
 
   return (
     <ChartBox
       height={220}
       config={{
-        Aqua: { label: "Aqua", color: "var(--primary)" },
-        industry: { label: "TB ngành", color: "var(--muted-foreground)" },
+        developer: { label: "Phát Đạt", color: "var(--primary)" },
+        peers: { label: "TB chủ đầu tư cùng phân khúc", color: "var(--muted-foreground)" },
       }}
     >
       <LineChart data={data}>
         <CartesianGrid vertical={false} stroke="var(--border)" />
         <XAxis dataKey="month" tickLine={false} axisLine={false} />
-        <YAxis domain={[50, 80]} tickLine={false} axisLine={false} width={32} />
+        <YAxis domain={[45, 75]} tickLine={false} axisLine={false} width={32} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend verticalAlign="top" align="right" iconType="circle" />
-        <Line type="monotone" dataKey="Aqua" stroke="var(--primary)" strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="developer" stroke="var(--primary)" strokeWidth={2} dot={{ r: 3 }} />
         <Line
           type="monotone"
-          dataKey="industry"
+          dataKey="peers"
           stroke="var(--muted-foreground)"
           strokeDasharray="5 5"
           strokeWidth={2}
@@ -410,31 +406,120 @@ export function HealthLineChart() {
   );
 }
 
-export function PhaseChart() {
+export function PriceTrendChart() {
+  const months = ["T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10"];
+  const series = [
+    { key: "La Pura", color: "#0091FF", values: [44.8, 45.3, 45.9, 46.4, 47, 47.6, 48.1, 48.6] },
+    { key: "TB trục QL13", color: "#FFC93C", values: [44, 44.2, 44.5, 44.9, 45.2, 45.5, 45.8, 46] },
+    { key: "TB Thuận An", color: "#00C9A7", values: [38.6, 38.9, 39.2, 39.6, 40, 40.3, 40.7, 41] },
+    { key: "Giá khởi điểm", color: "var(--muted-foreground)", values: [46, 46, 46, 46, 46, 46, 46, 46] },
+  ];
+  const data = months.map((month, index) => ({
+    month,
+    ...Object.fromEntries(series.map((item) => [item.key, item.values[index]])),
+  }));
+  const config = Object.fromEntries(
+    series.map((item) => [item.key, { label: item.key, color: item.color }]),
+  ) satisfies ChartConfig;
+
+  return (
+    <ChartBox height={260} config={config}>
+      <LineChart data={data}>
+        <CartesianGrid vertical={false} stroke="var(--border)" />
+        <XAxis dataKey="month" tickLine={false} axisLine={false} />
+        <YAxis domain={[36, 52]} tickLine={false} axisLine={false} width={32} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Legend verticalAlign="top" align="right" iconType="circle" />
+        {series.map((item) => (
+          <Line
+            key={item.key}
+            type="monotone"
+            dataKey={item.key}
+            stroke={item.color}
+            strokeWidth={2}
+            strokeDasharray={item.key === "Giá khởi điểm" ? "6 6" : undefined}
+            dot={item.key === "La Pura" ? { r: 3 } : false}
+          />
+        ))}
+      </LineChart>
+    </ChartBox>
+  );
+}
+
+export function PriceBucketChart() {
   const data = [
-    { name: "Teaser (18/9–21/9)", mentions: 247, nss: 58 },
-    { name: "Kích hoạt (22/9–26/9)", mentions: 2205, nss: 68 },
-    { name: "Lan tỏa (27/9–10/10)", mentions: 1905, nss: 69 },
+    { name: "< 42", value: 18, fill: "#FF6B6B" },
+    { name: "42–46", value: 64, fill: "#5CC8FF" },
+    { name: "46–50", value: 186, fill: "#0091FF" },
+    { name: "50–54", value: 92, fill: "#0091FF" },
+    { name: "> 54", value: 22, fill: "#5CC8FF" },
   ];
 
   return (
-    <ChartBox
-      height={260}
-      config={{
-        mentions: { label: "Đề cập/ngày", color: "var(--primary)" },
-        nss: { label: "NSS", color: "var(--sun)" },
-      }}
-    >
-      <ComposedChart data={data}>
+    <ChartBox height={260} config={{ value: { label: "Số tin", color: "var(--primary)" } }}>
+      <BarChart data={data}>
         <CartesianGrid vertical={false} stroke="var(--border)" />
-        <XAxis dataKey="name" tickLine={false} axisLine={false} interval={0} tick={{ fontSize: 11 }} />
-        <YAxis yAxisId="left" tickLine={false} axisLine={false} width={36} />
-        <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tickLine={false} axisLine={false} width={32} />
+        <XAxis dataKey="name" tickLine={false} axisLine={false} />
+        <YAxis tickLine={false} axisLine={false} width={32} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Bar dataKey="value" radius={4}>
+          {data.map((item) => (
+            <Cell key={item.name} fill={item.fill} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ChartBox>
+  );
+}
+
+export function BuyerIntentChart() {
+  const weeks = ["Tuần 32", "Tuần 33", "Tuần 34", "Tuần 35", "Tuần 36", "Tuần 37", "Tuần 38", "Tuần 39"];
+  const series = [
+    { key: "Muốn mua", color: "#00C9A7", values: [34, 35, 33, 36, 37, 38, 40, 41] },
+    { key: "Đang cân nhắc", color: "#5CC8FF", values: [30, 30, 31, 30, 30, 29, 29, 28] },
+    { key: "Chờ giảm giá", color: "#FFC93C", values: [22, 21, 22, 20, 20, 19, 18, 18] },
+    { key: "Muốn bán", color: "#FF6B6B", values: [14, 14, 14, 14, 13, 14, 13, 13] },
+  ];
+  const data = weeks.map((week, index) => ({
+    week,
+    ...Object.fromEntries(series.map((item) => [item.key, item.values[index]])),
+  }));
+  const config = Object.fromEntries(
+    series.map((item) => [item.key, { label: item.key, color: item.color }]),
+  ) satisfies ChartConfig;
+
+  return (
+    <ChartBox height={260} config={config}>
+      <BarChart data={data}>
+        <CartesianGrid vertical={false} stroke="var(--border)" />
+        <XAxis dataKey="week" tickLine={false} axisLine={false} interval={0} tick={{ fontSize: 11 }} />
+        <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} tickLine={false} axisLine={false} width={36} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend verticalAlign="top" align="right" iconType="circle" />
-        <Bar yAxisId="left" dataKey="mentions" fill="var(--primary)" radius={6} />
-        <Line yAxisId="right" type="monotone" dataKey="nss" stroke="var(--sun)" strokeWidth={2} dot={false} />
-      </ComposedChart>
+        {series.map((item) => (
+          <Bar key={item.key} dataKey={item.key} stackId="intent" fill={item.color} />
+        ))}
+      </BarChart>
+    </ChartBox>
+  );
+}
+
+export function ProjectSentimentChart() {
+  const data = [
+    { name: "Bắc Hà Thanh", value: 48 },
+    { name: "La Pura", value: 41 },
+    { name: "Quy Nhơn Iconic", value: 26 },
+  ];
+
+  return (
+    <ChartBox height={260} config={{ value: { label: "NSS", color: "var(--pos)" } }}>
+      <BarChart data={data} layout="vertical">
+        <CartesianGrid horizontal={false} stroke="var(--border)" />
+        <XAxis type="number" domain={[-40, 80]} tickLine={false} axisLine={false} />
+        <YAxis type="category" dataKey="name" width={120} tickLine={false} axisLine={false} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Bar dataKey="value" fill="var(--pos)" radius={4} />
+      </BarChart>
     </ChartBox>
   );
 }
@@ -455,7 +540,7 @@ export function VelocityChart({
           {points.map((point, index) => (
             <Cell
               key={`${point.label}-${index}`}
-              fill={point.value >= 150 ? "#E5484D" : point.value >= 80 ? "#FF9F43" : "var(--neu)"}
+              fill={point.value >= 80 ? "#FF6B6B" : point.value >= 50 ? "#FFC93C" : "var(--neu)"}
             />
           ))}
         </Bar>
@@ -464,42 +549,14 @@ export function VelocityChart({
   );
 }
 
-export function BrandSentimentChart() {
-  const data = AQUA_BRAND_NAMES.map((name, index) => ({
-    name,
-    positive: [66, 55, 59, 44][index],
-    neutral: [24, 28, 29, 34][index],
-    negative: [10, 17, 12, 22][index],
-  }));
-
-  return (
-    <ChartBox height={220} config={sentimentConfig}>
-      <BarChart data={data} layout="vertical">
-        <CartesianGrid horizontal={false} stroke="var(--border)" />
-        <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} tickLine={false} axisLine={false} />
-        <YAxis type="category" dataKey="name" width={64} tickLine={false} axisLine={false} />
-        <ChartTooltip content={<ChartTooltipContent />} />
-        <Legend verticalAlign="top" align="right" iconType="circle" />
-        <Bar dataKey="positive" stackId="brand" fill="var(--pos)" />
-        <Bar dataKey="neutral" stackId="brand" fill="var(--neu)" />
-        <Bar dataKey="negative" stackId="brand" fill="var(--neg)" />
-      </BarChart>
-    </ChartBox>
-  );
-}
-
 export function RadarAttributeChart() {
-  const labels = ["Giá", "Chất lượng", "Bao bì", "Khuyến mãi", "Phân phối", "Môi trường"];
   const series = [
-    { key: "Aqua", color: "#0091FF", values: [72, 80, 86, 58, 70, 66] },
-    { key: "Breeze", color: "#FFC93C", values: [78, 62, 74, 88, 64, 40] },
-    { key: "Nami", color: "#00C9A7", values: [60, 76, 58, 52, 56, 48] },
+    { key: "La Pura", color: "#0091FF", values: [30, 40, 48, 77, 76, 24, 30, 12] },
+    { key: "TB cùng phân khúc", color: "#FFC93C", values: [26, 22, 30, 60, 58, 30, 28, 8] },
   ];
-  const data = labels.map((label, index) => ({
+  const data = AQUA_ASPECTS.map((label, index) => ({
     label,
-    Aqua: series[0].values[index],
-    Breeze: series[1].values[index],
-    Nami: series[2].values[index],
+    ...Object.fromEntries(series.map((item) => [item.key, item.values[index]])),
   }));
   const config = Object.fromEntries(
     series.map((item) => [item.key, { label: item.key, color: item.color }]),
@@ -509,7 +566,7 @@ export function RadarAttributeChart() {
     <ChartBox height={300} config={config}>
       <RadarChart data={data}>
         <PolarGrid stroke="var(--border)" />
-        <PolarAngleAxis dataKey="label" tick={{ fontSize: 12 }} />
+        <PolarAngleAxis dataKey="label" tick={{ fontSize: 11 }} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend verticalAlign="bottom" iconType="circle" />
         {series.map((item) => (
@@ -518,7 +575,7 @@ export function RadarAttributeChart() {
             dataKey={item.key}
             stroke={item.color}
             fill={item.color}
-            fillOpacity={0.13}
+            fillOpacity={0.15}
           />
         ))}
       </RadarChart>

@@ -71,14 +71,14 @@
     "employer": "Employer brand"
   },
   "caseNav": {
-    "general": "Brand health",
-    "campaign": "Campaign performance",
+    "general": "Reputation index",
+    "campaign": "Project detail",
     "crisis": "Crisis timeline",
     "reputation": "Leadership & ESG reputation",
-    "competitor": "Competitor comparison",
+    "competitor": "Area map",
     "trend": "Trends & insight",
     "market": "New market assessment",
-    "cx": "Customer experience",
+    "cx": "Broker violations",
     "care": "Social customer care",
     "lead": "Lead discovery",
     "kol": "KOL discovery",

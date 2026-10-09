@@ -27,37 +27,76 @@ export type AquaProjectProfile = {
 
 const CHANNELS = [
   "Facebook",
+  "Group Facebook",
   "TikTok",
   "YouTube",
   "Báo điện tử",
+  "Trang rao vặt",
   "Diễn đàn",
-  "Instagram",
-  "Sàn TMĐT",
 ];
 
-const ALL_CHANNELS = [...CHANNELS, "App Store", "Google Play", "Google Maps"];
+const LISTING_CHANNELS = ["Facebook", "Group Facebook", "TikTok", "Trang rao vặt"];
 
 const DATASETS = {
-  t1: {
-    name: "Thương hiệu Aqua",
+  brand: {
+    name: "Thương hiệu Phát Đạt",
     query:
-      '("Aqua" OR "nước Aqua" OR "AquaVN") AND ("nước suối" OR "nước đóng chai" OR "chai" OR "thùng") NOT ("Aquaman" OR "Aquarium" OR "Aqua City")',
+      '("Phát Đạt" OR "PDR" OR "Bất động sản Phát Đạt") NOT ("Hòa Phát" OR "Tiến Phát Đạt")',
   },
-  t2: {
-    name: "Đối thủ trực tiếp",
+  lapura: {
+    name: "Dự án La Pura",
     query:
-      '("Breeze" OR "Nami" OR "Coolo") AND ("nước suối" OR "nước đóng chai" OR "nước khoáng") NOT ("Nami (One Piece)" OR "gió breeze")',
+      '("La Pura" OR "Lapura" OR "Astral City" OR "Zenia" OR "Lusso Saigon" OR "Lusso D\'Arte") NOT ("nước hoa La Pura" OR "Pura Vida")',
   },
-  t3: {
-    name: "Ngành nước giải khát",
+  market: {
+    name: "Thị trường căn hộ Đông Bắc TP.HCM",
     query:
-      '("nước suối" OR "nước khoáng" OR "nước đóng chai" OR "nước điện giải") NOT ("quảng cáo" OR "tuyển dụng")',
+      '("căn hộ Thuận An" OR "căn hộ Bình Dương" OR "căn hộ QL13" OR "giá chung cư Dĩ An" OR "lãi suất vay mua nhà") NOT ("tuyển dụng" OR "phòng trọ")',
   },
-  t4: {
-    name: "Đánh giá sàn TMĐT & ứng dụng",
-    query: '("Aqua" OR "app Aqua")',
+  peers: {
+    name: "Chủ đầu tư cùng khu vực",
+    query: '("Becamex IDC" OR "Kim Oanh Group" OR "Bcons")',
+  },
+  listings: {
+    name: "Tin rao & quảng cáo của sàn",
+    query:
+      '("La Pura" OR "Zenia" OR "Lusso Saigon" OR "Lusso D\'Arte") AND ("bán" OR "giá" OR "chiết khấu" OR "suất ngoại giao" OR "căn")',
   },
 } as const;
+
+export const AQUA_ALERT_RULES: Record<AquaCaseId, string[][]> = {
+  general: [
+    ["Tỷ lệ tiêu cực vượt", "20%", "Email, Zalo"],
+    ["Báo chí nhắc tên kèm từ nhạy cảm", "1 bài", "Email, Zalo"],
+    ["Thảo luận về tài chính, trái phiếu tăng", "30% trong 24 giờ", "Email, Zalo"],
+    ["Bài lan truyền mạnh", "500 lượt chia sẻ", "Email, Zalo"],
+  ],
+  campaign: [
+    ["Tin rao lệch giá tham chiếu quá", "15%", "Email, Zalo"],
+    ["Tiêu cực về pháp lý, tiến độ vượt", "30%", "Email, Zalo"],
+    ["Câu hỏi của người mua tăng", "30% trong tuần", "Email, Zalo"],
+    ["Video review đạt", "100.000 lượt xem", "Email, Zalo"],
+  ],
+  competitor: [
+    ["Khu vực tăng thảo luận", "30% trong tuần", "Email, Zalo"],
+    ["Tin chưa kiểm chứng về quy hoạch lan trên", "10 group", "Email, Zalo"],
+    ["Từ khóa cắt lỗ, bán gấp tăng", "20%", "Email, Zalo"],
+    ["Lo ngại lãi suất vượt", "30%", "Email, Zalo"],
+  ],
+  cx: [
+    ["Phát hiện vi phạm mới, từ", "1 tin", "Email"],
+    ["Một sàn vượt", "10 vi phạm/tháng", "Email"],
+    ["Vi phạm chưa khắc phục sau", "3 ngày", "Email"],
+    ["Tin dùng cụm từ cấm, từ", "1 tin", "Email"],
+  ],
+  crisis: [
+    ["Tiêu cực vượt ngưỡng cấp 2", "40 bài/giờ", "Email, Zalo, SMS"],
+    ["Tiêu cực vượt ngưỡng cấp 3", "120 bài/giờ", "Email, Zalo, SMS"],
+    ["Báo chí đưa tin, từ", "1 bài", "Email, Zalo, SMS"],
+    ["Luận điểm mới chiếm trên", "10% thảo luận", "Email, Zalo, SMS"],
+    ["Chưa phản hồi sau", "4 giờ", "Email, Zalo, SMS"],
+  ],
+};
 
 function tags(values: string[], excluded = false): AquaReviewValue {
   return {
@@ -84,6 +123,7 @@ function datasets(ids: (keyof typeof DATASETS)[]): AquaReviewValue {
 function infoRows(input: {
   name: string;
   desc: string;
+  brand: string;
   owner: string;
   mode: string;
   start: string;
@@ -92,7 +132,7 @@ function infoRows(input: {
   const rows: AquaReviewRow[] = [
     { label: "Tên dự án", value: text(input.name) },
     { label: "Mô tả", value: text(input.desc) },
-    { label: "Thương hiệu chính", value: text("Aqua") },
+    { label: "Thương hiệu, dự án chính", value: text(input.brand) },
     { label: "Người phụ trách", value: text(input.owner) },
     { label: "Thời gian", value: text(input.mode) },
     { label: "Từ ngày", value: text(input.start) },
@@ -117,7 +157,7 @@ function filterRows(input: {
     { label: "Loại trừ thêm", value: text("") },
     { label: "Kênh", value: tags(input.channels) },
     { label: "Ngôn ngữ", value: tags(["Tiếng Việt"]) },
-    { label: "Khu vực", value: text("Toàn quốc") },
+    { label: "Khu vực", value: text("TP.HCM và vùng lân cận") },
   ];
 }
 
@@ -141,17 +181,18 @@ export const AQUA_PROFILES: Record<AquaCaseId, AquaProjectProfile> = {
   general: {
     owner: "Lan Hương (bạn)",
     modeLabel: "Liên tục",
-    datasets: ["Thương hiệu Aqua", "Đối thủ trực tiếp"],
+    datasets: ["Thương hiệu Phát Đạt", "Chủ đầu tư cùng khu vực"],
     sections: [
       {
         title: "Kiểu case",
-        rows: [{ label: "Kiểu case", value: text("🧭 Sức khỏe thương hiệu") }],
+        rows: [{ label: "Kiểu case", value: text("🏢 Uy tín chủ đầu tư") }],
       },
       {
         title: "Thông tin chung",
         rows: infoRows({
-          name: "Sức khỏe thương hiệu Aqua",
-          desc: "Theo dõi liên tục sức khỏe thương hiệu Aqua trên mọi kênh, báo cáo hằng tuần cho phòng Marketing.",
+          name: "Uy tín Phát Đạt (PDR)",
+          desc: "Theo dõi uy tín chủ đầu tư và cổ phiếu PDR, báo cáo hằng tháng cho ban lãnh đạo và IR.",
+          brand: "Phát Đạt",
           owner: "Lan Hương (bạn)",
           mode: "Liên tục, không có ngày kết thúc",
           start: "01/01/2026",
@@ -160,132 +201,298 @@ export const AQUA_PROFILES: Record<AquaCaseId, AquaProjectProfile> = {
       {
         title: "Dữ liệu",
         rows: [
-          { label: "Bộ dữ liệu", value: datasets(["t1", "t2"]) },
+          { label: "Bộ dữ liệu", value: datasets(["brand", "peers"]) },
           ...filterRows({ channels: CHANNELS }),
         ],
       },
       {
-        title: "Cấu hình riêng: Sức khỏe thương hiệu",
+        title: "Cấu hình riêng: Uy tín chủ đầu tư",
         rows: [
           {
-            label: "Thương hiệu dùng để tính Share of Voice",
-            value: tags(["Breeze", "Nami", "Coolo"]),
+            label: "Chủ đầu tư dùng để tính Share of Voice",
+            value: tags(["Becamex IDC", "Kim Oanh Group", "Bcons"]),
           },
           {
-            label: "Thuộc tính thương hiệu cần đo",
+            label: "Trụ cột uy tín",
             value: tags([
-              "Tươi mát",
-              "Giá hợp lý",
-              "Tiện lợi",
-              "Chất lượng ổn định",
-              "Thân thiện môi trường",
+              "Pháp lý minh bạch",
+              "Tiến độ cam kết",
+              "Năng lực tài chính",
+              "Chất lượng sản phẩm",
             ]),
           },
-          { label: "Chu kỳ so sánh chỉ số sức khỏe", value: text("Theo tháng") },
+          {
+            label: "Dự án trọng điểm",
+            value: tags(["La Pura", "Quy Nhơn Iconic", "Bắc Hà Thanh"]),
+          },
+          { label: "Chu kỳ so sánh chỉ số uy tín", value: text("Theo tháng") },
         ],
       },
       {
         title: "Cảnh báo & chia sẻ",
         rows: shareRows({
           rules: [
-            "Đề cập tăng đột biến: 50% trong 1 giờ",
-            "Tỷ lệ tiêu cực vượt: 25%",
+            "Tỷ lệ tiêu cực vượt: 20%",
+            "Báo chí nhắc tên kèm từ nhạy cảm, từ: 1 bài",
+            "Thảo luận về tài chính, trái phiếu tăng: 30% trong 24 giờ",
             "Bài lan truyền mạnh: 500 lượt chia sẻ",
-            "Báo chí nhắc tên, từ: 1 bài",
           ],
           via: ["Email", "Zalo"],
-          to: ["lanhuong@aqua.vn", "marketing@aqua.vn"],
-          digest: "Thứ Hai hằng tuần, 8:00",
+          to: ["lanhuong@demo-phatdat.vn", "pr@demo-phatdat.vn"],
+          digest: "Ngày 1 hằng tháng",
           members: [
-            "lanhuong@aqua.vn · Quản trị",
-            "minhtuan@aqua.vn · Chỉ xem",
+            "lanhuong@demo-phatdat.vn · Quản trị",
+            "ir@demo-phatdat.vn · Chỉ xem",
           ],
         }),
       },
     ],
   },
   campaign: {
-    owner: "Thu Trang",
-    modeLabel: "18/09/2026 – 10/10/2026",
-    datasets: ["Thương hiệu Aqua"],
+    owner: "Quốc Bảo",
+    modeLabel: "Liên tục",
+    datasets: ["Dự án La Pura"],
     sections: [
       {
         title: "Kiểu case",
-        rows: [{ label: "Kiểu case", value: text("🚀 Đo lường chiến dịch") }],
+        rows: [{ label: "Kiểu case", value: text("🏙️ Theo dõi dự án") }],
       },
       {
         title: "Thông tin chung",
         rows: infoRows({
-          name: "Chiến dịch #SongXanhCungAqua",
-          desc: "Đổi vỏ chai lấy cây xanh tại 24 điểm ở TP.HCM.",
-          owner: "Thu Trang",
-          mode: "Có thời hạn",
-          start: "18/09/2026",
-          end: "10/10/2026",
+          name: "Dự án La Pura",
+          desc: "La Pura (tên cũ Astral City), mặt tiền QL13, Thuận An: 8 tháp 40 tầng, gần 5.000 sản phẩm. Phân khu Zenia dự kiến bàn giao 12/2026.",
+          brand: "La Pura",
+          owner: "Quốc Bảo",
+          mode: "Liên tục, không có ngày kết thúc",
+          start: "01/04/2025",
         }),
       },
       {
         title: "Dữ liệu",
         rows: [
-          { label: "Bộ dữ liệu", value: datasets(["t1"]) },
-          ...filterRows({
-            include: ["#SongXanhCungAqua", "đổi vỏ chai", "Sống Xanh Cùng Aqua"],
-            channels: CHANNELS,
-          }),
+          { label: "Bộ dữ liệu", value: datasets(["lapura"]) },
+          ...filterRows({ channels: CHANNELS }),
         ],
       },
       {
-        title: "Cấu hình riêng: Đo lường chiến dịch",
+        title: "Cấu hình riêng: Theo dõi dự án",
         rows: [
-          { label: "Hashtag chiến dịch", value: tags(["#SongXanhCungAqua"]) },
+          { label: "Tên dự án", value: text("La Pura") },
           {
-            label: "Từ khóa chiến dịch",
-            value: tags(["đổi vỏ chai", "Sống Xanh Cùng Aqua"]),
-          },
-          {
-            label: "KOL tham gia",
-            value: tags(["Linh Trần", "Duy Anh Vlog", "Thùy Dương", "Hà Phương"]),
-          },
-          {
-            label: "Các giai đoạn chiến dịch",
-            value: lines([
-              "Teaser · 18/09/2026 · 21/09/2026",
-              "Kích hoạt · 22/09/2026 · 26/09/2026",
-              "Lan tỏa · 27/09/2026 · 10/10/2026",
+            label: "Tên gọi khác",
+            value: tags([
+              "Lapura",
+              "Astral City",
+              "Zenia",
+              "Lusso Saigon",
+              "Lusso D'Arte",
+              "Risa",
             ]),
           },
-          { label: "Lượt đề cập", value: text("25.000") },
-          { label: "Nội dung UGC", value: text("5.000") },
-          { label: "Tiếp cận (người)", value: text("10.000.000") },
-          { label: "Tương tác", value: text("1.000.000") },
-          { label: "NSS tối thiểu", value: text("60") },
-          { label: "Ngân sách (VNĐ)", value: text("395.000.000") },
+          { label: "Tỉnh, thành", value: text("TP.HCM") },
+          { label: "Khu vực", value: text("Thuận An (cũ)") },
+          { label: "Phân khúc", value: text("Căn hộ") },
+          { label: "Giai đoạn", value: text("Đang xây dựng") },
+          { label: "Giá khởi điểm tham chiếu", value: text("46 tr/m²") },
+          { label: "Cảnh báo khi lệch giá", value: text("15%") },
+          {
+            label: "Khía cạnh theo dõi",
+            value: tags([
+              "Pháp lý",
+              "Tiến độ",
+              "Giá & thanh toán",
+              "Vị trí & hạ tầng",
+              "Tiện ích",
+              "Chất lượng bàn giao",
+              "Uy tín chủ đầu tư",
+              "Phí quản lý",
+            ]),
+          },
+          { label: "Mốc so sánh", value: tags(["TB dự án cùng trục QL13"]) },
         ],
       },
       {
         title: "Cảnh báo & chia sẻ",
         rows: shareRows({
           rules: [
-            "Tiến độ KPI thấp hơn kế hoạch: 70% kế hoạch",
-            "Phàn nàn về chiến dịch vượt: 20 bài/ngày",
-            "Bài KOL đạt: 100.000 lượt xem",
-            "Hashtag tăng: 200% trong 24 giờ",
+            "Tin rao lệch giá tham chiếu quá: 15%",
+            "Tiêu cực về pháp lý, tiến độ vượt: 30%",
+            "Câu hỏi của người mua tăng: 30% trong tuần",
+            "Video review đạt: 100.000 lượt xem",
           ],
           via: ["Email", "Zalo"],
-          to: ["thutrang@aqua.vn"],
+          to: ["quocbao@demo-phatdat.vn"],
+          digest: "Thứ Hai hằng tuần, 8:00",
+          members: [
+            "quocbao@demo-phatdat.vn · Quản trị",
+            "sales@demo-phatdat.vn · Biên tập",
+          ],
+        }),
+      },
+    ],
+  },
+  competitor: {
+    owner: "Thanh Vy",
+    modeLabel: "01/09/2026 – 31/12/2026",
+    datasets: ["Thị trường căn hộ Đông Bắc TP.HCM", "Dự án La Pura"],
+    sections: [
+      {
+        title: "Kiểu case",
+        rows: [{ label: "Kiểu case", value: text("🗺️ Tâm lý thị trường") }],
+      },
+      {
+        title: "Thông tin chung",
+        rows: infoRows({
+          name: "Thị trường căn hộ Đông Bắc TP.HCM",
+          desc: "Theo dõi tâm lý thị trường dọc trục QL13 và các khu vực lân cận để định hướng bán hàng La Pura.",
+          brand: "Phát Đạt",
+          owner: "Thanh Vy",
+          mode: "Có thời hạn",
+          start: "01/09/2026",
+          end: "31/12/2026",
+        }),
+      },
+      {
+        title: "Dữ liệu",
+        rows: [
+          { label: "Bộ dữ liệu", value: datasets(["market", "lapura"]) },
+          ...filterRows({ channels: CHANNELS }),
+        ],
+      },
+      {
+        title: "Cấu hình riêng: Tâm lý thị trường",
+        rows: [
+          {
+            label: "Khu vực",
+            value: tags([
+              "Thuận An",
+              "Dĩ An",
+              "Thủ Dầu Một",
+              "Thủ Đức",
+              "Biên Hòa",
+              "Quận 1",
+              "Bình Thạnh",
+              "Long Thành",
+              "Bình Chánh",
+              "Quận 7",
+              "Nhơn Trạch",
+              "Nhà Bè",
+            ]),
+          },
+          { label: "Phân khúc", value: tags(["Căn hộ"]) },
+          {
+            label: "Chủ đề theo dõi",
+            value: tags([
+              "Lãi suất",
+              "Metro dọc QL13",
+              "Sáp nhập Bình Dương vào TP.HCM",
+              "Luật Đất đai 2024",
+            ]),
+          },
+          { label: "Khoảng giá", value: text("2 – 4 tỷ") },
+          { label: "Chu kỳ", value: text("Theo tuần") },
+        ],
+      },
+      {
+        title: "Cảnh báo & chia sẻ",
+        rows: shareRows({
+          rules: [
+            "Khu vực tăng thảo luận: 30% trong tuần",
+            "Tin chưa kiểm chứng về quy hoạch lan trên: 10 group",
+            "Từ khóa cắt lỗ, bán gấp tăng: 20%",
+            "Lo ngại lãi suất vượt: 30%",
+          ],
+          via: ["Email", "Zalo"],
+          to: ["thanhvy@demo-phatdat.vn"],
+          digest: "Thứ Hai hằng tuần, 8:00",
+          members: ["thanhvy@demo-phatdat.vn · Quản trị"],
+        }),
+      },
+    ],
+  },
+  cx: {
+    owner: "Minh Khang",
+    modeLabel: "Liên tục",
+    datasets: ["Tin rao & quảng cáo của sàn", "Dự án La Pura"],
+    sections: [
+      {
+        title: "Kiểu case",
+        rows: [{ label: "Kiểu case", value: text("🛡️ Giám sát sàn phân phối") }],
+      },
+      {
+        title: "Thông tin chung",
+        rows: infoRows({
+          name: "Giám sát sàn – La Pura",
+          desc: "Rà soát tin rao, quảng cáo của 34 sàn và môi giới đang phân phối La Pura.",
+          brand: "La Pura",
+          owner: "Minh Khang",
+          mode: "Liên tục, không có ngày kết thúc",
+          start: "01/06/2026",
+        }),
+      },
+      {
+        title: "Dữ liệu",
+        rows: [
+          { label: "Bộ dữ liệu", value: datasets(["listings", "lapura"]) },
+          ...filterRows({ channels: LISTING_CHANNELS }),
+        ],
+      },
+      {
+        title: "Cấu hình riêng: Giám sát sàn phân phối",
+        rows: [
+          { label: "Bảng giá đối chiếu", value: text("Chính sách bán hàng tháng 10/2026") },
+          { label: "Chiết khấu tối đa", value: text("9%") },
+          { label: "Dung sai giá rao", value: text("5%") },
+          { label: "Sàn F1", value: tags(["Đất Việt Land", "An Khang Property"]) },
+          {
+            label: "Cụm từ cấm",
+            value: tags([
+              "cam kết cho thuê",
+              "cam kết lợi nhuận",
+              "suất ngoại giao",
+              "giá nội bộ",
+              "đại lý độc quyền",
+            ]),
+          },
+          {
+            label: "Hạng mục kiểm tra",
+            value: tags([
+              "Giá rao sai bảng giá",
+              "Chiết khấu vượt chính sách",
+              "Cam kết lợi nhuận",
+              "Thông tin pháp lý sai",
+              "Dùng logo trái phép",
+              "Tự nhận đại lý chính thức",
+            ]),
+          },
+          { label: "Báo cáo lên khi chưa khắc phục sau", value: text("3 ngày") },
+        ],
+      },
+      {
+        title: "Cảnh báo & chia sẻ",
+        rows: shareRows({
+          rules: [
+            "Phát hiện vi phạm mới, từ: 1 tin",
+            "Một sàn vượt: 10 vi phạm/tháng",
+            "Vi phạm chưa khắc phục sau: 3 ngày",
+            "Tin dùng cụm từ cấm, từ: 1 tin",
+          ],
+          via: ["Email"],
+          to: ["phapche@demo-phatdat.vn", "minhkhang@demo-phatdat.vn"],
           digest: "Hằng ngày, 8:00",
           members: [
-            "thutrang@aqua.vn · Quản trị",
-            "agency@greenmedia.vn · Biên tập",
+            "minhkhang@demo-phatdat.vn · Quản trị",
+            "phapche@demo-phatdat.vn · Biên tập",
           ],
         }),
       },
     ],
   },
   crisis: {
-    owner: "Đức Anh",
+    owner: "Lan Hương (bạn)",
     modeLabel: "Liên tục",
-    datasets: ["Thương hiệu Aqua"],
+    datasets: ["Dự án La Pura", "Thương hiệu Phát Đạt"],
     sections: [
       {
         title: "Kiểu case",
@@ -294,37 +501,41 @@ export const AQUA_PROFILES: Record<AquaCaseId, AquaProjectProfile> = {
       {
         title: "Thông tin chung",
         rows: infoRows({
-          name: "Sự cố lô 0925",
-          desc: "Theo dõi phản ánh hở nắp chai lô 0925 và tiến độ xử lý.",
-          owner: "Đức Anh",
+          name: "Mô phỏng: tin đồn lùi bàn giao Zenia",
+          desc: "Kịch bản mô phỏng để demo quy trình xử lý khủng hoảng, không phải sự kiện thật.",
+          brand: "La Pura",
+          owner: "Lan Hương (bạn)",
           mode: "Liên tục, không có ngày kết thúc",
-          start: "29/09/2026",
+          start: "23/09/2026",
         }),
       },
       {
         title: "Dữ liệu",
         rows: [
-          { label: "Bộ dữ liệu", value: datasets(["t1"]) },
+          { label: "Bộ dữ liệu", value: datasets(["lapura", "brand"]) },
           ...filterRows({ channels: CHANNELS }),
         ],
       },
       {
         title: "Cấu hình riêng: Quản trị khủng hoảng",
         rows: [
-          { label: "Tên sự cố", value: text("Nghi vấn hở nắp chai lô 0925") },
-          { label: "Thời điểm phát hiện", value: text("30/09/2026 06:10") },
+          {
+            label: "Tên sự cố",
+            value: text("Kịch bản mô phỏng: tin đồn lùi bàn giao tháp Zenia"),
+          },
+          { label: "Thời điểm phát hiện", value: text("24/09/2026 06:00") },
           { label: "Mức độ ban đầu", value: text("Cấp 2 – Lan rộng") },
           {
             label: "Từ khóa nhận diện sự cố",
-            value: tags(["hở nắp", "rò rỉ", "lô 0925", "thu hồi"]),
+            value: tags(["lùi bàn giao", "Zenia 2027", "chậm tiến độ", "La Pura chậm"]),
           },
-          { label: "Lên cấp 2 khi tiêu cực vượt (bài/giờ)", value: text("50") },
-          { label: "Lên cấp 3 khi tiêu cực vượt (bài/giờ)", value: text("150") },
+          { label: "Lên cấp 2 khi tiêu cực vượt (bài/giờ)", value: text("40") },
+          { label: "Lên cấp 3 khi tiêu cực vượt (bài/giờ)", value: text("120") },
           { label: "Thời gian phản hồi tối đa (giờ)", value: text("4") },
           { label: "Tần suất cập nhật dữ liệu", value: text("5 phút") },
           {
             label: "Đội xử lý (email)",
-            value: tags(["pr@aqua.vn", "cskh@aqua.vn"]),
+            value: tags(["pr@demo-phatdat.vn", "cskh@demo-phatdat.vn"]),
           },
         ],
       },
@@ -332,162 +543,18 @@ export const AQUA_PROFILES: Record<AquaCaseId, AquaProjectProfile> = {
         title: "Cảnh báo & chia sẻ",
         rows: shareRows({
           rules: [
-            "Tiêu cực vượt ngưỡng cấp 2: 50 bài/giờ",
-            "Tiêu cực vượt ngưỡng cấp 3: 150 bài/giờ",
+            "Tiêu cực vượt ngưỡng cấp 2: 40 bài/giờ",
+            "Tiêu cực vượt ngưỡng cấp 3: 120 bài/giờ",
             "Báo chí đưa tin, từ: 1 bài",
             "Luận điểm mới chiếm trên: 10% thảo luận",
             "Chưa phản hồi sau: 4 giờ",
           ],
           via: ["Email", "Zalo", "SMS"],
-          to: ["pr@aqua.vn", "ducanh@aqua.vn"],
+          to: ["pr@demo-phatdat.vn", "lanhuong@demo-phatdat.vn"],
           digest: "Hằng ngày, 8:00",
           members: [
-            "ducanh@aqua.vn · Quản trị",
-            "pr@aqua.vn · Biên tập",
-            "ceo@aqua.vn · Chỉ xem",
-          ],
-        }),
-      },
-    ],
-  },
-  competitor: {
-    owner: "Minh Tuấn",
-    modeLabel: "01/10/2026 – 31/12/2026",
-    datasets: ["Thương hiệu Aqua", "Đối thủ trực tiếp", "Ngành nước giải khát"],
-    sections: [
-      {
-        title: "Kiểu case",
-        rows: [{ label: "Kiểu case", value: text("⚔️ So sánh đối thủ") }],
-      },
-      {
-        title: "Thông tin chung",
-        rows: infoRows({
-          name: "Toàn cảnh thị trường Q4",
-          desc: "So sánh Aqua với 3 đối thủ trực tiếp, báo cáo cho ban lãnh đạo.",
-          owner: "Minh Tuấn",
-          mode: "Có thời hạn",
-          start: "01/10/2026",
-          end: "31/12/2026",
-        }),
-      },
-      {
-        title: "Dữ liệu",
-        rows: [
-          { label: "Bộ dữ liệu", value: datasets(["t1", "t2", "t3"]) },
-          ...filterRows({ channels: CHANNELS }),
-        ],
-      },
-      {
-        title: "Cấu hình riêng: So sánh đối thủ",
-        rows: [
-          { label: "Thương hiệu của bạn", value: text("Aqua") },
-          { label: "Đối thủ (tối đa 5)", value: tags(["Breeze", "Nami", "Coolo"]) },
-          {
-            label: "Thuộc tính so sánh",
-            value: tags([
-              "Giá",
-              "Chất lượng",
-              "Bao bì",
-              "Khuyến mãi",
-              "Phân phối",
-              "Môi trường",
-            ]),
-          },
-          {
-            label: "Chỉ số hiển thị",
-            value: tags(["SOV", "NSS", "Tương tác"]),
-          },
-        ],
-      },
-      {
-        title: "Cảnh báo & chia sẻ",
-        rows: shareRows({
-          rules: [
-            "Đối thủ tăng đề cập: 30% trong 24 giờ",
-            "SOV của bạn giảm: 3 điểm/tuần",
-            "Đối thủ nhắc “khuyến mãi”, “ra mắt”: 20 bài/ngày",
-          ],
-          via: ["Email", "Zalo"],
-          to: ["minhtuan@aqua.vn"],
-          digest: "Ngày 1 hằng tháng",
-          members: ["minhtuan@aqua.vn · Quản trị"],
-        }),
-      },
-    ],
-  },
-  cx: {
-    owner: "Thu Trang",
-    modeLabel: "Liên tục",
-    datasets: ["Thương hiệu Aqua", "Đánh giá sàn TMĐT & ứng dụng"],
-    sections: [
-      {
-        title: "Kiểu case",
-        rows: [
-          { label: "Kiểu case", value: text("🛠️ Phản hồi khách hàng (CX)") },
-        ],
-      },
-      {
-        title: "Thông tin chung",
-        rows: infoRows({
-          name: "Tiếng nói khách hàng",
-          desc: "Gom phản hồi về sản phẩm, giao hàng, ứng dụng và chuyển cho bộ phận phụ trách.",
-          owner: "Thu Trang",
-          mode: "Liên tục, không có ngày kết thúc",
-          start: "01/06/2026",
-        }),
-      },
-      {
-        title: "Dữ liệu",
-        rows: [
-          { label: "Bộ dữ liệu", value: datasets(["t1", "t4"]) },
-          ...filterRows({ channels: ALL_CHANNELS }),
-        ],
-      },
-      {
-        title: "Cấu hình riêng: Phản hồi khách hàng (CX)",
-        rows: [
-          {
-            label: "Các khâu trong hành trình khách hàng",
-            value: tags(["Tìm hiểu", "Mua hàng", "Giao hàng", "Sử dụng", "Hậu mãi"]),
-          },
-          {
-            label: "Khía cạnh cần đo cảm xúc",
-            value: tags([
-              "Giá",
-              "Chất lượng",
-              "Bao bì",
-              "Giao hàng",
-              "CSKH",
-              "Ứng dụng",
-            ]),
-          },
-          { label: "Nguồn đánh giá bổ sung", value: tags(["Sàn TMĐT"]) },
-          {
-            label: "Vấn đề → bộ phận phụ trách",
-            value: lines([
-              "Giao hàng · Vận hành",
-              "Ứng dụng · Kỹ thuật",
-              "CSKH · CSKH",
-            ]),
-          },
-          { label: "Thời gian xử lý tối đa (giờ)", value: text("24") },
-        ],
-      },
-      {
-        title: "Cảnh báo & chia sẻ",
-        rows: shareRows({
-          rules: [
-            "Vấn đề mới xuất hiện, từ: 20 bài/ngày",
-            "Tiêu cực theo khía cạnh tăng: 30%",
-            "Vấn đề chưa xử lý sau: 24 giờ",
-            "Đề xuất sản phẩm đạt: 50 lượt",
-          ],
-          via: ["Email", "Zalo"],
-          to: ["cskh@aqua.vn"],
-          digest: "Hằng ngày, 8:00",
-          members: [
-            "cskh@aqua.vn · Biên tập",
-            "thutrang@aqua.vn · Quản trị",
+            "lanhuong@demo-phatdat.vn · Quản trị",
+            "pr@demo-phatdat.vn · Biên tập",
           ],
         }),
       },

@@ -2,35 +2,43 @@ import type { ProjectCase } from "./project-cases";
 
 export const DEMO_PROJECTS: {
   name: string;
+  legacyNames: string[];
   case: ProjectCase;
   description: string;
 }[] = [
   {
-    name: "Sức khỏe thương hiệu Aqua",
+    name: "Uy tín Phát Đạt (PDR)",
+    legacyNames: ["Sức khỏe thương hiệu Aqua"],
     case: "general",
     description:
-      "Theo dõi liên tục sức khỏe thương hiệu Aqua trên mọi kênh, báo cáo hằng tuần cho phòng Marketing.",
+      "Theo dõi uy tín chủ đầu tư và cổ phiếu PDR, báo cáo hằng tháng cho ban lãnh đạo và IR.",
   },
   {
-    name: "Chiến dịch #SongXanhCungAqua",
+    name: "Dự án La Pura",
+    legacyNames: ["Chiến dịch #SongXanhCungAqua"],
     case: "campaign",
-    description: "Đổi vỏ chai lấy cây xanh tại 24 điểm ở TP.HCM.",
+    description:
+      "La Pura (tên cũ Astral City), mặt tiền QL13, Thuận An: 8 tháp 40 tầng, gần 5.000 sản phẩm. Phân khu Zenia dự kiến bàn giao 12/2026.",
   },
   {
-    name: "Sự cố lô 0925",
-    case: "crisis",
-    description: "Theo dõi phản ánh hở nắp chai lô 0925 và tiến độ xử lý.",
-  },
-  {
-    name: "Toàn cảnh thị trường Q4",
+    name: "Thị trường căn hộ Đông Bắc TP.HCM",
+    legacyNames: ["Toàn cảnh thị trường Q4"],
     case: "competitor",
     description:
-      "So sánh Aqua với 3 đối thủ trực tiếp, báo cáo cho ban lãnh đạo.",
+      "Theo dõi tâm lý thị trường dọc trục QL13 và các khu vực lân cận để định hướng bán hàng La Pura.",
   },
   {
-    name: "Tiếng nói khách hàng",
+    name: "Giám sát sàn – La Pura",
+    legacyNames: ["Tiếng nói khách hàng"],
     case: "cx",
     description:
-      "Gom phản hồi về sản phẩm, giao hàng, ứng dụng và chuyển cho bộ phận phụ trách.",
+      "Rà soát tin rao, quảng cáo của 34 sàn và môi giới đang phân phối La Pura.",
+  },
+  {
+    name: "Mô phỏng: tin đồn lùi bàn giao Zenia",
+    legacyNames: ["Sự cố lô 0925"],
+    case: "crisis",
+    description:
+      "Kịch bản mô phỏng để demo quy trình xử lý khủng hoảng, không phải sự kiện thật.",
   },
 ];

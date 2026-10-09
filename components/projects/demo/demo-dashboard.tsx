@@ -33,7 +33,7 @@ import {
   type AquaSentiment,
 } from "@/lib/projects/aqua-demo";
 import { PROJECT_CASE_ICONS, type ProjectCase } from "@/lib/projects/project-cases";
-import { getAquaProfile } from "@/lib/projects/aqua-demo-profile";
+import { AQUA_ALERT_RULES, getAquaProfile } from "@/lib/projects/aqua-demo-profile";
 
 import {
   AspectChart,
@@ -66,15 +66,6 @@ type AquaDemoDashboardProps = {
   section?: DemoSection;
   settingsHref: string;
 };
-
-const ALERT_RULES = [
-  ["Đột biến đề cập", "+50% trong 1 giờ", "Email, Zalo"],
-  ["Đột biến tiêu cực", "Tiêu cực > 25%", "Email, Zalo, SMS"],
-  ["Bài lan truyền mạnh", "> 500 chia sẻ", "Zalo"],
-  ["Báo chí nhắc tên", "Mọi bài báo", "Email"],
-  ["Từ khóa nhạy cảm", "“ngộ độc”, “lừa đảo”, “thu hồi”", "Email, SMS"],
-  ["Đối thủ tăng đột biến", "+30% trong 24 giờ", "Email"],
-];
 
 const GLOSSARY = [
   ["Lượt đề cập (Mentions)", "Số bài đăng, bình luận, bài báo có chứa từ khóa đang theo dõi."],
@@ -183,14 +174,14 @@ function OverviewPage({ data }: { data: AquaCase }) {
       <DemoGrid>
         <DemoPanel
           title={
-            data.id === "competitor"
-              ? "Lượt đề cập theo thương hiệu"
+            data.brands
+              ? "Lượt đề cập theo khu vực"
               : "Lượt đề cập theo ngày và cảm xúc"
           }
           span="s8"
           scope="common"
         >
-          <TrendChart trend={data.trend} brands={data.id === "competitor" ? data.brands : null} />
+          <TrendChart trend={data.trend} brands={data.brands} />
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-muted-foreground">
             {data.events.map((event) => (
               <span key={event.date}>
@@ -684,7 +675,7 @@ function AlertsPage({ data }: { data: AquaCase }) {
       >
         <DemoTable
           headers={[{ label: "Quy tắc" }, { label: "Ngưỡng" }, { label: "Gửi đến" }]}
-          rows={ALERT_RULES}
+          rows={AQUA_ALERT_RULES[data.id]}
         />
       </DemoPanel>
     </DemoGrid>
@@ -765,7 +756,7 @@ export function AquaDemoDashboard({
     ?.rows.find((row) => row.label === "Tên dự án");
   const isOfficial =
     officialName?.value.type === "text" && officialName.value.text === projectName;
-  const caseLabel = t(`cases.${projectCase}`);
+  const caseLabel = data?.tab ?? t(`cases.${projectCase}`);
   const title =
     section === "case" ? (data?.special ?? t("nav.caseSpecial")) : AQUA_PAGE_META[section].title;
   const subtitle =
@@ -814,7 +805,7 @@ export function AquaDemoDashboard({
       ) : (
         <DemoPanel title="Dashboard đang được bổ sung" span="s12" scope="case" scopeLabel={projectCase}>
           <p className="text-sm text-muted-foreground">
-            Kiểu case này nằm trong danh sách sắp có của bản demo. Năm dự án Aqua đã có đủ số liệu minh họa.
+            Kiểu case này nằm trong danh sách sắp có của bản demo. Năm dự án Phát Đạt · La Pura đã có đủ số liệu minh họa.
           </p>
         </DemoPanel>
       )}

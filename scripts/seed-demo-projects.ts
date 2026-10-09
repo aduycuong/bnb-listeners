@@ -1,5 +1,6 @@
 // Seed the five demo listening projects into every workspace.
 // Skips a project when that workspace already has the same name.
+// Renames the previous Aqua demo projects to the Phát Đạt · La Pura set.
 //
 // Example:
 //   npx tsx scripts/seed-demo-projects.ts --dry-run
@@ -69,6 +70,7 @@ async function main() {
 
     const result = await seedDemoProjects({ workspaceId: workspace.id });
     console.log(`  created: ${result.created.length ? result.created.join(", ") : "none"}`);
+    console.log(`  renamed: ${result.renamed.length ? result.renamed.join(", ") : "none"}`);
     console.log(`  skipped: ${result.skipped.length ? result.skipped.join(", ") : "none"}`);
   }
 

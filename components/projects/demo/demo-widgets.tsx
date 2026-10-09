@@ -1,24 +1,28 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import {
-  BrandSentimentChart,
+  BuyerIntentChart,
   DonutChart,
   GaugeChart,
   HealthLineChart,
-  PhaseChart,
+  PriceBucketChart,
+  PriceTrendChart,
+  ProjectSentimentChart,
   RadarAttributeChart,
   VelocityChart,
 } from "@/components/projects/demo/demo-charts";
-import { DemoBars, type DemoSpan } from "@/components/projects/demo/demo-ui";
+import { DemoBars, SentimentPill, type DemoSpan } from "@/components/projects/demo/demo-ui";
 import {
+  AQUA_AREAS,
   AQUA_BRAND_COLORS,
   AQUA_BRAND_NAMES,
-  CAMPAIGN_PROGRESS,
+  AQUA_BRAND_SHARE,
   crisisVelocity,
   formatCount,
-  formatShort,
+  formatSigned,
+  type AquaArea,
   type AquaCaseId,
 } from "@/lib/projects/aqua-demo";
 
@@ -29,57 +33,174 @@ export type DemoWidget = {
   body: ReactNode;
 };
 
-const UGC = [
-  ["Clip “Đổi 10 vỏ lấy 1 chậu cây”", "Linh Trần · TikTok", "28.400 tương tác"],
-  ["Vlog 1 ngày đi đổi vỏ chai", "Duy Anh Vlog · YouTube", "4.300 tương tác"],
-  ["Album check-in điểm đổi Q.7", "Hà Phương · Instagram", "860 tương tác"],
-  ["Gom vỏ chai cả tháng", "Mai Anh · TikTok", "520 tương tác"],
-];
+const FAQ = [
+  ["Khi nào bàn giao tháp Zenia?", "642 lượt", "Đã có câu trả lời trên FAQ"],
+  ["Thanh toán 10% rồi vay ngân hàng thế nào?", "518 lượt", "Đã có câu trả lời trên FAQ"],
+  ["Giá Lusso Saigon chênh Zenia bao nhiêu?", "376 lượt", "Đã có câu trả lời trên FAQ"],
+  ["Dự án có liên quan Astral City cũ không?", "254 lượt", "Chưa có câu trả lời chính thức"],
+  ["Phí quản lý dự kiến bao nhiêu mỗi m²?", "198 lượt", "Chưa có câu trả lời chính thức"],
+] as const;
 
 const TIMELINE = [
-  ["red", "29/9 · 21:40", "Bài gốc phản ánh hở nắp trên Facebook (410K tiếp cận)"],
-  ["red", "30/9 · 06:10", "BNB Listening phát cảnh báo cấp 2 khi bài gốc vượt 500 lượt chia sẻ"],
-  ["", "30/9 · 08:25", "Aqua đăng thông báo chính thức (2 giờ 15 phút sau cảnh báo)"],
-  ["red", "30/9 · 10:30", "Báo điện tử đầu tiên đưa tin, 4 trang đăng lại"],
-  ["green", "01/10 · hiện tại", "Tốc độ lan truyền giảm 60% so với đỉnh"],
+  ["red", "23/9 · 20:10", "Bài đăng “Zenia lùi bàn giao sang 2027” trong group nhà đầu tư (142K tiếp cận)"],
+  ["red", "24/9 · 06:00", "BNB Listening phát cảnh báo cấp 2 khi bài vượt 30 nhóm chia sẻ"],
+  ["", "24/9 · 08:50", "Phát Đạt đính chính chính thức (2 giờ 50 phút sau cảnh báo)"],
+  ["red", "24/9 · 09:30", "Tin đồn lan sang TikTok, 6 video, 410K lượt xem"],
+  ["green", "24/9 · 15:00 → 30/9", "Công bố video tiến độ, tổ chức tham quan công trường"],
 ] as const;
 
 const RESPONSE = [
-  ["done", "✓", "Thông báo chính thức trên fanpage", "30/9 08:25 · 690K tiếp cận"],
-  ["done", "✓", "Kịch bản trả lời cho CSKH và điểm bán", "30/9 11:00"],
-  ["doing", "…", "Công bố kết quả kiểm nghiệm lô 0925", "Dự kiến 02/10"],
-  ["doing", "…", "Trả lời các bài hỏi về sức khỏe trên diễn đàn", "46/120 bài đã trả lời"],
-  ["todo", "", "Mời chuyên gia độc lập lên tiếng", "Chưa bắt đầu"],
+  ["done", "✓", "Đính chính chính thức trên fanpage dự án", "24/9 08:50 · 380K tiếp cận"],
+  ["done", "✓", "Đăng video tiến độ thi công tháp Zenia", "24/9 15:00"],
+  ["done", "✓", "Tổ chức tham quan công trường cho khách hàng", "30/9 · 120 khách hàng"],
+  ["doing", "…", "Công bố lịch bàn giao Zenia theo tầng", "Dự kiến 10/10"],
+  ["todo", "", "Cung cấp thông tin bảo lãnh ngân hàng cho khách hàng", "Chưa bắt đầu"],
 ] as const;
 
-const COMPARE_ROWS = [
-  ["Aqua", "48.216", "34%", "+56", "1,42 tr", "Bao bì chai mới"],
-  ["Breeze", "38.290", "27%", "+38", "1,61 tr", "1 tặng 1"],
-  ["Nami", "32.620", "23%", "+47", "0,88 tr", "Nước điện giải"],
-  ["Coolo", "22.690", "16%", "+22", "0,41 tr", "Nắp khó mở"],
+const BROKERS = [
+  ["Phú Thịnh Realty", "F2", "1.460", "41", "2,8%", "Quà tặng, chiết khấu", "Cảnh báo lần 2", "high"],
+  ["Môi giới tự do", "—", "3.620", "88", "2,4%", "Suất ngoại giao, giá sai", "Theo dõi", "med"],
+  ["Đất Việt Land", "F1", "2.240", "24", "1,1%", "Giá rao sai", "Đã khắc phục 85%", "on"],
+  ["Kim Ngân Realty", "F2", "780", "22", "2,8%", "Giá nội bộ", "Cảnh báo lần 1", "med"],
+  ["Sao Mai Land", "F2", "610", "21", "3,4%", "Cam kết cho thuê", "Đề xuất tạm khóa giỏ hàng", "high"],
+  ["An Khang Property", "F1", "1.680", "18", "1,1%", "Dùng logo", "Đã khắc phục", "on"],
+] as const;
+
+const VIOLATIONS = [
+  ["2 giờ", "Sao Mai Land", "Sàn F2", "Group Facebook", "Mua Lusso Saigon cam kết cho thuê 15 triệu/tháng trong 3 năm.", "Cam kết cho thuê", "high"],
+  ["4 giờ", "Kim Ngân Realty", "Sàn F2", "Facebook", "Giá nội bộ La Pura thấp hơn bảng giá 5 triệu/m², số lượng có hạn.", "Giá sai bảng giá", "high"],
+  ["5 giờ", "Phú Thịnh Realty", "Sàn F2", "TikTok", "Tặng 2 lượng vàng SJC + chiết khấu 12% căn La Pura.", "Quà tặng, chiết khấu sai chính sách", "med"],
+  ["8 giờ", "muaban_nhanh_88", "Môi giới tự do", "Trang rao vặt", "Suất ngoại giao Zenia 2PN chỉ 1,99 tỷ, sổ hồng riêng, nhận nhà ngay.", "Giá và pháp lý sai", "med"],
+  ["1 ngày", "Minh Châu Home", "Sàn F2", "Facebook", "Dùng logo Phát Đạt, tự xưng “đại lý F1 La Pura” trên trang bán hàng.", "Dùng logo trái phép", "low"],
+] as const;
+
+const FUNNEL = [
+  ["Phát hiện", "386", 100],
+  ["Xác nhận", "214", 55],
+  ["Đã gửi cảnh báo", "196", 51],
+  ["Đã khắc phục", "146", 38],
+] as const;
+
+type AreaMetric = "mentions" | "nss" | "price";
+
+const AREA_METRICS: { id: AreaMetric; label: string }[] = [
+  { id: "mentions", label: "Lượng thảo luận" },
+  { id: "nss", label: "Cảm xúc (NSS)" },
+  { id: "price", label: "Giá căn hộ" },
 ];
 
-const JOURNEY = [
-  ["Tìm hiểu", 1840, 8],
-  ["Mua hàng (app, web)", 2310, 24],
-  ["Giao hàng", 3620, 41],
-  ["Sử dụng sản phẩm", 4280, 9],
-  ["Hậu mãi, CSKH", 810, 46],
-] as const;
+function metricValue(area: AquaArea, metric: AreaMetric) {
+  if (metric === "nss") {
+    return area.nss;
+  }
+  if (metric === "price") {
+    return area.price;
+  }
+  return area.mentions;
+}
 
-const PRIORITY = [
-  ["Giao hàng chậm (Hà Nội)", "412", 38, "Vận hành", "Đang xử lý"],
-  ["Lỗi thanh toán ví điện tử", "186", 64, "Kỹ thuật", "Đang xử lý"],
-  ["Chai móp, hở nắp", "154", -12, "Chất lượng", "Đang theo dõi"],
-  ["Hotline khó liên hệ", "138", 9, "CSKH", "Mới"],
-  ["Hết hàng tại cửa hàng", "96", 21, "Kinh doanh", "Mới"],
-] as const;
+function metricLabel(area: AquaArea, metric: AreaMetric) {
+  if (metric === "nss") {
+    return formatSigned(area.nss);
+  }
+  if (metric === "price") {
+    return `${area.price.toFixed(1).replace(".", ",")} tr`;
+  }
+  return formatCount(area.mentions);
+}
 
-function MiniStats({
-  items,
-}: {
-  items: { label: string; value: string }[];
-}) {
+function AreaBoard() {
+  const [metric, setMetric] = useState<AreaMetric>("mentions");
+  const [selected, setSelected] = useState("Thủ Đức");
+  const area = AQUA_AREAS.find((item) => item.name === selected) ?? AQUA_AREAS[0];
+  const max = Math.max(...AQUA_AREAS.map((item) => metricValue(item, metric)), 1);
+  const rank =
+    [...AQUA_AREAS].sort((a, b) => b.mentions - a.mentions).findIndex((item) => item.name === area.name) +
+    1;
+  const note =
+    area.growth >= 20
+      ? "Khu vực đang nóng lên nhanh, nên theo dõi giá và nguồn cung mới."
+      : area.nss < 10
+        ? "Cảm xúc thấp, cần tìm hiểu các phàn nàn chính trước khi triển khai bán hàng."
+        : "Thị trường ổn định, phù hợp truyền thông duy trì.";
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(220px,0.8fr)]">
+      <div>
+        <div className="mb-2.5 inline-flex rounded-full border border-border p-0.5">
+          {AREA_METRICS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={
+                metric === item.id
+                  ? "rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
+                  : "rounded-full px-3 py-1 text-xs text-muted-foreground"
+              }
+              onClick={() => setMetric(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-5 gap-1.5" style={{ gridAutoRows: "76px" }}>
+          {AQUA_AREAS.map((item) => {
+            const strength = Math.max(0.16, metricValue(item, metric) / max);
+            return (
+              <button
+                key={item.name}
+                type="button"
+                className="rounded-xl px-2 py-1.5 text-left text-[12px]"
+                style={{
+                  gridColumn: item.column,
+                  gridRow: item.rowSpan > 1 ? `${item.row} / span ${item.rowSpan}` : item.row,
+                  background: `color-mix(in srgb, #0091FF ${Math.round(strength * 78)}%, white)`,
+                  outline: item.name === area.name ? "2px solid #0B2545" : "1px solid transparent",
+                }}
+                onClick={() => setSelected(item.name)}
+              >
+                <b className="block truncate">{item.name}</b>
+                <span className="block font-semibold">{metricLabel(item, metric)}</span>
+                <span className="text-[11px]">
+                  {item.growth >= 0 ? "▲" : "▼"} {Math.abs(item.growth)}%
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Sơ đồ minh họa vị trí tương đối, không theo tỉ lệ. 80% thảo luận đã được gắn vị trí.
+        </p>
+      </div>
+      <div>
+        <div className="font-heading text-[22px] font-bold">{area.name}</div>
+        <p className="mb-3 text-[12.5px] text-muted-foreground">
+          Hạng {rank}/{AQUA_AREAS.length} về lượng thảo luận
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            ["Thảo luận", formatCount(area.mentions)],
+            ["Tăng trưởng", `${area.growth >= 0 ? "+" : ""}${area.growth}%`],
+            ["NSS", formatSigned(area.nss)],
+            ["Giá căn hộ", `${area.price.toFixed(1).replace(".", ",")} tr/m²`],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-[10px] bg-muted px-3 py-2 text-xs text-muted-foreground">
+              {label}
+              <b className="mt-0.5 block text-[17px] text-foreground">{value}</b>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3.5 text-[13px] text-muted-foreground">
+          Chủ đề nổi bật
+          <b className="mt-0.5 block text-foreground">{area.topic}</b>
+        </p>
+        <p className="mt-3.5 text-[13px] leading-relaxed">{note}</p>
+      </div>
+    </div>
+  );
+}
+
+function MiniStats({ items }: { items: { label: string; value: string }[] }) {
   return (
     <div className="mt-3.5 grid grid-cols-2 gap-2.5">
       {items.map((item) => (
@@ -92,91 +213,48 @@ function MiniStats({
   );
 }
 
-function ProgressRows() {
-  return (
-    <div className="flex flex-col gap-3.5">
-      {CAMPAIGN_PROGRESS.map((row) => {
-        const percent = Math.round((row.actual / row.target) * 100);
-        return (
-          <div key={row.label} className="text-[13px]">
-            <div className="mb-1 flex justify-between gap-3">
-              <span>{row.label}</span>
-              <b className="font-semibold">
-                {formatShort(row.actual)} / {formatShort(row.target)} · {percent}%
-              </b>
-            </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-muted">
-              <i
-                className="block h-full rounded-full bg-primary"
-                style={{
-                  width: `${Math.min(100, percent)}%`,
-                  opacity: percent < 80 ? 0.55 : 1,
-                }}
-              />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export function caseWidgets(caseId: AquaCaseId): DemoWidget[] {
   if (caseId === "general") {
     return [
       {
-        title: "Chỉ số sức khỏe thương hiệu",
+        title: "Chỉ số uy tín chủ đầu tư",
         span: "s4",
-        note: "Tổng hợp từ 4 thành phần, thang 0–100",
+        note: "Tổng hợp từ 4 trụ cột, thang 0–100",
         body: (
           <>
             <GaugeChart />
             <MiniStats
               items={[
-                { label: "Mức độ thảo luận", value: "78" },
-                { label: "Cảm xúc", value: "81" },
-                { label: "Lan tỏa", value: "69" },
-                { label: "Tương tác", value: "66" },
+                { label: "Pháp lý minh bạch", value: "56" },
+                { label: "Tiến độ cam kết", value: "64" },
+                { label: "Năng lực tài chính", value: "52" },
+                { label: "Chất lượng sản phẩm", value: "68" },
               ]}
             />
           </>
         ),
       },
       {
-        title: "Thuộc tính gắn với thương hiệu",
+        title: "Cảm xúc theo từng dự án",
         span: "s4",
-        note: "Tỷ lệ đề cập nhắc đến từng thuộc tính",
-        body: (
-          <DemoBars
-            rows={[
-              ["Tươi mát", 38],
-              ["Giá hợp lý", 29],
-              ["Tiện lợi", 24],
-              ["Chất lượng ổn định", 21],
-              ["Thân thiện môi trường", 12],
-            ].map(([label, value]) => ({
-              label: String(label),
-              value: Number(value),
-              display: `${value}%`,
-            }))}
-          />
-        ),
+        note: "NSS của các dự án trọng điểm",
+        body: <ProjectSentimentChart />,
       },
       {
-        title: "Share of Voice trong ngành",
+        title: "Share of Voice cùng khu vực",
         span: "s4",
         body: (
           <DonutChart
             data={AQUA_BRAND_NAMES.map((name, index) => ({
               name,
-              value: [34, 27, 23, 16][index],
+              value: AQUA_BRAND_SHARE[index],
             }))}
             colors={[...AQUA_BRAND_COLORS]}
           />
         ),
       },
       {
-        title: "Chỉ số sức khỏe 6 tháng",
+        title: "Chỉ số uy tín 6 tháng",
         span: "s12",
         body: <HealthLineChart />,
       },
@@ -186,56 +264,43 @@ export function caseWidgets(caseId: AquaCaseId): DemoWidget[] {
   if (caseId === "campaign") {
     return [
       {
-        title: "Tiến độ so với mục tiêu KPI",
-        span: "s5",
-        note: "Mục tiêu lấy từ cài đặt dự án",
-        body: <ProgressRows />,
+        title: "Giá rao bán lại theo tháng",
+        span: "s8",
+        note: "Triệu đồng/m², AI trích xuất từ tin rao, đã lọc trùng và tin bất thường",
+        body: <PriceTrendChart />,
       },
       {
-        title: "So sánh theo giai đoạn",
-        span: "s7",
-        note: "Đề cập trung bình mỗi ngày và chỉ số cảm xúc",
-        body: <PhaseChart />,
+        title: "Phân bố giá rao",
+        span: "s4",
+        note: "382 tin rao trong 30 ngày",
+        body: <PriceBucketChart />,
       },
       {
-        title: "Nội dung UGC nổi bật",
+        title: "Câu hỏi thường gặp của người mua",
         span: "s6",
+        note: "AI gom nhóm từ 3.240 câu hỏi",
         body: (
           <div>
-            {UGC.map((item) => (
+            {FAQ.map((item) => (
               <div
                 key={item[0]}
                 className="grid grid-cols-[1fr_auto] gap-2.5 border-b border-border py-2.5 text-[13px] last:border-0"
               >
                 <span>
                   {item[0]}
-                  <small className="mt-0.5 block text-muted-foreground">{item[1]}</small>
+                  <small className="mt-0.5 block text-muted-foreground">{item[2]}</small>
                 </span>
-                <b>{item[2]}</b>
+                <b>{item[1]}</b>
               </div>
             ))}
           </div>
         ),
       },
       {
-        title: "Đóng góp của KOL",
+        title: "So sánh khía cạnh với dự án cạnh tranh",
         span: "s6",
-        note: "Tỷ lệ tương tác chiến dịch đến từ mỗi KOL",
-        body: (
-          <DemoBars
-            rows={[
-              ["Linh Trần", 18],
-              ["Duy Anh Vlog", 9],
-              ["Thùy Dương", 6],
-              ["Hà Phương", 4],
-              ["UGC tự nhiên", 63],
-            ].map(([label, value]) => ({
-              label: String(label),
-              value: Number(value),
-              display: `${value}%`,
-            }))}
-          />
-        ),
+        note: "Điểm cảm xúc ròng theo khía cạnh",
+        body: <RadarAttributeChart />,
       },
     ];
   }
@@ -248,7 +313,7 @@ export function caseWidgets(caseId: AquaCaseId): DemoWidget[] {
         body: (
           <div>
             <div className="text-[12.5px] text-muted-foreground">
-              Nghi vấn hở nắp chai lô 0925
+              Kịch bản mô phỏng: tin đồn lùi bàn giao tháp Zenia
             </div>
             <b className="text-[15px]">Cấp 2 – Đang lan rộng</b>
             <div className="mt-2 flex gap-1">
@@ -281,21 +346,21 @@ export function caseWidgets(caseId: AquaCaseId): DemoWidget[] {
       {
         title: "Tốc độ lan truyền 48 giờ",
         span: "s7",
-        note: "Số bài mới mỗi giờ, từ 29/9 12:00 đến 01/10 12:00",
+        note: "Số bài mới mỗi giờ, từ 23/9 18:00 đến 25/9 18:00",
         body: <VelocityChart points={crisisVelocity()} />,
       },
       {
-        title: "Luận điểm chính trong thảo luận",
+        title: "Luận điểm chính của khách hàng",
         span: "s6",
         note: "Tỷ lệ trên tổng đề cập về sự cố",
         body: (
           <DemoBars
             rows={[
-              ["Sản phẩm bị lỗi", 38, "38%"],
-              ["Lo ngại sức khỏe ▲", 22, "22%"],
-              ["Kiểm soát chất lượng kém", 16, "16%"],
-              ["Ghi nhận cách xử lý", 14, "14%"],
-              ["Tẩy chay thương hiệu", 10, "10%"],
+              ["Lo ngại lùi bàn giao", 36, "36%"],
+              ["Ghi nhận đính chính của CĐT", 24, "24%"],
+              ["Nghi ngờ năng lực tài chính", 14, "14%"],
+              ["Muốn chuyển nhượng, cắt lỗ", 14, "14%"],
+              ["Hỏi về bảo lãnh ngân hàng", 12, "12%"],
             ].map(([label, value, display]) => ({
               label: String(label),
               value: Number(value),
@@ -335,45 +400,52 @@ export function caseWidgets(caseId: AquaCaseId): DemoWidget[] {
   }
 
   if (caseId === "competitor") {
+    const ranked = [...AQUA_AREAS].sort((a, b) => b.mentions - a.mentions);
     return [
       {
-        title: "Share of Voice",
-        span: "s4",
+        title: "Bản đồ khu vực",
+        span: "s12",
+        note: "Thảo luận, cảm xúc và giá theo khu vực. Bấm vào ô để xem chi tiết.",
+        body: <AreaBoard />,
+      },
+      {
+        title: "Tâm lý người mua theo tuần",
+        span: "s7",
+        note: "Tỷ lệ bài thể hiện từng ý định",
+        body: <BuyerIntentChart />,
+      },
+      {
+        title: "Mối lo của người mua",
+        span: "s5",
+        note: "Tỷ lệ trên các bài thể hiện lo ngại",
         body: (
-          <DonutChart
-            data={AQUA_BRAND_NAMES.map((name, index) => ({
-              name,
-              value: [34, 27, 23, 16][index],
+          <DemoBars
+            rows={[
+              ["Lãi suất vay", 22, "22%"],
+              ["Pháp lý dự án", 19, "19%"],
+              ["Giá quá cao", 17, "17%"],
+              ["Tiến độ bàn giao", 12, "12%"],
+              ["Thanh khoản bán lại", 10, "10%"],
+              ["Quy hoạch, hạ tầng", 8, "8%"],
+            ].map(([label, value, display]) => ({
+              label: String(label),
+              value: Number(value),
+              display: String(display),
             }))}
-            colors={[...AQUA_BRAND_COLORS]}
           />
         ),
       },
       {
-        title: "Cảm xúc theo thương hiệu",
-        span: "s8",
-        body: <BrandSentimentChart />,
-      },
-      {
-        title: "Cảm nhận theo thuộc tính",
-        span: "s5",
-        note: "Điểm cảm xúc ròng theo thuộc tính (0–100)",
-        body: <RadarAttributeChart />,
-      },
-      {
-        title: "Bảng so sánh",
-        span: "s7",
+        title: "Bảng xếp hạng khu vực",
+        span: "s12",
         body: (
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b border-border text-left text-muted-foreground">
-                  {["Thương hiệu", "Đề cập", "SOV", "NSS", "Tương tác", "Chủ đề nổi bật"].map(
+                  {["Khu vực", "Thảo luận", "Tăng trưởng", "NSS", "Giá căn hộ (tr/m²)", "Chủ đề nổi bật"].map(
                     (label, index) => (
-                      <th
-                        key={label}
-                        className={index > 0 && index < 5 ? "px-2 py-2 text-right" : "px-2 py-2"}
-                      >
+                      <th key={label} className={index > 0 && index < 5 ? "px-2 py-2 text-right" : "px-2 py-2"}>
                         {label}
                       </th>
                     ),
@@ -381,24 +453,24 @@ export function caseWidgets(caseId: AquaCaseId): DemoWidget[] {
                 </tr>
               </thead>
               <tbody>
-                {COMPARE_ROWS.map((row, index) => (
-                  <tr
-                    key={row[0]}
-                    className={index === 0 ? "font-semibold" : undefined}
-                  >
-                    <td className="px-2 py-2">{AQUA_BRAND_NAMES[index]}</td>
-                    {row.slice(1).map((cell, cellIndex) => (
-                      <td
-                        key={cell}
-                        className={
-                          cellIndex < 4
-                            ? "px-2 py-2 text-right tabular-nums"
-                            : "px-2 py-2"
-                        }
-                      >
-                        {cell}
-                      </td>
-                    ))}
+                {ranked.map((area) => (
+                  <tr key={area.name} className="border-b border-border/70 last:border-0">
+                    <td className="px-2 py-2 font-semibold">{area.name}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{formatCount(area.mentions)}</td>
+                    <td
+                      className={
+                        area.growth >= 0
+                          ? "px-2 py-2 text-right font-semibold text-[#0B8A6B]"
+                          : "px-2 py-2 text-right font-semibold text-[#D5402F]"
+                      }
+                    >
+                      {area.growth >= 0 ? "▲" : "▼"} {Math.abs(area.growth)}%
+                    </td>
+                    <td className="px-2 py-2 text-right tabular-nums">{formatSigned(area.nss)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">
+                      {area.price.toFixed(1).replace(".", ",")}
+                    </td>
+                    <td className="px-2 py-2">{area.topic}</td>
                   </tr>
                 ))}
               </tbody>
@@ -411,60 +483,74 @@ export function caseWidgets(caseId: AquaCaseId): DemoWidget[] {
 
   return [
     {
-      title: "Vấn đề theo hành trình khách hàng",
-      span: "s12",
-      note: "Số phản hồi và tỷ lệ tiêu cực ở mỗi khâu",
+      title: "Vi phạm theo loại",
+      span: "s5",
+      note: "214 vi phạm đã xác nhận",
       body: (
-        <div className="grid grid-cols-2 gap-2 xl:grid-cols-5">
-          {JOURNEY.map((stage) => (
-            <div key={stage[0]} className="rounded-xl bg-muted p-3 text-[12.5px]">
-              <b className="mb-1.5 block text-[13.5px]">{stage[0]}</b>
-              {formatCount(stage[1])} phản hồi
-              <div className="my-2 h-1.5 overflow-hidden rounded-full bg-border">
-                <i
-                  className="block h-full rounded-full bg-[var(--neg)]"
-                  style={{ width: `${stage[2]}%` }}
-                />
+        <>
+          <DemoBars
+            rows={[
+              ["Chiết khấu, quà tặng sai", 86],
+              ["Suất ngoại giao sai bảng giá", 48],
+              ["Cam kết cho thuê, lợi nhuận", 34],
+              ["Thông tin pháp lý sai", 22],
+              ["Dùng logo trái phép", 16],
+              ["Tự nhận đại lý chính thức", 8],
+            ].map(([label, value]) => ({
+              label: String(label),
+              value: Number(value),
+            }))}
+          />
+          <div className="mt-4 flex flex-col gap-3">
+            {FUNNEL.map((row) => (
+              <div key={row[0]} className="text-[13px]">
+                <div className="mb-1 flex justify-between">
+                  <span>{row[0]}</span>
+                  <b>{row[1]}</b>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <i className="block h-full rounded-full bg-primary" style={{ width: `${row[2]}%` }} />
+                </div>
               </div>
-              <span className={stage[2] >= 30 ? "font-semibold text-[#D5402F]" : undefined}>
-                {stage[2]}% tiêu cực
-              </span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       ),
     },
     {
-      title: "Vấn đề cần ưu tiên",
+      title: "Xếp hạng sàn",
       span: "s7",
       body: (
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
-                <th className="px-2 py-2">Vấn đề</th>
-                <th className="px-2 py-2 text-right">Số lượt</th>
-                <th className="px-2 py-2 text-right">Xu hướng</th>
-                <th className="px-2 py-2">Bộ phận phụ trách</th>
-                <th className="px-2 py-2">Trạng thái</th>
+                {["Sàn", "Cấp", "Tin quét", "Vi phạm", "Tỷ lệ", "Loại chính", "Trạng thái"].map((label, index) => (
+                  <th key={label} className={index > 1 && index < 5 ? "px-2 py-2 text-right" : "px-2 py-2"}>
+                    {label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {PRIORITY.map((row) => (
+              {BROKERS.map((row) => (
                 <tr key={row[0]} className="border-b border-border/70 last:border-0">
-                  <td className="px-2 py-2">{row[0]}</td>
-                  <td className="px-2 py-2 text-right tabular-nums">{row[1]}</td>
-                  <td
-                    className={
-                      row[2] > 0
-                        ? "px-2 py-2 text-right font-semibold text-[#D5402F]"
-                        : "px-2 py-2 text-right font-semibold text-[#0B8A6B]"
-                    }
-                  >
-                    {row[2] > 0 ? "▲" : "▼"} {Math.abs(row[2])}%
+                  <td className="px-2 py-2 font-semibold">{row[0]}</td>
+                  <td className="px-2 py-2">{row[1]}</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{row[2]}</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{row[3]}</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{row[4]}</td>
+                  <td className="px-2 py-2">{row[5]}</td>
+                  <td className="px-2 py-2">
+                    {row[7] === "on" ? (
+                      <span className="text-[#0B8A6B]">{row[6]}</span>
+                    ) : (
+                      <SentimentPill
+                        sentiment={row[7] === "high" ? "high" : "med"}
+                        label={row[6]}
+                      />
+                    )}
                   </td>
-                  <td className="px-2 py-2">{row[3]}</td>
-                  <td className="px-2 py-2">{row[4]}</td>
                 </tr>
               ))}
             </tbody>
@@ -473,22 +559,45 @@ export function caseWidgets(caseId: AquaCaseId): DemoWidget[] {
       ),
     },
     {
-      title: "Đề xuất sản phẩm từ khách hàng",
-      span: "s5",
+      title: "Vi phạm cần xử lý",
+      span: "s12",
+      note: "Nội dung trích nguyên văn từ tin rao, quảng cáo để làm bằng chứng",
       body: (
-        <DemoBars
-          suffix=" lượt"
-          rows={[
-            ["Chai 350ml bỏ túi", 128],
-            ["Nước điện giải", 94],
-            ["Gói giao định kỳ", 71],
-            ["Thêm vị trái cây", 58],
-            ["Vỏ chai tái chế 100%", 35],
-          ].map(([label, value]) => ({
-            label: String(label),
-            value: Number(value),
-          }))}
-        />
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="border-b border-border text-left text-muted-foreground">
+                {["Thời gian", "Sàn, tài khoản", "Kênh", "Nội dung phát hiện", "Loại vi phạm", "Mức độ"].map(
+                  (label) => (
+                    <th key={label} className="px-2 py-2">
+                      {label}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {VIOLATIONS.map((row) => (
+                <tr key={`${row[1]}-${row[0]}`} className="border-b border-border/70 align-top last:border-0">
+                  <td className="px-2 py-2 whitespace-nowrap">{row[0]}</td>
+                  <td className="px-2 py-2">
+                    <b>{row[1]}</b>
+                    <small className="block text-muted-foreground">{row[2]}</small>
+                  </td>
+                  <td className="px-2 py-2 whitespace-nowrap">{row[3]}</td>
+                  <td className="px-2 py-2">“{row[4]}”</td>
+                  <td className="px-2 py-2">{row[5]}</td>
+                  <td className="px-2 py-2">
+                    <SentimentPill
+                      sentiment={row[6] === "high" ? "high" : row[6] === "med" ? "med" : "low"}
+                      label={row[6] === "high" ? "Cao" : row[6] === "med" ? "Trung bình" : "Thấp"}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ),
     },
   ];
