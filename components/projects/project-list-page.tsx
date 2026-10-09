@@ -4,9 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useT } from "next-i18next/client";
-import { useState } from "react";
 
-import { CreateProjectDialog } from "@/components/projects/create-project-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,7 +29,6 @@ export function ProjectListPage({ workspaceIndexParam }: ProjectListPageProps) {
   const { t } = useT("dashboard");
   const { workspace, workspaceIndex } =
     useWorkspaceRouteContext(workspaceIndexParam);
-  const [createOpen, setCreateOpen] = useState(false);
   const { data, isLoading, error } = useQuery({
     queryKey: projectsQueryKey(workspace?.id ?? "pending"),
     queryFn: () => fetchProjects(workspace!.id),
@@ -54,9 +51,9 @@ export function ProjectListPage({ workspaceIndexParam }: ProjectListPageProps) {
             the project.
           </p>
         </div>
-        <Button type="button" onClick={() => setCreateOpen(true)}>
+        <Button nativeButton={false} render={<Link href={`/w/${workspaceIndex}/projects/new`} />}>
           <PlusIcon data-icon="inline-start" />
-          Create project
+          Tạo dự án
         </Button>
       </div>
 
@@ -105,13 +102,6 @@ export function ProjectListPage({ workspaceIndexParam }: ProjectListPageProps) {
         </div>
       )}
 
-      <CreateProjectDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        workspaceId={workspace.id}
-        workspaceIndex={workspaceIndex}
-        projectCount={projects.length}
-      />
     </div>
   );
 }
