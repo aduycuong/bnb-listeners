@@ -35,6 +35,7 @@ Module mới nằm trực tiếp trong `lib/` theo `.cursor/rules/lib-services.m
 | `lib/metrics/` | L4: rollup và công thức (reach, NSS, SoV) |
 | `lib/alerts/`, `lib/insights/`, `lib/reports/` | L5 |
 | `lib/legacy-import/` | Chuyển `documents` + `comments` cũ sang kho thô |
+| `lib/workflows/` | Hạ tầng Upstash Workflow: serve, trigger, notify. Định nghĩa workflow nằm ở `lib/{module}/workflows/`, route ở `app/api/workflows/{name}/` |
 
 - `lib/projects/` được giữ và mở rộng (thêm `mode`). Danh sách trên có thể tách hoặc gộp khi triển khai.
 - Các module cũ (`documents`, `comments`, `terms`, `scoring`, `classification`, `chunking`, `term-digests`, …) không được import vào module mới, trừ `lib/legacy-import/`.

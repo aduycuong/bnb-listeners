@@ -17,7 +17,7 @@ Tham chiếu: [overview.md](overview.md), [data-model.md](data-model.md), [synth
 
 ## Giai đoạn 1 — Kho thô (L0 + L1)
 
-- [ ] Cài `@upstash/workflow`, dựng route workflow và bước mẫu
+- [x] Cài `@upstash/workflow`, dựng route workflow và bước mẫu (`/api/workflows/ping`, `npm run workflow:trigger -- --name ping`)
 - [ ] Schema `sources`, `authors`, `content_items`, `engagement_snapshots`, `collect_runs`
 - [ ] Interface connector chung
 - [ ] Connector Facebook (page/group, post + comment), viết lại trên nền tích hợp Bright Data và webhook hiện có. Lưu payload gốc lên R2.
