@@ -8,15 +8,16 @@ Tham chiếu: [overview.md](overview.md), [data-model.md](data-model.md), [synth
 
 - [x] Chuyển docs cũ vào `docs/deprecated/`
 - [x] Viết tài liệu mô hình dữ liệu và kế hoạch
-- [ ] Export `documents` và `comments` hiện có ra file (JSON/CSV) để dự phòng
-- [ ] Quyết định cách xử lý code cũ: đóng băng (tắt cron, giữ code) hay xóa ngay
-- [ ] Quyết định workflow engine (giữ QStash hay chuyển sang Inngest/Trigger.dev)
-- [ ] Đặt namespace cho module mới trong `lib/`, theo `.cursor/rules/lib-services.mdc`
+- [x] Export `documents`, `comments` và `data_sources` ra JSONL (`npm run legacy:export`). Lần export 2026-10-11: 5 data source, 1.918 documents, 9.707 comments.
+- [x] Đóng băng code cũ: tắt data source và system schedule, xóa schedule QStash (`npm run legacy:freeze`). Xem [D1](decisions.md#d1--đóng-băng-pipeline-cũ-2026-10-11)
+- [x] Workflow engine: Upstash Workflow. Xem [D2](decisions.md#d2--workflow-engine-upstash-workflow-2026-10-11)
+- [x] Namespace module mới. Xem [D3](decisions.md#d3--module-mới-phẳng-tên-mới-2026-10-11)
 
-**Kết quả:** có quyết định rõ ràng, dữ liệu cũ đã được sao lưu.
+**Kết quả:** quyết định được ghi ở [decisions.md](decisions.md), dữ liệu cũ đã được sao lưu vào `.local/exports/` (không commit).
 
 ## Giai đoạn 1 — Kho thô (L0 + L1)
 
+- [ ] Cài `@upstash/workflow`, dựng route workflow và bước mẫu
 - [ ] Schema `sources`, `authors`, `content_items`, `engagement_snapshots`, `collect_runs`
 - [ ] Interface connector chung
 - [ ] Connector Facebook (page/group, post + comment), viết lại trên nền tích hợp Bright Data và webhook hiện có. Lưu payload gốc lên R2.
