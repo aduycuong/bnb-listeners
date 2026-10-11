@@ -18,10 +18,10 @@ Tham chiếu: [overview.md](overview.md), [data-model.md](data-model.md), [synth
 ## Giai đoạn 1 — Kho thô (L0 + L1)
 
 - [x] Cài `@upstash/workflow`, dựng route workflow và bước mẫu (`/api/workflows/ping`, `npm run workflow:trigger -- --name ping`)
-- [ ] Schema `sources`, `authors`, `content_items`, `engagement_snapshots`, `collect_runs`
-- [ ] Interface connector chung
-- [ ] Connector Facebook (page/group, post + comment), viết lại trên nền tích hợp Bright Data và webhook hiện có. Lưu payload gốc lên R2.
-- [ ] Lấy dữ liệu tăng dần theo `since`, bỏ giới hạn cố định 10 bài mỗi lần
+- [x] Schema `sources`, `authors`, `content_items`, `engagement_snapshots`, `collect_runs` (cột `origin` có từ giai đoạn này; `scenario_id` để giai đoạn 2)
+- [x] Interface connector chung (`lib/connectors/types.ts`: chế độ `job` và `direct`)
+- [x] Connector Facebook (page/group, post + comment), viết lại trên nền tích hợp Bright Data và webhook hiện có. Lưu payload gốc lên R2. Xem [D6](decisions.md#d6--luồng-collect-webhook--polling-dự-phòng-2026-10-11)
+- [x] Lấy dữ liệu tăng dần theo `since`, bỏ giới hạn cố định 10 bài mỗi lần (`npm run collect:facebook`)
 - [ ] Script chuyển `documents` + `comments` cũ sang `content_items` (`origin = legacy_import`)
 
 **Kết quả:** dữ liệu Facebook thật và dữ liệu cũ nằm trong kho thô mới.

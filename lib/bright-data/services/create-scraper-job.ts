@@ -6,6 +6,7 @@ import type {
   CreateBrightDataScraperJobParams,
   CreateBrightDataScraperJobResult,
 } from "../types";
+import { getBrightDataApiToken } from "../utils/get-bright-data-api-token";
 
 const brightDataTriggerEndpoint =
   "https://api.brightdata.com/datasets/v3/trigger";
@@ -17,15 +18,7 @@ const triggerResponseSchema = z.object({
 export async function createBrightDataScraperJob(
   params: CreateBrightDataScraperJobParams
 ): Promise<CreateBrightDataScraperJobResult> {
-  const apiToken = process.env.BRIGHT_DATA_API_TOKEN;
-
-  if (!apiToken) {
-    throw new APIError(
-      "ERR_BRIGHT_DATA_NOT_CONFIGURED",
-      "Missing BRIGHT_DATA_API_TOKEN.",
-      503
-    );
-  }
+  const apiToken = getBrightDataApiToken();
 
   const requestUrl = new URL(brightDataTriggerEndpoint);
   requestUrl.searchParams.set("dataset_id", params.datasetId);

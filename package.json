@@ -25,7 +25,8 @@
     "legacy:export": "tsx scripts/export-legacy-documents.ts",
     "legacy:freeze": "tsx scripts/freeze-legacy-pipeline.ts",
     "workflow:trigger": "tsx scripts/trigger-workflow.ts",
-    "workflow:dev": "npx @upstash/qstash-cli@2.37.18 dev"
+    "workflow:dev": "npx @upstash/qstash-cli@2.37.18 dev",
+    "collect:facebook": "tsx scripts/collect-facebook-source.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1135.0",

@@ -24,7 +24,7 @@ export async function putObjectToR2(
   }
 
   const client = getR2S3Client();
-  const bucket = process.env.R2_BUCKET_NAME;
+  const bucket = params.bucket ?? process.env.R2_BUCKET_NAME;
   const publicUrlBase = process.env.R2_PUBLIC_URL;
 
   if (!client || !bucket || !publicUrlBase) {
