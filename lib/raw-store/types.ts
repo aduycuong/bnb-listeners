@@ -42,6 +42,8 @@ export type NormalizedContentItem = {
   parentExternalId: string | null;
   rootExternalId: string | null;
   metadata: Record<string, unknown>;
+  /** Overrides the batch `collectedAt`, e.g. the original time of a legacy row. */
+  collectedAt?: Date;
 };
 
 export type RegisterSourceParams = {

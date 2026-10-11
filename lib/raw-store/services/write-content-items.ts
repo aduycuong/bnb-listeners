@@ -140,7 +140,7 @@ async function writePass(
   pass: NormalizedContentItem[],
   authorIds: Map<string, string>,
 ): Promise<WrittenContentItem[]> {
-  const collectedAt = params.collectedAt ?? new Date();
+  const batchCollectedAt = params.collectedAt ?? new Date();
 
   const [existing, threadRefs] = await Promise.all([
     findItemRefs(
@@ -164,6 +164,7 @@ async function writePass(
     const root = item.rootExternalId
       ? threadRefs.get(item.rootExternalId)
       : undefined;
+    const collectedAt = item.collectedAt ?? batchCollectedAt;
 
     return {
       kind: item.kind,
@@ -216,6 +217,8 @@ async function writePass(
         viewCount: sql`excluded.view_count`,
         reactions: sql`coalesce(excluded.reactions, ${contentItems.reactions})`,
         collectRunId: sql`coalesce(excluded.collect_run_id, ${contentItems.collectRunId})`,
+        // A legacy row re-collected by a connector now has a raw payload behind it.
+        origin: sql`case when ${contentItems.origin} = 'legacy_import' then excluded.origin else ${contentItems.origin} end`,
         metadata: sql`${contentItems.metadata} || excluded.metadata`,
         updatedAt: sql`now()`,
       },
@@ -233,7 +236,7 @@ async function writePass(
       pass.map((item) => ({
         contentItemId: idByExternalId.get(item.externalId)!,
         collectRunId: params.collectRunId,
-        capturedAt: collectedAt,
+        capturedAt: item.collectedAt ?? batchCollectedAt,
         likeCount: item.likeCount,
         commentCount: item.commentCount,
         shareCount: item.shareCount,
