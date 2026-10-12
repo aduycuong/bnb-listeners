@@ -30,11 +30,6 @@ export type FollowUpRun = {
   params: Record<string, unknown>;
 };
 
-export type JobStatus =
-  | { state: "running" }
-  | { state: "ready" }
-  | { state: "failed"; error: string };
-
 type ConnectorBase<TParams> = {
   key: ConnectorKey;
   platform: string;
@@ -58,16 +53,13 @@ export type WrittenItemSummary = {
 };
 
 /**
- * Provider runs the collection asynchronously (Bright Data). The workflow
- * starts the job, waits for the webhook or polls, then downloads the result.
+ * Provider runs the collection asynchronously (Bright Data) and delivers the
+ * result to a webhook; the workflow starts the job and waits for that delivery.
  */
 export type JobConnector<TParams> = ConnectorBase<TParams> & {
   mode: "job";
   /** Starts the provider job and returns its id. */
   startJob(params: TParams, context: ConnectorContext): Promise<string>;
-  getJobStatus(externalJobId: string): Promise<JobStatus>;
-  /** Raw result body as JSON text, or null when not ready yet. */
-  downloadJobResult(externalJobId: string): Promise<string | null>;
 };
 
 /** Collection returns records directly (synthetic and simple HTTP connectors). */
@@ -100,16 +92,11 @@ export type CollectSourceWorkflowPayload = {
 export type StartCollectRunResult =
   | { state: "skipped"; reason: string }
   | { state: "job-started"; externalJobId: string }
-  | { state: "stored"; r2Key: string; itemCount: number };
-
-export type PollCollectRunResult =
-  | { state: "running" }
-  | { state: "failed"; error: string }
-  | { state: "stored"; r2Key: string; itemCount: number };
+  | { state: "stored"; payloadKey: string; itemCount: number };
 
 export type NormalizeCollectRunBatchParams = {
   collectRunId: string;
-  r2Key: string;
+  payloadKey: string;
   offset: number;
   limit: number;
 };
@@ -128,6 +115,6 @@ export type StoreRawPayloadParams = {
 };
 
 export type StoreRawPayloadResult = {
-  r2Key: string;
+  payloadKey: string;
   itemCount: number;
 };

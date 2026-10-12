@@ -1,4 +1,3 @@
-import { getObjectFromR2 } from "@/lib/r2/services/get-object-from-r2";
 import { updateSourceDetails } from "@/lib/raw-store/services/update-source-details";
 import { writeContentItems } from "@/lib/raw-store/services/write-content-items";
 
@@ -8,7 +7,7 @@ import type {
   NormalizeCollectRunBatchResult,
 } from "../types";
 import { getCollectRun } from "../utils/get-collect-run";
-import { getRawBucket } from "../utils/get-raw-bucket";
+import { rawPayloadStorage } from "../utils/raw-payload-storage";
 
 /**
  * Normalizes one slice of the archived payload into the raw store. Each slice
@@ -22,11 +21,9 @@ export async function normalizeCollectRunBatch(
   const connector = getConnector(run.connector);
   const connectorParams = connector.paramsSchema.parse(run.params);
 
-  const object = await getObjectFromR2({
-    key: params.r2Key,
-    bucket: getRawBucket(),
-  });
-  const parsed: unknown = JSON.parse(object.body.toString("utf8"));
+  const parsed: unknown = JSON.parse(
+    await rawPayloadStorage.get(params.payloadKey),
+  );
   const records = (Array.isArray(parsed) ? parsed : [parsed]).slice(
     params.offset,
     params.offset + params.limit,

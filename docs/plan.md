@@ -20,7 +20,7 @@ Tham chiếu: [overview.md](overview.md), [data-model.md](data-model.md), [synth
 - [x] Cài `@upstash/workflow`, dựng route workflow và bước mẫu (`/api/workflows/ping`, `npm run workflow:trigger -- --name ping`)
 - [x] Schema `sources`, `authors`, `content_items`, `engagement_snapshots`, `collect_runs` (cột `origin` có từ giai đoạn này; `scenario_id` để giai đoạn 2)
 - [x] Interface connector chung (`lib/connectors/types.ts`: chế độ `job` và `direct`)
-- [x] Connector Facebook (page/group, post + comment), viết lại trên nền tích hợp Bright Data và webhook hiện có. Lưu payload gốc lên R2. Xem [D6](decisions.md#d6--luồng-collect-webhook--polling-dự-phòng-2026-10-11)
+- [x] Connector Facebook (page/group, post + comment), viết lại trên nền tích hợp Bright Data và webhook hiện có. Lưu payload gốc lên R2. Xem [D6](decisions.md#d6--luồng-collect-chỉ-dùng-webhook-2026-10-11)
 - [x] Lấy dữ liệu tăng dần theo `since`, bỏ giới hạn cố định 10 bài mỗi lần (`npm run collect:facebook`)
 - [x] Script chuyển `documents` + `comments` cũ sang `content_items` (`origin = legacy_import`, `npm run legacy:import`)
 
@@ -28,7 +28,7 @@ Tham chiếu: [overview.md](overview.md), [data-model.md](data-model.md), [synth
 
 Kiểm chứng sau khi chạy migration:
 1. `npm run legacy:import -- --yes`: 1.293 post, 9.707 comment (gồm reply), 5 source.
-2. `npm run collect:facebook -- --url <group> --limit 20 --yes`: một `collect_runs` chuyển sang `success`, payload nằm ở `raw/facebook/facebook-posts/...` trên R2, sinh ra các run `facebook-comments` follow-up.
+2. `npm run collect:facebook -- --url <group> --limit 20 --yes`: một `collect_runs` chuyển sang `success`, `payload_key` trỏ tới `raw/facebook/facebook-posts/...` trên R2, sinh ra các run `facebook-comments` follow-up.
 
 ## Giai đoạn 2 — Dữ liệu giả
 

@@ -49,12 +49,13 @@ Module mới nằm trực tiếp trong `lib/` theo `.cursor/rules/lib-services.m
 
 - Dùng chung bảng kho thô, phân biệt bằng `origin = synthetic` + `scenario_id`. Chỉ project `mode = sandbox` mới thấy. Xem [synthetic-data.md](synthetic-data.md).
 
-## D6 — Luồng collect: webhook + polling dự phòng (2026-10-11)
+## D6 — Luồng collect: chỉ dùng webhook (2026-10-11)
 
-- Mỗi lần thu thập là một dòng `collect_runs`, chạy bằng workflow `collect-source` (`lib/connectors/workflows/collect-source.ts`): start → chờ payload → normalize theo batch 200 item → finish → tạo run follow-up.
-- Bright Data giao kết quả tới `/api/webhooks/connectors/bright-data/{collectRunId}`. Route lưu nguyên payload lên R2 rồi `notify` workflow. Nếu sau `COLLECT_WAIT_TIMEOUT_SECONDS` (mặc định 10 phút) chưa có webhook, workflow tự gọi API progress và tải snapshot về R2. Tối đa 36 vòng (6 giờ).
-- Workflow đọc payload từ R2 theo khóa, không truyền payload qua QStash. Kết quả mỗi step chỉ là số đếm, nên giữ được nhỏ.
+- Mỗi lần thu thập là một dòng `collect_runs`, chạy bằng workflow `collect-source` (`lib/connectors/workflows/collect-source.ts`): start → chờ webhook → normalize theo batch 200 item → finish → tạo run follow-up.
+- Bright Data giao kết quả tới `/api/webhooks/connectors/bright-data/{collectRunId}` trên `NEXT_PUBLIC_APP_URL`. Route lưu nguyên payload vào kho payload (L0, hiện là R2) rồi `notify` workflow. Môi trường dev luôn chạy sau tunnel có domain công khai, nên không cần polling. Quá 6 giờ không có webhook thì run bị đánh dấu `failed`.
+- `collect_runs.payload_key` là khóa object, không gắn với R2. Mọi lệnh đọc/ghi đi qua `rawPayloadStorage` (`lib/connectors/utils/raw-payload-storage.ts`), nên đổi kho lưu trữ chỉ cần sửa một chỗ.
+- Workflow đọc payload theo khóa, không truyền payload qua QStash. Kết quả mỗi step chỉ là số đếm, nên giữ được nhỏ.
 - `since` lấy từ `published_at` mới nhất của post trong source, trừ 1 ngày chồng lấn (upsert tự khử trùng). Source mới thì lấy 30 ngày gần nhất. `limit` mặc định 500, tối đa 2000.
 - Comment: sau mỗi batch post, các post mới hoặc có `comment_count` tăng được gom thành run `facebook-comments` (≤ 50 post mỗi run).
 - Payload gốc có thông tin cá nhân. Bucket R2 hiện tại là public, nên production cần đặt `R2_RAW_BUCKET_NAME` trỏ tới một bucket private.
-- **Lý do:** dùng lại đường webhook đã chạy ổn định, không bị giới hạn kích thước message QStash, chạy được ở local (Bright Data không gọi được localhost thì polling vẫn hoàn tất run) và chịu được webhook bị mất.
+- **Lý do:** dùng lại đường webhook đã chạy ổn định và không bị giới hạn kích thước message QStash.

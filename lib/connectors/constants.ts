@@ -14,8 +14,5 @@ export type CollectRunStatus = (typeof COLLECT_RUN_STATUSES)[number];
 /** Items normalized per workflow step. */
 export const NORMALIZE_BATCH_SIZE = 200;
 
-/** How long one wait step listens for the provider webhook before polling. */
-export const COLLECT_WAIT_TIMEOUT_SECONDS = 10 * 60;
-
-/** Wait/poll rounds before a job is given up: 36 × 10 min = 6 h. */
-export const COLLECT_MAX_WAIT_ROUNDS = 36;
+/** A run whose provider webhook has not arrived by then is marked failed. */
+export const COLLECT_WEBHOOK_TIMEOUT_SECONDS = 6 * 60 * 60;

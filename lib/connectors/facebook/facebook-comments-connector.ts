@@ -82,9 +82,6 @@ export const facebookCommentsConnector: JobConnector<FacebookCommentsParams> = {
     });
   },
 
-  getJobStatus: brightDataJobMethods.getJobStatus,
-  downloadJobResult: brightDataJobMethods.downloadJobResult,
-
   normalize(records): NormalizeResult {
     const items: NormalizedContentItem[] = [];
     let skipped = 0;

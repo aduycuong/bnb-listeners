@@ -930,7 +930,7 @@ Stores metadata for workspace API keys managed via Unkey. The actual key value i
 
 ## Social listening raw store (L1)
 
-New pipeline tables (see `docs/data-model.md`). Shared across workspaces — no `workspace_id`. Every table carries `origin`: `connector` | `synthetic` | `legacy_import`. Raw connector payloads are archived in R2 (L0) under `raw/{platform}/{connector}/{yyyy}/{mm}/{dd}/{collect_run_id}.json`. Written by `lib/raw-store/` and `lib/connectors/`; legacy modules must not read or write these tables.
+New pipeline tables (see `docs/data-model.md`). Shared across workspaces — no `workspace_id`. Every table carries `origin`: `connector` | `synthetic` | `legacy_import`. Raw connector payloads are archived in payload storage (L0, R2 today) under `raw/{platform}/{connector}/{yyyy}/{mm}/{dd}/{collect_run_id}.json`. Written by `lib/raw-store/` and `lib/connectors/`; legacy modules must not read or write these tables.
 
 ### `sources`
 
@@ -983,7 +983,7 @@ One connector run, driven by the `collect-source` Upstash Workflow.
 | status | text | NO | `pending` | `pending` \| `running` \| `success` \| `failed` |
 | workflow_run_id | text | YES | — | Upstash Workflow run id |
 | external_job_id | text | YES | — | Provider job id (Bright Data snapshot id) |
-| r2_key | text | YES | — | Raw payload object key |
+| payload_key | text | YES | — | Object key of the raw payload in payload storage (R2 today) |
 | item_count | integer | YES | — | Items in the raw payload |
 | stats | jsonb | YES | — | Normalize counts `{ inserted, updated, skipped }` |
 | error | text | YES | — | Failure message |

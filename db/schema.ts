@@ -1092,7 +1092,7 @@ export const authors = pgTable(
 export type Author = typeof authors.$inferSelect;
 export type NewAuthor = typeof authors.$inferInsert;
 
-/** One connector run. The raw payload lives in R2 under `r2_key`. */
+/** One connector run. The raw payload is archived under `payload_key`. */
 export const collectRuns = pgTable(
   "collect_runs",
   {
@@ -1111,7 +1111,8 @@ export const collectRuns = pgTable(
     workflowRunId: text("workflow_run_id"),
     /** Provider job id, e.g. the Bright Data snapshot id. */
     externalJobId: text("external_job_id"),
-    r2Key: text("r2_key"),
+    /** Object key of the raw payload in payload storage (R2 today). */
+    payloadKey: text("payload_key"),
     itemCount: integer("item_count"),
     /** Normalize outcome counts: inserted / updated / skipped. */
     stats: jsonb("stats").$type<Record<string, unknown>>(),

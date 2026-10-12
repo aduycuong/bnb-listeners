@@ -103,9 +103,6 @@ export const facebookPostsConnector: JobConnector<FacebookPostsParams> = {
     });
   },
 
-  getJobStatus: brightDataJobMethods.getJobStatus,
-  downloadJobResult: brightDataJobMethods.downloadJobResult,
-
   normalize(records): NormalizeResult {
     const items: NormalizedContentItem[] = [];
     let skipped = 0;
