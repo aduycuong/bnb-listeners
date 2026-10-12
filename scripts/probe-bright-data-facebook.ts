@@ -9,6 +9,8 @@
 // post-comments  scrape posts by URL (gd_lyclm1571iy3mv57zw) and inspect the
 //                embedded `comments` array; --compare also runs the comments
 //                dataset on the same posts to measure completeness.
+// comment-limit  whether the comments dataset's limit_records caps each input
+//                or the whole job.
 //
 // Example:
 //   npx tsx scripts/probe-bright-data-facebook.ts post-params --url https://www.facebook.com/groups/reviewbatdongsanaz --yes
@@ -52,6 +54,12 @@ const postParamsOptionsSchema = z.object({
   }),
   num: z.coerce.number().int().min(1).max(50),
   cap: z.coerce.number().int().min(1).max(200),
+  yes: z.boolean(),
+});
+
+const commentLimitOptionsSchema = z.object({
+  postUrl: z.array(z.url()).min(2).max(5),
+  limit: z.coerce.number().int().min(1).max(50),
   yes: z.boolean(),
 });
 
@@ -336,6 +344,62 @@ async function postComments(rawOptions: unknown) {
   });
 }
 
+/**
+ * Is `limit_records` per input or per job? Each post must have more comments
+ * than --limit: per-input gives about posts × limit rows, per-job about limit.
+ */
+async function commentLimit(rawOptions: unknown) {
+  const options = commentLimitOptionsSchema.parse(rawOptions);
+  const perInputExpected = options.postUrl.length * options.limit;
+
+  console.log(`[${SCRIPT}] comment-limit plan`, {
+    posts: options.postUrl.length,
+    limitRecordsPerInput: options.limit,
+    ifPerInput: perInputExpected,
+    ifPerJob: options.limit,
+    mode: options.yes ? "apply" : "dry-run",
+  });
+  if (!options.yes) {
+    console.log(`[${SCRIPT}] Dry run; pass --yes to trigger the job.`);
+    return;
+  }
+
+  const run = await runJob(
+    "comment-limit",
+    COMMENTS_DATASET_ID,
+    options.postUrl.map((url) => ({
+      url,
+      get_all_replies: true,
+      limit_records: options.limit,
+      comments_sort: "Most relevant",
+    })),
+  );
+
+  const rows = okRecords(run);
+  const perPost = options.postUrl.map((url) => {
+    const postId = readPostId(url);
+    return {
+      postId,
+      rows: rows.filter((row) => row.post_id === postId).length,
+    };
+  });
+
+  const report = {
+    ...summarize(run),
+    limitRecordsPerInput: options.limit,
+    perPost,
+    verdict:
+      rows.length <= options.limit
+        ? "per-job: limit_records caps the whole job"
+        : rows.length <= perInputExpected
+          ? "per-input: limit_records caps each post"
+          : "neither: more rows than posts × limit",
+  };
+
+  console.log(`[${SCRIPT}] Report`, JSON.stringify(report, null, 2));
+  await saveReport("bright-data-comment-limit", { report, raw: { run } });
+}
+
 async function main() {
   const program = new Command()
     .name(SCRIPT)
@@ -362,6 +426,18 @@ async function main() {
     .option("--compare-limit <n>", "limit_records per post for --compare", "200")
     .option("--yes", "Trigger the Bright Data jobs (costs records)", false)
     .action(postComments);
+
+  program
+    .command("comment-limit")
+    .description("Whether limit_records applies per input or per job")
+    .requiredOption(
+      "--post-url <url>",
+      "Facebook post URL with more comments than --limit (repeatable, 2-5)",
+      (value: string, previous: string[] = []) => [...previous, value],
+    )
+    .option("--limit <n>", "limit_records per input", "10")
+    .option("--yes", "Trigger the Bright Data job (costs records)", false)
+    .action(commentLimit);
 
   await program.parseAsync();
 }
