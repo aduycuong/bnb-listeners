@@ -11,9 +11,14 @@ type FinishCollectRunParams = {
   stats: { inserted: number; updated: number; skipped: number };
 };
 
+type FinishCollectRunResult = {
+  /** Lets the workflow attach follow-up runs to the same source without reloading the run. */
+  sourceId: string | null;
+};
+
 export async function finishCollectRun(
   params: FinishCollectRunParams,
-): Promise<void> {
+): Promise<FinishCollectRunResult> {
   const run = await getCollectRun(params.collectRunId);
   const finishedAt = new Date();
 
@@ -28,4 +33,6 @@ export async function finishCollectRun(
       lastCollectedAt: finishedAt,
     });
   }
+
+  return { sourceId: run.sourceId };
 }

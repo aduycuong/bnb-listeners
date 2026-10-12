@@ -15,7 +15,6 @@ import type {
   FollowUpRun,
   StoreRawPayloadResult,
 } from "../types";
-import { getCollectRun } from "../utils/get-collect-run";
 import { getCollectRunEventId } from "../utils/get-collect-run-event-id";
 
 export const collectSourceWorkflowPayloadSchema = z.object({
@@ -85,14 +84,9 @@ export const collectSourceWorkflow: RouteFunction<
     followUps.push(...batch.followUps);
   }
 
-  await context.run("finish", () => finishCollectRun({ collectRunId, stats }));
-
-  if (followUps.length === 0) return;
-
-  const sourceId = await context.run("load-source", async () => {
-    const run = await getCollectRun(collectRunId);
-    return run.sourceId;
-  });
+  const { sourceId } = await context.run("finish", () =>
+    finishCollectRun({ collectRunId, stats }),
+  );
 
   for (const [index, followUp] of followUps.entries()) {
     await context.run(`follow-up-${index}`, () =>
