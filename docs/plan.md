@@ -30,6 +30,69 @@ Kiểm chứng sau khi chạy migration:
 1. `npm run legacy:import -- --yes`: 1.293 post, 9.707 comment (gồm reply), 5 source.
 2. `npm run collect:facebook -- --url <group> --limit 20 --yes`: một `collect_runs` chuyển sang `success`, `payload_key` trỏ tới `raw/facebook/facebook-posts/...` trên R2, sinh ra các run `facebook-comments` follow-up.
 
+## Giai đoạn 1 — Phát sinh: lập lịch thu thập, tier và lấy lại comment
+
+Phát sinh sau khi chạy thử Giai đoạn 1: kho thô chưa tự cập nhật (chỉ chạy tay bằng script), và một lần lấy comment ngay sau khi có bài là chưa đủ. **Cần rà lại plan này một lần nữa trước khi code.**
+
+### Kết quả thử nghiệm Bright Data (2026-10-12)
+
+Script `npm run probe:bright-data` (`scripts/probe-bright-data-facebook.ts`), kết quả lưu ở `.local/experiments/`. Bright Data tính tiền theo bản ghi được giao về (khoảng $1.5 / 1.000 bản ghi).
+
+- `posts_to_not_include` hoạt động, nhưng id bị loại vẫn chiếm chỗ trong `num_of_posts`. **Không dùng.**
+- Không truyền `num_of_posts` thì số bài trả về không bị chặn, nên luôn phải truyền. `limit_multiple_results` chặn cứng tổng số bản ghi của job.
+- Dataset lấy post theo URL (`gd_lyclm1571iy3mv57zw`) kèm 3 comment nổi bật nhưng không có comment id, nên chỉ dùng để xem trước (`metadata.topComments`).
+- `limit_records` của dataset comment tính theo từng bài và đếm cả reply. `num_comments` cũng đếm cả reply. Số comment lấy được có thể ít hơn `num_comments` (158 so với 139).
+- Group `reviewbatdongsanaz` có khoảng 100 bài/ngày. Trung vị 5 comment/bài, trung bình 20, khoảng 30% bài không có comment (đo khi bài mới 0–5 giờ tuổi).
+
+### Đã quyết định
+
+**Run post theo tier**
+- `since` = bài mới nhất − 1 ngày, `num_of_posts = 50` (config). Bài trùng trong phần chồng lấn được upsert để cập nhật engagement và ghi `engagement_snapshot`.
+- Run post không tạo follow-up comment nữa.
+- Tần suất: `hot` 2 giờ, `normal` 6 giờ, `low` 24 giờ, `paused` không quét.
+- Tier tự tính sau mỗi run post theo số bài/ngày trong 7 ngày: `hot` ≥ 30, `normal` ≥ 3, còn lại `low`. Cột `sources.activity_tier_locked` để ghim tier bằng tay.
+- Nếu run trả đủ 50 bài mà bài cũ nhất vẫn mới hơn `since` (có thể sót bài), ghi `possibleGap` vào `collect_runs.stats` và đặt lịch run kế tiếp sớm hơn.
+
+**Lấy lại comment theo lịch từng bài**
+- Bảng mới `item_refresh_schedules` (`content_item_id`, `next_refresh_at`, `checkpoint`, `comments_collected_count`, `comments_collected_at`). Dòng bị xóa khi bài hết các mốc.
+- Mốc: +6 giờ, +24 giờ, +72 giờ tính từ `published_at` (config). Bài thấy lần đầu đã qua mốc thì nhảy tới mốc kế tiếp; qua hết thì lấy một lần ngay.
+- Tại mỗi mốc:
+  1. Đọc `num_comments`: dùng giá trị từ run post nếu bài vừa được cập nhật (≤ 2 giờ), nếu không thì chạy connector mới `facebook-post-refresh` (1 bản ghi/bài, gom theo source; lưu `topComments`).
+  2. `delta = num_comments − comments_collected_count`. Chỉ lấy lại comment khi **delta ≥ 5 và ≥ 20%** (lần đầu thì lấy nếu `num_comments > 0`).
+  3. Lấy comment: tối đa **200 dòng/bài** (tính cả reply, config), sort "Most relevant". Lưu `comments_collected_count = num_comments` tại thời điểm lấy.
+
+**Usage**
+- `sources.monthly_record_limit` (null = không giới hạn). Usage tháng = tổng `collect_runs.item_count` của mọi run thuộc source.
+- Hết ngân sách thì không lên lịch. Mỗi job gửi `limit_multiple_results` bằng ngân sách còn lại.
+- Bảng ghi usage chi tiết, quy đổi tiền, hạn mức theo workspace: PR riêng.
+
+**Bộ lập lịch**
+- Một QStash schedule 15 phút một lần gọi workflow `schedule-collections`: chọn source đến hạn (theo tier, không có run đang chạy, còn ngân sách) và các mốc lấy lại đến hạn.
+- Script `npm run schedules:sync` tạo hoặc cập nhật schedule.
+
+### Ước tính chi phí cho một group `hot` (~100 bài/ngày)
+
+| Hạng mục | Bản ghi/ngày |
+|---|---|
+| Run post: 12 × 50 | ~600 |
+| Lấy lại post theo URL (+24 giờ, +72 giờ) | ≤ 200 |
+| Comment (lấy lại toàn bộ khi vượt ngưỡng) | ~3.000–6.000 |
+
+Chi phí comment là con số ước lượng thô, cần đo lại sau một tuần chạy thật.
+
+### Còn mở
+- Giá trị mặc định của `monthly_record_limit`.
+- Giới hạn đã biết: chỉ biết comment tăng tại các mốc; comment bị xóa không được phát hiện; với bài trên 200 comment, lần lấy lại "Most relevant" có thể không chứa comment mới.
+
+### Việc cần làm
+- [ ] Schema: `sources.activity_tier_locked`, `sources.monthly_record_limit`, bảng `item_refresh_schedules`
+- [ ] Config tập trung (`lib/connectors/config.ts`)
+- [ ] Run post: 50 bài, bỏ follow-up comment, tạo lịch cho bài mới, tính lại tier
+- [ ] Connector `facebook-post-refresh` và `metadata.topComments`
+- [ ] Xử lý mốc lấy lại, ngưỡng comment, chặn usage bằng `limit_multiple_results`
+- [ ] Workflow `schedule-collections` và script `schedules:sync`
+- [ ] Ghi D7 vào `decisions.md`
+
 ## Giai đoạn 2 — Dữ liệu giả
 
 - [ ] Schema `scenarios`, `synthetic_labels`, cột `origin` và `scenario_id`
