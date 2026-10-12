@@ -1009,3 +1009,248 @@ export const workspaceApiKeys = pgTable(
 
 export type WorkspaceApiKey = typeof workspaceApiKeys.$inferSelect;
 export type NewWorkspaceApiKey = typeof workspaceApiKeys.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Social listening raw store (L1). Shared across workspaces; see docs/data-model.md.
+// `origin`: connector | synthetic | legacy_import.
+// ---------------------------------------------------------------------------
+
+/** Where content is published: a Facebook page or group, a channel, a news site. */
+export const sources = pgTable(
+  "sources",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    platform: text("platform").notNull(),
+    sourceType: text("source_type").notNull(),
+    externalId: text("external_id").notNull(),
+    url: text("url"),
+    name: text("name"),
+    followerCount: integer("follower_count"),
+    memberCount: integer("member_count"),
+    /** Drives how often the source is collected. */
+    activityTier: text("activity_tier").notNull().default("normal"),
+    origin: text("origin").notNull().default("connector"),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    lastCollectedAt: timestamp("last_collected_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("sources_platform_external_id_idx").on(
+      table.platform,
+      table.externalId,
+    ),
+    index("sources_origin_idx").on(table.origin),
+  ],
+);
+
+export type Source = typeof sources.$inferSelect;
+export type NewSource = typeof sources.$inferInsert;
+
+/** The account that published a content item. */
+export const authors = pgTable(
+  "authors",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    platform: text("platform").notNull(),
+    externalId: text("external_id").notNull(),
+    name: text("name"),
+    url: text("url"),
+    avatarUrl: text("avatar_url"),
+    followerCount: integer("follower_count"),
+    /** kol | agency | community | brand | individual | media; set later by the LLM or by hand. */
+    authorType: text("author_type"),
+    origin: text("origin").notNull().default("connector"),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("authors_platform_external_id_idx").on(
+      table.platform,
+      table.externalId,
+    ),
+  ],
+);
+
+export type Author = typeof authors.$inferSelect;
+export type NewAuthor = typeof authors.$inferInsert;
+
+/** One connector run. The raw payload is archived under `payload_key`. */
+export const collectRuns = pgTable(
+  "collect_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    /** Connector key, e.g. `facebook-posts`, `facebook-comments`. */
+    connector: text("connector").notNull(),
+    sourceId: uuid("source_id").references(() => sources.id, {
+      onDelete: "set null",
+    }),
+    params: jsonb("params")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    /** pending | running | success | failed */
+    status: text("status").notNull().default("pending"),
+    workflowRunId: text("workflow_run_id"),
+    /** Provider job id, e.g. the Bright Data snapshot id. */
+    externalJobId: text("external_job_id"),
+    /** Object key of the raw payload in payload storage (R2 today). */
+    payloadKey: text("payload_key"),
+    itemCount: integer("item_count"),
+    /** Normalize outcome counts: inserted / updated / skipped. */
+    stats: jsonb("stats").$type<Record<string, unknown>>(),
+    error: text("error"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("collect_runs_source_created_idx").on(
+      table.sourceId,
+      table.createdAt.desc(),
+    ),
+    index("collect_runs_status_idx").on(table.status),
+    index("collect_runs_external_job_id_idx").on(table.externalJobId),
+  ],
+);
+
+export type CollectRun = typeof collectRuns.$inferSelect;
+export type NewCollectRun = typeof collectRuns.$inferInsert;
+
+export type ContentItemMedia = {
+  type: "image" | "video";
+  url: string;
+};
+
+/** Posts, comments and replies in one table; `parent_id` / `root_id` form the thread. */
+export const contentItems = pgTable(
+  "content_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    /** post | comment | reply | article | video | listing */
+    kind: text("kind").notNull(),
+    platform: text("platform").notNull(),
+    sourceId: uuid("source_id").references(() => sources.id, {
+      onDelete: "set null",
+    }),
+    authorId: uuid("author_id").references(() => authors.id, {
+      onDelete: "set null",
+    }),
+    parentId: uuid("parent_id").references(
+      (): AnyPgColumn => contentItems.id,
+      { onDelete: "set null" },
+    ),
+    rootId: uuid("root_id").references((): AnyPgColumn => contentItems.id, {
+      onDelete: "set null",
+    }),
+    externalId: text("external_id").notNull(),
+    url: text("url"),
+    text: text("text").notNull().default(""),
+    media: jsonb("media").$type<ContentItemMedia[]>().notNull().default([]),
+    language: text("language"),
+    /** Hash of the normalized text; unchanged text keeps downstream analysis cached. */
+    contentHash: text("content_hash").notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastCollectedAt: timestamp("last_collected_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    /** Latest engagement; history lives in `engagement_snapshots`. */
+    likeCount: integer("like_count").notNull().default(0),
+    commentCount: integer("comment_count").notNull().default(0),
+    shareCount: integer("share_count").notNull().default(0),
+    viewCount: integer("view_count").notNull().default(0),
+    reactions: jsonb("reactions").$type<Record<string, number>>(),
+    origin: text("origin").notNull().default("connector"),
+    collectRunId: uuid("collect_run_id").references(() => collectRuns.id, {
+      onDelete: "set null",
+    }),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("content_items_platform_external_id_idx").on(
+      table.platform,
+      table.externalId,
+    ),
+    index("content_items_source_published_idx").on(
+      table.sourceId,
+      table.publishedAt.desc(),
+    ),
+    index("content_items_published_at_idx").on(table.publishedAt.desc()),
+    index("content_items_parent_id_idx").on(table.parentId),
+    index("content_items_root_id_idx").on(table.rootId),
+    index("content_items_author_id_idx").on(table.authorId),
+    index("content_items_collect_run_id_idx").on(table.collectRunId),
+    index("content_items_origin_idx").on(table.origin),
+  ],
+);
+
+export type ContentItem = typeof contentItems.$inferSelect;
+export type NewContentItem = typeof contentItems.$inferInsert;
+
+/** Engagement time series, one row per item per collect run. */
+export const engagementSnapshots = pgTable(
+  "engagement_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    contentItemId: uuid("content_item_id")
+      .notNull()
+      .references(() => contentItems.id, { onDelete: "cascade" }),
+    collectRunId: uuid("collect_run_id").references(() => collectRuns.id, {
+      onDelete: "set null",
+    }),
+    capturedAt: timestamp("captured_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    likeCount: integer("like_count").notNull().default(0),
+    commentCount: integer("comment_count").notNull().default(0),
+    shareCount: integer("share_count").notNull().default(0),
+    viewCount: integer("view_count").notNull().default(0),
+    reactions: jsonb("reactions").$type<Record<string, number>>(),
+  },
+  (table) => [
+    index("engagement_snapshots_item_captured_idx").on(
+      table.contentItemId,
+      table.capturedAt.desc(),
+    ),
+    // Re-running a normalize step for the same run must not duplicate snapshots.
+    uniqueIndex("engagement_snapshots_item_run_idx").on(
+      table.contentItemId,
+      table.collectRunId,
+    ),
+  ],
+);
+
+export type EngagementSnapshot = typeof engagementSnapshots.$inferSelect;
+export type NewEngagementSnapshot = typeof engagementSnapshots.$inferInsert;

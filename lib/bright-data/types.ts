@@ -11,3 +11,4 @@ export type CreateBrightDataScraperJobParams = {
 export type CreateBrightDataScraperJobResult = {
   snapshotId: string;
 };
+

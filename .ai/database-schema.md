@@ -928,6 +928,116 @@ Stores metadata for workspace API keys managed via Unkey. The actual key value i
 
 ---
 
+## Social listening raw store (L1)
+
+New pipeline tables (see `docs/data-model.md`). Shared across workspaces — no `workspace_id`. Every table carries `origin`: `connector` | `synthetic` | `legacy_import`. Raw connector payloads are archived in payload storage (L0, R2 today) under `raw/{platform}/{connector}/{yyyy}/{mm}/{dd}/{collect_run_id}.json`. Written by `lib/raw-store/` and `lib/connectors/`; legacy modules must not read or write these tables.
+
+### `sources`
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| platform | text | NO | — | `facebook` \| `tiktok` \| `youtube` \| `news` \| `forum` \| `classifieds` … |
+| source_type | text | NO | — | `page` \| `group` \| `channel` \| `site` … |
+| external_id | text | NO | — | Platform id (Facebook group id / page handle) |
+| url | text | YES | — | Canonical URL |
+| name | text | YES | — | Display name |
+| follower_count | integer | YES | — | Page followers |
+| member_count | integer | YES | — | Group members |
+| activity_tier | text | NO | `normal` | Collection frequency tier |
+| origin | text | NO | `connector` | Data origin |
+| metadata | jsonb | NO | `{}` | Platform extras |
+| last_collected_at | timestamptz | YES | — | Last successful collect run |
+| created_at / updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** unique `(platform, external_id)`; btree `origin`.
+
+### `authors`
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| platform | text | NO | — | |
+| external_id | text | NO | — | Platform user id, or profile URL when no id is available |
+| name | text | YES | — | |
+| url | text | YES | — | Profile URL |
+| avatar_url | text | YES | — | |
+| follower_count | integer | YES | — | |
+| author_type | text | YES | — | `kol` \| `agency` \| `community` \| `brand` \| `individual` \| `media` |
+| origin | text | NO | `connector` | |
+| metadata | jsonb | NO | `{}` | |
+| created_at / updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** unique `(platform, external_id)`.
+
+### `collect_runs`
+
+One connector run, driven by the `collect-source` Upstash Workflow.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| connector | text | NO | — | `facebook-posts` \| `facebook-comments` … |
+| source_id | uuid | YES | — | FK → `sources.id` ON DELETE SET NULL |
+| params | jsonb | NO | `{}` | Connector input (`since`, limits, post URL…) |
+| status | text | NO | `pending` | `pending` \| `running` \| `success` \| `failed` |
+| workflow_run_id | text | YES | — | Upstash Workflow run id |
+| external_job_id | text | YES | — | Provider job id (Bright Data snapshot id) |
+| payload_key | text | YES | — | Object key of the raw payload in payload storage (R2 today) |
+| item_count | integer | YES | — | Items in the raw payload |
+| stats | jsonb | YES | — | Normalize counts `{ inserted, updated, skipped }` |
+| error | text | YES | — | Failure message |
+| started_at / finished_at | timestamptz | YES | — | |
+| created_at | timestamptz | NO | `now()` | |
+
+**Indexes:** `(source_id, created_at DESC)`; `status`; `external_job_id`.
+
+### `content_items`
+
+Posts, comments and replies in one table.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| kind | text | NO | — | `post` \| `comment` \| `reply` \| `article` \| `video` \| `listing` |
+| platform | text | NO | — | |
+| source_id | uuid | YES | — | FK → `sources.id` ON DELETE SET NULL |
+| author_id | uuid | YES | — | FK → `authors.id` ON DELETE SET NULL |
+| parent_id | uuid | YES | — | FK → `content_items.id` ON DELETE SET NULL (comment → post, reply → comment) |
+| root_id | uuid | YES | — | FK → `content_items.id` ON DELETE SET NULL (thread root post) |
+| external_id | text | NO | — | Platform item id |
+| url | text | YES | — | |
+| text | text | NO | `''` | Content text |
+| media | jsonb | NO | `[]` | `[{ type: image \| video, url }]` |
+| language | text | YES | — | |
+| content_hash | text | NO | — | sha256 of normalized text |
+| published_at | timestamptz | YES | — | |
+| first_seen_at | timestamptz | NO | `now()` | |
+| last_collected_at | timestamptz | NO | `now()` | |
+| like_count / comment_count / share_count / view_count | integer | NO | `0` | Latest engagement |
+| reactions | jsonb | YES | — | Reaction breakdown `{ like, love, haha, … }` |
+| origin | text | NO | `connector` | |
+| collect_run_id | uuid | YES | — | FK → `collect_runs.id` ON DELETE SET NULL (last run that wrote the row) |
+| metadata | jsonb | NO | `{}` | Platform extras; `legacy_import` keeps the old document/comment id here |
+| created_at / updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** unique `(platform, external_id)`; `(source_id, published_at DESC)`; `published_at DESC`; `parent_id`; `root_id`; `author_id`; `collect_run_id`; `origin`.
+
+### `engagement_snapshots`
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| content_item_id | uuid | NO | — | FK → `content_items.id` ON DELETE CASCADE |
+| collect_run_id | uuid | YES | — | FK → `collect_runs.id` ON DELETE SET NULL |
+| captured_at | timestamptz | NO | `now()` | |
+| like_count / comment_count / share_count / view_count | integer | NO | `0` | |
+| reactions | jsonb | YES | — | |
+
+**Indexes:** `(content_item_id, captured_at DESC)`; unique `(content_item_id, collect_run_id)` so a re-run normalize step does not duplicate snapshots.
+
+---
+
 ## Triggers & functions (manual)
 
 None. The former `trg_sync_chunk_terms` / `trg_sync_chunk_engagement` triggers (and their `sync_chunk_terms()` / `sync_chunk_engagement()` functions) were removed together with the denormalized `chunks` columns they maintained. On databases that still carry them, drop manually:

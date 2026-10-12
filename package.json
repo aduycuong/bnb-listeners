@@ -23,7 +23,12 @@
     "firebase:set-user-role": "tsx scripts/set-firebase-user-role.ts",
     "test:local-qwen": "tsx scripts/test-local-qwen.ts",
     "legacy:export": "tsx scripts/export-legacy-documents.ts",
-    "legacy:freeze": "tsx scripts/freeze-legacy-pipeline.ts"
+    "legacy:freeze": "tsx scripts/freeze-legacy-pipeline.ts",
+    "workflow:trigger": "tsx scripts/trigger-workflow.ts",
+    "workflow:dev": "npx @upstash/qstash-cli@2.37.18 dev",
+    "collect:facebook": "tsx scripts/collect-facebook-source.ts",
+    "legacy:import": "tsx scripts/import-legacy-content.ts",
+    "probe:bright-data": "tsx scripts/probe-bright-data-facebook.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1135.0",
@@ -48,7 +53,8 @@
     "@shadcn/react": "^0.3.0",
     "@tanstack/react-query": "5.90.21",
     "@unkey/api": "^2.5.1",
-    "@upstash/qstash": "2.9.0",
+    "@upstash/qstash": "2.11.3",
+    "@upstash/workflow": "1.3.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cn": "^0.2.6",
