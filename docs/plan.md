@@ -44,6 +44,7 @@ Script `npm run probe:bright-data` (`scripts/probe-bright-data-facebook.ts`), k�
 - Ranh giới ngày khi chỉ truyền ngày (UTC hay giờ Việt Nam) chưa xác định được; dùng ISO datetime thì không cần biết.
 - Dataset lấy post theo URL (`gd_lyclm1571iy3mv57zw`) kèm 3 comment nổi bật nhưng không có comment id, nên chỉ dùng để xem trước (`metadata.topComments`).
 - `limit_records` của dataset comment tính theo từng bài và đếm cả reply. `num_comments` cũng đếm cả reply. Số comment lấy được có thể ít hơn `num_comments` (158 so với 139).
+- `get_all_replies = false` bỏ hẳn reply (0 reply trên 264 dòng), và khi đó `limit_records` chỉ đếm comment gốc (`limit_records = 20` trả đúng 20 comment gốc). Ở 2 bài thử, reply chiếm khoảng 1/3 tổng số comment.
 - Group `reviewbatdongsanaz` có khoảng 30–35 bài/ngày, gần như không có bài từ 21 giờ tới 6 giờ sáng (giờ Việt Nam). Trung vị 5 comment/bài, trung bình 20, khoảng 30% bài không có comment (đo khi bài mới 0–5 giờ tuổi).
 
 ### Đã quyết định
@@ -58,17 +59,18 @@ Script `npm run probe:bright-data` (`scripts/probe-bright-data-facebook.ts`), k�
 - Tier tự tính sau mỗi run post theo số bài/ngày trong 7 ngày: `hot` ≥ 30, `normal` ≥ 3, còn lại `low`. Cột `sources.activity_tier_locked` để ghim tier bằng tay.
 
 **Lấy lại comment theo lịch từng bài**
-- Bảng mới `item_refresh_schedules` (`content_item_id`, `next_refresh_at`, `checkpoint`, `comments_collected_count`, `comments_collected_at`). Dòng bị xóa khi bài hết các mốc.
-- Mốc: +6 giờ, +24 giờ, +72 giờ tính từ `published_at` (danh sách mốc là config). Bài thấy lần đầu đã qua mốc thì nhảy tới mốc kế tiếp; qua hết thì xét một lần ngay.
+- Bảng mới `item_refresh_schedules` (`content_item_id`, `next_refresh_at`, `checkpoint_hours`, `comments_collected_count`, `comments_collected_at`). Dòng bị xóa khi bài hết các mốc.
+- Mốc: +6 giờ, +24 giờ, +72 giờ tính từ `published_at` (danh sách mốc là config).
+- Lúc run post thêm bài vào kho, `num_comments` vừa lấy được dùng để áp luật lấy comment ngay (như một mốc 0), rồi tạo lịch cho mốc kế tiếp còn ở tương lai. Bài đã qua hết các mốc thì không tạo lịch.
 - Tại mỗi mốc:
-  1. Đọc `num_comments`: dùng giá trị từ run post nếu bài vừa được thêm vào kho (≤ 2 giờ), nếu không thì chạy connector mới `facebook-post-refresh` (1 bản ghi/bài, gom theo source; lưu `topComments`).
+  1. Chạy connector `facebook-post-refresh` để đọc lại `num_comments` (1 bản ghi/bài, gom theo source; lưu `topComments`). Mốc đã giao cho run refresh được đẩy lùi 3 giờ để không bị gửi lại.
   2. Lấy comment khi:
      - chưa lấy lần nào và `num_comments > 100`, hoặc
      - chưa lấy lần nào, `num_comments > 0` và bài đã đăng quá 1 ngày, hoặc
      - đã lấy rồi và `num_comments` tăng ≥ 15% so với `comments_collected_count`. Không kèm mức tối thiểu tuyệt đối: bài ít comment có tăng phần trăm lớn thì lấy lại cũng chỉ tốn vài bản ghi.
 
      Các ngưỡng 100, 1 ngày, 15% là config.
-  3. Lấy comment: tối đa **100 dòng/bài** (tính cả reply, config), sort "Most relevant". Lưu `comments_collected_count = num_comments` tại thời điểm lấy.
+  3. Lấy comment: tối đa **100 dòng/bài**, không lấy reply (`get_all_replies = false`, config), sort "Most relevant". Lưu `comments_collected_count = num_comments` tại thời điểm lấy.
 
 **Usage**
 - `sources.monthly_record_limit` (null = không giới hạn). Usage tháng = tổng `collect_runs.item_count` của mọi run thuộc source.
@@ -95,11 +97,12 @@ Chi phí comment là con số ước lượng thô, cần đo lại sau một tu
 - Chưa kiểm chứng: bài ghim hoặc bài cũ có hoạt động mới có làm job post dừng sớm hay không.
 
 ### Việc cần làm
-- [ ] Schema: `sources.activity_tier_locked`, `sources.monthly_record_limit`, bảng `item_refresh_schedules`
-- [ ] Config tập trung (`lib/connectors/config.ts`)
-- [ ] Run post: `start_date` ISO từ bài mới nhất − chồng lấn, bỏ `num_of_posts`, bỏ qua bài đã có, ghi `lateArrivals`, bỏ follow-up comment, tạo lịch cho bài mới, tính lại tier
-- [ ] Connector `facebook-post-refresh` và `metadata.topComments`
-- [ ] Xử lý mốc lấy lại, ngưỡng comment, chặn usage bằng `limit_multiple_results`
+- [x] Schema: `sources.activity_tier_locked`, `sources.monthly_record_limit`, bảng `item_refresh_schedules`
+- [x] Config tập trung (`lib/connectors/config.ts`)
+- [x] Run post: `start_date` ISO từ bài mới nhất − chồng lấn, bỏ `num_of_posts`, bỏ qua bài đã có, ghi `lateArrivals`, bỏ follow-up comment, tạo lịch cho bài mới, tính lại tier
+- [x] Connector `facebook-post-refresh` và `metadata.topComments`
+- [x] Xử lý mốc lấy lại và ngưỡng comment; chạy tay bằng `npm run refresh:check`
+- [ ] Chặn usage theo `monthly_record_limit` bằng `limit_multiple_results` (hiện run post chặn cứng 500 bản ghi, config)
 - [ ] Workflow `schedule-collections` và script `schedules:sync`
 - [ ] Ghi D7 vào `decisions.md`
 

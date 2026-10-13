@@ -21,7 +21,8 @@ type ItemRef = { id: string; sourceId: string | null };
 
 /**
  * Idempotent upsert of normalized items into `content_items`, with their
- * authors and one engagement snapshot per item per collect run.
+ * authors and one engagement snapshot per item per collect run. With
+ * `onExisting: "skip"` rows that already exist are left as they are.
  *
  * Items are written in passes so a parent in the same batch is stored before
  * its replies and the reply gets a real `parent_id`. A parent that is still
@@ -31,9 +32,20 @@ type ItemRef = { id: string; sourceId: string | null };
 export async function writeContentItems(
   params: WriteContentItemsParams,
 ): Promise<WriteContentItemsResult> {
-  const items = dedupeByExternalId(params.items);
+  let items = dedupeByExternalId(params.items);
+  let skippedExisting = 0;
+
+  if (params.onExisting === "skip" && items.length > 0) {
+    const existing = await findItemRefs(
+      params.platform,
+      items.map((item) => item.externalId),
+    );
+    skippedExisting = existing.size;
+    items = items.filter((item) => !existing.has(item.externalId));
+  }
+
   if (items.length === 0) {
-    return { items: [], inserted: 0, updated: 0 };
+    return { items: [], inserted: 0, updated: 0, skippedExisting };
   }
 
   const authorIds = await upsertAuthors(
@@ -63,6 +75,7 @@ export async function writeContentItems(
     items: written,
     inserted: written.filter((item) => item.outcome === "inserted").length,
     updated: written.filter((item) => item.outcome === "updated").length,
+    skippedExisting,
   };
 }
 

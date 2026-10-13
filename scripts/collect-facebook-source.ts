@@ -1,11 +1,13 @@
 // Register a Facebook group/page as a raw-store source and start an incremental
 // collection (collect-source workflow). Without --since, the run asks for posts
-// since the newest stored post minus one day, or the last 30 days for a new source.
+// since the newest stored post minus the overlap in lib/connectors/config.ts, or
+// the initial lookback for a new source. Comments are not collected here; new
+// posts get comment-refresh schedules (npm run refresh:check).
 //
 // Example:
 //   npx tsx scripts/collect-facebook-source.ts --url https://www.facebook.com/groups/reviewbatdongsanaz --dry-run
-//   npx tsx scripts/collect-facebook-source.ts --url https://www.facebook.com/groups/reviewbatdongsanaz --limit 50 --yes
-//   npm run collect:facebook -- --url https://www.facebook.com/somepage --since 2026-10-01T00:00:00Z --no-comments --yes
+//   npx tsx scripts/collect-facebook-source.ts --url https://www.facebook.com/groups/reviewbatdongsanaz --max-records 50 --yes
+//   npm run collect:facebook -- --url https://www.facebook.com/somepage --since 2026-10-01T00:00:00Z --yes
 
 import "dotenv/config";
 import { Command } from "commander";
@@ -23,8 +25,7 @@ const optionsSchema = z
       message: "--url must be a Facebook group or page URL.",
     }),
     since: z.iso.datetime({ offset: true }).optional(),
-    limit: z.coerce.number().int().min(1).max(2000).optional(),
-    comments: z.boolean(),
+    maxRecords: z.coerce.number().int().min(1).max(5000).optional(),
     dryRun: z.boolean(),
     yes: z.boolean(),
   })
@@ -40,8 +41,7 @@ function parseArgs(): Options {
     .description("Register a Facebook source and start a collect run.")
     .requiredOption("--url <url>", "Facebook group or page URL")
     .option("--since <iso>", "Collect posts published on or after this datetime")
-    .option("--limit <n>", "Max posts for this run (default 500)")
-    .option("--no-comments", "Skip follow-up comment collection")
+    .option("--max-records <n>", "Hard cap on delivered records (default 500)")
     .option("--dry-run", "Show what would run without writing", false)
     .option("--yes", "Register the source and start the run", false);
 
@@ -56,8 +56,7 @@ async function main() {
   console.log(`[${SCRIPT}] Target`, {
     ...ref,
     since: options.since ?? "incremental",
-    limit: options.limit ?? "default",
-    comments: options.comments,
+    maxRecords: options.maxRecords ?? "default",
     mode: options.yes ? "apply" : "dry-run",
   });
 
@@ -72,8 +71,7 @@ async function main() {
   const run = await collectSource({
     sourceId,
     since: options.since,
-    limit: options.limit,
-    collectComments: options.comments,
+    maxRecords: options.maxRecords,
   });
   console.log(`[${SCRIPT}] Collect run started`, run);
 }

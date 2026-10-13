@@ -47,7 +47,8 @@ Dùng chung, không gắn với workspace hay project. Dữ liệu `synthetic` �
 **`sources`**: nơi phát ra nội dung (page, group, kênh, trang báo, diễn đàn).
 - `platform` (`facebook`, `tiktok`, `youtube`, `news`, `forum`, `classifieds`, …), `source_type` (`page`, `group`, `channel`, `site`, …)
 - `external_id`, `url`, `name`, `follower_count`, `member_count`
-- `activity_tier`: dùng để quyết định tần suất quét
+- `activity_tier` (`hot`, `normal`, `low`, `paused`): dùng để quyết định tần suất quét; `activity_tier_locked` để ghim tier bằng tay
+- `monthly_record_limit`: số bản ghi Bright Data tối đa mỗi tháng (null = không giới hạn)
 - `origin`, `scenario_id`
 - Unique: `(platform, external_id)`
 
@@ -69,6 +70,10 @@ Dùng chung, không gắn với workspace hay project. Dữ liệu `synthetic` �
 **`engagement_snapshots`**: chuỗi thời gian engagement, dùng để tính tốc độ lan truyền.
 - `content_item_id`, `captured_at`, các bộ đếm
 - Dữ liệu giả cũng sinh snapshot để test được cảnh báo.
+
+**`item_refresh_schedules`**: mốc lấy lại comment kế tiếp của từng bài.
+- `content_item_id`, `next_refresh_at`, `checkpoint_hours`, `comments_collected_count`, `comments_collected_at`
+- Dòng bị xóa khi bài qua mốc cuối cùng.
 
 **`collect_runs`**: mỗi lần chạy của một connector.
 - `connector`, `params`, `status`, `r2_key`, `item_count`, `error`

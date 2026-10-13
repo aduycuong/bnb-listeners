@@ -80,6 +80,8 @@ export type WriteContentItemsParams = {
   collectRunId: string | null;
   /** Defaults to now; legacy imports pass the original collection time. */
   collectedAt?: Date;
+  /** `skip` leaves rows that already exist untouched (no update, no snapshot). Defaults to `update`. */
+  onExisting?: "update" | "skip";
 };
 
 export type WrittenContentItem = {
@@ -97,6 +99,8 @@ export type WriteContentItemsResult = {
   items: WrittenContentItem[];
   inserted: number;
   updated: number;
+  /** Existing rows left untouched because of `onExisting: "skip"`. */
+  skippedExisting: number;
 };
 
 export type GetSourceLatestPublishedAtParams = {

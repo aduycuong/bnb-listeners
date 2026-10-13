@@ -24,32 +24,35 @@ export type NormalizeResult = {
   source?: SourceDetails;
 };
 
-/** Another run to start once this one has been written, e.g. comments for new posts. */
+/** Another run to start once this one has been written, e.g. comments for refreshed posts. */
 export type FollowUpRun = {
   connector: ConnectorKey;
+  sourceId: string | null;
   params: Record<string, unknown>;
+};
+
+export type AfterNormalizeResult = {
+  /** Merged into `collect_runs.stats`. */
+  stats?: Record<string, unknown>;
+  followUps?: FollowUpRun[];
 };
 
 type ConnectorBase<TParams> = {
   key: ConnectorKey;
   platform: string;
   paramsSchema: z.ZodType<TParams>;
+  /** `skip` leaves items already in the raw store untouched. Defaults to `update`. */
+  onExisting?: "update" | "skip";
   /** Pure mapping from raw payload records to raw-store items. */
   normalize(records: unknown[], params: TParams): NormalizeResult;
-  /** Called after each written batch, with the items that batch touched. */
-  planFollowUps?(
-    written: WrittenItemSummary[],
+  /**
+   * Runs once after the whole payload is written. Items written by this run
+   * carry its `collect_run_id`. Must be safe to retry.
+   */
+  afterNormalize?(
+    context: ConnectorContext,
     params: TParams,
-  ): FollowUpRun[];
-};
-
-export type WrittenItemSummary = {
-  externalId: string;
-  kind: string;
-  url: string | null;
-  outcome: "inserted" | "updated";
-  commentCount: number;
-  previousCommentCount: number | null;
+  ): Promise<AfterNormalizeResult>;
 };
 
 /**
@@ -105,9 +108,15 @@ export type NormalizeCollectRunBatchParams = {
 export type NormalizeCollectRunBatchResult = {
   inserted: number;
   updated: number;
+  /** Raw records dropped as invalid, plus existing items left untouched. */
   skipped: number;
-  followUps: FollowUpRun[];
 };
+
+export type CollectRunStats = {
+  inserted: number;
+  updated: number;
+  skipped: number;
+} & Record<string, unknown>;
 
 export type StoreRawPayloadParams = {
   collectRunId: string;

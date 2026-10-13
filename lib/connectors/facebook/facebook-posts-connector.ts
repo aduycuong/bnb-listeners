@@ -2,22 +2,22 @@ import { z } from "zod";
 
 import type { NormalizedContentItem } from "@/lib/raw-store/types";
 
-import type { FollowUpRun, JobConnector, NormalizeResult } from "../types";
+import { COLLECT_CONFIG } from "../config";
+import { createItemRefreshSchedules } from "../services/create-item-refresh-schedules";
+import { measureLateArrivals } from "../services/measure-late-arrivals";
+import { recomputeSourceActivityTier } from "../services/recompute-source-activity-tier";
+import type { JobConnector, NormalizeResult } from "../types";
 import { brightDataJobMethods } from "../utils/bright-data-job-methods";
 import { isBrightDataErrorRecord } from "../utils/is-bright-data-error-record";
 import {
   type BrightDataFacebookPost,
   brightDataFacebookPostSchema,
 } from "./schema";
-import { extractFacebookPostMedia } from "./utils/extract-facebook-post-media";
-import { parseFacebookReactions } from "./utils/parse-facebook-reactions";
 import { parseFacebookSourceUrl } from "./utils/parse-facebook-source-url";
+import { toFacebookPostContentItem } from "./utils/to-facebook-post-content-item";
 
 const GROUP_POSTS_DATASET_ID = "gd_lz11l67o2cb3r0lkj3";
 const PAGE_POSTS_DATASET_ID = "gd_lkaxegm826bjpoo9m5";
-
-/** Post URLs per follow-up comments run. */
-const COMMENT_RUN_POST_LIMIT = 50;
 
 export const facebookPostsParamsSchema = z.object({
   url: z
@@ -26,63 +26,26 @@ export const facebookPostsParamsSchema = z.object({
     .refine((value) => parseFacebookSourceUrl(value) !== null, {
       error: "url must be a Facebook group or page URL.",
     }),
-  /** ISO datetime; only posts published on or after this day are requested. */
-  since: z.iso.datetime({ offset: true }).optional(),
-  /** Upper bound per run, not a fixed page size. */
-  limit: z.int().min(1).max(2000).default(500),
-  collectComments: z.boolean().default(true),
-  commentsPerPost: z.int().min(1).max(1000).default(100),
+  /**
+   * Bright Data `start_date`: posts published at or after this instant. The
+   * job stops there on its own, so no `num_of_posts` is sent.
+   */
+  since: z.iso.datetime({ offset: true }),
+  /** Newest stored post before the run; used to count late arrivals. */
+  newestKnownAt: z.iso.datetime({ offset: true }).optional(),
+  /** Hard cap on delivered records (`limit_multiple_results`). */
+  maxRecords: z.int().min(1).max(5000).default(COLLECT_CONFIG.posts.maxRecordsPerRun),
 });
 
 export type FacebookPostsParams = z.infer<typeof facebookPostsParamsSchema>;
-
-/** Bright Data expects MM-DD-YYYY; the day is taken in UTC. */
-function toBrightDataDate(iso: string): string {
-  const date = new Date(iso);
-  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(date.getUTCDate()).padStart(2, "0");
-  return `${mm}-${dd}-${date.getUTCFullYear()}`;
-}
-
-function toContentItem(post: BrightDataFacebookPost): NormalizedContentItem {
-  const authorExternalId = post.profile_id?.trim() || post.user_url?.trim() || null;
-
-  return {
-    kind: "post",
-    externalId: post.post_id,
-    url: post.url,
-    text: post.content?.trim() ?? "",
-    media: extractFacebookPostMedia(post),
-    publishedAt: post.date_posted ? new Date(post.date_posted) : null,
-    likeCount: post.likes ?? 0,
-    commentCount: post.num_comments ?? 0,
-    shareCount: post.num_shares ?? 0,
-    viewCount: post.video_view_count ?? 0,
-    reactions: parseFacebookReactions(post.num_reaction_type),
-    author: authorExternalId
-      ? {
-          externalId: authorExternalId,
-          name: post.user_username_raw?.trim() || null,
-          url: post.user_url ?? null,
-          avatarUrl: post.publisher_image_url ?? null,
-          metadata: { isPage: !!post.delegate_page_id },
-        }
-      : null,
-    parentExternalId: null,
-    rootExternalId: null,
-    metadata: {
-      postType: post.post_type ?? null,
-      isSponsored: post.is_sponsored ?? false,
-      hashtags: post.hashtags ?? [],
-    },
-  };
-}
 
 export const facebookPostsConnector: JobConnector<FacebookPostsParams> = {
   key: "facebook-posts",
   platform: "facebook",
   mode: "job",
   paramsSchema: facebookPostsParamsSchema,
+  // Engagement of known posts is refreshed by `facebook-post-refresh` only.
+  onExisting: "skip",
 
   startJob(params, context) {
     const ref = parseFacebookSourceUrl(params.url);
@@ -91,12 +54,13 @@ export const facebookPostsConnector: JobConnector<FacebookPostsParams> = {
       datasetId:
         ref?.sourceType === "group" ? GROUP_POSTS_DATASET_ID : PAGE_POSTS_DATASET_ID,
       collectRunId: context.collectRunId,
+      limitRecords: params.maxRecords,
       input: [
         {
           url: params.url,
-          num_of_posts: params.limit,
           posts_to_not_include: [],
-          start_date: params.since ? toBrightDataDate(params.since) : "",
+          // ISO datetimes filter to the second (probe of 2026-10-12).
+          start_date: new Date(params.since).toISOString(),
           end_date: "",
         },
       ],
@@ -119,7 +83,7 @@ export const facebookPostsConnector: JobConnector<FacebookPostsParams> = {
       }
 
       first ??= parsed.data;
-      items.push(toContentItem(parsed.data));
+      items.push(toFacebookPostContentItem(parsed.data));
     }
 
     return {
@@ -139,30 +103,19 @@ export const facebookPostsConnector: JobConnector<FacebookPostsParams> = {
     };
   },
 
-  planFollowUps(written, params): FollowUpRun[] {
-    if (!params.collectComments) return [];
+  async afterNormalize(context, params) {
+    const [lateArrivals, schedules] = await Promise.all([
+      measureLateArrivals({
+        collectRunId: context.collectRunId,
+        newestKnownAt: params.newestKnownAt,
+      }),
+      createItemRefreshSchedules({ collectRunId: context.collectRunId }),
+    ]);
+    const tier = context.sourceId
+      ? await recomputeSourceActivityTier({ sourceId: context.sourceId })
+      : null;
 
-    const postUrls = written
-      .filter(
-        (item) =>
-          item.url &&
-          item.commentCount > 0 &&
-          (item.previousCommentCount === null ||
-            item.commentCount > item.previousCommentCount),
-      )
-      .map((item) => item.url as string);
-
-    const runs: FollowUpRun[] = [];
-    for (let i = 0; i < postUrls.length; i += COMMENT_RUN_POST_LIMIT) {
-      runs.push({
-        connector: "facebook-comments",
-        params: {
-          postUrls: postUrls.slice(i, i + COMMENT_RUN_POST_LIMIT),
-          limitPerPost: params.commentsPerPost,
-        },
-      });
-    }
-
-    return runs;
+    const { followUps, ...scheduleStats } = schedules;
+    return { stats: { ...lateArrivals, ...scheduleStats, ...tier }, followUps };
   },
 };

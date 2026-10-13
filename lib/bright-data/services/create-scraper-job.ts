@@ -32,6 +32,12 @@ export async function createBrightDataScraperJob(
     "include_errors",
     String(params.includeErrors ?? true)
   );
+  if (params.limitRecords !== undefined) {
+    requestUrl.searchParams.set(
+      "limit_multiple_results",
+      String(params.limitRecords)
+    );
+  }
 
   const response = await fetch(requestUrl, {
     method: "POST",

@@ -6,6 +6,8 @@ type StartBrightDataCollectJobParams = {
   datasetId: string;
   input: Record<string, unknown>[];
   collectRunId: string;
+  /** Hard cap on delivered records; Bright Data bills per record. */
+  limitRecords?: number;
 };
 
 /**
@@ -35,6 +37,7 @@ export const brightDataJobMethods = {
       webhookUrl: getCollectRunWebhookUrl(params.collectRunId),
       webhookAuthorization: getBrightDataWebhookAuthorization(),
       includeErrors: true,
+      limitRecords: params.limitRecords,
     });
 
     return snapshotId;
