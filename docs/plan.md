@@ -69,7 +69,7 @@ Script `npm run probe:bright-data` (`scripts/probe-bright-data-facebook.ts`), k�
      - đã lấy rồi và `num_comments` tăng ≥ 15% so với `comments_collected_count`. Không kèm mức tối thiểu tuyệt đối: bài ít comment có tăng phần trăm lớn thì lấy lại cũng chỉ tốn vài bản ghi.
 
      Các ngưỡng 100, 1 ngày, 15% là config.
-  3. Lấy comment: tối đa **100 dòng/bài** (tính cả reply, config), sort "Most relevant". Lưu `comments_collected_count = num_comments` tại thời điểm lấy.
+  3. Lấy comment: tối đa **100 dòng/bài**, không lấy reply (`get_all_replies = false`, config), sort "Most relevant". Lưu `comments_collected_count = num_comments` tại thời điểm lấy.
 
 **Usage**
 - `sources.monthly_record_limit` (null = không giới hạn). Usage tháng = tổng `collect_runs.item_count` của mọi run thuộc source.

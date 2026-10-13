@@ -80,7 +80,7 @@ export const facebookCommentsConnector: JobConnector<FacebookCommentsParams> = {
       collectRunId: context.collectRunId,
       input: params.postUrls.map((url) => ({
         url,
-        get_all_replies: true,
+        get_all_replies: COLLECT_CONFIG.commentRefresh.includeReplies,
         limit_records: params.limitPerPost,
         comments_sort: COLLECT_CONFIG.commentRefresh.sort,
       })),
