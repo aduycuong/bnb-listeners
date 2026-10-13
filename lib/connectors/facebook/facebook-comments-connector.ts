@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { NormalizedContentItem } from "@/lib/raw-store/types";
 
 import { COLLECT_CONFIG } from "../config";
+import { measureCommentCoverage } from "../services/measure-comment-coverage";
 import type { JobConnector, NormalizeResult } from "../types";
 import { brightDataJobMethods } from "../utils/bright-data-job-methods";
 import { isBrightDataErrorRecord } from "../utils/is-bright-data-error-record";
@@ -106,5 +107,14 @@ export const facebookCommentsConnector: JobConnector<FacebookCommentsParams> = {
     }
 
     return { items, skipped };
+  },
+
+  async afterNormalize(context, params) {
+    const coverage = await measureCommentCoverage({
+      collectRunId: context.collectRunId,
+      postUrls: params.postUrls,
+      limitPerPost: params.limitPerPost,
+    });
+    return { stats: coverage };
   },
 };
