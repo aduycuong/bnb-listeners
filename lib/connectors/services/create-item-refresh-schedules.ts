@@ -3,33 +3,45 @@ import { and, eq } from "drizzle-orm";
 import { contentItems, itemRefreshSchedules } from "@/db/schema";
 import { db } from "@/lib/db";
 
-import { COLLECT_CONFIG } from "../config";
+import type { FollowUpRun } from "../types";
+import { decideCommentCollection } from "../utils/decide-comment-collection";
 import { findNextRefreshCheckpoint } from "../utils/find-next-refresh-checkpoint";
+import { planCommentRuns } from "../utils/plan-comment-runs";
+
+const HOUR_MS = 60 * 60 * 1000;
 
 type CreateItemRefreshSchedulesParams = {
-  /** Posts written by this run get a schedule. */
+  /** Posts written by this run (all new, since post runs skip known posts). */
   collectRunId: string;
   now?: Date;
 };
 
 type CreateItemRefreshSchedulesResult = {
   schedulesCreated: number;
+  postsToCollect: number;
+  /** `facebook-comments` runs for posts that pass the rules right away. */
+  followUps: FollowUpRun[];
 };
 
 /**
- * Schedules the first comment-refresh checkpoint of each post written by a
- * run. A post already past every checkpoint is due right away, for one check.
- * Existing schedules are kept, so a retried step changes nothing.
+ * The post run's `num_comments` is fresh, so new posts are judged right away
+ * with the comment-collection rules, then scheduled for their next checkpoint
+ * after `published_at`. A post past every checkpoint gets no schedule.
+ *
+ * Decisions depend only on the stored posts, so a retried step plans the
+ * same comment runs; existing schedules are kept.
  */
 export async function createItemRefreshSchedules(
   params: CreateItemRefreshSchedulesParams,
 ): Promise<CreateItemRefreshSchedulesResult> {
   const now = params.now ?? new Date();
-  const checkpoints = COLLECT_CONFIG.commentRefresh.checkpointsHours;
 
   const posts = await db
     .select({
       id: contentItems.id,
+      sourceId: contentItems.sourceId,
+      url: contentItems.url,
+      commentCount: contentItems.commentCount,
       publishedAt: contentItems.publishedAt,
       firstSeenAt: contentItems.firstSeenAt,
     })
@@ -41,26 +53,52 @@ export async function createItemRefreshSchedules(
       ),
     );
 
-  if (posts.length === 0) return { schedulesCreated: 0 };
+  const planned = posts.map((post) => {
+    const publishedAt = post.publishedAt ?? post.firstSeenAt;
+    const collect = post.url
+      ? decideCommentCollection({
+          numComments: post.commentCount,
+          collectedCount: null,
+          ageHours: (now.getTime() - publishedAt.getTime()) / HOUR_MS,
+        })
+      : null;
 
-  const rows = posts.map((post) => {
-    const next = findNextRefreshCheckpoint({
-      publishedAt: post.publishedAt ?? post.firstSeenAt,
-      now,
-    });
-
-    return {
-      contentItemId: post.id,
-      checkpointHours: next?.checkpointHours ?? checkpoints[checkpoints.length - 1],
-      nextRefreshAt: next?.dueAt ?? now,
-    };
+    return { post, collect, next: findNextRefreshCheckpoint({ publishedAt, now }) };
   });
 
-  const created = await db
-    .insert(itemRefreshSchedules)
-    .values(rows)
-    .onConflictDoNothing()
-    .returning({ contentItemId: itemRefreshSchedules.contentItemId });
+  // Without a URL the post cannot be re-read, so it gets no schedule.
+  const rows = planned.flatMap(({ post, collect, next }) =>
+    next && post.url
+      ? [
+          {
+            contentItemId: post.id,
+            checkpointHours: next.checkpointHours,
+            nextRefreshAt: next.dueAt,
+            ...(collect && {
+              commentsCollectedCount: post.commentCount,
+              commentsCollectedAt: now,
+            }),
+          },
+        ]
+      : [],
+  );
 
-  return { schedulesCreated: created.length };
+  const created =
+    rows.length > 0
+      ? await db
+          .insert(itemRefreshSchedules)
+          .values(rows)
+          .onConflictDoNothing()
+          .returning({ contentItemId: itemRefreshSchedules.contentItemId })
+      : [];
+
+  const toCollect = planned.flatMap(({ post, collect }) =>
+    collect && post.url ? [{ sourceId: post.sourceId, url: post.url }] : [],
+  );
+
+  return {
+    schedulesCreated: created.length,
+    postsToCollect: toCollect.length,
+    followUps: planCommentRuns(toCollect),
+  };
 }

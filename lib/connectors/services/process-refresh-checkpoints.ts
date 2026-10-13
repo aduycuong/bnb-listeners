@@ -3,19 +3,18 @@ import { eq, inArray } from "drizzle-orm";
 import { contentItems, itemRefreshSchedules } from "@/db/schema";
 import { db } from "@/lib/db";
 
-import { COLLECT_CONFIG } from "../config";
 import type { FollowUpRun } from "../types";
-import { chunk } from "../utils/chunk";
 import {
   type CommentCollectionReason,
   decideCommentCollection,
 } from "../utils/decide-comment-collection";
 import { findNextRefreshCheckpoint } from "../utils/find-next-refresh-checkpoint";
+import { planCommentRuns } from "../utils/plan-comment-runs";
 
 const HOUR_MS = 60 * 60 * 1000;
 
 type ProcessRefreshCheckpointsParams = {
-  /** Posts whose `comment_count` is current (just refreshed, or just collected). */
+  /** Posts whose `comment_count` was just refreshed. */
   contentItemIds: string[];
   now?: Date;
   /** Decide only; no schedule writes. */
@@ -100,7 +99,16 @@ export async function processRefreshCheckpoints(
   }
 
   const decisions = planned.map((item) => item.decision);
-  return { decisions, followUps: planCommentRuns(decisions) };
+  return {
+    decisions,
+    followUps: planCommentRuns(
+      decisions.flatMap((decision) =>
+        decision.collect && decision.url
+          ? [{ sourceId: decision.sourceId, url: decision.url }]
+          : [],
+      ),
+    ),
+  };
 }
 
 async function saveDecisions(planned: PlannedDecision[], now: Date): Promise<void> {
@@ -129,24 +137,4 @@ async function saveDecisions(planned: PlannedDecision[], now: Date): Promise<voi
       })
       .where(eq(itemRefreshSchedules.contentItemId, decision.contentItemId));
   }
-}
-
-function planCommentRuns(decisions: RefreshDecision[]): FollowUpRun[] {
-  const { postsPerRun, maxRowsPerPost } = COLLECT_CONFIG.commentRefresh;
-  const urlsBySource = new Map<string | null, string[]>();
-
-  for (const decision of decisions) {
-    if (!decision.collect || !decision.url) continue;
-    const urls = urlsBySource.get(decision.sourceId) ?? [];
-    urls.push(decision.url);
-    urlsBySource.set(decision.sourceId, urls);
-  }
-
-  return [...urlsBySource].flatMap(([sourceId, urls]) =>
-    chunk(urls, postsPerRun).map((postUrls) => ({
-      connector: "facebook-comments" as const,
-      sourceId,
-      params: { postUrls, limitPerPost: maxRowsPerPost },
-    })),
-  );
 }

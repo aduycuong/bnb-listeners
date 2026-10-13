@@ -33,8 +33,6 @@ export const COLLECT_CONFIG = {
   commentRefresh: {
     /** Checkpoints in hours after `published_at`, ascending. */
     checkpointsHours: [6, 24, 72],
-    /** Reuse `num_comments` from the post run if the post was added this recently. */
-    postRunFreshHours: 2,
     /** First collection when `num_comments` is above this, whatever the age. */
     firstCollectMinComments: 100,
     /** Otherwise first collection once the post is this old and has comments. */

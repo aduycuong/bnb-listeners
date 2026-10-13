@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, lte } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, lte } from "drizzle-orm";
 
 import { contentItems, itemRefreshSchedules } from "@/db/schema";
 import { db } from "@/lib/db";
@@ -7,10 +7,6 @@ import { COLLECT_CONFIG } from "../config";
 import type { FollowUpRun } from "../types";
 import { chunk } from "../utils/chunk";
 import { createCollectRun } from "./create-collect-run";
-import {
-  processRefreshCheckpoints,
-  type RefreshDecision,
-} from "./process-refresh-checkpoints";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -23,7 +19,7 @@ type DispatchDueRefreshesParams = {
   dryRun?: boolean;
 };
 
-type PlannedRun = {
+type PlannedRefreshRun = {
   sourceId: string | null;
   posts: number;
   /** Set when the run was created. */
@@ -32,114 +28,78 @@ type PlannedRun = {
 
 type DispatchDueRefreshesResult = {
   due: number;
-  /** Posts decided from the post run's fresh `comment_count`, without a refresh. */
-  decidedDirectly: RefreshDecision[];
-  refreshRuns: PlannedRun[];
-  commentRuns: PlannedRun[];
+  refreshRuns: PlannedRefreshRun[];
 };
 
 /**
- * Handles due comment-refresh checkpoints. Posts added by a post run within
- * `postRunFreshHours` already have a current `comment_count` and are decided
- * now; the rest are re-read by `facebook-post-refresh` runs (one per source
- * and chunk), which decide when their result arrives.
+ * Hands due comment-refresh checkpoints to `facebook-post-refresh` runs (one
+ * per source and chunk). Each run re-reads its posts, then decides which get
+ * their comments collected. Dispatched checkpoints are pushed back by
+ * `leaseHours` so the next call does not send them again.
  */
 export async function dispatchDueRefreshes(
   params: DispatchDueRefreshesParams = {},
 ): Promise<DispatchDueRefreshesResult> {
   const now = params.now ?? new Date();
-  const config = COLLECT_CONFIG.commentRefresh;
+  const { postsPerRun, leaseHours } = COLLECT_CONFIG.commentRefresh;
 
   const due = await db
     .select({
       contentItemId: itemRefreshSchedules.contentItemId,
       sourceId: contentItems.sourceId,
       url: contentItems.url,
-      firstSeenAt: contentItems.firstSeenAt,
     })
     .from(itemRefreshSchedules)
     .innerJoin(contentItems, eq(contentItems.id, itemRefreshSchedules.contentItemId))
     .where(
       and(
         lte(itemRefreshSchedules.nextRefreshAt, now),
+        isNotNull(contentItems.url),
         params.sourceId ? eq(contentItems.sourceId, params.sourceId) : undefined,
       ),
     )
     .orderBy(asc(itemRefreshSchedules.nextRefreshAt))
     .limit(params.limit ?? 500);
 
-  const freshSince = now.getTime() - config.postRunFreshHours * HOUR_MS;
-  // A post without a URL cannot be re-read; it is moved on with what is stored.
-  const direct = due.filter((row) => !row.url || row.firstSeenAt.getTime() >= freshSince);
-  const toRefresh = due.filter((row) => !direct.includes(row));
+  const bySource = new Map<string | null, typeof due>();
+  for (const row of due) {
+    bySource.set(row.sourceId, [...(bySource.get(row.sourceId) ?? []), row]);
+  }
 
-  const { decisions, followUps } = await processRefreshCheckpoints({
-    contentItemIds: direct.map((row) => row.contentItemId),
-    now,
-    dryRun: params.dryRun,
-  });
-
-  const refreshRuns: FollowUpRun[] = [...groupBySource(toRefresh)].flatMap(
-    ([sourceId, rows]) =>
-      chunk(rows, config.postsPerRun).map((posts) => ({
-        connector: "facebook-post-refresh" as const,
-        sourceId,
-        params: {
-          posts: posts.map((row) => ({
-            contentItemId: row.contentItemId,
-            url: row.url!,
-          })),
-        },
-      })),
+  const runs: FollowUpRun[] = [...bySource].flatMap(([sourceId, rows]) =>
+    chunk(rows, postsPerRun).map((posts) => ({
+      connector: "facebook-post-refresh" as const,
+      sourceId,
+      params: {
+        posts: posts.map((row) => ({ contentItemId: row.contentItemId, url: row.url! })),
+      },
+    })),
   );
 
-  if (params.dryRun) {
-    return {
-      due: due.length,
-      decidedDirectly: decisions,
-      refreshRuns: refreshRuns.map(summarize),
-      commentRuns: followUps.map(summarize),
-    };
+  const summarize = (run: FollowUpRun): PlannedRefreshRun => ({
+    sourceId: run.sourceId,
+    posts: (run.params.posts as unknown[]).length,
+  });
+
+  if (params.dryRun || due.length === 0) {
+    return { due: due.length, refreshRuns: runs.map(summarize) };
   }
 
-  if (toRefresh.length > 0) {
-    await db
-      .update(itemRefreshSchedules)
-      .set({ nextRefreshAt: new Date(now.getTime() + config.leaseHours * HOUR_MS) })
-      .where(
-        inArray(
-          itemRefreshSchedules.contentItemId,
-          toRefresh.map((row) => row.contentItemId),
-        ),
-      );
-  }
+  await db
+    .update(itemRefreshSchedules)
+    .set({ nextRefreshAt: new Date(now.getTime() + leaseHours * HOUR_MS) })
+    .where(
+      inArray(
+        itemRefreshSchedules.contentItemId,
+        due.map((row) => row.contentItemId),
+      ),
+    );
 
-  return {
-    due: due.length,
-    decidedDirectly: decisions,
-    refreshRuns: await startRuns(refreshRuns),
-    commentRuns: await startRuns(followUps),
-  };
-}
-
-function groupBySource<T extends { sourceId: string | null }>(rows: T[]) {
-  const groups = new Map<string | null, T[]>();
-  for (const row of rows) {
-    groups.set(row.sourceId, [...(groups.get(row.sourceId) ?? []), row]);
-  }
-  return groups;
-}
-
-function summarize(run: FollowUpRun): PlannedRun {
-  const { posts, postUrls } = run.params as { posts?: unknown[]; postUrls?: unknown[] };
-  return { sourceId: run.sourceId, posts: (posts ?? postUrls ?? []).length };
-}
-
-async function startRuns(runs: FollowUpRun[]): Promise<PlannedRun[]> {
-  const started: PlannedRun[] = [];
+  const refreshRuns: PlannedRefreshRun[] = [];
   for (const run of runs) {
     const { collectRunId } = await createCollectRun(run);
-    started.push({ ...summarize(run), collectRunId });
+    refreshRuns.push({ ...summarize(run), collectRunId });
   }
-  return started;
+
+  return { due: due.length, refreshRuns };
 }

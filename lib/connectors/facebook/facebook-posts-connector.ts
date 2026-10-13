@@ -115,6 +115,7 @@ export const facebookPostsConnector: JobConnector<FacebookPostsParams> = {
       ? await recomputeSourceActivityTier({ sourceId: context.sourceId })
       : null;
 
-    return { stats: { ...lateArrivals, ...schedules, ...tier } };
+    const { followUps, ...scheduleStats } = schedules;
+    return { stats: { ...lateArrivals, ...scheduleStats, ...tier }, followUps };
   },
 };

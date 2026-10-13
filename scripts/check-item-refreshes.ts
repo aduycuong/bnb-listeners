@@ -1,8 +1,8 @@
 // Handle due comment-refresh checkpoints by hand, before the scheduler exists.
-// Posts just added by a post run are decided from their stored comment count;
-// the rest are re-read by facebook-post-refresh runs (1 Bright Data record per
-// post), which then start facebook-comments runs for posts that pass the rules
-// in lib/connectors/config.ts. Without --yes nothing is written or triggered.
+// Due posts are re-read by facebook-post-refresh runs (1 Bright Data record per
+// post); each run then starts facebook-comments runs for the posts that pass
+// the rules in lib/connectors/config.ts. Without --yes nothing is written or
+// triggered.
 //
 // Example:
 //   npx tsx scripts/check-item-refreshes.ts
@@ -49,20 +49,7 @@ async function main() {
   });
 
   console.log(`[${SCRIPT}] Due checkpoints`, { due: result.due });
-  if (result.decidedDirectly.length > 0) {
-    console.table(
-      result.decidedDirectly.map((decision) => ({
-        contentItemId: decision.contentItemId,
-        checkpoint: `+${decision.checkpointHours}h`,
-        numComments: decision.numComments,
-        collected: decision.collectedCount ?? "-",
-        collect: decision.collect ?? "skip",
-        next: decision.nextCheckpointHours ? `+${decision.nextCheckpointHours}h` : "done",
-      })),
-    );
-  }
   console.log(`[${SCRIPT}] Refresh runs`, result.refreshRuns);
-  console.log(`[${SCRIPT}] Comment runs`, result.commentRuns);
 
   if (!options.yes) {
     console.log(`[${SCRIPT}] Dry run; pass --yes to apply.`);

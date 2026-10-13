@@ -59,9 +59,10 @@ Script `npm run probe:bright-data` (`scripts/probe-bright-data-facebook.ts`), k�
 
 **Lấy lại comment theo lịch từng bài**
 - Bảng mới `item_refresh_schedules` (`content_item_id`, `next_refresh_at`, `checkpoint_hours`, `comments_collected_count`, `comments_collected_at`). Dòng bị xóa khi bài hết các mốc.
-- Mốc: +6 giờ, +24 giờ, +72 giờ tính từ `published_at` (danh sách mốc là config). Bài thấy lần đầu đã qua mốc thì nhảy tới mốc kế tiếp; qua hết thì xét một lần ngay.
+- Mốc: +6 giờ, +24 giờ, +72 giờ tính từ `published_at` (danh sách mốc là config).
+- Lúc run post thêm bài vào kho, `num_comments` vừa lấy được dùng để áp luật lấy comment ngay (như một mốc 0), rồi tạo lịch cho mốc kế tiếp còn ở tương lai. Bài đã qua hết các mốc thì không tạo lịch.
 - Tại mỗi mốc:
-  1. Đọc `num_comments`: dùng giá trị từ run post nếu bài vừa được thêm vào kho (≤ 2 giờ), nếu không thì chạy connector mới `facebook-post-refresh` (1 bản ghi/bài, gom theo source; lưu `topComments`).
+  1. Chạy connector `facebook-post-refresh` để đọc lại `num_comments` (1 bản ghi/bài, gom theo source; lưu `topComments`). Mốc đã giao cho run refresh được đẩy lùi 3 giờ để không bị gửi lại.
   2. Lấy comment khi:
      - chưa lấy lần nào và `num_comments > 100`, hoặc
      - chưa lấy lần nào, `num_comments > 0` và bài đã đăng quá 1 ngày, hoặc
