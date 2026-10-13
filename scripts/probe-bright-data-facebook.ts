@@ -11,11 +11,22 @@
 //                dataset on the same posts to measure completeness.
 // comment-limit  whether the comments dataset's limit_records caps each input
 //                or the whole job.
+// post-dates     whether start_date / end_date filter posts, and on which day
+//                boundary (UTC or Vietnam time):
+//                window   start_date = --start, end_date = --end, num_of_posts = N
+//                end-only end_date = --end, num_of_posts = N (skips newer posts?)
+//                no-num   start_date = end_date = --end, num_of_posts omitted,
+//                         limit_multiple_results = --cap (do dates bound the job?)
+// post-date-format  MM-DD-YYYY vs YYYY-MM-DD vs ISO datetime in start_date /
+//                end_date, and whether the day boundary is UTC or Vietnam time.
+// post-since     start_date (ISO) alone: does the job stop there without
+//                end_date and num_of_posts? limit_multiple_results = --cap.
 //
 // Example:
 //   npx tsx scripts/probe-bright-data-facebook.ts post-params --url https://www.facebook.com/groups/reviewbatdongsanaz --yes
 //   npx tsx scripts/probe-bright-data-facebook.ts post-comments --post-url <url> --post-url <url> --compare --yes
 //   npm run probe:bright-data -- post-comments --post-url <url> --yes
+//   npm run probe:bright-data -- post-dates --url <group> --start 2026-10-09 --end 2026-10-10 --yes
 
 import "dotenv/config";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -56,6 +67,23 @@ const postParamsOptionsSchema = z.object({
   cap: z.coerce.number().int().min(1).max(200),
   yes: z.boolean(),
 });
+
+const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.");
+
+const postDatesOptionsSchema = z
+  .object({
+    url: z.string().refine((value) => parseFacebookSourceUrl(value) !== null, {
+      message: "--url must be a Facebook group or page URL.",
+    }),
+    start: isoDay,
+    end: isoDay,
+    num: z.coerce.number().int().min(1).max(100),
+    cap: z.coerce.number().int().min(1).max(300),
+    yes: z.boolean(),
+  })
+  .refine((options) => options.start <= options.end, {
+    message: "--start must not be after --end.",
+  });
 
 const commentLimitOptionsSchema = z.object({
   postUrl: z.array(z.url()).min(2).max(5),
@@ -344,6 +372,297 @@ async function postComments(rawOptions: unknown) {
   });
 }
 
+const VIETNAM_OFFSET_MS = 7 * 60 * 60_000;
+
+/** YYYY-MM-DD → MM-DD-YYYY, the format the posts datasets expect. */
+function toBrightDataDay(day: string): string {
+  const [yyyy, mm, dd] = day.split("-");
+  return `${mm}-${dd}-${yyyy}`;
+}
+
+function shiftDay(day: string, days: number): string {
+  const date = new Date(`${day}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function countBy(values: string[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const value of [...values].sort()) counts[value] = (counts[value] ?? 0) + 1;
+  return counts;
+}
+
+/**
+ * Where the delivered posts fall relative to the requested window, with the day
+ * read both in UTC and in Vietnam time to tell which boundary Bright Data uses.
+ */
+function analyzeDates(
+  run: RunResult,
+  window: { start: string | null; end: string | null },
+) {
+  const posted = okRecords(run)
+    .map((record) => record.date_posted)
+    .filter((value): value is string => typeof value === "string")
+    .sort();
+  const utcDays = posted.map((iso) => iso.slice(0, 10));
+  const vnDays = posted.map((iso) =>
+    new Date(Date.parse(iso) + VIETNAM_OFFSET_MS).toISOString().slice(0, 10),
+  );
+  const outside = (days: string[]) => ({
+    beforeStart: window.start ? days.filter((day) => day < window.start!).length : 0,
+    afterEnd: window.end ? days.filter((day) => day > window.end!).length : 0,
+  });
+
+  return {
+    ...summarize(run),
+    window,
+    posts: okRecords(run).length,
+    withoutDatePosted: okRecords(run).length - posted.length,
+    oldest: posted[0] ?? null,
+    newest: posted.at(-1) ?? null,
+    perDayUtc: countBy(utcDays),
+    perDayVietnam: countBy(vnDays),
+    outsideWindowUtc: outside(utcDays),
+    outsideWindowVietnam: outside(vnDays),
+  };
+}
+
+function isInside(analysis: ReturnType<typeof analyzeDates>, zone: "Utc" | "Vietnam") {
+  const outside = analysis[`outsideWindow${zone}`];
+  return analysis.posts > 0 && outside.beforeStart === 0 && outside.afterEnd === 0;
+}
+
+async function postDates(rawOptions: unknown) {
+  const options = postDatesOptionsSchema.parse(rawOptions);
+  const ref = parseFacebookSourceUrl(options.url)!;
+  const datasetId =
+    ref.sourceType === "group" ? GROUP_POSTS_DATASET_ID : PAGE_POSTS_DATASET_ID;
+  const start = toBrightDataDay(options.start);
+  const end = toBrightDataDay(options.end);
+
+  console.log(`[${SCRIPT}] post-dates plan`, {
+    url: options.url,
+    datasetId,
+    window: { start_date: start, end_date: end },
+    maxRecords: options.num * 2 + options.cap,
+    mode: options.yes ? "apply" : "dry-run",
+  });
+  if (!options.yes) {
+    console.log(`[${SCRIPT}] Dry run; pass --yes to trigger the jobs.`);
+    return;
+  }
+
+  const base = { url: options.url, posts_to_not_include: [] };
+  const [windowRun, endOnlyRun, noNumRun] = await Promise.all([
+    runJob("window", datasetId, [
+      { ...base, num_of_posts: options.num, start_date: start, end_date: end },
+    ]),
+    runJob("end-only", datasetId, [
+      { ...base, num_of_posts: options.num, start_date: "", end_date: end },
+    ]),
+    runJob(
+      "no-num",
+      datasetId,
+      [{ ...base, start_date: end, end_date: end }],
+      { limit_multiple_results: String(options.cap) },
+    ),
+  ]);
+
+  const window = analyzeDates(windowRun, { start: options.start, end: options.end });
+  const endOnly = analyzeDates(endOnlyRun, { start: null, end: options.end });
+  const noNum = analyzeDates(noNumRun, { start: options.end, end: options.end });
+
+  const report = {
+    url: options.url,
+    datasetId,
+    window: { ...window, numOfPosts: options.num },
+    endOnly: { ...endOnly, numOfPosts: options.num },
+    noNum: { ...noNum, cap: options.cap },
+    verdict: {
+      windowInsideUtc: isInside(window, "Utc"),
+      windowInsideVietnam: isInside(window, "Vietnam"),
+      endDateSkipsNewerPosts: endOnly.posts > 0 && endOnly.outsideWindowUtc.afterEnd === 0,
+      // A date window alone stops the job if it delivers fewer records than the cap.
+      datesBoundJobWithoutNum: noNum.posts > 0 && noNumRun.records.length < options.cap,
+      numOfPostsStillCaps: window.posts <= options.num && endOnly.posts <= options.num,
+    },
+  };
+
+  console.log(`[${SCRIPT}] Report`, JSON.stringify(report, null, 2));
+  await saveReport("bright-data-post-dates", {
+    report,
+    raw: { windowRun, endOnlyRun, noNumRun },
+  });
+}
+
+const postDateFormatOptionsSchema = z.object({
+  url: z.string().refine((value) => parseFacebookSourceUrl(value) !== null, {
+    message: "--url must be a Facebook group or page URL.",
+  }),
+  day: isoDay,
+  at: z.iso.datetime({ offset: true }),
+  num: z.coerce.number().int().min(1).max(50),
+  yes: z.boolean(),
+});
+
+/**
+ * Which date formats start_date / end_date accept, whether the day boundary is
+ * UTC or Vietnam time, and whether an ISO datetime filters by the hour.
+ */
+async function postDateFormat(rawOptions: unknown) {
+  const options = postDateFormatOptionsSchema.parse(rawOptions);
+  const ref = parseFacebookSourceUrl(options.url)!;
+  const datasetId =
+    ref.sourceType === "group" ? GROUP_POSTS_DATASET_ID : PAGE_POSTS_DATASET_ID;
+  const at = new Date(options.at);
+  const hourBefore = new Date(at.getTime() - 60 * 60_000).toISOString();
+  const hourAfter = new Date(at.getTime() + 60 * 60_000).toISOString();
+
+  const variants = [
+    {
+      label: "mmddyyyy-end",
+      dates: { start_date: "", end_date: toBrightDataDay(options.day) },
+      expect: `newest after ${options.day}T17:00Z means UTC day boundary, before means Vietnam`,
+    },
+    {
+      label: "iso-day-end",
+      dates: { start_date: "", end_date: options.day },
+      expect: "same posts as mmddyyyy-end if YYYY-MM-DD is accepted",
+    },
+    {
+      label: "iso-datetime-end",
+      dates: { start_date: "", end_date: at.toISOString() },
+      expect: `newest <= ${at.toISOString()} means hour precision`,
+    },
+    {
+      label: "iso-datetime-range",
+      dates: { start_date: hourBefore, end_date: hourAfter },
+      expect: `all posts within ${hourBefore} .. ${hourAfter} means hour precision`,
+    },
+  ];
+
+  console.log(`[${SCRIPT}] post-date-format plan`, {
+    url: options.url,
+    datasetId,
+    variants: variants.map(({ label, dates }) => ({ label, ...dates })),
+    maxRecords: options.num * variants.length,
+    mode: options.yes ? "apply" : "dry-run",
+  });
+  if (!options.yes) {
+    console.log(`[${SCRIPT}] Dry run; pass --yes to trigger the jobs.`);
+    return;
+  }
+
+  const results = await Promise.all(
+    variants.map(async (variant) => {
+      try {
+        const run = await runJob(variant.label, datasetId, [
+          {
+            url: options.url,
+            num_of_posts: options.num,
+            posts_to_not_include: [],
+            ...variant.dates,
+          },
+        ]);
+        return { variant, run, triggerError: null };
+      } catch (error) {
+        return { variant, run: null, triggerError: String(error) };
+      }
+    }),
+  );
+
+  const report = {
+    url: options.url,
+    datasetId,
+    runs: results.map(({ variant, run, triggerError }) => {
+      if (!run) return { ...variant, triggerError };
+      const posted = okRecords(run)
+        .map((record) => record.date_posted)
+        .filter((value): value is string => typeof value === "string")
+        .sort();
+      return {
+        ...variant,
+        ...summarize(run),
+        posts: okRecords(run).length,
+        oldest: posted[0] ?? null,
+        newest: posted.at(-1) ?? null,
+        datePosted: posted,
+      };
+    }),
+  };
+
+  console.log(`[${SCRIPT}] Report`, JSON.stringify(report, null, 2));
+  await saveReport("bright-data-post-date-format", {
+    report,
+    raw: results.map(({ run }) => run),
+  });
+}
+
+const postSinceOptionsSchema = z.object({
+  url: z.string().refine((value) => parseFacebookSourceUrl(value) !== null, {
+    message: "--url must be a Facebook group or page URL.",
+  }),
+  hours: z.coerce.number().min(0.5).max(72),
+  cap: z.coerce.number().int().min(1).max(300),
+  yes: z.boolean(),
+});
+
+/**
+ * Does start_date alone (ISO, no end_date, no num_of_posts) stop the job at
+ * that time? If the job delivers exactly --cap records it did not stop.
+ */
+async function postSince(rawOptions: unknown) {
+  const options = postSinceOptionsSchema.parse(rawOptions);
+  const ref = parseFacebookSourceUrl(options.url)!;
+  const datasetId =
+    ref.sourceType === "group" ? GROUP_POSTS_DATASET_ID : PAGE_POSTS_DATASET_ID;
+  const since = new Date(Date.now() - options.hours * 60 * 60_000).toISOString();
+
+  console.log(`[${SCRIPT}] post-since plan`, {
+    url: options.url,
+    datasetId,
+    start_date: since,
+    maxRecords: options.cap,
+    mode: options.yes ? "apply" : "dry-run",
+  });
+  if (!options.yes) {
+    console.log(`[${SCRIPT}] Dry run; pass --yes to trigger the job.`);
+    return;
+  }
+
+  const run = await runJob(
+    "since",
+    datasetId,
+    [{ url: options.url, posts_to_not_include: [], start_date: since, end_date: "" }],
+    { limit_multiple_results: String(options.cap) },
+  );
+  const posted = okRecords(run)
+    .map((record) => record.date_posted)
+    .filter((value): value is string => typeof value === "string")
+    .sort();
+  const beforeSince = posted.filter((iso) => iso < since);
+
+  const report = {
+    url: options.url,
+    datasetId,
+    since,
+    cap: options.cap,
+    ...summarize(run),
+    posts: okRecords(run).length,
+    oldest: posted[0] ?? null,
+    newest: posted.at(-1) ?? null,
+    beforeSince,
+    datePosted: posted,
+    verdict: {
+      stoppedAtStartDate: run.records.length < options.cap && beforeSince.length === 0,
+      hitCap: run.records.length >= options.cap,
+    },
+  };
+
+  console.log(`[${SCRIPT}] Report`, JSON.stringify(report, null, 2));
+  await saveReport("bright-data-post-since", { report, raw: { run } });
+}
+
 /**
  * Is `limit_records` per input or per job? Each post must have more comments
  * than --limit: per-input gives about posts × limit rows, per-job about limit.
@@ -426,6 +745,42 @@ async function main() {
     .option("--compare-limit <n>", "limit_records per post for --compare", "200")
     .option("--yes", "Trigger the Bright Data jobs (costs records)", false)
     .action(postComments);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  program
+    .command("post-dates")
+    .description("start_date / end_date filtering and day boundary")
+    .requiredOption("--url <url>", "Facebook group or page URL")
+    .option("--start <YYYY-MM-DD>", "start_date of the window run", shiftDay(today, -3))
+    .option("--end <YYYY-MM-DD>", "end_date of all runs", shiftDay(today, -2))
+    .option("--num <n>", "num_of_posts for the window and end-only runs", "20")
+    .option("--cap <n>", "limit_multiple_results for the no-num run", "150")
+    .option("--yes", "Trigger the Bright Data jobs (costs records)", false)
+    .action(postDates);
+
+  program
+    .command("post-date-format")
+    .description("Accepted date formats, day boundary time zone, hour precision")
+    .requiredOption("--url <url>", "Facebook group or page URL")
+    .option("--day <YYYY-MM-DD>", "end_date of the day-boundary runs", shiftDay(today, -3))
+    .option(
+      "--at <iso>",
+      "end_date of the datetime runs (range is ±1 hour)",
+      `${shiftDay(today, -2)}T06:00:00.000Z`,
+    )
+    .option("--num <n>", "num_of_posts per run", "10")
+    .option("--yes", "Trigger the Bright Data jobs (costs records)", false)
+    .action(postDateFormat);
+
+  program
+    .command("post-since")
+    .description("start_date (ISO) alone, without end_date or num_of_posts")
+    .requiredOption("--url <url>", "Facebook group or page URL")
+    .option("--hours <n>", "start_date = now minus this many hours", "6")
+    .option("--cap <n>", "limit_multiple_results safety cap", "150")
+    .option("--yes", "Trigger the Bright Data job (costs records)", false)
+    .action(postSince);
 
   program
     .command("comment-limit")
