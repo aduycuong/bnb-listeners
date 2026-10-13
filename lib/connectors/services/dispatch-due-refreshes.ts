@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, lte } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, lte, notInArray } from "drizzle-orm";
 
 import { contentItems, itemRefreshSchedules } from "@/db/schema";
 import { db } from "@/lib/db";
@@ -15,6 +15,8 @@ type DispatchDueRefreshesParams = {
   /** Max due checkpoints handled in one call. */
   limit?: number;
   sourceId?: string;
+  /** Sources to leave alone, e.g. out of monthly budget. */
+  excludeSourceIds?: string[];
   /** Report what would happen; no writes, no Bright Data jobs. */
   dryRun?: boolean;
 };
@@ -56,6 +58,9 @@ export async function dispatchDueRefreshes(
         lte(itemRefreshSchedules.nextRefreshAt, now),
         isNotNull(contentItems.url),
         params.sourceId ? eq(contentItems.sourceId, params.sourceId) : undefined,
+        params.excludeSourceIds?.length
+          ? notInArray(contentItems.sourceId, params.excludeSourceIds)
+          : undefined,
       ),
     )
     .orderBy(asc(itemRefreshSchedules.nextRefreshAt))
