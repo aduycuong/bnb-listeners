@@ -16,8 +16,8 @@ type CollectSourceParams = {
   sourceId: string;
   /** Overrides the incremental `since` (ISO datetime). */
   since?: string;
-  limit?: number;
-  collectComments?: boolean;
+  /** Hard cap on delivered records; defaults to the connector's safety cap. */
+  maxRecords?: number;
 };
 
 /**
@@ -46,7 +46,11 @@ export async function collectSource(
     );
   }
 
-  const since = params.since ?? (await resolveSince(source.id));
+  const latest = await getSourceLatestPublishedAt({
+    sourceId: source.id,
+    kind: "post",
+  });
+  const since = params.since ?? resolveSince(latest);
 
   const run = await createCollectRun({
     connector: "facebook-posts",
@@ -54,18 +58,16 @@ export async function collectSource(
     params: {
       url: source.url,
       since,
-      ...(params.limit !== undefined && { limit: params.limit }),
-      ...(params.collectComments !== undefined && {
-        collectComments: params.collectComments,
-      }),
+      // Late arrivals only mean something for an incremental run.
+      ...(!params.since && latest && { newestKnownAt: latest.toISOString() }),
+      ...(params.maxRecords !== undefined && { maxRecords: params.maxRecords }),
     },
   });
 
   return { ...run, since };
 }
 
-async function resolveSince(sourceId: string): Promise<string> {
-  const latest = await getSourceLatestPublishedAt({ sourceId, kind: "post" });
+function resolveSince(latest: Date | null): string {
   const since = latest
     ? latest.getTime() - COLLECT_CONFIG.posts.sinceOverlapHours * HOUR_MS
     : Date.now() - COLLECT_CONFIG.posts.initialLookbackHours * HOUR_MS;

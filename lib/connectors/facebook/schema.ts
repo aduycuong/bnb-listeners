@@ -1,8 +1,18 @@
 import { z } from "zod";
 
+/** A highlighted comment embedded in a post scraped by URL; it has no comment id. */
+const brightDataFacebookTopCommentSchema = z.object({
+  comment: z.string().nullish(),
+  user_name: z.string().nullish(),
+  date: z.iso.datetime().nullish(),
+  likes: z.int().nullish(),
+  num_replies: z.int().nullish(),
+});
+
 /**
- * One post row from the Bright Data Facebook group/page post datasets.
- * Unknown fields are stripped; the full row stays in the R2 archive.
+ * One post row from the Bright Data Facebook group/page post datasets and the
+ * post-by-URL dataset. Unknown fields are stripped; the full row stays in the
+ * R2 archive.
  */
 export const brightDataFacebookPostSchema = z.object({
   post_id: z.string().min(1),
@@ -16,6 +26,8 @@ export const brightDataFacebookPostSchema = z.object({
   num_shares: z.int().nullish(),
   likes: z.int().nullish(),
   num_reaction_type: z.array(z.unknown()).nullish(),
+  /** Post-by-URL dataset name for `num_reaction_type`. */
+  num_likes_type: z.array(z.unknown()).nullish(),
   group_name: z.string().nullish(),
   group_id: z.string().nullish(),
   group_url: z.url().nullish(),
@@ -30,6 +42,10 @@ export const brightDataFacebookPostSchema = z.object({
   post_type: z.string().nullish(),
   hashtags: z.array(z.string()).nullish(),
   publisher_image_url: z.url().nullish(),
+  /** Post-by-URL dataset name for `publisher_image_url`. */
+  avatar_image_url: z.url().nullish(),
+  /** Post-by-URL dataset only: a few top comments. */
+  comments: z.array(brightDataFacebookTopCommentSchema).nullish(),
   delegate_page_id: z.string().nullish(),
 });
 

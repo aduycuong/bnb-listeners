@@ -979,7 +979,7 @@ One connector run, driven by the `collect-source` Upstash Workflow.
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
-| connector | text | NO | — | `facebook-posts` \| `facebook-comments` … |
+| connector | text | NO | — | `facebook-posts` \| `facebook-post-refresh` \| `facebook-comments` … |
 | source_id | uuid | YES | — | FK → `sources.id` ON DELETE SET NULL |
 | params | jsonb | NO | `{}` | Connector input (`since`, limits, post URL…) |
 | status | text | NO | `pending` | `pending` \| `running` \| `success` \| `failed` |
@@ -987,7 +987,7 @@ One connector run, driven by the `collect-source` Upstash Workflow.
 | external_job_id | text | YES | — | Provider job id (Bright Data snapshot id) |
 | payload_key | text | YES | — | Object key of the raw payload in payload storage (R2 today) |
 | item_count | integer | YES | — | Items in the raw payload |
-| stats | jsonb | YES | — | Normalize counts `{ inserted, updated, skipped }` |
+| stats | jsonb | YES | — | Normalize counts `{ inserted, updated, skipped }` plus connector stats (post runs: `lateArrivals`, `maxLatenessMinutes`, `schedulesCreated`, `activityTier`, `postsPerDay`; refresh runs: `checked`, `postsToCollect`, `commentRunsPlanned`) |
 | error | text | YES | — | Failure message |
 | started_at / finished_at | timestamptz | YES | — | |
 | created_at | timestamptz | NO | `now()` | |

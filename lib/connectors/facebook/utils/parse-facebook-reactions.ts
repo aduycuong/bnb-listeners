@@ -18,8 +18,9 @@ export function parseFacebookReactions(
     const name = NAME_KEYS.map((key) => record[key]).find(
       (value): value is string => typeof value === "string" && !!value.trim(),
     );
-    const count = COUNT_KEYS.map((key) => record[key]).find(
-      (value): value is number => typeof value === "number" && Number.isFinite(value),
+    // The group dataset sends counts as strings ("1").
+    const count = COUNT_KEYS.map((key) => toCount(record[key])).find(
+      (value): value is number => value !== null,
     );
 
     if (name && count !== undefined) {
@@ -29,4 +30,10 @@ export function parseFacebookReactions(
   }
 
   return Object.keys(reactions).length > 0 ? reactions : null;
+}
+
+function toCount(value: unknown): number | null {
+  const count =
+    typeof value === "string" && value.trim() ? Number(value) : value;
+  return typeof count === "number" && Number.isFinite(count) ? count : null;
 }

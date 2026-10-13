@@ -10,6 +10,8 @@ export const COLLECT_CONFIG = {
     sinceOverlapHours: 2,
     /** First run of a source with no stored posts looks back this far. */
     initialLookbackHours: 24,
+    /** Safety cap per post run until the monthly budget sets it. */
+    maxRecordsPerRun: 500,
   },
 
   tiers: {
@@ -42,6 +44,13 @@ export const COLLECT_CONFIG = {
     /** Rows per post, replies included (Bright Data `limit_records`). */
     maxRowsPerPost: 100,
     sort: "Most relevant",
+    /** Post URLs per `facebook-post-refresh` or `facebook-comments` run. */
+    postsPerRun: 100,
+    /**
+     * A due checkpoint handed to a refresh run is pushed back this long, so the
+     * scheduler does not dispatch it again; a failed run is retried after it.
+     */
+    leaseHours: 3,
   },
 
   scheduler: {

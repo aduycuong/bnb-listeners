@@ -1,4 +1,8 @@
-export const CONNECTOR_KEYS = ["facebook-posts", "facebook-comments"] as const;
+export const CONNECTOR_KEYS = [
+  "facebook-posts",
+  "facebook-post-refresh",
+  "facebook-comments",
+] as const;
 
 export type ConnectorKey = (typeof CONNECTOR_KEYS)[number];
 

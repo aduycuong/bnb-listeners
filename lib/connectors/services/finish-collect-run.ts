@@ -4,21 +4,17 @@ import { collectRuns } from "@/db/schema";
 import { db } from "@/lib/db";
 import { updateSourceDetails } from "@/lib/raw-store/services/update-source-details";
 
+import type { CollectRunStats } from "../types";
 import { getCollectRun } from "../utils/get-collect-run";
 
 type FinishCollectRunParams = {
   collectRunId: string;
-  stats: { inserted: number; updated: number; skipped: number };
-};
-
-type FinishCollectRunResult = {
-  /** Lets the workflow attach follow-up runs to the same source without reloading the run. */
-  sourceId: string | null;
+  stats: CollectRunStats;
 };
 
 export async function finishCollectRun(
   params: FinishCollectRunParams,
-): Promise<FinishCollectRunResult> {
+): Promise<void> {
   const run = await getCollectRun(params.collectRunId);
   const finishedAt = new Date();
 
@@ -33,6 +29,4 @@ export async function finishCollectRun(
       lastCollectedAt: finishedAt,
     });
   }
-
-  return { sourceId: run.sourceId };
 }

@@ -97,9 +97,10 @@ Chi phí comment là con số ước lượng thô, cần đo lại sau một tu
 ### Việc cần làm
 - [x] Schema: `sources.activity_tier_locked`, `sources.monthly_record_limit`, bảng `item_refresh_schedules`
 - [x] Config tập trung (`lib/connectors/config.ts`)
-- [ ] Run post: `start_date` ISO từ bài mới nhất − chồng lấn, bỏ `num_of_posts`, bỏ qua bài đã có, ghi `lateArrivals`, bỏ follow-up comment, tạo lịch cho bài mới, tính lại tier
-- [ ] Connector `facebook-post-refresh` và `metadata.topComments`
-- [ ] Xử lý mốc lấy lại, ngưỡng comment, chặn usage bằng `limit_multiple_results`
+- [x] Run post: `start_date` ISO từ bài mới nhất − chồng lấn, bỏ `num_of_posts`, bỏ qua bài đã có, ghi `lateArrivals`, bỏ follow-up comment, tạo lịch cho bài mới, tính lại tier
+- [x] Connector `facebook-post-refresh` và `metadata.topComments`
+- [x] Xử lý mốc lấy lại và ngưỡng comment; chạy tay bằng `npm run refresh:check`
+- [ ] Chặn usage theo `monthly_record_limit` bằng `limit_multiple_results` (hiện run post chặn cứng 500 bản ghi, config)
 - [ ] Workflow `schedule-collections` và script `schedules:sync`
 - [ ] Ghi D7 vào `decisions.md`
 

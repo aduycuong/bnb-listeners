@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { NormalizedContentItem } from "@/lib/raw-store/types";
 
+import { COLLECT_CONFIG } from "../config";
 import type { JobConnector, NormalizeResult } from "../types";
 import { brightDataJobMethods } from "../utils/bright-data-job-methods";
 import { isBrightDataErrorRecord } from "../utils/is-bright-data-error-record";
@@ -15,7 +16,11 @@ const COMMENTS_DATASET_ID = "gd_lkay758p1eanlolqw8";
 
 export const facebookCommentsParamsSchema = z.object({
   postUrls: z.array(z.url()).min(1).max(100),
-  limitPerPost: z.int().min(1).max(1000).default(100),
+  limitPerPost: z
+    .int()
+    .min(1)
+    .max(1000)
+    .default(COLLECT_CONFIG.commentRefresh.maxRowsPerPost),
 });
 
 export type FacebookCommentsParams = z.infer<typeof facebookCommentsParamsSchema>;
@@ -77,7 +82,7 @@ export const facebookCommentsConnector: JobConnector<FacebookCommentsParams> = {
         url,
         get_all_replies: true,
         limit_records: params.limitPerPost,
-        comments_sort: "Most relevant",
+        comments_sort: COLLECT_CONFIG.commentRefresh.sort,
       })),
     });
   },

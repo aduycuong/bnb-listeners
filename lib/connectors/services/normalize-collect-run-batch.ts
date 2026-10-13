@@ -37,6 +37,7 @@ export async function normalizeCollectRunBatch(
     items: normalized.items,
     sourceId: run.sourceId,
     collectRunId: run.id,
+    onExisting: connector.onExisting,
   });
 
   if (run.sourceId && normalized.source) {
@@ -46,7 +47,6 @@ export async function normalizeCollectRunBatch(
   return {
     inserted: written.inserted,
     updated: written.updated,
-    skipped: normalized.skipped,
-    followUps: connector.planFollowUps?.(written.items, connectorParams) ?? [],
+    skipped: normalized.skipped + written.skippedExisting,
   };
 }

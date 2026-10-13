@@ -9,10 +9,11 @@ import { createCollectRun } from "../services/create-collect-run";
 import { failCollectRun } from "../services/fail-collect-run";
 import { finishCollectRun } from "../services/finish-collect-run";
 import { normalizeCollectRunBatch } from "../services/normalize-collect-run-batch";
+import { runAfterNormalize } from "../services/run-after-normalize";
 import { startCollectRun } from "../services/start-collect-run";
 import type {
+  CollectRunStats,
   CollectSourceWorkflowPayload,
-  FollowUpRun,
   StoreRawPayloadResult,
 } from "../types";
 import { getCollectRunEventId } from "../utils/get-collect-run-event-id";
@@ -28,7 +29,8 @@ export const collectSourceWorkflowPayloadSchema = z.object({
  * 2. wait-webhook: the provider webhook archives the payload and notifies
  *    this run; no delivery within the timeout fails the run.
  * 3. normalize-{offset}: write the payload into the raw store in batches.
- * 4. finish, then one step per follow-up run (e.g. comments for new posts).
+ * 4. after-normalize: the connector's post-write hook (schedules, tier, stats).
+ * 5. finish, then one step per follow-up run (e.g. comments for refreshed posts).
  */
 export const collectSourceWorkflow: RouteFunction<
   CollectSourceWorkflowPayload
@@ -65,8 +67,7 @@ export const collectSourceWorkflow: RouteFunction<
   }
 
   const { payloadKey, itemCount } = stored;
-  const stats = { inserted: 0, updated: 0, skipped: 0 };
-  const followUps: FollowUpRun[] = [];
+  const stats: CollectRunStats = { inserted: 0, updated: 0, skipped: 0 };
 
   for (let offset = 0; offset < itemCount; offset += NORMALIZE_BATCH_SIZE) {
     const batch = await context.run(`normalize-${offset}`, () =>
@@ -81,17 +82,18 @@ export const collectSourceWorkflow: RouteFunction<
     stats.inserted += batch.inserted;
     stats.updated += batch.updated;
     stats.skipped += batch.skipped;
-    followUps.push(...batch.followUps);
   }
 
-  const { sourceId } = await context.run("finish", () =>
-    finishCollectRun({ collectRunId, stats }),
+  const after = await context.run("after-normalize", () =>
+    runAfterNormalize({ collectRunId }),
   );
 
-  for (const [index, followUp] of followUps.entries()) {
-    await context.run(`follow-up-${index}`, () =>
-      createCollectRun({ ...followUp, sourceId }),
-    );
+  await context.run("finish", () =>
+    finishCollectRun({ collectRunId, stats: { ...stats, ...after.stats } }),
+  );
+
+  for (const [index, followUp] of (after.followUps ?? []).entries()) {
+    await context.run(`follow-up-${index}`, () => createCollectRun(followUp));
   }
 };
 
