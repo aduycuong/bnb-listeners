@@ -18,7 +18,6 @@ Before making code changes, Codex should read the relevant files from those fold
 ## Conditional Rules
 
 - Read `.cursor/rules/form-creation.mdc` before creating or changing forms.
-- Read `.cursor/rules/list-items.mdc` before creating or replacing list panels, item browsers, filters, sorting, pagination, or infinite loading.
 - Read `.cursor/rules/drizzle-schema-workflow.mdc` before changing database tables, columns, relations, indexes, constraints, Drizzle config, or schema documentation.
 
 ## Reference docs
