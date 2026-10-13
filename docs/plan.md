@@ -44,6 +44,7 @@ Script `npm run probe:bright-data` (`scripts/probe-bright-data-facebook.ts`), k�
 - Ranh giới ngày khi chỉ truyền ngày (UTC hay giờ Việt Nam) chưa xác định được; dùng ISO datetime thì không cần biết.
 - Dataset lấy post theo URL (`gd_lyclm1571iy3mv57zw`) kèm 3 comment nổi bật nhưng không có comment id, nên chỉ dùng để xem trước (`metadata.topComments`).
 - `limit_records` của dataset comment tính theo từng bài và đếm cả reply. `num_comments` cũng đếm cả reply. Số comment lấy được có thể ít hơn `num_comments` (158 so với 139).
+- `get_all_replies = false` bỏ hẳn reply (0 reply trên 264 dòng), và khi đó `limit_records` chỉ đếm comment gốc (`limit_records = 20` trả đúng 20 comment gốc). Ở 2 bài thử, reply chiếm khoảng 1/3 tổng số comment.
 - Group `reviewbatdongsanaz` có khoảng 30–35 bài/ngày, gần như không có bài từ 21 giờ tới 6 giờ sáng (giờ Việt Nam). Trung vị 5 comment/bài, trung bình 20, khoảng 30% bài không có comment (đo khi bài mới 0–5 giờ tuổi).
 
 ### Đã quyết định

@@ -21,6 +21,12 @@
 //                end_date, and whether the day boundary is UTC or Vietnam time.
 // post-since     start_date (ISO) alone: does the job stop there without
 //                end_date and num_of_posts? limit_multiple_results = --cap.
+// comment-replies  get_all_replies = false: are replies left out, and does
+//                limit_records then count top-level comments only?
+//                full   limit_records = --limit-full on every post
+//                capped limit_records = --limit-capped on the first post
+//                --baseline compares with a post-comments --compare report
+//                (fetched with replies).
 //
 // Example:
 //   npx tsx scripts/probe-bright-data-facebook.ts post-params --url https://www.facebook.com/groups/reviewbatdongsanaz --yes
@@ -29,7 +35,7 @@
 //   npm run probe:bright-data -- post-dates --url <group> --start 2026-10-09 --end 2026-10-10 --yes
 
 import "dotenv/config";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { Command } from "commander";
@@ -84,6 +90,14 @@ const postDatesOptionsSchema = z
   .refine((options) => options.start <= options.end, {
     message: "--start must not be after --end.",
   });
+
+const commentRepliesOptionsSchema = z.object({
+  postUrl: z.array(z.url()).min(1).max(5),
+  limitFull: z.coerce.number().int().min(1).max(500),
+  limitCapped: z.coerce.number().int().min(1).max(100),
+  baseline: z.string().optional(),
+  yes: z.boolean(),
+});
 
 const commentLimitOptionsSchema = z.object({
   postUrl: z.array(z.url()).min(2).max(5),
@@ -663,6 +677,98 @@ async function postSince(rawOptions: unknown) {
   await saveReport("bright-data-post-since", { report, raw: { run } });
 }
 
+function isReplyRow(row: Row): boolean {
+  return row.reply === true || (typeof row.parent_comment_id === "string" && !!row.parent_comment_id);
+}
+
+async function commentReplies(rawOptions: unknown) {
+  const options = commentRepliesOptionsSchema.parse(rawOptions);
+  const commentInput = (url: string, limit: number) => ({
+    url,
+    get_all_replies: false,
+    limit_records: limit,
+    comments_sort: "Most relevant",
+  });
+
+  console.log(`[${SCRIPT}] comment-replies plan`, {
+    posts: options.postUrl.length,
+    full: `get_all_replies=false, limit_records=${options.limitFull} per post`,
+    capped: `get_all_replies=false, limit_records=${options.limitCapped} on the first post`,
+    maxRecords: options.postUrl.length * options.limitFull + options.limitCapped,
+    baseline: options.baseline ?? null,
+    mode: options.yes ? "apply" : "dry-run",
+  });
+  if (!options.yes) {
+    console.log(`[${SCRIPT}] Dry run; pass --yes to trigger the jobs.`);
+    return;
+  }
+
+  // Earlier rows of the same posts fetched with replies, keyed by post id.
+  const baselineRows: Row[] = options.baseline
+    ? okRecords(
+        (JSON.parse(await readFile(options.baseline, "utf8")) as {
+          raw: { commentsRun: RunResult };
+        }).raw.commentsRun,
+      )
+    : [];
+
+  const [full, capped] = await Promise.all([
+    runJob(
+      "full",
+      COMMENTS_DATASET_ID,
+      options.postUrl.map((url) => commentInput(url, options.limitFull)),
+    ),
+    runJob("capped", COMMENTS_DATASET_ID, [
+      commentInput(options.postUrl[0], options.limitCapped),
+    ]),
+  ]);
+
+  const perPost = options.postUrl.map((url) => {
+    const postId = readPostId(url);
+    const rows = okRecords(full).filter((row) => row.post_id === postId);
+    const replies = rows.filter(isReplyRow);
+    const before = baselineRows.filter((row) => row.post_id === postId);
+    const beforeTopIds = new Set(
+      before.filter((row) => !isReplyRow(row)).map((row) => String(row.comment_id)),
+    );
+    const topIds = rows.filter((row) => !isReplyRow(row)).map((row) => String(row.comment_id));
+
+    return {
+      postId,
+      rows: rows.length,
+      replies: replies.length,
+      topLevel: rows.length - replies.length,
+      sumNumReplies: rows.reduce((sum, row) => sum + (Number(row.num_replies) || 0), 0),
+      ...(before.length > 0 && {
+        baselineRows: before.length,
+        baselineReplies: before.length - beforeTopIds.size,
+        baselineTopLevel: beforeTopIds.size,
+        topLevelAlsoInBaseline: topIds.filter((id) => beforeTopIds.has(id)).length,
+      }),
+    };
+  });
+
+  const cappedRows = okRecords(capped);
+  const report = {
+    full: { ...summarize(full), limitRecords: options.limitFull },
+    capped: {
+      ...summarize(capped),
+      limitRecords: options.limitCapped,
+      replies: cappedRows.filter(isReplyRow).length,
+    },
+    perPost,
+    replySample: truncateStrings(okRecords(full).filter(isReplyRow).slice(0, 2)),
+    verdict: {
+      repliesExcluded: okRecords(full).filter(isReplyRow).length === 0,
+      cappedReturnsLimitTopLevel:
+        cappedRows.length === options.limitCapped && cappedRows.every((row) => !isReplyRow(row)),
+    },
+  };
+
+  console.log(`[${SCRIPT}] Report`, JSON.stringify(report, null, 2));
+  await saveReport("bright-data-comment-replies", { report, raw: { full, capped } });
+}
+
 /**
  * Is `limit_records` per input or per job? Each post must have more comments
  * than --limit: per-input gives about posts × limit rows, per-job about limit.
@@ -781,6 +887,20 @@ async function main() {
     .option("--cap <n>", "limit_multiple_results safety cap", "150")
     .option("--yes", "Trigger the Bright Data job (costs records)", false)
     .action(postSince);
+
+  program
+    .command("comment-replies")
+    .description("get_all_replies = false: replies left out, limit_records on top-level")
+    .requiredOption(
+      "--post-url <url>",
+      "Facebook post URL with replies (repeatable, 1-5)",
+      (value: string, previous: string[] = []) => [...previous, value],
+    )
+    .option("--limit-full <n>", "limit_records per post for the full run", "200")
+    .option("--limit-capped <n>", "limit_records for the capped run", "20")
+    .option("--baseline <file>", "post-comments --compare report to compare with")
+    .option("--yes", "Trigger the Bright Data jobs (costs records)", false)
+    .action(commentReplies);
 
   program
     .command("comment-limit")
