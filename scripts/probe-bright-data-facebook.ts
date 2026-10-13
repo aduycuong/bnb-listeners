@@ -27,6 +27,9 @@
 //                capped limit_records = --limit-capped on the first post
 //                --baseline compares with a post-comments --compare report
 //                (fetched with replies).
+// comment-sort   one post, get_all_replies = false, one job per --sort value
+//                (default: Most relevant, All comments, Newest): how many
+//                top-level comments each sort returns and how they overlap.
 //
 // Example:
 //   npx tsx scripts/probe-bright-data-facebook.ts post-params --url https://www.facebook.com/groups/reviewbatdongsanaz --yes
@@ -96,6 +99,13 @@ const commentRepliesOptionsSchema = z.object({
   limitFull: z.coerce.number().int().min(1).max(500),
   limitCapped: z.coerce.number().int().min(1).max(100),
   baseline: z.string().optional(),
+  yes: z.boolean(),
+});
+
+const commentSortOptionsSchema = z.object({
+  postUrl: z.url(),
+  sort: z.array(z.string().min(1)).min(1).max(4),
+  limit: z.coerce.number().int().min(1).max(500),
   yes: z.boolean(),
 });
 
@@ -769,6 +779,77 @@ async function commentReplies(rawOptions: unknown) {
   await saveReport("bright-data-comment-replies", { report, raw: { full, capped } });
 }
 
+async function commentSort(rawOptions: unknown) {
+  const options = commentSortOptionsSchema.parse(rawOptions);
+
+  console.log(`[${SCRIPT}] comment-sort plan`, {
+    postUrl: options.postUrl,
+    sorts: options.sort,
+    limitRecords: options.limit,
+    maxRecords: options.limit * options.sort.length,
+    mode: options.yes ? "apply" : "dry-run",
+  });
+  if (!options.yes) {
+    console.log(`[${SCRIPT}] Dry run; pass --yes to trigger the jobs.`);
+    return;
+  }
+
+  const runs = await Promise.all(
+    options.sort.map(async (sort) => {
+      try {
+        const run = await runJob(sort, COMMENTS_DATASET_ID, [
+          {
+            url: options.postUrl,
+            get_all_replies: false,
+            limit_records: options.limit,
+            comments_sort: sort,
+          },
+        ]);
+        return { sort, run, error: null };
+      } catch (error) {
+        return { sort, run: null, error: String(error) };
+      }
+    }),
+  );
+
+  const idsBySort = new Map(
+    runs.map(({ sort, run }) => [
+      sort,
+      new Set(run ? okRecords(run).map((row) => String(row.comment_id)) : []),
+    ]),
+  );
+  const allIds = new Set([...idsBySort.values()].flatMap((ids) => [...ids]));
+
+  const report = {
+    postUrl: options.postUrl,
+    limitRecords: options.limit,
+    sorts: runs.map(({ sort, run, error }) => {
+      if (!run) return { sort, error };
+      const rows = okRecords(run);
+      const dates = rows
+        .map((row) => row.date_created)
+        .filter((value): value is string => typeof value === "string")
+        .sort();
+      return {
+        sort,
+        ...summarize(run),
+        rows: rows.length,
+        replies: rows.filter(isReplyRow).length,
+        sumNumReplies: rows.reduce((sum, row) => sum + (Number(row.num_replies) || 0), 0),
+        oldest: dates[0] ?? null,
+        newest: dates.at(-1) ?? null,
+        onlyInThisSort: [...(idsBySort.get(sort) ?? [])].filter((id) =>
+          [...idsBySort].every(([other, ids]) => other === sort || !ids.has(id)),
+        ).length,
+      };
+    }),
+    distinctTopLevelAcrossSorts: allIds.size,
+  };
+
+  console.log(`[${SCRIPT}] Report`, JSON.stringify(report, null, 2));
+  await saveReport("bright-data-comment-sort", { report, raw: runs });
+}
+
 /**
  * Is `limit_records` per input or per job? Each post must have more comments
  * than --limit: per-input gives about posts × limit rows, per-job about limit.
@@ -901,6 +982,24 @@ async function main() {
     .option("--baseline <file>", "post-comments --compare report to compare with")
     .option("--yes", "Trigger the Bright Data jobs (costs records)", false)
     .action(commentReplies);
+
+  program
+    .command("comment-sort")
+    .description("Compare comments_sort values on one post (no replies)")
+    .requiredOption("--post-url <url>", "Facebook post URL")
+    .option(
+      "--sort <value>",
+      "comments_sort value (repeatable)",
+      (value: string, previous: string[] = []) => [...previous, value],
+    )
+    .option("--limit <n>", "limit_records per job", "200")
+    .option("--yes", "Trigger the Bright Data jobs (costs records)", false)
+    .action((options: { sort?: string[] }) =>
+      commentSort({
+        ...options,
+        sort: options.sort ?? ["Most relevant", "All comments", "Newest"],
+      }),
+    );
 
   program
     .command("comment-limit")

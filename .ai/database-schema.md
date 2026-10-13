@@ -987,7 +987,7 @@ One connector run, driven by the `collect-source` Upstash Workflow.
 | external_job_id | text | YES | — | Provider job id (Bright Data snapshot id) |
 | payload_key | text | YES | — | Object key of the raw payload in payload storage (R2 today) |
 | item_count | integer | YES | — | Items in the raw payload |
-| stats | jsonb | YES | — | Normalize counts `{ inserted, updated, skipped }` plus connector stats (post runs: `lateArrivals`, `maxLatenessMinutes`, `schedulesCreated`, `postsToCollect`, `activityTier`, `postsPerDay`; refresh runs: `checked`, `postsToCollect`, `commentRunsPlanned`) |
+| stats | jsonb | YES | — | Normalize counts `{ inserted, updated, skipped }` plus connector stats (post runs: `lateArrivals`, `maxLatenessMinutes`, `schedulesCreated`, `postsToCollect`, `activityTier`, `postsPerDay`; refresh runs: `checked`, `postsToCollect`, `commentRunsPlanned`; comment runs: `expectedMaxRecords`, `posts[] { postExternalId, numComments, collected, replies }`) |
 | error | text | YES | — | Failure message |
 | started_at / finished_at | timestamptz | YES | — | |
 | created_at | timestamptz | NO | `now()` | |
