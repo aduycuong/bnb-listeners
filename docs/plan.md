@@ -79,8 +79,9 @@ Script `npm run probe:bright-data` (`scripts/probe-bright-data-facebook.ts`), k�
 - Bảng ghi usage chi tiết, quy đổi tiền, hạn mức theo workspace: PR riêng.
 
 **Bộ lập lịch**
-- Một QStash schedule 15 phút một lần gọi workflow `schedule-collections`: chọn source đến hạn (theo tier, không có run đang chạy, còn ngân sách) và các mốc lấy lại đến hạn.
-- Script `npm run schedules:sync` tạo hoặc cập nhật schedule.
+- Một QStash schedule 15 phút một lần gọi workflow `schedule-collections`: chọn source đến hạn (theo tier, không có run post đang chạy, còn ngân sách) và các mốc lấy lại đến hạn.
+- Source chỉ vào lịch sau run post đầu tiên chạy tay (`npm run collect:facebook`). Đặt tier `paused` để dừng.
+- Script `npm run schedules:sync` tạo, cập nhật hoặc xóa (`--remove`) schedule; không có `--yes` thì xem trước lần chạy kế tiếp.
 
 ### Ước tính chi phí cho một group `hot` (~35 bài/ngày)
 
@@ -103,8 +104,8 @@ Chi phí comment là con số ước lượng thô, cần đo lại sau một tu
 - [x] Run post: `start_date` ISO từ bài mới nhất − chồng lấn, bỏ `num_of_posts`, bỏ qua bài đã có, ghi `lateArrivals`, bỏ follow-up comment, tạo lịch cho bài mới, tính lại tier
 - [x] Connector `facebook-post-refresh` và `metadata.topComments`
 - [x] Xử lý mốc lấy lại và ngưỡng comment; chạy tay bằng `npm run refresh:check`
-- [ ] Chặn usage theo `monthly_record_limit` bằng `limit_multiple_results` (hiện run post chặn cứng 500 bản ghi, config)
-- [ ] Workflow `schedule-collections` và script `schedules:sync`
+- [x] Chặn usage theo `monthly_record_limit`: hết ngân sách thì không lên lịch run post và run refresh; run post gửi `limit_multiple_results` = min(500, ngân sách còn lại). Run comment chưa bị chặn theo ngân sách còn lại.
+- [x] Workflow `schedule-collections` và script `schedules:sync`
 - [ ] Ghi D7 vào `decisions.md`
 
 ## Giai đoạn 2 — Dữ liệu giả
