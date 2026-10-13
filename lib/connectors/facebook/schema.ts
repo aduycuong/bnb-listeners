@@ -1,12 +1,25 @@
 import { z } from "zod";
 
+/**
+ * Bright Data field types drift (`group_members` arrives as 518299.99999999994,
+ * `num_likes_type` is an array in one dataset and an object in another). Only
+ * the ids a row cannot do without are strict; any other field that does not
+ * match becomes null instead of dropping the whole row.
+ */
+function optional<T extends z.ZodType>(schema: T) {
+  return schema.nullish().catch(null);
+}
+
+/** Counts can arrive as floats; they are rounded. */
+const count = optional(z.number().transform(Math.round));
+
 /** A highlighted comment embedded in a post scraped by URL; it has no comment id. */
 const brightDataFacebookTopCommentSchema = z.object({
-  comment: z.string().nullish(),
-  user_name: z.string().nullish(),
-  date: z.iso.datetime().nullish(),
-  likes: z.int().nullish(),
-  num_replies: z.int().nullish(),
+  comment: optional(z.string()),
+  user_name: optional(z.string()),
+  date: optional(z.iso.datetime()),
+  likes: count,
+  num_replies: count,
 });
 
 /**
@@ -17,36 +30,36 @@ const brightDataFacebookTopCommentSchema = z.object({
 export const brightDataFacebookPostSchema = z.object({
   post_id: z.string().min(1),
   url: z.url(),
-  user_username_raw: z.string().nullish(),
-  user_url: z.url().nullish(),
-  profile_id: z.string().nullish(),
-  content: z.string().nullish(),
-  date_posted: z.iso.datetime().nullish(),
-  num_comments: z.int().nullish(),
-  num_shares: z.int().nullish(),
-  likes: z.int().nullish(),
-  num_reaction_type: z.array(z.unknown()).nullish(),
+  user_username_raw: optional(z.string()),
+  user_url: optional(z.url()),
+  profile_id: optional(z.string()),
+  content: optional(z.string()),
+  date_posted: optional(z.iso.datetime()),
+  num_comments: count,
+  num_shares: count,
+  likes: count,
+  num_reaction_type: optional(z.array(z.unknown())),
   /** Post-by-URL dataset name for `num_reaction_type`. */
-  num_likes_type: z.array(z.unknown()).nullish(),
-  group_name: z.string().nullish(),
-  group_id: z.string().nullish(),
-  group_url: z.url().nullish(),
-  group_category: z.string().nullish(),
-  group_members: z.int().nullish(),
-  page_name: z.string().nullish(),
-  page_followers: z.int().nullish(),
-  post_image: z.url().nullish(),
-  attachments: z.array(z.unknown()).nullish(),
-  video_view_count: z.int().nullish(),
-  is_sponsored: z.boolean().nullish(),
-  post_type: z.string().nullish(),
-  hashtags: z.array(z.string()).nullish(),
-  publisher_image_url: z.url().nullish(),
+  num_likes_type: optional(z.array(z.unknown())),
+  group_name: optional(z.string()),
+  group_id: optional(z.string()),
+  group_url: optional(z.url()),
+  group_category: optional(z.string()),
+  group_members: count,
+  page_name: optional(z.string()),
+  page_followers: count,
+  post_image: optional(z.url()),
+  attachments: optional(z.array(z.unknown())),
+  video_view_count: count,
+  is_sponsored: optional(z.boolean()),
+  post_type: optional(z.string()),
+  hashtags: optional(z.array(z.string())),
+  publisher_image_url: optional(z.url()),
   /** Post-by-URL dataset name for `publisher_image_url`. */
-  avatar_image_url: z.url().nullish(),
+  avatar_image_url: optional(z.url()),
   /** Post-by-URL dataset only: a few top comments. */
-  comments: z.array(brightDataFacebookTopCommentSchema).nullish(),
-  delegate_page_id: z.string().nullish(),
+  comments: optional(z.array(brightDataFacebookTopCommentSchema)),
+  delegate_page_id: optional(z.string()),
 });
 
 export type BrightDataFacebookPost = z.infer<typeof brightDataFacebookPostSchema>;
@@ -54,21 +67,21 @@ export type BrightDataFacebookPost = z.infer<typeof brightDataFacebookPostSchema
 /** One comment row from the Bright Data Facebook comments dataset. */
 export const brightDataFacebookCommentSchema = z.object({
   post_id: z.string().min(1),
-  post_url: z.url().nullish(),
-  url: z.url().nullish(),
+  post_url: optional(z.url()),
+  url: optional(z.url()),
   comment_id: z.string().min(1),
-  user_name: z.string().nullish(),
-  user_id: z.string().nullish(),
-  date_created: z.iso.datetime().nullish(),
-  comment_text: z.string().nullish(),
-  num_likes: z.int().nonnegative().nullish(),
-  num_replies: z.int().nonnegative().nullish(),
-  comment_link: z.url().nullish(),
-  reply: z.boolean().nullish(),
-  parent_comment_id: z.string().nullish(),
-  commentator_profile_url: z.string().nullish(),
-  attached_images: z.array(z.string()).nullish(),
-  type: z.string().nullish(),
+  user_name: optional(z.string()),
+  user_id: optional(z.string()),
+  date_created: optional(z.iso.datetime()),
+  comment_text: optional(z.string()),
+  num_likes: count,
+  num_replies: count,
+  comment_link: optional(z.url()),
+  reply: optional(z.boolean()),
+  parent_comment_id: optional(z.string()),
+  commentator_profile_url: optional(z.string()),
+  attached_images: optional(z.array(z.string())),
+  type: optional(z.string()),
 });
 
 export type BrightDataFacebookComment = z.infer<
