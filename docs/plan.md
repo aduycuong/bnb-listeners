@@ -108,14 +108,28 @@ Chi phí comment là con số ước lượng thô, cần đo lại sau một tu
 - [x] Workflow `schedule-collections` và script `schedules:sync`
 - [x] Ghi [D7](decisions.md#d7--lập-lịch-thu-thập-tier-và-lấy-lại-comment-2026-10-13) vào `decisions.md`
 
-## Giai đoạn 2 — Dữ liệu giả
+## Giai đoạn 2 — Dữ liệu giả (persona → connector ảo → kho thô)
 
-- [ ] Schema `scenarios`, `synthetic_labels`, cột `origin` và `scenario_id`
-- [ ] Connector ảo, chế độ batch
-- [ ] 2–3 scenario mẫu dựa trên demo hiện có: uy tín chủ đầu tư, tin đồn lùi bàn giao, mở bán dự án
-- [ ] Màn hình đơn giản để tạo scenario và sinh dữ liệu
+Mục tiêu thu hẹp: có dữ liệu post và comment nằm trong kho thô để các giai đoạn sau chạy tiếp. Dữ liệu giả và dữ liệu thật được phép trộn lẫn. Persona ban đầu chỉ cần đủ dùng, sẽ nâng cấp sau khi mở rộng sources. Xem [synthetic-data.md](synthetic-data.md).
 
-**Kết quả:** sinh được một timeline giả có nhãn đúng, nằm trong kho thô.
+**Bước 1 — Persona và panel**
+- [ ] Schema `personas` (`attributes jsonb`, `version`), `persona_panels`, `persona_panel_members` (`weight`), cột `authors.persona_id`
+- [ ] Script seed 8–10 persona và 3 panel mẫu cho BĐS (group review, cư dân dự án, nhà đầu tư)
+
+**Bước 2 — Connector ảo**
+- [ ] Connector `synthetic-threads` (`DirectConnector`): code lập kế hoạch, LLM viết từng thread, code ghép lại; ghi spec vào `content_items.metadata`
+- [ ] `sources` giả (`origin = synthetic`, `platform = facebook`, `source_type = group`)
+- [ ] Mẫu giọng văn: few-shot từ comment thật của source được chọn
+- [ ] Chèn nhiễu nhẹ (bỏ dấu, lỗi chính tả, spam, ca trùng tên)
+- [ ] `npm run synthetic:generate -- --panel … --source … --brief … --posts 10 --yes`
+- [ ] Đo thời gian một run để chốt số thread mỗi run (rủi ro giới hạn thời gian của bước workflow)
+
+**Bước 3 — Giao diện**
+- [ ] Màn hình tạo persona, panel và chạy sinh (làm sau cùng, bước 1–2 chạy được bằng script)
+
+**Kết quả:** từ một panel và một `brief`, sinh được post, comment và reply vào kho thô với `origin = synthetic`, truy vết được theo `collect_run_id` và persona.
+
+**Để sau** (không làm trong giai đoạn này): bảng `scenarios`, `synthetic_labels` (dựng từ `metadata` khi cần đo Enrich ở giai đoạn 4), chế độ replay (giai đoạn 6), dự báo phản ứng và backtest, khai thác persona từ dữ liệu thật, quy tắc cô lập dữ liệu giả theo project.
 
 ## Giai đoạn 3 — Cấu hình project và Match (L2 + `mentions`)
 
