@@ -133,7 +133,7 @@ Mục tiêu thu hẹp: có dữ liệu post và comment nằm trong kho thô đ�
 
 ## Giai đoạn 3 — Cấu hình project và Match (L2 + `mentions`)
 
-- [ ] Schema `projects` (thêm `mode`), `project_entities`, `project_queries`, `project_aspects`, `project_sources`, `project_scenarios`
+- [ ] Schema `projects` (thêm `mode`), `project_entities`, `project_queries`, `project_aspects`, `project_sources` (`project_scenarios` chỉ thêm khi có `scenarios`, xem [D8](decisions.md#d8--giai-đoạn-2-persona--connector-ảo--kho-thô-2026-10-13))
 - [ ] Form cấu hình truy vấn, entity và aspect (theo `.cursor/rules/form-creation.mdc`)
 - [ ] Chuẩn hóa tiếng Việt: bỏ dấu, alias, viết tắt
 - [ ] Match tầng 1 (từ vựng) và tầng 2 (LLM cho ca mơ hồ)
@@ -147,6 +147,7 @@ Mục tiêu thu hẹp: có dữ liệu post và comment nằm trong kho thô đ�
 - [ ] Sentiment, emotion, aspect, entity; extraction riêng theo case `general` trước
 - [ ] Chạy theo batch, cache theo `content_hash` + `config_version`
 - [ ] Gom cụm topic và đặt tên
+- [ ] Dựng `synthetic_labels` từ `metadata` của dữ liệu giả (ý định cảm xúc và aspect đã ghi lúc sinh, xem [D8](decisions.md#d8--giai-đoạn-2-persona--connector-ảo--kho-thô-2026-10-13))
 - [ ] Đánh giá với `synthetic_labels` và một bộ mẫu thật nhỏ có gán nhãn
 - [ ] Cho phép người dùng sửa nhãn trên giao diện (`user_corrected`)
 

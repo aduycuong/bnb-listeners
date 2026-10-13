@@ -26,7 +26,7 @@ Module mới nằm trực tiếp trong `lib/` theo `.cursor/rules/lib-services.m
 |---|---|
 | `lib/connectors/` | Collect: interface chung, connector Facebook, connector ảo |
 | `lib/raw-store/` | L1: sources, authors, content items, engagement snapshots |
-| `lib/scenarios/` | Dữ liệu giả: scenario, sinh dữ liệu, nhãn |
+| `lib/personas/` | Dữ liệu giả: persona, panel, kế hoạch và prompt sinh thread (đổi từ `lib/scenarios/`, xem D8) |
 | `lib/project-config/` | L2: entity, query, aspect, nguồn của project |
 | `lib/matching/` | Match: chuẩn hóa tiếng Việt, so khớp |
 | `lib/mentions/` | L3: mention và truy vấn drill-down |
@@ -47,7 +47,8 @@ Module mới nằm trực tiếp trong `lib/` theo `.cursor/rules/lib-services.m
 
 ## D5 — Dữ liệu giả chung bảng với dữ liệu thật (2026-10-11)
 
-- Dùng chung bảng kho thô, phân biệt bằng `origin = synthetic` + `scenario_id`. Chỉ project `mode = sandbox` mới thấy. Xem [synthetic-data.md](synthetic-data.md).
+- Dùng chung bảng kho thô, phân biệt bằng `origin = synthetic`. Xem [synthetic-data.md](synthetic-data.md).
+- ~~Gắn `scenario_id`; chỉ project `mode = sandbox` mới thấy.~~ Thay bằng D8 (2026-10-13): chưa có `scenario_id` và chưa cô lập theo project.
 
 ## D6 — Luồng collect: chỉ dùng webhook (2026-10-11)
 
@@ -94,3 +95,30 @@ Dựa trên các thử nghiệm Bright Data ngày 2026-10-12 và 2026-10-13 (`np
 **Công cụ**
 - `npm run refresh:check`: gửi các mốc lấy lại đến hạn bằng tay.
 - `npm run collect:renormalize -- --run-id <uuid>`: ghi lại payload đã lưu trên R2 vào kho thô (sau khi sửa parser) mà không tạo job Bright Data mới.
+
+## D8 — Giai đoạn 2: persona → connector ảo → kho thô (2026-10-13)
+
+Thu hẹp giai đoạn 2 thành một đường ống tạo dữ liệu. Chi tiết ở [synthetic-data.md](synthetic-data.md) và [plan.md](plan.md#giai-đoạn-2--dữ-liệu-giả-persona--connector-ảo--kho-thô).
+
+**Quyết định**
+- Mục tiêu: có post, comment, reply trong kho thô để các giai đoạn sau chạy tiếp. Dữ liệu giả và thật được phép trộn lẫn. Persona ban đầu không cần chính xác, nâng cấp dần sau khi mở rộng sources.
+- Ba thực thể tách riêng: **persona** (kiểu người, dùng lại được), **panel** (tập persona kèm `weight`), **brief** (điều xảy ra, truyền vào mỗi lần sinh, nằm trong `collect_runs.params`).
+- Persona dạng văn bản ngắn có cấu trúc, kèm `attributes jsonb` và `version` để mở rộng không cần migration. `authors.persona_id` cho tác giả giả nhất quán.
+- Connector ảo là `DirectConnector` (`synthetic-threads`): code lập kế hoạch (số lượng, thời điểm, phân bổ persona), LLM viết từng thread, code ghép lại. Dùng chung workflow thu thập, nên **payload vẫn được lưu lên R2** và parse lại được bằng `collect:renormalize`. Đổi so với bản trước ghi "không có payload R2".
+- Spec của từng item (`personaId`, `panelId`, `brief`, ý định cảm xúc) ghi vào `content_items.metadata`.
+- Mẫu giọng văn: few-shot từ comment thật của source được chọn.
+- Module `lib/personas/` thay cho `lib/scenarios/` (cập nhật D3).
+
+**Hoãn lại**
+- Bảng `scenarios`, `synthetic_labels` (dựng từ `metadata` khi đo Enrich ở giai đoạn 4), cột `scenario_id`, `project_scenarios`.
+- Quy tắc cô lập dữ liệu giả theo project (`mode = sandbox`). Cột `origin` đủ để lọc khi cần.
+- Chế độ replay (giai đoạn 6), snapshot engagement giả.
+- Dự báo phản ứng cộng đồng, calibrate, backtest.
+
+**Lý do**
+- Kịch bản có nhãn đúng chỉ cần khi đo Match/Enrich; chưa cần để có dữ liệu chạy tiếp.
+- Nghiên cứu về LLM đóng vai persona cho thấy xu hướng đồng nhất hóa, rập khuôn, mất phương sai; một preprint còn thấy persona kém hơn hỏi thẳng không persona với bài toán tiêu đề. Chưa có kiểm chứng với agent mạng xã hội. Vì vậy đầu ra chưa được coi là dự báo, và dự báo chỉ làm khi có dữ liệu thật từ nhiều nguồn để đối chiếu.
+- Kho thô dùng chung giữa các workspace, nên mọi số liệu cho khách hàng phải lọc theo `origin`.
+
+**Rủi ro cần đo ở bước 2**
+- `fetchRecords` chạy trong một bước workflow; số thread mỗi run phải đủ nhỏ để không vượt giới hạn thời gian của hàm, nếu cần thì chia thành nhiều run.
