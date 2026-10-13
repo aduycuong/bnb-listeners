@@ -106,7 +106,7 @@ Chi phí comment là con số ước lượng thô, cần đo lại sau một tu
 - [x] Xử lý mốc lấy lại và ngưỡng comment; chạy tay bằng `npm run refresh:check`
 - [x] Chặn usage theo `monthly_record_limit`: hết ngân sách thì không lên lịch run post và run refresh; run post gửi `limit_multiple_results` = min(500, ngân sách còn lại). Run comment chưa bị chặn theo ngân sách còn lại.
 - [x] Workflow `schedule-collections` và script `schedules:sync`
-- [ ] Ghi D7 vào `decisions.md`
+- [x] Ghi [D7](decisions.md#d7--lập-lịch-thu-thập-tier-và-lấy-lại-comment-2026-10-13) vào `decisions.md`
 
 ## Giai đoạn 2 — Dữ liệu giả
 
