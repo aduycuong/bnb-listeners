@@ -195,7 +195,7 @@ export function AccountMenu({
                     ) : null}
                     {isAdmin ? (
                       <DropdownMenuItem
-                        render={<Link href="/admin/system-schedules" />}
+                        render={<Link href="/admin" />}
                       >
                         <ShieldIcon />
                         {tDashboard("accountMenu.admin")}
