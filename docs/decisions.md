@@ -51,11 +51,46 @@ Module mới nằm trực tiếp trong `lib/` theo `.cursor/rules/lib-services.m
 
 ## D6 — Luồng collect: chỉ dùng webhook (2026-10-11)
 
-- Mỗi lần thu thập là một dòng `collect_runs`, chạy bằng workflow `collect-source` (`lib/connectors/workflows/collect-source-workflow.ts`): start → chờ webhook → normalize theo batch 200 item → finish → tạo run follow-up.
+- Mỗi lần thu thập là một dòng `collect_runs`, chạy bằng workflow `collect-source` (`lib/connectors/workflows/collect-source-workflow.ts`): start → chờ webhook → normalize theo batch 200 item → hook `after-normalize` của connector → finish → tạo run follow-up (đổi 2026-10-13, xem D7).
 - Bright Data giao kết quả tới `/api/webhooks/connectors/bright-data/{collectRunId}` trên `NEXT_PUBLIC_APP_URL`. Route lưu nguyên payload vào kho payload (L0, hiện là R2) rồi `notify` workflow. Môi trường dev luôn chạy sau tunnel có domain công khai, nên không cần polling. Quá 6 giờ không có webhook thì run bị đánh dấu `failed`.
 - `collect_runs.payload_key` là khóa object, không gắn với R2. Mọi lệnh đọc/ghi đi qua `rawPayloadStorage` (`lib/connectors/utils/raw-payload-storage.ts`), nên đổi kho lưu trữ chỉ cần sửa một chỗ.
 - Workflow đọc payload theo khóa, không truyền payload qua QStash. Kết quả mỗi step chỉ là số đếm, nên giữ được nhỏ.
-- `since` lấy từ `published_at` mới nhất của post trong source, trừ 1 ngày chồng lấn (upsert tự khử trùng). Source mới thì lấy 30 ngày gần nhất. `limit` mặc định 500, tối đa 2000.
-- Comment: sau mỗi batch post, các post mới hoặc có `comment_count` tăng được gom thành run `facebook-comments` (≤ 50 post mỗi run).
+- ~~`since` lấy từ `published_at` mới nhất trừ 1 ngày; source mới lấy 30 ngày; `limit` 500.~~ Thay bằng D7 (2026-10-13).
+- ~~Comment: sau mỗi batch post, post mới hoặc có `comment_count` tăng được gom thành run `facebook-comments`.~~ Thay bằng D7 (2026-10-13).
 - Payload gốc có thông tin cá nhân. Bucket R2 hiện tại là public, nên production cần đặt `R2_RAW_BUCKET_NAME` trỏ tới một bucket private.
 - **Lý do:** dùng lại đường webhook đã chạy ổn định và không bị giới hạn kích thước message QStash.
+
+## D7 — Lập lịch thu thập, tier và lấy lại comment (2026-10-13)
+
+Dựa trên các thử nghiệm Bright Data ngày 2026-10-12 và 2026-10-13 (`npm run probe:bright-data`, kết quả ở `.local/experiments/`, tóm tắt trong [plan.md](plan.md)). Các con số điều chỉnh được nằm ở `lib/connectors/config.ts`.
+
+**Run post (`facebook-posts`)**
+- `start_date` = `published_at` mới nhất của source − 2 giờ chồng lấn, dạng ISO datetime. Không gửi `num_of_posts` và `end_date`. Source chưa có bài thì lấy lùi 1 ngày.
+- Mỗi job gửi `limit_multiple_results` = min(500, ngân sách tháng còn lại) làm chốt chặn.
+- Bài đã có trong kho được bỏ qua, không cập nhật engagement (`onExisting: "skip"`). Chỉ `facebook-post-refresh` cập nhật engagement của bài đã có.
+- Không kiểm tra hay lấy bù phần sót: `since` luôn tính từ bài đã có. Ghi `lateArrivals` / `maxLatenessMinutes` vào `collect_runs.stats` để chỉnh khoảng chồng lấn.
+- Sau mỗi run: tính lại tier, áp luật lấy comment cho bài mới và tạo lịch lấy lại.
+- **Lý do:** ISO datetime lọc chính xác tới giây; chỉ có `start_date` thì job tự dừng đúng mốc. Trước đây `posts_to_not_include` vẫn chiếm chỗ trong `num_of_posts`, và chồng lấn 1 ngày làm tốn tiền cho bài trùng.
+
+**Tier và bộ lập lịch**
+- Tier theo số bài/ngày trong 7 ngày (source mới tính trên khoảng đang có): `hot` ≥ 30 (quét 2 giờ), `normal` ≥ 3 (6 giờ), còn lại `low` (24 giờ). `paused` không quét; `activity_tier_locked` ghim tier.
+- Workflow `schedule-collections` chạy 15 phút một lần (QStash schedule, `npm run schedules:sync`): tạo run post cho source đến hạn, rồi gửi các mốc lấy lại đến hạn.
+- Chỉ source đã có ít nhất một run post mới được lên lịch; run đầu tiên chạy tay bằng `npm run collect:facebook`.
+- **Lý do:** tránh tự quét các source nhập từ dữ liệu cũ; tần suất theo độ sôi động giữ chi phí tương xứng.
+
+**Lấy comment**
+- Lúc bài vào kho, `num_comments` vừa lấy được dùng để áp luật ngay. Sau đó tại các mốc +6 giờ, +24 giờ, +72 giờ tính từ `published_at`, connector `facebook-post-refresh` đọc lại bài theo URL (1 bản ghi/bài, lưu `metadata.topComments`) rồi áp luật. Bài đã qua hết các mốc thì không tạo lịch. Mốc đã giao cho run refresh được đẩy lùi 3 giờ để không bị gửi lại.
+- Luật (bảng `item_refresh_schedules`):
+  - chưa lấy lần nào và `num_comments > 100`;
+  - chưa lấy lần nào, `num_comments > 0` và bài đã đăng ≥ 24 giờ;
+  - đã lấy rồi và `num_comments` tăng ≥ 15% so với lần lấy trước (không có ngưỡng tuyệt đối).
+- Mỗi lần lấy tối đa 100 comment gốc, `get_all_replies = false`, sort "Most relevant".
+- Run comment ghi `posts[]` (`numComments`, `collected`, `replies`) vào stats để soát các lần lấy thiếu; không tự lấy lại.
+- **Lý do:** phần lớn bài ít comment chỉ cần lấy một lần ở mốc 24 giờ; bài nóng được lấy sớm. Bỏ reply giúp 100 dòng đều là comment gốc. "Most relevant" và "All comments" trả cùng tập comment trên bài thử.
+
+**Ngân sách**
+- `sources.monthly_record_limit` (null = không giới hạn). Usage tháng = tổng `collect_runs.item_count` của mọi run thuộc source trong tháng (UTC). Hết ngân sách thì không lên lịch run post và run refresh. Run comment chưa bị chặn theo ngân sách còn lại.
+
+**Công cụ**
+- `npm run refresh:check`: gửi các mốc lấy lại đến hạn bằng tay.
+- `npm run collect:renormalize -- --run-id <uuid>`: ghi lại payload đã lưu trên R2 vào kho thô (sau khi sửa parser) mà không tạo job Bright Data mới.
