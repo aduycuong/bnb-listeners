@@ -6,14 +6,11 @@ import { db } from "@/lib/db";
 import { APIError } from "@/lib/exposers/api-error";
 import { getSourceLatestPublishedAt } from "@/lib/raw-store/services/get-source-latest-published-at";
 
+import { COLLECT_CONFIG } from "../config";
 import type { CreateCollectRunResult } from "../types";
 import { createCollectRun } from "./create-collect-run";
 
-/** Re-request this much before the newest stored post; upserts absorb the overlap. */
-const SINCE_OVERLAP_MS = 24 * 60 * 60 * 1000;
-
-/** First collection of a source with no stored posts looks back this far. */
-const INITIAL_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 
 type CollectSourceParams = {
   sourceId: string;
@@ -25,7 +22,7 @@ type CollectSourceParams = {
 
 /**
  * Starts an incremental collection of a source. `since` comes from the newest
- * post already in the raw store (legacy imports included), minus a day of
+ * post already in the raw store (legacy imports included), minus a short
  * overlap, so each run only asks the provider for new posts.
  */
 export async function collectSource(
@@ -70,8 +67,8 @@ export async function collectSource(
 async function resolveSince(sourceId: string): Promise<string> {
   const latest = await getSourceLatestPublishedAt({ sourceId, kind: "post" });
   const since = latest
-    ? latest.getTime() - SINCE_OVERLAP_MS
-    : Date.now() - INITIAL_LOOKBACK_MS;
+    ? latest.getTime() - COLLECT_CONFIG.posts.sinceOverlapHours * HOUR_MS
+    : Date.now() - COLLECT_CONFIG.posts.initialLookbackHours * HOUR_MS;
 
   return new Date(since).toISOString();
 }

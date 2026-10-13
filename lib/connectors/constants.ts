@@ -11,6 +11,10 @@ export const COLLECT_RUN_STATUSES = [
 
 export type CollectRunStatus = (typeof COLLECT_RUN_STATUSES)[number];
 
+export const ACTIVITY_TIERS = ["hot", "normal", "low", "paused"] as const;
+
+export type ActivityTier = (typeof ACTIVITY_TIERS)[number];
+
 /** Items normalized per workflow step. */
 export const NORMALIZE_BATCH_SIZE = 200;
 

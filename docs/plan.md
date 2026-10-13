@@ -95,8 +95,8 @@ Chi phí comment là con số ước lượng thô, cần đo lại sau một tu
 - Chưa kiểm chứng: bài ghim hoặc bài cũ có hoạt động mới có làm job post dừng sớm hay không.
 
 ### Việc cần làm
-- [ ] Schema: `sources.activity_tier_locked`, `sources.monthly_record_limit`, bảng `item_refresh_schedules`
-- [ ] Config tập trung (`lib/connectors/config.ts`)
+- [x] Schema: `sources.activity_tier_locked`, `sources.monthly_record_limit`, bảng `item_refresh_schedules`
+- [x] Config tập trung (`lib/connectors/config.ts`)
 - [ ] Run post: `start_date` ISO từ bài mới nhất − chồng lấn, bỏ `num_of_posts`, bỏ qua bài đã có, ghi `lateArrivals`, bỏ follow-up comment, tạo lịch cho bài mới, tính lại tier
 - [ ] Connector `facebook-post-refresh` và `metadata.topComments`
 - [ ] Xử lý mốc lấy lại, ngưỡng comment, chặn usage bằng `limit_multiple_results`
