@@ -58,7 +58,7 @@ Script `npm run probe:bright-data` (`scripts/probe-bright-data-facebook.ts`), k�
 - Tier tự tính sau mỗi run post theo số bài/ngày trong 7 ngày: `hot` ≥ 30, `normal` ≥ 3, còn lại `low`. Cột `sources.activity_tier_locked` để ghim tier bằng tay.
 
 **Lấy lại comment theo lịch từng bài**
-- Bảng mới `item_refresh_schedules` (`content_item_id`, `next_refresh_at`, `checkpoint`, `comments_collected_count`, `comments_collected_at`). Dòng bị xóa khi bài hết các mốc.
+- Bảng mới `item_refresh_schedules` (`content_item_id`, `next_refresh_at`, `checkpoint_hours`, `comments_collected_count`, `comments_collected_at`). Dòng bị xóa khi bài hết các mốc.
 - Mốc: +6 giờ, +24 giờ, +72 giờ tính từ `published_at` (danh sách mốc là config). Bài thấy lần đầu đã qua mốc thì nhảy tới mốc kế tiếp; qua hết thì xét một lần ngay.
 - Tại mỗi mốc:
   1. Đọc `num_comments`: dùng giá trị từ run post nếu bài vừa được thêm vào kho (≤ 2 giờ), nếu không thì chạy connector mới `facebook-post-refresh` (1 bản ghi/bài, gom theo source; lưu `topComments`).

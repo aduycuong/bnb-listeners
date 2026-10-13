@@ -288,6 +288,13 @@
       "when": 1791779515585,
       "tag": "0040_fat_gideon",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791856789025,
+      "tag": "0041_bumpy_siren",
+      "breakpoints": true
     }
   ]
 }

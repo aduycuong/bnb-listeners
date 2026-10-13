@@ -1027,8 +1027,12 @@ export const sources = pgTable(
     name: text("name"),
     followerCount: integer("follower_count"),
     memberCount: integer("member_count"),
-    /** Drives how often the source is collected. */
+    /** hot | normal | low | paused; drives how often the source is collected. */
     activityTier: text("activity_tier").notNull().default("normal"),
+    /** When true, post runs do not recompute `activity_tier`. */
+    activityTierLocked: boolean("activity_tier_locked").notNull().default(false),
+    /** Max Bright Data records per calendar month across all runs; null = unlimited. */
+    monthlyRecordLimit: integer("monthly_record_limit"),
     origin: text("origin").notNull().default("connector"),
     metadata: jsonb("metadata")
       .$type<Record<string, unknown>>()
@@ -1254,3 +1258,35 @@ export const engagementSnapshots = pgTable(
 
 export type EngagementSnapshot = typeof engagementSnapshots.$inferSelect;
 export type NewEngagementSnapshot = typeof engagementSnapshots.$inferInsert;
+
+/**
+ * Next comment-refresh checkpoint of a post. The row is deleted once the post
+ * has passed its last checkpoint.
+ */
+export const itemRefreshSchedules = pgTable(
+  "item_refresh_schedules",
+  {
+    contentItemId: uuid("content_item_id")
+      .primaryKey()
+      .references(() => contentItems.id, { onDelete: "cascade" }),
+    nextRefreshAt: timestamp("next_refresh_at", { withTimezone: true }).notNull(),
+    /** Checkpoint being waited for, in hours after `published_at` (e.g. 6, 24, 72). */
+    checkpointHours: integer("checkpoint_hours").notNull(),
+    /** `num_comments` when comments were last collected; null = never collected. */
+    commentsCollectedCount: integer("comments_collected_count"),
+    commentsCollectedAt: timestamp("comments_collected_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("item_refresh_schedules_next_refresh_at_idx").on(table.nextRefreshAt),
+  ],
+);
+
+export type ItemRefreshSchedule = typeof itemRefreshSchedules.$inferSelect;
+export type NewItemRefreshSchedule = typeof itemRefreshSchedules.$inferInsert;

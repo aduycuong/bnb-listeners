@@ -944,7 +944,9 @@ New pipeline tables (see `docs/data-model.md`). Shared across workspaces — no 
 | name | text | YES | — | Display name |
 | follower_count | integer | YES | — | Page followers |
 | member_count | integer | YES | — | Group members |
-| activity_tier | text | NO | `normal` | Collection frequency tier |
+| activity_tier | text | NO | `normal` | `hot` \| `normal` \| `low` \| `paused`; collection frequency |
+| activity_tier_locked | boolean | NO | `false` | Pin the tier by hand; post runs skip recomputing it |
+| monthly_record_limit | integer | YES | — | Max Bright Data records per calendar month across the source's runs; null = unlimited |
 | origin | text | NO | `connector` | Data origin |
 | metadata | jsonb | NO | `{}` | Platform extras |
 | last_collected_at | timestamptz | YES | — | Last successful collect run |
@@ -1035,6 +1037,21 @@ Posts, comments and replies in one table.
 | reactions | jsonb | YES | — | |
 
 **Indexes:** `(content_item_id, captured_at DESC)`; unique `(content_item_id, collect_run_id)` so a re-run normalize step does not duplicate snapshots.
+
+### `item_refresh_schedules`
+
+Next comment-refresh checkpoint per post (checkpoints are config, e.g. +6h / +24h / +72h after `published_at`). The row is deleted once the post has passed its last checkpoint. See `docs/plan.md`.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| content_item_id | uuid | NO | — | Primary key; FK → `content_items.id` ON DELETE CASCADE |
+| next_refresh_at | timestamptz | NO | — | When the checkpoint is due |
+| checkpoint_hours | integer | NO | — | Checkpoint being waited for, in hours after `published_at` |
+| comments_collected_count | integer | YES | — | `num_comments` when comments were last collected; null = never collected |
+| comments_collected_at | timestamptz | YES | — | When comments were last collected |
+| created_at / updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** `next_refresh_at`.
 
 ---
 
