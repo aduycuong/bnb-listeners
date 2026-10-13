@@ -1,49 +1,79 @@
 # Synthetic data
 
-Dữ liệu giả, sinh từ connector ảo hoặc LLM. Có hai mục đích:
+Dữ liệu giả sinh từ persona bằng LLM, ghi vào kho thô để các giai đoạn sau (Match, Enrich, Aggregate) có dữ liệu chạy. Dữ liệu giả và thật được phép trộn lẫn; cột `origin` vẫn giữ để lọc khi cần.
 
-1. **Test phần phân tích**: biết trước đáp án đúng (sentiment, aspect, entity…) nên đo được độ chính xác của Match và Enrich.
-2. **Test độ nhạy của social với thông tin công bố**: giả lập phản ứng của cộng đồng sau một sự kiện (mở bán, đính chính, tin đồn, thay đổi chính sách), rồi kiểm tra dashboard và cảnh báo có phản ánh đúng, đủ nhanh hay không.
+Phạm vi hiện tại (giai đoạn 2) là **một đường ống tạo dữ liệu**, chưa phải hệ thống dự báo. Persona ban đầu không cần chính xác; sẽ nâng cấp dần sau khi mở rộng sources. Xem [plan.md](plan.md#giai-đoạn-2--dữ-liệu-giả-persona--connector-ảo--kho-thô).
+
+```
+personas ─┐
+          ├─ panel ─▶ connector ảo ─▶ collect_runs ─▶ content_items (post, comment, reply)
+brief  ───┘
+```
 
 ## Cách hoạt động
 
-- Dữ liệu giả **ghi thẳng vào kho thô** (`sources`, `authors`, `content_items`, `engagement_snapshots`) với `origin = synthetic` và `scenario_id`. Không có payload trên R2.
+- Connector ảo là một `DirectConnector` (`fetchRecords` sinh record thô, `normalize` ghi vào kho thô). Workflow thu thập hiện có lưu record thành payload R2 rồi normalize như mọi connector khác, nên có thể parse lại bằng `renormalize-collect-run`.
+- Dữ liệu ghi vào `sources`, `authors`, `content_items` với `origin = synthetic`. Truy vết một lô theo `collect_run_id`.
 - Từ bước Match trở đi, dữ liệu giả đi **cùng pipeline** với dữ liệu thật. Không có nhánh code riêng.
-- Chỉ project `mode = sandbox` mới thấy dữ liệu giả (xem [data-model.md](data-model.md#nguồn-gốc-dữ-liệu-origin)).
+- Kho thô dùng chung giữa các workspace, nên mọi số liệu đưa cho khách hàng phải lọc theo `origin`.
 
-## Scenario
+## Persona, panel, brief
 
-**`scenarios`**: mô tả một kịch bản.
-- `workspace_id`, `name`, `description`
-- `timeline`: các sự kiện công bố, mỗi sự kiện có thời điểm, nội dung và kênh công bố
-- `audience`: thành phần người tham gia (KOL, sàn, nhà đầu tư, khách hàng…) và tỷ lệ
-- Tham số phản ứng: mức lan truyền, độ trễ, tỷ lệ cảm xúc theo từng nhóm, các luận điểm chính
-- `seed`, `model`, `prompt_version`: để sinh lại đúng như cũ
-- `status`, `generated_at`
+Ba thứ tách riêng:
 
-**`synthetic_labels`**: đáp án đúng cho mỗi item giả.
-- `content_item_id`, `expected_relevant`, `expected_sentiment`, `expected_emotion`, `expected_entities`, `expected_aspects`, `expected_extractions`
+| Thực thể | Vai trò |
+|---|---|
+| **Persona** | Một kiểu người, ổn định, dùng lại được. Ví dụ "Nhà đầu tư lướt sóng". |
+| **Panel** | Tập persona kèm tỷ lệ (`weight`), đại diện một cộng đồng. Ví dụ "Group review BĐS". |
+| **Brief** | Điều xảy ra, đưa vào mỗi lần sinh. Ví dụ "Chủ đầu tư dự án X thông báo lùi bàn giao 6 tháng". |
+
+**`personas`**
+- `name`, `kind` (`individual`, `organization`), `description` (1–2 câu), `tone` (giọng văn, văn bản tự do), `concerns` (danh sách aspect quan tâm)
+- `attributes` (jsonb, mặc định `{}`) và `version`: chỗ để thêm thuộc tính khi persona phức tạp hơn mà không cần migration
+- `source` (`template`, `manual`, `llm_generated`), `review_status`
+
+**`persona_panels`** và **`persona_panel_members`** (`panel_id`, `persona_id`, `weight`).
+
+**`authors.persona_id`**: tác giả giả được tạo lười theo persona và nhất quán giữa các bài.
+
+Ba cách tạo persona (bắt đầu với hai cách đầu):
+1. Chọn từ thư viện mẫu (seed 8–10 archetype BĐS).
+2. Tạo tay.
+3. Sinh từ mô tả ngắn bằng LLM, người dùng sửa và duyệt.
+
+Persona đưa vào prompt phải ngắn (khoảng 150 token).
 
 ## Connector ảo
 
-Có cùng interface với connector thật để sau này có thể thay thế cho nhau. Có hai chế độ:
+Tham số của run (`collect_runs.params`):
 
-- **Batch**: sinh toàn bộ timeline một lần, có `published_at` trải dài theo kịch bản. Dùng để test phân tích và dashboard.
-- **Replay**: phát dần từng phần theo thời gian thực hoặc thời gian tua nhanh. Dùng để test cảnh báo và chế độ khủng hoảng.
+```
+{ panelId, sourceId, brief, postCount, commentsPerPost: [min, max],
+  window: { from, to }, language, seed }
+```
 
-Sinh dữ liệu theo hai tầng:
-1. Code dùng tham số của scenario để quyết định số lượng, thời điểm và phân bổ (tác giả, kênh, cảm xúc).
-2. LLM viết nội dung cho từng item theo nhãn đã định, đúng giọng văn của từng nhóm (teencode, viết tắt, mỉa mai…).
+Bên trong `fetchRecords`:
+1. **Code lập kế hoạch**: số bài, số comment mỗi bài, persona đăng bài và persona bình luận theo `weight`, `published_at` rải theo giờ Việt Nam.
+2. **LLM viết từng thread** (1 post cùng các comment), mỗi vị trí đã được gán persona. Trả JSON có cấu trúc. Few-shot lấy từ vài comment thật của source được chọn.
+3. **Code ghép lại**: tác giả nhất quán, `external_id` (`syn:{run}:{n}`), cây `parent_id`/`root_id`, engagement ngẫu nhiên, chèn nhiễu nhẹ.
 
-Nhãn được quyết định trước khi LLM viết, nhờ vậy `synthetic_labels` đáng tin cậy.
+Spec của từng item (`personaId`, `panelId`, `brief`, ý định cảm xúc và aspect) được ghi vào `content_items.metadata`. Sau này có thể dựng `synthetic_labels` từ đây mà không cần sinh lại.
 
-## Đo lường
+`sources` giả: `origin = synthetic`, `platform = facebook`, `source_type = group`, để hạ nguồn thấy cùng hình dạng với dữ liệu thật.
 
-- **Chất lượng phân tích**: so `mentions` với `synthetic_labels` (precision/recall khi so khớp, độ chính xác sentiment và aspect). Mỗi lần đổi prompt hoặc model thì chạy lại.
-- **Độ nhạy**: độ trễ từ sự kiện công bố đến lúc dashboard thể hiện thay đổi hoặc cảnh báo được bắn; có báo sai hay báo sót không.
-- Kết quả được lưu theo `enrich_version` và `scenario_id` để so sánh giữa các lần chạy.
+Giới hạn cần đo: `fetchRecords` chạy trong một bước workflow, nên số thread mỗi run phải đủ nhỏ để không vượt giới hạn thời gian. Nếu cần, chia thành nhiều run.
 
 ## Lưu ý
 
-- LLM viết nội dung có xu hướng "sạch" hơn mạng xã hội thật. Cần trộn thêm nhiễu: lỗi chính tả, nội dung không liên quan, spam, các ca trùng tên (ví dụ "La Pura" là nước hoa).
-- Kết quả trên dữ liệu giả không thay thế được bộ mẫu thật có gán nhãn. Cả hai đều cần.
+- LLM viết nội dung có xu hướng "sạch" và đồng nhất hơn mạng xã hội thật. Cần trộn nhiễu: lỗi chính tả, nội dung không liên quan, spam, các ca trùng tên (ví dụ "La Pura" là nước hoa).
+- Nội dung sinh ra không tất định. Muốn tái hiện đúng, giữ payload R2 và `metadata`; `seed` chỉ cố định kế hoạch (số lượng, thời điểm, phân bổ persona).
+- Dữ liệu giả không thay thế bộ mẫu thật có gán nhãn khi đo chất lượng Match và Enrich.
+- Nghiên cứu về LLM đóng vai persona cho thấy xu hướng đồng nhất hóa và rập khuôn; vì vậy đầu ra chưa được coi là dự báo phản ứng cộng đồng.
+
+## Để sau
+
+- **`scenarios`** (timeline sự kiện, tham số phản ứng) và **`synthetic_labels`** (đáp án đúng để đo Match/Enrich, dựng từ `metadata`).
+- **Chế độ replay**: phát dần theo thời gian, để test cảnh báo (giai đoạn 6).
+- **Dự báo phản ứng**: dự đoán phân bố phản ứng theo panel và stimulus, chạy nhiều lượt, hiệu chỉnh theo tần suất lịch sử, so với baseline không persona, backtest trên sự kiện thật. Chỉ làm khi có dữ liệu thật từ nhiều nguồn để đối chiếu.
+- **Persona phức tạp hơn**: khai thác từ dữ liệu thật (gom cụm tác giả và comment), mẫu giọng văn gắn theo persona, thuộc tính hành vi (giờ hoạt động, độ trễ phản ứng, mức ảnh hưởng).
+- **Cô lập dữ liệu giả theo project** (`mode = sandbox`), nếu cần.

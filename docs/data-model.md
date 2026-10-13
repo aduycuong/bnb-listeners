@@ -7,9 +7,9 @@ Mô hình dữ liệu nhiều lớp cho hệ thống social listening. Tài li�
 ## Tổng quan
 
 ```text
-L0  Raw archive      R2: payload gốc từ connector thật
+L0  Raw archive      R2: payload gốc từ connector (thật và ảo)
 L1  Raw store        sources · authors · content_items · engagement_snapshots
-                     (+ scenarios / synthetic_labels cho dữ liệu giả)
+                     (+ personas · persona_panels · persona_panel_members cho dữ liệu giả)
 L2  Project config   projects · project_entities · project_queries · project_aspects · project_sources
 L3  Analysis         mentions · mention_entities · mention_aspects · mention_topics · mention_extractions · topics
 L4  Aggregates       metrics_hourly · metrics_daily · (topic/aspect/author daily)
@@ -25,12 +25,10 @@ Mọi bản ghi ở L1 đều có cột `origin`:
 | origin | Ý nghĩa | Payload R2 |
 |---|---|---|
 | `connector` | Thu thập từ nguồn thật | Có |
-| `synthetic` | Sinh từ connector ảo hoặc LLM, gắn với một `scenario_id` | Không có, ghi thẳng vào kho thô |
+| `synthetic` | Sinh từ connector ảo (persona + LLM). Truy vết theo `collect_run_id` và `metadata.personaId` | Có (connector ảo là `DirectConnector`, đi cùng workflow thu thập) |
 | `legacy_import` | Chuyển từ bảng `documents` cũ | Không có. Giữ id cũ trong `metadata` |
 
-Quy tắc hiển thị:
-- Project `mode = live` chỉ thấy `connector` và `legacy_import`.
-- Project `mode = sandbox` chỉ thấy `synthetic` của các scenario được gắn vào nó (có thể gộp thêm dữ liệu thật nếu cần).
+Dữ liệu giả và thật được phép trộn lẫn; chưa có quy tắc cô lập theo project (xem [D8](decisions.md#d8--giai-đoạn-2-persona--connector-ảo--kho-thô-2026-10-13)). Mọi số liệu đưa cho khách hàng phải lọc theo `origin`, vì kho thô dùng chung giữa các workspace.
 
 `origin` được copy xuống `mentions` để mọi truy vấn và rollup lọc được mà không cần join.
 
@@ -42,20 +40,21 @@ Quy tắc hiển thị:
 
 ## L1 — Raw store
 
-Dùng chung, không gắn với workspace hay project. Dữ liệu `synthetic` được cô lập qua `scenario_id`.
+Dùng chung, không gắn với workspace hay project. Dữ liệu `synthetic` phân biệt qua `origin`.
 
 **`sources`**: nơi phát ra nội dung (page, group, kênh, trang báo, diễn đàn).
 - `platform` (`facebook`, `tiktok`, `youtube`, `news`, `forum`, `classifieds`, …), `source_type` (`page`, `group`, `channel`, `site`, …)
 - `external_id`, `url`, `name`, `follower_count`, `member_count`
 - `activity_tier` (`hot`, `normal`, `low`, `paused`): dùng để quyết định tần suất quét; `activity_tier_locked` để ghim tier bằng tay
 - `monthly_record_limit`: số bản ghi Bright Data tối đa mỗi tháng (null = không giới hạn)
-- `origin`, `scenario_id`
+- `origin`
 - Unique: `(platform, external_id)`
 
 **`authors`**: người hoặc tài khoản đăng nội dung.
 - `platform`, `external_id`, `name`, `url`, `follower_count`
 - `author_type` (`kol`, `agency`, `community`, `brand`, `individual`, `media`), được LLM gán và có thể sửa tay
-- `origin`, `scenario_id`
+- `origin`
+- `persona_id` (nullable): chỉ có ở tác giả giả, trỏ tới persona đã sinh ra tác giả đó
 
 **`content_items`**: gộp post, comment và reply vào một bảng.
 - `kind` (`post`, `comment`, `reply`, `article`, `video`, `listing`)
@@ -64,12 +63,12 @@ Dùng chung, không gắn với workspace hay project. Dữ liệu `synthetic` �
 - `text`, `media` (jsonb), `language`, `content_hash`
 - `published_at`, `first_seen_at`, `last_collected_at`
 - Engagement mới nhất: `like_count`, `comment_count`, `share_count`, `view_count`, `reactions` (jsonb)
-- `origin`, `scenario_id`, `collect_run_id`, `metadata`
+- `origin`, `collect_run_id`, `metadata` (với dữ liệu giả: `personaId`, `panelId`, `brief`, ý định cảm xúc và aspect)
 - Unique: `(platform, external_id)`
 
 **`engagement_snapshots`**: chuỗi thời gian engagement, dùng để tính tốc độ lan truyền.
 - `content_item_id`, `captured_at`, các bộ đếm
-- Dữ liệu giả cũng sinh snapshot để test được cảnh báo.
+- Dữ liệu giả chưa sinh snapshot (để giai đoạn 6, khi test cảnh báo).
 
 **`item_refresh_schedules`**: mốc lấy lại comment kế tiếp của từng bài.
 - `content_item_id`, `next_refresh_at`, `checkpoint_hours`, `comments_collected_count`, `comments_collected_at`
@@ -78,7 +77,12 @@ Dùng chung, không gắn với workspace hay project. Dữ liệu `synthetic` �
 **`collect_runs`**: mỗi lần chạy của một connector.
 - `connector`, `params`, `status`, `r2_key`, `item_count`, `error`
 
-**`scenarios`** và **`synthetic_labels`** (chỉ dùng cho dữ liệu giả): xem [synthetic-data.md](synthetic-data.md).
+**`personas`**, **`persona_panels`**, **`persona_panel_members`** (chỉ dùng cho dữ liệu giả):
+- `personas`: `name`, `kind` (`individual`, `organization`), `description`, `tone`, `concerns[]`, `attributes` (jsonb), `version`, `source` (`template`, `manual`, `llm_generated`), `review_status`
+- `persona_panels`: `name`, `description`
+- `persona_panel_members`: `panel_id`, `persona_id`, `weight`
+
+Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` và `synthetic_labels` chưa có trong schema (để sau).
 
 ## L2 — Project config
 
@@ -97,7 +101,7 @@ Dùng chung, không gắn với workspace hay project. Dữ liệu `synthetic` �
 
 **`project_sources`**: nguồn theo dõi chủ động (bắt buộc với Facebook) và platform được bật cho project.
 
-**`project_scenarios`**: các scenario gắn vào project sandbox.
+**`project_scenarios`**: các scenario gắn vào project sandbox. Chưa làm; chỉ cần khi có `scenarios` (xem [D8](decisions.md#d8--giai-đoạn-2-persona--connector-ảo--kho-thô-2026-10-13)).
 
 ## L3 — Analysis
 
