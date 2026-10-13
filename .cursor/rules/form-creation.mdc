@@ -1,0 +1,62 @@
+---
+name: form-creation
+description: Form creation rules — zod, react-hook-form, reusable form fields, lib/{name} structure, and create-api-handler for API routes.
+---
+
+# Form Creation Rules
+
+## Stack
+
+- **Zod** — Schema validation for form values and API request/response.
+- **React Hook Form** — Form state, `useForm`, `FormProvider`; use `@hookform/resolvers/zod` with `zodResolver(schema)`.
+- **Toast** — Use toast (e.g. shadcn Sonner) to show success or error messages after form submit.
+
+## Reusable Form Fields
+
+- **Common fields** (text, textarea, number, select, **upload**, etc.) → implement as reusable components under `@/components/forms/`.
+- Use shadcn `Form`, `FormField`, `FormItem`, `FormLabel`, `FormControl`, `FormDescription`, `FormMessage` and wire a single primitive (e.g. `Input`, `Textarea`, file input) plus optional `description`.
+- Prefer existing: `FormFieldText`, `FormFieldTextarea`, `FormFieldUpload`, etc. Add new ones (e.g. `FormFieldSelect`) when a pattern repeats.
+- **Form-specific or one-off fields** (e.g. highly custom file UI with unique layout or non-standard behavior) → keep inline in the form component; do not force into a generic wrapper.
+
+### Example (reusable text field)
+
+```tsx
+<FormFieldText
+  control={form.control}
+  name="displayName"
+  label="Display name"
+  placeholder="Your name"
+  description="Optional helper text"
+/>
+```
+
+### Example (reusable upload field)
+
+```tsx
+<FormFieldUpload
+  control={form.control}
+  name="avatar"
+  label="Avatar"
+  uploadType="avatar"
+  accept="image/*"
+  description="PNG, JPG or WebP. Max 2MB."
+/>
+```
+
+## Form Logic Location:
+- Location `@lib/{name}`
+- Form submit endpoint using API routes with `create-api-handler`
+
+## Toast feedback
+
+- After form submit via API: show **success** with `toast.success("...")` or **error** with `toast.error("...")` (or equivalent, e.g. `toast("...", { variant: "destructive" })`).
+- Use the message from the API when available (e.g. `res.error` or `res.message`); otherwise use a sensible default.
+
+### Example (in onSubmit / after fetch)
+
+```ts
+const res = await fetch("/api/...", { method: "POST", body: JSON.stringify(values) });
+const data = await res.json();
+if (res.ok) toast.success(data.message ?? "Saved.");
+else toast.error(data.error ?? data.message ?? "Something went wrong.");
+```

@@ -42,3 +42,6 @@ next-env.d.ts
 
 # timeline dev-process sync (copy from timeline-sync.example.json)
 /timeline-sync.json
+
+# claude
+.claude
