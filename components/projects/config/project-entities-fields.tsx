@@ -1,12 +1,12 @@
 "use client";
 
 import { PlusIcon, Trash2Icon } from "lucide-react";
-import { useFieldArray, type UseFormReturn } from "react-hook-form";
+import { useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
 
 import { FormFieldTags } from "@/components/forms/form-field-tags";
 import { FormFieldText } from "@/components/forms/form-field-text";
 import { Button } from "@/components/ui/button";
-import { CASE_TEMPLATES } from "@/lib/projects/case-templates";
+import { getCaseTemplate } from "@/lib/projects/case-templates";
 import type { AvailableProjectCase } from "@/lib/projects/project-cases";
 import type {
   CreateProjectWithConfigBody,
@@ -31,7 +31,8 @@ export function ProjectEntitiesFields({
     control: form.control,
     name: "entities",
   });
-  const roles = CASE_TEMPLATES[projectCase].roles;
+  const caseVersion = useWatch({ control: form.control, name: "caseVersion" });
+  const roles = getCaseTemplate(projectCase, caseVersion).roles;
   const rootError =
     form.formState.errors.entities?.message ??
     form.formState.errors.entities?.root?.message;

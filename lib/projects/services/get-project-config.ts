@@ -73,6 +73,7 @@ export async function getProjectConfig(
   return {
     projectId: project.id,
     case: projectCase,
+    caseVersion: project.caseVersion,
     mode: project.mode === "sandbox" ? "sandbox" : "live",
     configVersion: project.configVersion,
     caseConfig: project.caseConfig,

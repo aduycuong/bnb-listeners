@@ -84,6 +84,8 @@ export const projectAlertsInputSchema = z.object({
 export const projectConfigSchema = z
   .object({
     case: availableProjectCaseSchema,
+    /** Case definition version; new projects use the latest, upgrades raise it. */
+    caseVersion: z.number().int().positive(),
     mode: z.enum(PROJECT_MODES).default("live"),
     caseConfig: z.record(z.string(), z.unknown()).default({}),
     entities: z.array(projectEntityInputSchema).max(60),

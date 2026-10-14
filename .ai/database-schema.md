@@ -206,6 +206,7 @@ Social listening scope inside a workspace: one brand, campaign, or similar liste
 | term_language | text | NO | `auto` | Language for generated term names/descriptions (`term_language` enum) |
 | term_criteria | text | NO | `''` | Multiline rules for new term creation in this project |
 | case | text | NO | `project` | Real estate case id (`docs/decisions.md` D10): `brand`, `project`, `ir`, `launch`, `broker`, `lead`, `rival`, `market`, `policy`, `kol`, `crisis`, `residents`. Only `project`, `market`, `brand` have a real config yet |
+| case_version | integer | NO | `1` | Case definition version (`CASE_VERSIONS` in `lib/projects/case-templates.ts`); raised only when the user saves an upgraded config |
 | mode | text | NO | `live` | `live` (only `origin = connector` sources) or `sandbox` (synthetic sources allowed) |
 | timezone | text | NO | `Asia/Ho_Chi_Minh` | Timezone for buckets and reports |
 | config_version | integer | NO | `1` | Bumped on every config change |

@@ -11,6 +11,7 @@ export function toProjectListItem(row: Project): ProjectListItem {
     name: row.name,
     description: row.description,
     case: parseProjectCase(row.listeningCase),
+    caseVersion: row.caseVersion,
     mode: row.mode === "sandbox" ? "sandbox" : "live",
     isDemo: row.isDemo,
     configVersion: row.configVersion,

@@ -12,7 +12,7 @@ import {
 import { InvalidInputError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 
-import { CASE_TEMPLATES } from "../case-templates";
+import { getCaseTemplate, hasCaseVersion } from "../case-templates";
 import type { UpdateProjectConfigParams, UpdateProjectConfigResult } from "../types";
 import { toAlertRuleRow } from "../utils/to-alert-rule-rows";
 import { toAspectKey } from "../utils/to-aspect-key";
@@ -74,11 +74,18 @@ export async function updateProjectConfig(
     ruleIds: params.alerts.rules.map((item) => item.id).filter((id) => !currentRuleIds.has(id)),
   });
 
-  const template = CASE_TEMPLATES[params.case];
+  // A project stays on its case version until the user saves an upgraded config.
+  if (params.caseVersion < current.caseVersion || !hasCaseVersion(params.case, params.caseVersion)) {
+    throw new InvalidInputError("Không chuyển được sang phiên bản case này.");
+  }
+  const upgraded = params.caseVersion > current.caseVersion;
+
+  const template = getCaseTemplate(params.case, params.caseVersion);
   const caseConfig = template.configSchema.parse(params.caseConfig);
   const projectId = current.projectId;
   const writes: BatchItem<"pg">[] = [];
   let changed =
+    upgraded ||
     current.mode !== params.mode ||
     stableJson(current.caseConfig) !== stableJson(caseConfig);
 
@@ -305,6 +312,7 @@ export async function updateProjectConfig(
       .update(projects)
       .set({
         mode: params.mode,
+        caseVersion: params.caseVersion,
         caseConfig,
         notificationConfig: {
           channels: params.alerts.channels,

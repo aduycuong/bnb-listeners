@@ -150,38 +150,6 @@ export type AlertRuleSeed = {
   keywords?: string[];
 };
 
-/** Rules a new project of each case starts with; users can add, edit or remove them. */
-export const ALERT_RULE_SEEDS: Record<AvailableProjectCase, AlertRuleSeed[]> = {
-  project: [
-    { kind: "negative_share", scope: { type: "aspect_key", key: "legal" } },
-    { kind: "negative_share", scope: { type: "aspect_key", key: "progress" } },
-    { kind: "buyer_questions_growth", scope: { type: "project" } },
-    { kind: "viral_post", scope: { type: "first_of_role", role: "primary" } },
-    { kind: "price_deviation", scope: { type: "project" }, enabled: false },
-  ],
-  market: [
-    { kind: "volume_growth", scope: { type: "each_role", role: "area" } },
-    {
-      kind: "keyword_hit",
-      scope: { type: "project" },
-      threshold: 5,
-      window: "7d",
-      keywords: ["cắt lỗ", "bán gấp", "ngộp", "giảm sâu"],
-    },
-    { kind: "negative_share", scope: { type: "aspect_key", key: "financing" }, window: "7d" },
-  ],
-  brand: [
-    { kind: "negative_share", scope: { type: "first_of_role", role: "primary" }, threshold: 20 },
-    {
-      kind: "keyword_hit",
-      scope: { type: "first_of_role", role: "primary" },
-      keywords: ["lừa đảo", "khởi tố", "thanh tra", "vỡ nợ", "chậm bàn giao"],
-    },
-    { kind: "volume_growth", scope: { type: "aspect_key", key: "finance" }, window: "24h" },
-    { kind: "viral_post", scope: { type: "first_of_role", role: "primary" } },
-  ],
-};
-
 export const MAX_ALERT_RULES = 20;
 
 export const NOTIFICATION_CHANNELS = ["email", "zalo", "sms", "slack"] as const;

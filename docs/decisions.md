@@ -188,6 +188,15 @@ Rà lại việc lấy dữ liệu Facebook trước giai đoạn 3.
   - Bỏ "thành viên dự án" khỏi wizard: quyền vẫn theo workspace, sẽ mở rộng ở phần workspace member.
 - `projects.is_demo` đánh dấu các project demo (dashboard số liệu mẫu). Project thật chưa hiện dashboard demo, tránh nhầm số liệu mẫu với số liệu thật.
 
+**Phiên bản case**
+- Case không đổi được sau khi tạo, nhưng định nghĩa case thay đổi theo thời gian (vai trò entity, aspect mẫu, trường riêng, rule mẫu, report). Mỗi case có danh sách phiên bản trong `CASE_VERSIONS` (`lib/projects/case-templates.ts`); project lưu `projects.case_version`.
+- Project chạy được ở phiên bản cũ. Người dùng tự quyết định nâng cấp: trang settings hiện banner khi có phiên bản mới, kèm ghi chú thay đổi; bấm xem thì form chuyển sang phiên bản mới, được điền sẵn bằng `upgrade.migrate` của từng phiên bản; người dùng bổ sung trường mới rồi lưu thì `case_version` tăng. Không lưu thì giữ phiên bản cũ. Không hạ phiên bản.
+- Project mới luôn dùng phiên bản mới nhất.
+- Không tạo case id mới cho mỗi phiên bản (kiểu "Theo dõi dự án v2"): phân mảnh danh sách case và project cũ vẫn kẹt ở bản cũ.
+- Thay đổi chỉ thêm (report mới đọc dữ liệu có sẵn, trường không bắt buộc, loại rule mới) không cần phiên bản mới. Phiên bản mới dành cho thay đổi phá vỡ: trường bắt buộc mới, đổi tên trường, đổi nghĩa vai trò, đổi key aspect.
+- Chi phí: code phải giữ mọi phiên bản còn project đang chạy. Report, prompt Enrich và bộ đánh giá cảnh báo (giai đoạn 4–6) đọc `case_version` để chọn đúng định nghĩa. Phiên bản cũ chỉ được xóa khi không còn project nào dùng.
+- Nâng cấp phiên bản tăng `config_version` (cấu hình phân tích đổi).
+
 **Hoãn lại**
 - Bộ địa danh dùng chung (alias, tên trước/sau sáp nhập tỉnh) cho `market`: tạm thời người dùng tự nhập alias khu vực.
 - Truy vấn không từ khóa (mọi nội dung của nguồn đã chọn đều là mention): cần cho `lead` và một phần `market`.

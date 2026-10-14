@@ -144,6 +144,7 @@ Case BĐS, thứ tự ưu tiên và cấu hình theo case: xem [D10](decisions.m
 - [x] Schema `projects` (thêm `mode`, `timezone`, `config_version`, `case_config`, `is_demo`), `project_entities`, `project_queries`, `project_aspects`, `project_sources` (`project_scenarios` chỉ thêm khi có `scenarios`, xem [D8](decisions.md#d8--giai-đoạn-2-persona--connector-ảo--kho-thô-2026-10-13))
 - [x] Template entity, aspect và trường riêng cho `project`, `market`, `brand`
 - [x] Wizard tạo project thật: case → thông tin → entity/khu vực và truy vấn → aspect → nguồn → cảnh báo & báo cáo → xem lại (theo `.cursor/rules/form-creation.mdc`)
+- [x] Phiên bản case (`projects.case_version`, `CASE_VERSIONS`): project chạy ở phiên bản cũ, người dùng tự nâng cấp trong trang settings
 - [x] Lưu cấu hình cảnh báo (`alert_rules`, `projects.notification_config`); đánh giá rule và gửi thông báo làm ở giai đoạn 6
 - [x] Sửa cấu hình trong trang settings của project, tăng `config_version` và `project_queries.version`
 - [x] Project thật (`is_demo = false`) không hiện dashboard số liệu mẫu

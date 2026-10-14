@@ -1,5 +1,4 @@
-import { ALERT_RULE_SEEDS } from "../alert-templates";
-import { CASE_TEMPLATES } from "../case-templates";
+import { caseUpgradesAfter, getCaseTemplate } from "../case-templates";
 import type { AvailableProjectCase } from "../project-cases";
 import type { CreateProjectWithConfigInput } from "../schema";
 import type { ProjectConfigDetail } from "../types";
@@ -11,7 +10,7 @@ export function toNewProjectFormValues(
   current?: Pick<CreateProjectWithConfigInput, "name" | "description" | "mode" | "sourceIds">,
   recipient?: string | null,
 ): CreateProjectWithConfigInput {
-  const template = CASE_TEMPLATES[projectCase];
+  const template = getCaseTemplate(projectCase);
   const entities = template.roles.flatMap((role) =>
     Array.from({ length: role.min }, () => ({
       id: crypto.randomUUID(),
@@ -33,13 +32,14 @@ export function toNewProjectFormValues(
     name: current?.name ?? "",
     description: current?.description ?? "",
     case: projectCase,
+    caseVersion: template.version,
     mode: current?.mode ?? "live",
     caseConfig: structuredClone(template.defaultConfig),
     entities,
     aspects,
     sourceIds: current?.sourceIds ?? [],
     alerts: {
-      rules: ALERT_RULE_SEEDS[projectCase]
+      rules: template.alertSeeds
         .map((seed) => seedToAlertRuleInput(seed, entities, aspects))
         .filter((rule) => rule !== null),
       channels: ["email"],
@@ -58,6 +58,7 @@ export function toProjectFormValues(
     name: project.name,
     description: project.description ?? "",
     case: config.case,
+    caseVersion: config.caseVersion,
     mode: config.mode,
     caseConfig: structuredClone(config.caseConfig),
     entities: config.entities.map((entity) => ({
@@ -76,5 +77,32 @@ export function toProjectFormValues(
     })),
     sourceIds: config.sourceIds,
     alerts: structuredClone(config.alerts),
+  };
+}
+
+/**
+ * Saved values moved to a newer case version: each version's `migrate` runs in
+ * order. The user reviews the result in the form before saving.
+ */
+export function toUpgradedFormValues(
+  values: CreateProjectWithConfigInput,
+  targetVersion: number,
+): CreateProjectWithConfigInput {
+  let next = {
+    caseConfig: values.caseConfig ?? {},
+    entities: values.entities,
+    aspects: values.aspects,
+  };
+  for (const version of caseUpgradesAfter(values.case, values.caseVersion)) {
+    if (version.version > targetVersion) break;
+    if (version.upgrade) next = version.upgrade.migrate(structuredClone(next));
+  }
+
+  return {
+    ...values,
+    caseVersion: targetVersion,
+    caseConfig: next.caseConfig,
+    entities: next.entities.map((entity) => ({ ...entity, aliases: entity.aliases ?? [] })),
+    aspects: next.aspects,
   };
 }

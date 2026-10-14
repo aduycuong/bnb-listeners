@@ -1,11 +1,11 @@
 "use client";
 
 import { PlusIcon, RotateCcwIcon, Trash2Icon } from "lucide-react";
-import { useFieldArray, type UseFormReturn } from "react-hook-form";
+import { useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
 
 import { FormFieldText } from "@/components/forms/form-field-text";
 import { Button } from "@/components/ui/button";
-import { CASE_TEMPLATES } from "@/lib/projects/case-templates";
+import { getCaseTemplate } from "@/lib/projects/case-templates";
 import type { AvailableProjectCase } from "@/lib/projects/project-cases";
 import type {
   CreateProjectWithConfigBody,
@@ -29,6 +29,7 @@ export function ProjectAspectsFields({
     control: form.control,
     name: "aspects",
   });
+  const caseVersion = useWatch({ control: form.control, name: "caseVersion" });
   const rootError =
     form.formState.errors.aspects?.message ??
     form.formState.errors.aspects?.root?.message;
@@ -83,7 +84,7 @@ export function ProjectAspectsFields({
           size="sm"
           onClick={() =>
             replace(
-              CASE_TEMPLATES[projectCase].aspects.map((aspect) => {
+              getCaseTemplate(projectCase, caseVersion).aspects.map((aspect) => {
                 const kept = form
                   .getValues("aspects")
                   .find((item) => item.name === aspect.name);

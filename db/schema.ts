@@ -112,6 +112,8 @@ export const projects = pgTable(
     termCriteria: text("term_criteria").notNull().default(""),
     /** Real estate case id, see `lib/projects/project-cases.ts` and docs/decisions.md D10. */
     listeningCase: text("case").notNull().default("project"),
+    /** Version of the case definition the project runs on; the user decides when to upgrade. */
+    caseVersion: integer("case_version").notNull().default(1),
     /** live | sandbox; live projects only follow `origin = connector` sources. */
     mode: text("mode").notNull().default("live"),
     timezone: text("timezone").notNull().default("Asia/Ho_Chi_Minh"),

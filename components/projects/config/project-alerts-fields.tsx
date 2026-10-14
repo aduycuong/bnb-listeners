@@ -21,7 +21,7 @@ import {
   alertKindsForCase,
   type AlertRuleKindDef,
 } from "@/lib/projects/alert-templates";
-import { CASE_TEMPLATES } from "@/lib/projects/case-templates";
+import { getCaseTemplate } from "@/lib/projects/case-templates";
 import type { AvailableProjectCase } from "@/lib/projects/project-cases";
 import type {
   CreateProjectWithConfigBody,
@@ -42,7 +42,8 @@ type ScopeOption = { value: string; label: string; type: string };
 function useScopeOptions(form: ProjectForm, projectCase: AvailableProjectCase): ScopeOption[] {
   const entities = useWatch({ control: form.control, name: "entities" }) ?? [];
   const aspects = useWatch({ control: form.control, name: "aspects" }) ?? [];
-  const roles = CASE_TEMPLATES[projectCase].roles;
+  const caseVersion = useWatch({ control: form.control, name: "caseVersion" });
+  const roles = getCaseTemplate(projectCase, caseVersion).roles;
   const roleLabel = new Map(roles.map((role) => [role.role, role.label]));
 
   return [

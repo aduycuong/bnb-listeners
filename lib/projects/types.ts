@@ -19,6 +19,7 @@ export type ProjectListItem = {
   name: string;
   description: string | null;
   case: ProjectCase;
+  caseVersion: number;
   mode: ProjectMode;
   isDemo: boolean;
   configVersion: number;
@@ -88,6 +89,7 @@ export type ProjectAspectDetail = {
 export type ProjectConfigDetail = {
   projectId: string;
   case: ProjectCase;
+  caseVersion: number;
   mode: ProjectMode;
   configVersion: number;
   caseConfig: Record<string, unknown>;

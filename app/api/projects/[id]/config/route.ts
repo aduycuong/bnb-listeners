@@ -32,6 +32,7 @@ export const PUT = createApiHandler(
       workspaceId: ctx.workspaceId,
       projectId: params.id,
       case: params.case,
+      caseVersion: params.caseVersion,
       mode: params.mode,
       caseConfig: params.caseConfig,
       entities: params.entities,

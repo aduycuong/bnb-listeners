@@ -1,5 +1,5 @@
 import { ALERT_RULE_KIND_DEFS, type AlertRuleKind } from "../alert-templates";
-import { CASE_TEMPLATES, type EntityRole } from "../case-templates";
+import { getCaseTemplate, hasCaseVersion, type EntityRole } from "../case-templates";
 import type { AvailableProjectCase } from "../project-cases";
 
 export type ProjectConfigIssue = {
@@ -15,6 +15,7 @@ export type ProjectConfigIssue = {
 export function collectProjectConfigIssues(
   value: {
     case: AvailableProjectCase;
+    caseVersion?: number;
     caseConfig?: Record<string, unknown>;
     entities?: { id?: string; role: EntityRole }[];
     aspects?: { id?: string; name: string }[];
@@ -38,8 +39,13 @@ export function collectProjectConfigIssues(
     alerts: true,
   },
 ): ProjectConfigIssue[] {
-  const template = CASE_TEMPLATES[value.case];
+  const template = getCaseTemplate(value.case, value.caseVersion);
   const issues: ProjectConfigIssue[] = [];
+
+  if (value.caseVersion !== undefined && !hasCaseVersion(value.case, value.caseVersion)) {
+    issues.push({ path: ["caseVersion"], message: "Phiên bản case không tồn tại." });
+    return issues;
+  }
 
   if (parts.config) {
     const config = template.configSchema.safeParse(value.caseConfig ?? {});

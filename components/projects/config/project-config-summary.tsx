@@ -10,7 +10,7 @@ import {
   type ReportSchedule,
 } from "@/lib/projects/alert-templates";
 import {
-  CASE_TEMPLATES,
+  getCaseTemplate,
   REPORT_PERIOD_LABELS,
 } from "@/lib/projects/case-templates";
 import type { CreateProjectWithConfigInput } from "@/lib/projects/schema";
@@ -44,7 +44,7 @@ function describeScope(values: CreateProjectWithConfigInput, scope: string) {
     return name ? `khía cạnh ${name}` : "(khía cạnh đã xóa)";
   }
   if (type === "each_role") {
-    const role = CASE_TEMPLATES[values.case].roles.find((item) => item.role === ref);
+    const role = getCaseTemplate(values.case, values.caseVersion).roles.find((item) => item.role === ref);
     return `từng mục ${role?.label.toLowerCase() ?? ref}`;
   }
   return "toàn project";
@@ -86,7 +86,7 @@ export function ProjectConfigSummary({
   caseLabel: string;
 }) {
   const { data } = useSelectableSources(workspaceId);
-  const roles = CASE_TEMPLATES[values.case].roles;
+  const roles = getCaseTemplate(values.case, values.caseVersion).roles;
   const sourceNames = (values.sourceIds ?? []).map(
     (id) => data?.items.find((item) => item.id === id)?.name ?? id,
   );

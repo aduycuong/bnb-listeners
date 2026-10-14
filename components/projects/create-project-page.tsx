@@ -140,6 +140,7 @@ export function CreateProjectPage({
     const issues = collectProjectConfigIssues(
       {
         case: projectCase,
+        caseVersion: values.caseVersion,
         caseConfig: values.caseConfig,
         entities: values.entities,
         aspects: values.aspects,

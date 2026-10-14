@@ -20,6 +20,7 @@ export const POST = createApiHandler(
       name: params.name,
       description: params.description,
       case: params.case,
+      caseVersion: params.caseVersion,
       mode: params.mode,
       caseConfig: params.caseConfig,
       entities: params.entities,

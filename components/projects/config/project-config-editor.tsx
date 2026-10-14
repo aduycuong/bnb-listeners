@@ -2,7 +2,8 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2Icon, PencilIcon } from "lucide-react";
+import { ArrowUpCircleIcon, Loader2Icon, PencilIcon } from "lucide-react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { ProjectAlertsFields } from "@/components/projects/config/project-alerts-fields";
@@ -21,6 +22,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/components/ui/toast";
 import { projectsQueryKey } from "@/hooks/use-project-route-context";
+import { caseUpgradesAfter } from "@/lib/projects/case-templates";
 import { PROJECT_CASE_ICONS, isAvailableProjectCase } from "@/lib/projects/project-cases";
 import {
   createProjectWithConfigSchema,
@@ -29,7 +31,10 @@ import {
 } from "@/lib/projects/schema";
 import type { ProjectConfigDetail, ProjectListItem } from "@/lib/projects/types";
 import { projectFetch } from "@/lib/projects/utils/project-fetch";
-import { toProjectFormValues } from "@/lib/projects/utils/to-project-form-values";
+import {
+  toProjectFormValues,
+  toUpgradedFormValues,
+} from "@/lib/projects/utils/to-project-form-values";
 
 const configQueryKey = (projectId: string) => ["project-config", projectId];
 
@@ -61,6 +66,13 @@ export function ProjectConfigEditor({
     },
   });
   const projectCase = config && isAvailableProjectCase(config.case) ? config.case : null;
+  // Bumped on every save so the form remounts with the saved values.
+  const [savedCount, setSavedCount] = useState(0);
+  const [upgradeTo, setUpgradeTo] = useState<number | null>(null);
+  const upgrades = config && projectCase ? caseUpgradesAfter(projectCase, config.caseVersion) : [];
+  const latest = upgrades[upgrades.length - 1];
+  const savedValues =
+    config && projectCase ? toProjectFormValues(project, { ...config, case: projectCase }) : null;
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-5 md:px-7">
@@ -71,7 +83,7 @@ export function ProjectConfigEditor({
           </h1>
           <p className="text-[13px] text-muted-foreground">
             {caseLabel}
-            {config ? ` · cấu hình phiên bản ${config.configVersion}` : ""}
+            {config ? ` · case v${config.caseVersion} · cấu hình v${config.configVersion}` : ""}
           </p>
           {project.description ? (
             <p className="mt-1 text-sm">{project.description}</p>
@@ -97,15 +109,60 @@ export function ProjectConfigEditor({
         </p>
       ) : null}
 
-      {config && projectCase ? (
+      {latest && upgradeTo === null ? (
+        <section className="flex flex-col gap-2 rounded-[22px] border-[1.5px] border-primary/40 bg-primary/5 px-4 py-4 md:px-5">
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            <ArrowUpCircleIcon className="size-4" />
+            Có phiên bản case mới: v{latest.version}
+          </h2>
+          <p className="text-[13px] text-muted-foreground">
+            Project vẫn chạy bình thường ở v{config?.caseVersion}. Chỉ nâng cấp khi muốn dùng
+            các thay đổi dưới đây.
+          </p>
+          <ul className="list-disc pl-5 text-sm">
+            {upgrades.flatMap((version) =>
+              (version.upgrade?.notes ?? []).map((note) => (
+                <li key={`${version.version}-${note}`}>
+                  v{version.version}: {note}
+                </li>
+              )),
+            )}
+          </ul>
+          {canEdit ? (
+            <div>
+              <Button type="button" size="sm" onClick={() => setUpgradeTo(latest.version)}>
+                Xem cấu hình phiên bản mới
+              </Button>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {upgradeTo !== null ? (
+        <section className="flex flex-wrap items-center justify-between gap-2 rounded-[22px] border-[1.5px] border-primary/40 bg-primary/5 px-4 py-3 md:px-5">
+          <p className="text-sm">
+            Đang cấu hình theo case v{upgradeTo}. Kiểm tra và bổ sung rồi lưu để nâng cấp; chưa
+            lưu thì project vẫn ở v{config?.caseVersion}.
+          </p>
+          <Button type="button" variant="outline" size="sm" onClick={() => setUpgradeTo(null)}>
+            Giữ phiên bản hiện tại
+          </Button>
+        </section>
+      ) : null}
+
+      {config && projectCase && savedValues ? (
         <ProjectConfigForm
-          key={config.configVersion}
+          key={`${config.caseVersion}-${savedCount}-${upgradeTo ?? "current"}`}
           workspaceId={workspaceId}
           project={project}
-          defaultValues={toProjectFormValues(project, { ...config, case: projectCase })}
+          defaultValues={
+            upgradeTo !== null ? toUpgradedFormValues(savedValues, upgradeTo) : savedValues
+          }
           canEdit={canEdit}
           onSaved={async (saved) => {
             queryClient.setQueryData(configQueryKey(project.id), saved);
+            setUpgradeTo(null);
+            setSavedCount((count) => count + 1);
             await queryClient.invalidateQueries({ queryKey: projectsQueryKey(workspaceId) });
           }}
         />
@@ -136,6 +193,7 @@ function ProjectConfigForm({
   async function onSubmit(values: CreateProjectWithConfigBody) {
     const body = {
       case: values.case,
+      caseVersion: values.caseVersion,
       mode: values.mode,
       caseConfig: values.caseConfig,
       entities: values.entities,

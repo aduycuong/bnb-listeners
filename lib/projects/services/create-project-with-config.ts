@@ -8,10 +8,10 @@ import {
   projects,
   projectSources,
 } from "@/db/schema";
-import { CreateFailedError } from "@/lib/common/service-errors";
+import { CreateFailedError, InvalidInputError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 
-import { CASE_TEMPLATES } from "../case-templates";
+import { getCaseTemplate, latestCaseVersion } from "../case-templates";
 import type { CreateProjectResult, CreateProjectWithConfigParams } from "../types";
 import { toAlertRuleRow } from "../utils/to-alert-rule-rows";
 import { toAspectKey } from "../utils/to-aspect-key";
@@ -34,7 +34,11 @@ export async function createProjectWithConfig(
     ruleIds: params.alerts.rules.map((rule) => rule.id),
   });
 
-  const template = CASE_TEMPLATES[params.case];
+  if (params.caseVersion !== latestCaseVersion(params.case)) {
+    throw new InvalidInputError("Project mới phải dùng phiên bản case mới nhất. Tải lại trang rồi thử lại.");
+  }
+
+  const template = getCaseTemplate(params.case, params.caseVersion);
   const projectId = randomUUID();
   const entities = params.entities.map((entity, index) => ({ ...entity, sortOrder: index }));
   const takenKeys = new Set<string>();
@@ -57,6 +61,7 @@ export async function createProjectWithConfig(
         name,
         description: params.description?.trim() || null,
         listeningCase: params.case,
+        caseVersion: params.caseVersion,
         mode: params.mode,
         caseConfig: template.configSchema.parse(params.caseConfig),
         notificationConfig: {

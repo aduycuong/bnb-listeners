@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { AlertRuleSeed } from "./alert-templates";
 import type { AvailableProjectCase } from "./project-cases";
 
 export const ENTITY_ROLES = [
@@ -86,16 +87,40 @@ export const brandCaseConfigSchema = z.object({
   period: z.enum(REPORT_PERIODS).default("month"),
 });
 
+/** Config shape a version upgrade rewrites; see `upgrade.migrate`. */
+export type CaseUpgradeValues = {
+  caseConfig: Record<string, unknown>;
+  entities: { id: string; role: EntityRole; name: string; aliases?: string[] }[];
+  aspects: { id: string; key?: string; name: string; description?: string }[];
+};
+
 export type CaseTemplate = {
+  /** Starts at 1; a project keeps its version until the user upgrades it. */
+  version: number;
   roles: CaseEntityRole[];
   aspects: CaseAspectTemplate[];
   configSchema: z.ZodType<Record<string, unknown>>;
   defaultConfig: Record<string, unknown>;
+  /** Rules a new project of this version starts with. */
+  alertSeeds: AlertRuleSeed[];
+  /**
+   * How a project moves here from the previous version. `notes` are shown in
+   * the upgrade banner; `migrate` prefills the new form, which the user then
+   * reviews and completes before saving.
+   */
+  upgrade?: {
+    notes: string[];
+    migrate: (values: CaseUpgradeValues) => CaseUpgradeValues;
+  };
 };
 
-/** Entity, aspect and config templates for the cases built in phase 3 (D10). */
-export const CASE_TEMPLATES: Record<AvailableProjectCase, CaseTemplate> = {
-  project: {
+/**
+ * Versions of each case, oldest first (docs/decisions.md D10). Old versions
+ * stay here as long as any project runs on them.
+ */
+export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
+  project: [{
+    version: 1,
     roles: [
       {
         role: "primary",
@@ -128,8 +153,16 @@ export const CASE_TEMPLATES: Record<AvailableProjectCase, CaseTemplate> = {
     ],
     configSchema: projectCaseConfigSchema,
     defaultConfig: { segment: "Căn hộ", stage: "Đang mở bán" },
-  },
-  market: {
+    alertSeeds: [
+      { kind: "negative_share", scope: { type: "aspect_key", key: "legal" } },
+      { kind: "negative_share", scope: { type: "aspect_key", key: "progress" } },
+      { kind: "buyer_questions_growth", scope: { type: "project" } },
+      { kind: "viral_post", scope: { type: "first_of_role", role: "primary" } },
+      { kind: "price_deviation", scope: { type: "project" }, enabled: false },
+    ],
+  }],
+  market: [{
+    version: 1,
     roles: [
       {
         role: "area",
@@ -151,8 +184,20 @@ export const CASE_TEMPLATES: Record<AvailableProjectCase, CaseTemplate> = {
     ],
     configSchema: marketCaseConfigSchema,
     defaultConfig: { segments: ["Căn hộ"], period: "week" },
-  },
-  brand: {
+    alertSeeds: [
+      { kind: "volume_growth", scope: { type: "each_role", role: "area" } },
+      {
+        kind: "keyword_hit",
+        scope: { type: "project" },
+        threshold: 5,
+        window: "7d",
+        keywords: ["cắt lỗ", "bán gấp", "ngộp", "giảm sâu"],
+      },
+      { kind: "negative_share", scope: { type: "aspect_key", key: "financing" }, window: "7d" },
+    ],
+  }],
+  brand: [{
+    version: 1,
     roles: [
       {
         role: "primary",
@@ -191,5 +236,43 @@ export const CASE_TEMPLATES: Record<AvailableProjectCase, CaseTemplate> = {
     ],
     configSchema: brandCaseConfigSchema,
     defaultConfig: { period: "month" },
-  },
+    alertSeeds: [
+      { kind: "negative_share", scope: { type: "first_of_role", role: "primary" }, threshold: 20 },
+      {
+        kind: "keyword_hit",
+        scope: { type: "first_of_role", role: "primary" },
+        keywords: ["lừa đảo", "khởi tố", "thanh tra", "vỡ nợ", "chậm bàn giao"],
+      },
+      { kind: "volume_growth", scope: { type: "aspect_key", key: "finance" }, window: "24h" },
+      { kind: "viral_post", scope: { type: "first_of_role", role: "primary" } },
+    ],
+  }],
 };
+
+export function latestCaseVersion(projectCase: AvailableProjectCase): number {
+  const versions = CASE_VERSIONS[projectCase];
+  return versions[versions.length - 1].version;
+}
+
+export function hasCaseVersion(projectCase: AvailableProjectCase, version: number): boolean {
+  return CASE_VERSIONS[projectCase].some((item) => item.version === version);
+}
+
+/** Template of a case version; the latest when `version` is omitted or unknown. */
+export function getCaseTemplate(
+  projectCase: AvailableProjectCase,
+  version?: number,
+): CaseTemplate {
+  const versions = CASE_VERSIONS[projectCase];
+  return (
+    versions.find((item) => item.version === version) ?? versions[versions.length - 1]
+  );
+}
+
+/** Versions after `from`, in order, for the upgrade banner and migration chain. */
+export function caseUpgradesAfter(
+  projectCase: AvailableProjectCase,
+  from: number,
+): CaseTemplate[] {
+  return CASE_VERSIONS[projectCase].filter((item) => item.version > from);
+}

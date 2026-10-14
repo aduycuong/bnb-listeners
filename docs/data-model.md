@@ -87,7 +87,7 @@ Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` 
 
 ## L2 — Project config
 
-**`projects`**: `workspace_id`, `name`, `case` (id case BĐS, xem [D10](decisions.md#d10--giai-đoạn-3-case-bđs-và-cấu-hình-project-2026-10-14)), `mode` (`live` | `sandbox`), `timezone`, `config_version`, `case_config` (jsonb, trường riêng theo case), `is_demo`, `notification_config` (jsonb: kênh gửi, người nhận, lịch báo cáo AI)
+**`projects`**: `workspace_id`, `name`, `case` (id case BĐS, xem [D10](decisions.md#d10--giai-đoạn-3-case-bđs-và-cấu-hình-project-2026-10-14)), `case_version` (phiên bản định nghĩa case project đang chạy, người dùng tự nâng cấp), `mode` (`live` | `sandbox`), `timezone`, `config_version`, `case_config` (jsonb, trường riêng theo case), `is_demo`, `notification_config` (jsonb: kênh gửi, người nhận, lịch báo cáo AI)
 
 **`project_entities`**: đối tượng được theo dõi.
 - `role` (`primary`, `competitor`, `product`, `person`, `area`)
