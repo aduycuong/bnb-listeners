@@ -98,7 +98,9 @@ export const PRICE_UNITS = ["trieu_m2", "ty_can", "trieu_thang", "khac"] as cons
 export const PRICE_KINDS = ["rao_ban", "cho_thue", "gia_cdt", "khac"] as const;
 
 const priceQuoteSchema = z.object({
-  amount: z.number().describe("Số tiền, chỉ phần số, ví dụ 46 hoặc 2.5"),
+  amount: z
+    .number()
+    .describe('Số tiền theo đơn vị ở `unit`, chỉ phần số. Dấu phẩy trong tiếng Việt là dấu thập phân: "2,4 tỷ" là 2.4, "46tr/m2" là 46'),
   unit: z.enum(PRICE_UNITS).describe("triệu/m², tỷ/căn, triệu/tháng (giá thuê) hoặc khác"),
   kind: z.enum(PRICE_KINDS).describe("Giá rao bán lại, giá cho thuê, giá chủ đầu tư công bố, hoặc khác"),
   quote: z.string().describe("Đoạn văn bản nhắc tới giá, giữ nguyên"),
@@ -113,6 +115,8 @@ export type CaseExtraction = {
   /** True: zero or more per mention. False: at most one. */
   many: boolean;
   schema: z.ZodObject<z.ZodRawShape>;
+  /** Field filled with one of the project's aspect keys (or `other`), so it groups like aspects. */
+  aspectField?: string;
 };
 
 const PRICE_QUOTE: CaseExtraction = {
@@ -129,9 +133,10 @@ const BUYER_QUESTION: CaseExtraction = {
   description: "Khi mục là câu hỏi của người đang cân nhắc mua hoặc thuê: chủ đề và câu hỏi.",
   many: false,
   schema: z.object({
-    topic: z.string().describe("Chủ đề ngắn: pháp lý, giá, tiến độ, vay, tiện ích…"),
+    topic: z.string().describe("Khía cạnh của câu hỏi"),
     question: z.string().describe("Câu hỏi, viết gọn"),
   }),
+  aspectField: "topic",
 };
 
 const AREA_PRICE_QUOTE: CaseExtraction = {

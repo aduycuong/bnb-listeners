@@ -23,7 +23,10 @@ const PRICE_KINDS: Record<string, string> = {
   khac: "",
 };
 
-function describeExtraction(extraction: MentionListItem["extractions"][number]) {
+function describeExtraction(
+  extraction: MentionListItem["extractions"][number],
+  aspectByKey: Map<string, string>,
+) {
   const data = extraction.data;
   if (extraction.schemaKey === "price_quote") {
     const parts = [
@@ -34,7 +37,8 @@ function describeExtraction(extraction: MentionListItem["extractions"][number]) 
     return `Giá: ${parts.join(", ")}`;
   }
   if (extraction.schemaKey === "buyer_question") {
-    return `Câu hỏi (${String(data.topic ?? "")}): ${String(data.question ?? "")}`;
+    const topic = aspectByKey.get(String(data.topic)) ?? (data.topic === "other" ? "khác" : String(data.topic ?? ""));
+    return `Câu hỏi (${topic}): ${String(data.question ?? "")}`;
   }
   return `${extraction.schemaKey}: ${JSON.stringify(data)}`;
 }
@@ -82,7 +86,7 @@ export function MentionEnrichment({
       </div>
       {mention.extractions.map((extraction, index) => (
         <p key={index} className="text-xs text-muted-foreground">
-          {describeExtraction(extraction)}
+          {describeExtraction(extraction, byKey)}
         </p>
       ))}
     </div>

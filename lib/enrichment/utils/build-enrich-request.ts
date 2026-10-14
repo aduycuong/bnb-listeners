@@ -16,10 +16,12 @@ function clip(text: string, max: number) {
 
 /** Output schema for one call, built from the project's aspects, entities and case extractions. */
 export function buildEnrichSchema(ctx: ProjectEnrichContext) {
-  const sentiment = z.enum(SENTIMENTS);
+  // A fresh schema per field: a shared one becomes a JSON Schema $ref, which OpenAI rejects
+  // when the field also has a description.
+  const sentiment = () => z.enum(SENTIMENTS);
   const item: Record<string, z.ZodType> = {
     index: z.int().describe("The [n] index of the item"),
-    sentiment: sentiment.describe("Overall sentiment toward the tracked subjects"),
+    sentiment: sentiment().describe("Overall sentiment toward the tracked subjects"),
     sentimentScore: z.number().describe("-1 very negative … 0 neutral … 1 very positive"),
     emotion: z.enum(EMOTIONS).nullable().describe("Dominant emotion, null if none is clear"),
   };
@@ -27,21 +29,29 @@ export function buildEnrichSchema(ctx: ProjectEnrichContext) {
   if (ctx.aspects.length > 0) {
     const keys = ctx.aspects.map((aspect) => aspect.key) as [string, ...string[]];
     item.aspects = z
-      .array(z.object({ key: z.enum(keys), sentiment }))
+      .array(z.object({ key: z.enum(keys), sentiment: sentiment() }))
       .describe("Aspects the item discusses, each with its own sentiment; [] if none");
   }
   if (ctx.entities.length > 0) {
     const refs = ctx.entities.map((entity) => entity.ref) as [string, ...string[]];
     item.entities = z
-      .array(z.object({ entity: z.enum(refs), sentiment }))
+      .array(z.object({ entity: z.enum(refs), sentiment: sentiment() }))
       .describe("Tracked entities the item talks about, with sentiment toward each; [] if none");
   }
   if (ctx.extractions.length > 0) {
     const fields: Record<string, z.ZodType> = {};
+    const aspectKeys: [string, ...string[]] = ["other", ...ctx.aspects.map((aspect) => aspect.key)];
     for (const extraction of ctx.extractions) {
+      const schema = extraction.aspectField
+        ? extraction.schema.extend({
+            [extraction.aspectField]: z
+              .enum(aspectKeys)
+              .describe("Khía cạnh của project (key ở danh sách Khía cạnh), other nếu không thuộc khía cạnh nào"),
+          })
+        : extraction.schema;
       fields[extraction.key] = extraction.many
-        ? z.array(extraction.schema).describe(`${extraction.description} [] if none`)
-        : extraction.schema.nullable().describe(`${extraction.description} null if none`);
+        ? z.array(schema).describe(`${extraction.description} [] if none`)
+        : schema.nullable().describe(`${extraction.description} null if none`);
     }
     item.extractions = z.object(fields);
   }
@@ -71,7 +81,7 @@ export function buildEnrichPrompt(params: {
   const system = [
     "Bạn phân tích nội dung mạng xã hội về bất động sản bằng tiếng Việt cho một project theo dõi.",
     "Với mỗi mục được đánh số, cho biết:",
-    "- sentiment: thái độ của người viết đối với các đối tượng được theo dõi (không phải tâm trạng chung). Câu hỏi, thông tin trung lập là neutral. Mỉa mai tính theo nghĩa thật.",
+    "- sentiment: thái độ của người viết đối với các đối tượng được theo dõi (không phải tâm trạng chung). Câu hỏi, thông tin trung lập, tin rao bán, cho thuê, quảng cáo là neutral trừ khi người viết bày tỏ thái độ. Mỉa mai tính theo nghĩa thật.",
     "- sentimentScore: từ -1 đến 1, khớp với sentiment.",
     `- emotion: một trong ${EMOTIONS.map((key) => `${key} (${EMOTION_LABELS[key]})`).join(", ")}, hoặc null nếu không rõ.`,
     ctx.aspects.length ? "- aspects: các khía cạnh mục đó thực sự bàn tới, mỗi khía cạnh có sentiment riêng." : "",

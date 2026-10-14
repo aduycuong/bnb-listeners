@@ -179,6 +179,7 @@ Kiểm chứng chỉ trên mẫu thật gán nhãn tay (D12), nên trang Mention
 - [x] Sentiment, emotion, aspect, entity; trích xuất `price_quote`, `buyer_question` (`project`), `price_quote` theo khu vực (`market`)
 - [x] Làm giàu theo thread; chữ ký Enrich để không làm giàu lại nội dung không đổi; workflow `enrich-project` sau Match
 - [x] Trang Mentions hiện và cho sửa sentiment, aspect; mẫu `enrich` và màn hình gán nhãn; `npm run eval:enrich`
+- [x] Chạy thật: Vinhomes 202 mention (16 lần gọi LLM, ~80 giây), sandbox 114 mention (18 lần gọi); chạy lại không gọi LLM
 - [ ] Gán nhãn mẫu Enrich trên dữ liệu thật và ghi kết quả (ngưỡng: sentiment ≥ 80%, aspect F1 ≥ 0,7)
 
 **4c — Topic**

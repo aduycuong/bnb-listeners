@@ -266,3 +266,5 @@ Thay nguyên tắc "dữ liệu giả kèm nhãn đúng để đo chất lượn
 - Nhãn không ghi đè kết quả AI (theo D13): `mentions.auto_sentiment` giữ kết quả AI, `mentions.sentiment` theo nhãn nếu có. Aspect gán tay nằm ở `item_labels.aspect_keys` (null = chưa gán, [] = không có aspect) và được ưu tiên hơn `mention_aspects` (chỉ chứa kết quả AI).
 - Đo: mẫu loại `enrich` lấy ngẫu nhiên từ mention có liên quan đã làm giàu; khi gán nhãn không hiện kết quả AI. `npm run eval:enrich` và trang Mentions: accuracy sentiment kèm ma trận nhầm lẫn, precision/recall/F1 aspect (micro và từng aspect). Chưa đo emotion và trích xuất.
 - Ngưỡng chấp nhận trên mẫu thật: sentiment accuracy ≥ 80%, aspect F1 ≥ 0,7.
+- `buyer_question.topic` chọn trong aspect của project (hoặc `other`) thay vì chữ tự do, để câu hỏi người mua nhóm theo cùng bộ khía cạnh (`aspectField` trong định nghĩa trích xuất).
+- Prompt v2 (sau khi chạy thử trên dữ liệu thật): dấu phẩy là dấu thập phân ("2,4 tỷ" = 2.4); tin rao bán, cho thuê, quảng cáo là trung tính trừ khi có thái độ. Câu mỉa mai đôi khi vẫn bị chấm ngược, cần đo trên mẫu.
