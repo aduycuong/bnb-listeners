@@ -25,6 +25,10 @@ import { assertUniqueProjectName } from "./assert-unique-project-name";
 export async function createProjectWithConfig(
   params: CreateProjectWithConfigParams,
 ): Promise<CreateProjectResult> {
+  if (params.caseVersion !== latestCaseVersion(params.case)) {
+    throw new InvalidInputError("Project mới phải dùng phiên bản case mới nhất. Tải lại trang rồi thử lại.");
+  }
+
   const name = params.name.trim();
   await assertUniqueProjectName(params.workspaceId, name);
   await assertSourcesSelectable({ sourceIds: params.sourceIds, mode: params.mode });
@@ -33,10 +37,6 @@ export async function createProjectWithConfig(
     aspectIds: params.aspects.map((aspect) => aspect.id),
     ruleIds: params.alerts.rules.map((rule) => rule.id),
   });
-
-  if (params.caseVersion !== latestCaseVersion(params.case)) {
-    throw new InvalidInputError("Project mới phải dùng phiên bản case mới nhất. Tải lại trang rồi thử lại.");
-  }
 
   const template = getCaseTemplate(params.case, params.caseVersion);
   const projectId = randomUUID();

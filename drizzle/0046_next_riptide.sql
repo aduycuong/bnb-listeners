@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "case_version" integer DEFAULT 1 NOT NULL;
