@@ -87,7 +87,7 @@ Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` 
 
 ## L2 — Project config
 
-**`projects`**: `workspace_id`, `name`, `case` (id case BĐS, xem [D10](decisions.md#d10--giai-đoạn-3-case-bđs-và-cấu-hình-project-2026-10-14)), `mode` (`live` | `sandbox`), `timezone`, `config_version`, `case_config` (jsonb, trường riêng theo case), `is_demo`
+**`projects`**: `workspace_id`, `name`, `case` (id case BĐS, xem [D10](decisions.md#d10--giai-đoạn-3-case-bđs-và-cấu-hình-project-2026-10-14)), `mode` (`live` | `sandbox`), `timezone`, `config_version`, `case_config` (jsonb, trường riêng theo case), `is_demo`, `notification_config` (jsonb: kênh gửi, người nhận, lịch báo cáo AI)
 
 **`project_entities`**: đối tượng được theo dõi.
 - `role` (`primary`, `competitor`, `product`, `person`, `area`)
@@ -144,7 +144,7 @@ Các công thức (reach ước tính, NSS, SoV, mức độ khủng hoảng) đ
 
 ## L5 — Outputs
 
-- **`alert_rules`**: `project_id`, `type` (ngưỡng, bất thường, từ khóa mới), `params`, `channels`
+- **`alert_rules`**: `project_id`, `key` (template rule theo case, unique theo project), `type` (`threshold`, `growth`; sau thêm bất thường, từ khóa mới), `params` (ngưỡng và tham số của template), `channels` (null = dùng `projects.notification_config`), `enabled`. Đã lưu từ giai đoạn 3, đánh giá từ giai đoạn 6.
 - **`alerts`**: `rule_id`, `triggered_at`, `payload`, `status`, `mention_ids[]`
 - **`insights`**: tóm tắt và nhận định do AI sinh. Luôn kèm `mention_ids[]` để trích dẫn, kèm `period` và `model`.
 - **`reports`**: báo cáo định kỳ (`period`, `content`, `status`)

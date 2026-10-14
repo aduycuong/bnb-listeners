@@ -211,6 +211,7 @@ Social listening scope inside a workspace: one brand, campaign, or similar liste
 | config_version | integer | NO | `1` | Bumped on every config change |
 | case_config | jsonb | NO | `{}` | Case-specific fields, validated by the case's zod schema in `lib/projects/case-templates.ts` |
 | is_demo | boolean | NO | `false` | Demo projects render the sample dashboard |
+| notification_config | jsonb | NO | `{}` | `{ channels, recipients, reportSchedule }`: default alert delivery and AI report schedule |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
@@ -222,7 +223,7 @@ Social listening scope inside a workspace: one brand, campaign, or similar liste
 **Relations**
 
 - ← `terms.project_id`
-- ← `project_entities.project_id`, `project_queries.project_id`, `project_aspects.project_id`, `project_sources.project_id`
+- ← `project_entities.project_id`, `project_queries.project_id`, `project_aspects.project_id`, `project_sources.project_id`, `alert_rules.project_id`
 
 ---
 
@@ -289,6 +290,23 @@ Sources a project follows (required for Facebook, which has no keyword search).
 | created_at | timestamptz | NO | `now()` | |
 
 **Keys:** primary key `(project_id, source_id)`; `project_sources_source_id_idx` on `source_id`
+
+### `alert_rules`
+
+Alert rule of a project, created from the case's alert template (`lib/projects/alert-templates.ts`). Configured from phase 3; evaluated from phase 6.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| key | text | NO | — | Template rule key |
+| type | text | NO | — | `threshold` or `growth` |
+| params | jsonb | NO | `{}` | Template params plus `threshold` |
+| channels | jsonb | YES | — | Overrides `projects.notification_config.channels`; null = project default |
+| enabled | boolean | NO | `true` | |
+| created_at / updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** `alert_rules_project_key_idx` — UNIQUE on `(project_id, key)`
 
 ---
 

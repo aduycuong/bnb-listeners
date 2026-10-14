@@ -6,6 +6,7 @@ import type { EntityRole } from "./case-templates";
 import type { ProjectCase } from "./project-cases";
 import type {
   CreateProjectWithConfigBody,
+  ProjectAlertsInput,
   ProjectConfigBody,
   ProjectMode,
   createProjectSchema,
@@ -93,6 +94,7 @@ export type ProjectConfigDetail = {
   entities: ProjectEntityDetail[];
   aspects: ProjectAspectDetail[];
   sourceIds: string[];
+  alerts: ProjectAlertsInput;
 };
 
 export type GetProjectConfigParams = {

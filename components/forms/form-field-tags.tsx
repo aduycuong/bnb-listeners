@@ -105,7 +105,14 @@ export function FormFieldTags<T extends FieldValues>({
               />
             </div>
             {description ? <FieldDescription>{description}</FieldDescription> : null}
-            <FieldError errors={[fieldState.error]} />
+            <FieldError
+              errors={
+                // Array fields report one error per item (e.g. an invalid email).
+                Array.isArray(fieldState.error)
+                  ? fieldState.error.filter(Boolean)
+                  : [fieldState.error]
+              }
+            />
           </Field>
         );
       }}

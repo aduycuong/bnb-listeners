@@ -5,6 +5,7 @@ import {
   TERM_LANGUAGES,
 } from "@/lib/workspaces/constants";
 
+import { NOTIFICATION_CHANNELS, REPORT_SCHEDULES } from "./alert-templates";
 import { ENTITY_ROLES } from "./case-templates";
 import { AVAILABLE_PROJECT_CASES, PROJECT_CASES } from "./project-cases";
 import { collectProjectConfigIssues } from "./utils/collect-project-config-issues";
@@ -42,7 +43,24 @@ export const projectAspectInputSchema = z.object({
   description: z.string().trim().max(300).default(""),
 });
 
-/** Entities, aspects, sources and case fields; shared by create and edit. */
+export const projectAlertRuleInputSchema = z.object({
+  key: z.string().trim().min(1).max(60),
+  enabled: z.boolean(),
+  threshold: z.number({ error: "Nhập ngưỡng." }).positive({ error: "Ngưỡng phải lớn hơn 0." }),
+});
+
+/** Alert rules and delivery; stored now, evaluated from phase 6. */
+export const projectAlertsInputSchema = z.object({
+  rules: z.array(projectAlertRuleInputSchema).max(20).default([]),
+  channels: z.array(z.enum(NOTIFICATION_CHANNELS)).default(["email"]),
+  recipients: z
+    .array(z.email({ error: "Email không hợp lệ." }))
+    .max(30)
+    .default([]),
+  reportSchedule: z.enum(REPORT_SCHEDULES).default("weekly"),
+});
+
+/** Entities, aspects, sources, case fields and alerts; shared by create and edit. */
 export const projectConfigSchema = z
   .object({
     case: availableProjectCaseSchema,
@@ -57,6 +75,12 @@ export const projectConfigSchema = z
       .array(z.uuid())
       .min(1, { error: "Chọn ít nhất một nguồn." })
       .max(100),
+    alerts: projectAlertsInputSchema.default({
+      rules: [],
+      channels: ["email"],
+      recipients: [],
+      reportSchedule: "weekly",
+    }),
   })
   .superRefine((value, ctx) => {
     for (const issue of collectProjectConfigIssues(value)) {
@@ -98,3 +122,4 @@ export type ProjectConfigInput = z.input<typeof projectConfigSchema>;
 export type ProjectConfigBody = z.output<typeof projectConfigSchema>;
 export type CreateProjectWithConfigInput = z.input<typeof createProjectWithConfigSchema>;
 export type CreateProjectWithConfigBody = z.output<typeof createProjectWithConfigSchema>;
+export type ProjectAlertsInput = z.output<typeof projectAlertsInputSchema>;

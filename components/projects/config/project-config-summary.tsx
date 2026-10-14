@@ -2,6 +2,13 @@
 
 import { useSelectableSources } from "@/components/projects/config/project-sources-fields";
 import {
+  ALERT_TEMPLATES,
+  NOTIFICATION_CHANNEL_LABELS,
+  REPORT_SCHEDULE_LABELS,
+  type NotificationChannel,
+  type ReportSchedule,
+} from "@/lib/projects/alert-templates";
+import {
   CASE_TEMPLATES,
   REPORT_PERIOD_LABELS,
 } from "@/lib/projects/case-templates";
@@ -95,6 +102,40 @@ export function ProjectConfigSummary({
     }),
     ["Khía cạnh", (values.aspects ?? []).map((aspect) => aspect.name).join(", ") || "—"],
     ["Nguồn", sourceNames.join(", ") || "—"],
+    [
+      "Cảnh báo",
+      (() => {
+        const enabled = (values.alerts?.rules ?? []).filter((rule) => rule.enabled);
+        if (!enabled.length) return "Không bật cảnh báo nào";
+        return (
+          <ul className="flex flex-col gap-0.5">
+            {enabled.map((rule) => {
+              const template = ALERT_TEMPLATES[values.case].find((item) => item.key === rule.key);
+              return (
+                <li key={rule.key}>
+                  {template?.label} {rule.threshold} {template?.unit}
+                </li>
+              );
+            })}
+          </ul>
+        );
+      })(),
+    ],
+    [
+      "Gửi qua",
+      [
+        (values.alerts?.channels ?? [])
+          .map((channel) => NOTIFICATION_CHANNEL_LABELS[channel as NotificationChannel])
+          .join(", "),
+        (values.alerts?.recipients ?? []).join(", "),
+      ]
+        .filter(Boolean)
+        .join(" · ") || "—",
+    ],
+    [
+      "Báo cáo AI",
+      REPORT_SCHEDULE_LABELS[(values.alerts?.reportSchedule ?? "weekly") as ReportSchedule],
+    ],
   ];
 
   return (

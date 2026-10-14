@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  alertRules,
   projectAspects,
   projectEntities,
   projectQueries,
@@ -12,6 +13,7 @@ import { db } from "@/lib/db";
 
 import { CASE_TEMPLATES } from "../case-templates";
 import type { CreateProjectResult, CreateProjectWithConfigParams } from "../types";
+import { toAlertRuleRows } from "../utils/to-alert-rule-rows";
 import { toAspectKey } from "../utils/to-aspect-key";
 import { toProjectListItem } from "../utils/to-project-list-item";
 import { toQueryInclude } from "../utils/to-query-include";
@@ -55,6 +57,11 @@ export async function createProjectWithConfig(
         listeningCase: params.case,
         mode: params.mode,
         caseConfig: template.configSchema.parse(params.caseConfig),
+        notificationConfig: {
+          channels: params.alerts.channels,
+          recipients: params.alerts.recipients,
+          reportSchedule: params.alerts.reportSchedule,
+        },
       })
       .returning(),
     ...(entities.length > 0
@@ -91,6 +98,12 @@ export async function createProjectWithConfig(
     ),
     db.insert(projectSources).values(
       [...new Set(params.sourceIds)].map((sourceId) => ({ projectId, sourceId })),
+    ),
+    db.insert(alertRules).values(
+      toAlertRuleRows(params.case, params.alerts.rules).map((rule) => ({
+        ...rule,
+        projectId,
+      })),
     ),
   ]);
 

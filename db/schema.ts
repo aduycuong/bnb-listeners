@@ -124,6 +124,15 @@ export const projects = pgTable(
       .default({}),
     /** Demo projects render the sample dashboard instead of real data. */
     isDemo: boolean("is_demo").notNull().default(false),
+    /** Default alert channels, recipients and the AI report schedule. */
+    notificationConfig: jsonb("notification_config")
+      .$type<{
+        channels?: string[];
+        recipients?: string[];
+        reportSchedule?: string;
+      }>()
+      .notNull()
+      .default({}),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1523,3 +1532,43 @@ export const projectSources = pgTable(
 
 export type ProjectSource = typeof projectSources.$inferSelect;
 export type NewProjectSource = typeof projectSources.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// L5 — Outputs. Rules are configured now; evaluation starts in phase 6.
+// ---------------------------------------------------------------------------
+
+/** One alert rule of a project, created from the case's alert template. */
+export const alertRules = pgTable(
+  "alert_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** Template key, e.g. `negative_aspect_share`; unique per project. */
+    key: text("key").notNull(),
+    /** threshold | growth */
+    type: text("type").notNull(),
+    /** Template inputs plus the user's `threshold`. */
+    params: jsonb("params")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    /** Overrides `projects.notification_config.channels`; null = project default. */
+    channels: jsonb("channels").$type<string[]>(),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("alert_rules_project_key_idx").on(table.projectId, table.key),
+  ],
+);
+
+export type AlertRule = typeof alertRules.$inferSelect;
+export type NewAlertRule = typeof alertRules.$inferInsert;

@@ -4,6 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 
 import {
+  alertRules,
   projectAspects,
   projectEntities,
   projectQueries,
@@ -15,6 +16,7 @@ import { db } from "@/lib/db";
 
 import { CASE_TEMPLATES } from "../case-templates";
 import type { UpdateProjectConfigParams, UpdateProjectConfigResult } from "../types";
+import { toAlertRuleRows } from "../utils/to-alert-rule-rows";
 import { toAspectKey } from "../utils/to-aspect-key";
 import { toQueryInclude } from "../utils/to-query-include";
 import { assertSourcesSelectable } from "./assert-sources-selectable";
@@ -46,7 +48,8 @@ function sameSet(a: readonly string[], b: readonly string[]) {
 /**
  * Replaces a project's config. Entity and aspect ids are kept so later analysis
  * rows stay linked. A query's `version` goes up only when its terms change;
- * `config_version` goes up when anything changes.
+ * `config_version` goes up when anything that affects analysis changes.
+ * Alert rules and delivery settings are saved without bumping it.
  */
 export async function updateProjectConfig(
   params: UpdateProjectConfigParams,
@@ -257,7 +260,23 @@ export async function updateProjectConfig(
     );
   }
 
-  if (!changed) {
+  // Alerts: upsert by key so rule ids stay stable for future alert rows.
+  const alertsChanged = stableJson(current.alerts) !== stableJson(params.alerts);
+  if (alertsChanged) {
+    for (const rule of toAlertRuleRows(params.case, params.alerts.rules)) {
+      writes.push(
+        db
+          .insert(alertRules)
+          .values({ ...rule, projectId })
+          .onConflictDoUpdate({
+            target: [alertRules.projectId, alertRules.key],
+            set: { type: rule.type, params: rule.params, enabled: rule.enabled, updatedAt: new Date() },
+          }),
+      );
+    }
+  }
+
+  if (!changed && !alertsChanged) {
     return { ...current, message: "Cấu hình không thay đổi." };
   }
 
@@ -267,7 +286,12 @@ export async function updateProjectConfig(
       .set({
         mode: params.mode,
         caseConfig,
-        configVersion: current.configVersion + 1,
+        notificationConfig: {
+          channels: params.alerts.channels,
+          recipients: params.alerts.recipients,
+          reportSchedule: params.alerts.reportSchedule,
+        },
+        configVersion: changed ? current.configVersion + 1 : current.configVersion,
         updatedAt: new Date(),
       })
       .where(eq(projects.id, projectId)),

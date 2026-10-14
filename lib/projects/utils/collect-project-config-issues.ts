@@ -1,3 +1,4 @@
+import { ALERT_TEMPLATES } from "../alert-templates";
 import { CASE_TEMPLATES, type EntityRole } from "../case-templates";
 import type { AvailableProjectCase } from "../project-cases";
 
@@ -17,11 +18,18 @@ export function collectProjectConfigIssues(
     caseConfig?: Record<string, unknown>;
     entities?: { role: EntityRole }[];
     aspects?: { name: string }[];
+    alerts?: {
+      rules?: { key: string; enabled: boolean }[];
+      channels?: string[];
+      recipients?: string[];
+      reportSchedule?: string;
+    };
   },
-  parts: { config?: boolean; entities?: boolean; aspects?: boolean } = {
+  parts: { config?: boolean; entities?: boolean; aspects?: boolean; alerts?: boolean } = {
     config: true,
     entities: true,
     aspects: true,
+    alerts: true,
   },
 ): ProjectConfigIssue[] {
   const template = CASE_TEMPLATES[value.case];
@@ -75,6 +83,40 @@ export function collectProjectConfigIssues(
       }
       names.add(key);
     });
+  }
+
+  if (parts.alerts && value.alerts) {
+    const alerts = value.alerts;
+    const templates = new Map(ALERT_TEMPLATES[value.case].map((rule) => [rule.key, rule]));
+    const rules = alerts.rules ?? [];
+
+    rules.forEach((rule, index) => {
+      const template = templates.get(rule.key);
+      if (!template) {
+        issues.push({
+          path: ["alerts", "rules", index, "key"],
+          message: `Cảnh báo "${rule.key}" không dùng cho case này.`,
+        });
+        return;
+      }
+      const required = template.requiresConfig;
+      if (rule.enabled && required && value.caseConfig?.[required] === undefined) {
+        issues.push({
+          path: ["alerts", "rules", index, "threshold"],
+          message: "Cần nhập giá tham chiếu ở bước đối tượng theo dõi.",
+        });
+      }
+    });
+
+    const active =
+      rules.some((rule) => rule.enabled) ||
+      (alerts.reportSchedule !== undefined && alerts.reportSchedule !== "none");
+    if (active && (alerts.channels ?? []).length === 0) {
+      issues.push({ path: ["alerts", "channels"], message: "Chọn ít nhất một kênh gửi." });
+    }
+    if (active && (alerts.channels ?? []).includes("email") && (alerts.recipients ?? []).length === 0) {
+      issues.push({ path: ["alerts", "recipients"], message: "Nhập ít nhất một email nhận." });
+    }
   }
 
   return issues;

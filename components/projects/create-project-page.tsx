@@ -16,6 +16,8 @@ import {
 
 import { FormFieldText } from "@/components/forms/form-field-text";
 import { FormFieldTextarea } from "@/components/forms/form-field-textarea";
+import { useAuth } from "@/components/auth/auth-provider";
+import { ProjectAlertsFields } from "@/components/projects/config/project-alerts-fields";
 import { ProjectAspectsFields } from "@/components/projects/config/project-aspects-fields";
 import { ProjectCaseConfigFields } from "@/components/projects/config/project-case-config-fields";
 import { ProjectConfigSummary } from "@/components/projects/config/project-config-summary";
@@ -61,6 +63,7 @@ const STEPS = [
   "Đối tượng theo dõi",
   "Khía cạnh",
   "Nguồn",
+  "Cảnh báo & báo cáo",
   "Xem lại",
 ] as const;
 
@@ -69,6 +72,7 @@ const STEP_FIELDS: Record<number, FieldPath<FormValues>[]> = {
   2: ["entities", "caseConfig"],
   3: ["aspects"],
   4: ["sourceIds"],
+  5: ["alerts"],
 };
 
 const STEP_OF_FIELD: Record<string, number> = {
@@ -79,6 +83,7 @@ const STEP_OF_FIELD: Record<string, number> = {
   caseConfig: 2,
   aspects: 3,
   sourceIds: 4,
+  alerts: 5,
 };
 
 const ENTITY_STEP_TITLE: Record<AvailableProjectCase, string> = {
@@ -96,6 +101,7 @@ export function CreateProjectPage({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { workspace, workspaceIndex } = useWorkspaceRouteContext(workspaceIndexParam);
+  const { user } = useAuth();
   const { data } = useQuery({
     queryKey: projectsQueryKey(workspace?.id ?? "pending"),
     queryFn: () => fetchProjects(workspace!.id),
@@ -118,7 +124,7 @@ export function CreateProjectPage({
   function chooseCase(next: AvailableProjectCase) {
     if (next !== projectCase) {
       const current = form.getValues();
-      form.reset(toNewProjectFormValues(next, current));
+      form.reset(toNewProjectFormValues(next, current, user?.email));
     }
     setProjectCase(next);
     setStep(1);
@@ -137,8 +143,9 @@ export function CreateProjectPage({
         caseConfig: values.caseConfig,
         entities: values.entities,
         aspects: values.aspects,
+        alerts: values.alerts,
       },
-      { config: index === 2, entities: index === 2, aspects: index === 3 },
+      { config: index === 2, entities: index === 2, aspects: index === 3, alerts: index === 5 },
     );
     for (const issue of issues) {
       const path = issue.path.join(".");
@@ -344,6 +351,15 @@ export function CreateProjectPage({
           ) : null}
 
           {step === 5 && projectCase ? (
+            <StepBody
+              title="Cảnh báo & báo cáo"
+              description="Quy tắc gợi ý theo kiểu case. Bỏ chọn hoặc chỉnh ngưỡng theo nhu cầu."
+            >
+              <ProjectAlertsFields form={form} projectCase={projectCase} />
+            </StepBody>
+          ) : null}
+
+          {step === 6 && projectCase ? (
             <StepBody title="Xem lại" description="Kiểm tra cấu hình trước khi tạo project.">
               <ReviewStep form={form} workspaceId={workspace.id} caseLabel={t(`cases.${projectCase}`)} />
             </StepBody>

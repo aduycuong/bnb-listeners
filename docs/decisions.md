@@ -177,7 +177,10 @@ Rà lại việc lấy dữ liệu Facebook trước giai đoạn 3.
 - Aspect khởi tạo từ template theo case, sửa được.
 - Nguồn: chỉ chọn trong `sources` đã có, **không thêm group mới từ wizard** (thêm nguồn vẫn qua `npm run collect:facebook`). Project `live` chỉ chọn được nguồn `origin = connector`; project `sandbox` chọn được cả nguồn giả.
 - `config_version` của project tăng mỗi khi sửa cấu hình. `project_queries.version` tăng khi sửa `include`, `with`, `exclude` của truy vấn đó.
-- Bước cảnh báo và chia sẻ trong wizard tạm ẩn tới giai đoạn 6.
+- Wizard có đủ input cho cả phần chưa chạy (đổi ngày 2026-10-14): cấu hình được lưu ngay, phần xử lý làm ở giai đoạn của nó mà không phải sửa lại form.
+  - Cảnh báo: template rule theo case (`lib/projects/alert-templates.ts`), mỗi rule một dòng `alert_rules` (`key`, `type`, `params` gồm ngưỡng, `enabled`). Kênh gửi, người nhận và lịch báo cáo AI nằm ở `projects.notification_config`. Rule bắt đầu chạy từ giai đoạn 6; Email trước, Zalo/SMS/Slack sau.
+  - Sửa cảnh báo không tăng `config_version`, vì không ảnh hưởng Match/Enrich.
+  - Bỏ "thành viên dự án" khỏi wizard: quyền vẫn theo workspace, sẽ mở rộng ở phần workspace member.
 - `projects.is_demo` đánh dấu các project demo (dashboard số liệu mẫu). Project thật chưa hiện dashboard demo, tránh nhầm số liệu mẫu với số liệu thật.
 
 **Hoãn lại**

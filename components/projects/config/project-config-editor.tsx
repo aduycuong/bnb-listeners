@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, PencilIcon } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 
+import { ProjectAlertsFields } from "@/components/projects/config/project-alerts-fields";
 import { ProjectAspectsFields } from "@/components/projects/config/project-aspects-fields";
 import { ProjectCaseConfigFields } from "@/components/projects/config/project-case-config-fields";
 import { ProjectEntitiesFields } from "@/components/projects/config/project-entities-fields";
@@ -140,6 +141,7 @@ function ProjectConfigForm({
       entities: values.entities,
       aspects: values.aspects,
       sourceIds: values.sourceIds,
+      alerts: values.alerts,
     };
     const res = await projectFetch(
       workspaceId,
@@ -217,6 +219,12 @@ function ProjectConfigForm({
         </Section>
         <Section title="Nguồn theo dõi">
           <ProjectSourcesFields form={form} workspaceId={workspaceId} />
+        </Section>
+        <Section
+          title="Cảnh báo & báo cáo"
+          description="Sửa phần này không tăng phiên bản cấu hình và không so khớp lại."
+        >
+          <ProjectAlertsFields form={form} projectCase={projectCase} />
         </Section>
       </fieldset>
       {canEdit ? (

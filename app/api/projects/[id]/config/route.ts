@@ -37,6 +37,7 @@ export const PUT = createApiHandler(
       entities: params.entities,
       aspects: params.aspects,
       sourceIds: params.sourceIds,
+      alerts: params.alerts,
     }),
   {
     allowedRoles: [],

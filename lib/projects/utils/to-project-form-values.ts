@@ -1,3 +1,4 @@
+import { ALERT_TEMPLATES } from "../alert-templates";
 import { CASE_TEMPLATES } from "../case-templates";
 import type { AvailableProjectCase } from "../project-cases";
 import type { CreateProjectWithConfigInput } from "../schema";
@@ -7,6 +8,7 @@ import type { ProjectConfigDetail } from "../types";
 export function toNewProjectFormValues(
   projectCase: AvailableProjectCase,
   current?: Pick<CreateProjectWithConfigInput, "name" | "description" | "mode" | "sourceIds">,
+  recipient?: string | null,
 ): CreateProjectWithConfigInput {
   const template = CASE_TEMPLATES[projectCase];
 
@@ -30,6 +32,17 @@ export function toNewProjectFormValues(
       description: aspect.description,
     })),
     sourceIds: current?.sourceIds ?? [],
+    alerts: {
+      // Rules needing a case field the user has not filled start disabled.
+      rules: ALERT_TEMPLATES[projectCase].map((rule) => ({
+        key: rule.key,
+        enabled: !rule.requiresConfig,
+        threshold: rule.defaultThreshold,
+      })),
+      channels: ["email"],
+      recipients: recipient ? [recipient] : [],
+      reportSchedule: "weekly",
+    },
   };
 }
 
@@ -59,5 +72,6 @@ export function toProjectFormValues(
       description: aspect.description,
     })),
     sourceIds: config.sourceIds,
+    alerts: structuredClone(config.alerts),
   };
 }
