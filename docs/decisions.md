@@ -197,6 +197,10 @@ Rà lại việc lấy dữ liệu Facebook trước giai đoạn 3.
 - Chi phí: code phải giữ mọi phiên bản còn project đang chạy. Report, prompt Enrich và bộ đánh giá cảnh báo (giai đoạn 4–6) đọc `case_version` để chọn đúng định nghĩa. Phiên bản cũ chỉ được xóa khi không còn project nào dùng.
 - Nâng cấp phiên bản tăng `config_version` (cấu hình phân tích đổi).
 
+**Không làm**
+- "Bộ dữ liệu" của workspace gom mention cho nhiều project (ý tưởng trong wizard demo cũ): thu thập theo nguồn nên không tiết kiệm chi phí cào; gom bộ không liên quan làm sai số liệu và SoV. Mention luôn tính theo truy vấn của từng project trên kho thô.
+- Thư viện đối tượng của workspace và danh sách loại trừ chung cho project: chưa làm.
+
 **Hoãn lại**
 - Bộ địa danh dùng chung (alias, tên trước/sau sáp nhập tỉnh) cho `market`: tạm thời người dùng tự nhập alias khu vực.
 - Truy vấn không từ khóa (mọi nội dung của nguồn đã chọn đều là mention): cần cho `lead` và một phần `market`.
