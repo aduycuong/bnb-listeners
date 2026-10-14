@@ -214,7 +214,7 @@ function MiniStats({ items }: { items: { label: string; value: string }[] }) {
 }
 
 export function caseWidgets(caseId: AquaCaseId): DemoWidget[] {
-  if (caseId === "general") {
+  if (caseId === "brand") {
     return [
       {
         title: "Chỉ số uy tín chủ đầu tư",
@@ -261,7 +261,7 @@ export function caseWidgets(caseId: AquaCaseId): DemoWidget[] {
     ];
   }
 
-  if (caseId === "campaign") {
+  if (caseId === "project") {
     return [
       {
         title: "Giá rao bán lại theo tháng",
@@ -399,7 +399,7 @@ export function caseWidgets(caseId: AquaCaseId): DemoWidget[] {
     ];
   }
 
-  if (caseId === "competitor") {
+  if (caseId === "market") {
     const ranked = [...AQUA_AREAS].sort((a, b) => b.mentions - a.mentions);
     return [
       {

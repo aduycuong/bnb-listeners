@@ -20,7 +20,7 @@ export async function createProject(
       workspaceId: params.workspaceId,
       name,
       description,
-      listeningCase: params.case ?? "general",
+      listeningCase: params.case ?? "project",
     })
     .returning();
 

@@ -87,20 +87,21 @@ Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` 
 
 ## L2 — Project config
 
-**`projects`**: `workspace_id`, `name`, `case`, `mode` (`live` | `sandbox`), `timezone`, `config_version`
+**`projects`**: `workspace_id`, `name`, `case` (id case BĐS, xem [D10](decisions.md#d10--giai-đoạn-3-case-bđs-và-cấu-hình-project-2026-10-14)), `mode` (`live` | `sandbox`), `timezone`, `config_version`, `case_config` (jsonb, trường riêng theo case), `is_demo`
 
 **`project_entities`**: đối tượng được theo dõi.
-- `role` (`primary`, `competitor`, `product`, `person`)
-- `name`, `aliases[]`, `color`
+- `role` (`primary`, `competitor`, `product`, `person`, `area`)
+- `name`, `aliases[]`, `color`, `sort_order`
 
 **`project_queries`**: điều kiện để một nội dung được tính là mention.
 - `entity_id` (nullable)
-- `include` (từ khóa chính), `with` (bắt buộc đi kèm), `exclude`, `proximity`
-- `version`: tăng mỗi khi sửa, kéo theo việc so khớp lại
+- `include` (từ khóa chính, khớp một trong các từ), `with_terms` (bắt buộc đi kèm ít nhất một từ), `exclude`, `proximity`
+- `version`: tăng mỗi khi sửa `include`, `with_terms`, `exclude`, kéo theo việc so khớp lại
 
-**`project_aspects`**: bộ khía cạnh (pháp lý, tiến độ, giá & thanh toán…). Khởi tạo từ template theo ngành/case, sửa được.
+**`project_aspects`**: bộ khía cạnh (pháp lý, tiến độ, giá & thanh toán…). Khởi tạo từ template theo case, sửa được.
+- `key`, `name`, `description`, `sort_order`
 
-**`project_sources`**: nguồn theo dõi chủ động (bắt buộc với Facebook) và platform được bật cho project.
+**`project_sources`**: nguồn theo dõi chủ động (bắt buộc với Facebook). Project `live` chỉ dùng nguồn `origin = connector`.
 
 **`project_scenarios`**: các scenario gắn vào project sandbox. Chưa làm; chỉ cần khi có `scenarios` (xem [D8](decisions.md#d8--giai-đoạn-2-persona--connector-ảo--kho-thô-2026-10-13)).
 

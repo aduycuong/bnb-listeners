@@ -1,6 +1,6 @@
 import { createApiHandler } from "@/lib/exposers/create-api-handler";
-import { createProjectSchema } from "@/lib/projects/schema";
-import { createProject } from "@/lib/projects/services/create-project";
+import { createProjectWithConfigSchema } from "@/lib/projects/schema";
+import { createProjectWithConfig } from "@/lib/projects/services/create-project-with-config";
 import { listProjects } from "@/lib/projects/services/list-projects";
 
 export const GET = createApiHandler(
@@ -13,13 +13,18 @@ export const GET = createApiHandler(
 );
 
 export const POST = createApiHandler(
-  { requestBody: createProjectSchema },
+  { requestBody: createProjectWithConfigSchema },
   (params, ctx) =>
-    createProject({
+    createProjectWithConfig({
       workspaceId: ctx.workspaceId,
       name: params.name,
       description: params.description,
       case: params.case,
+      mode: params.mode,
+      caseConfig: params.caseConfig,
+      entities: params.entities,
+      aspects: params.aspects,
+      sourceIds: params.sourceIds,
     }),
   {
     allowedRoles: [],

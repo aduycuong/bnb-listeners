@@ -17,6 +17,8 @@ export function toAPIError(error: unknown): APIError | null {
       return new APIError("ERR_UPDATE_FAILED", error.message, 500);
     case "DELETE_FAILED":
       return new APIError("ERR_DELETE_FAILED", error.message, 500);
+    case "INVALID":
+      return new APIError("ERR_INVALID", error.message, 400);
     case "UNKNOWN":
       return new APIError("ERR_UNKNOWN", error.message, 500);
     default:

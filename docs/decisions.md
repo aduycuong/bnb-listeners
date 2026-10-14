@@ -143,3 +143,43 @@ Rà lại việc lấy dữ liệu Facebook trước giai đoạn 3.
 - Thứ tự chọn `authors.external_id` (`to-facebook-comment-author.ts`): id số trong `user_id` hoặc trong link profile (`commentator_profile`) → link profile dạng username → token `pfbid` (gắn `metadata.idStable = false`). Trên dữ liệu probe, số comment đổi id tác giả giữa các lần cào giảm từ 32 xuống 17 (trên 135).
 - Item đã có trong kho giữ nguyên `author_id` khi được lấy lại, và không tạo author mới cho item đó.
 - **Giới hạn:** khoảng 23% dòng comment chỉ có `pfbid`. Cùng một người comment ở nhiều bài có thể thành nhiều dòng `authors`, nên số tác giả duy nhất từ comment bị đếm dư. Chỉ số theo tác giả nên tách hoặc ghi chú phần `idStable = false`.
+
+## D10 — Giai đoạn 3: case BĐS và cấu hình project (2026-10-14)
+
+Đánh giá lại các case trước khi làm cấu hình project. Chi tiết ở [plan.md](plan.md#giai-đoạn-3--cấu-hình-project-và-match-l2--mentions).
+
+**Case**
+- Case là một **tình huống theo dõi cụ thể**, không chung chung. Hai case có thể giống nhau ở Collect và Enrich nhưng khác nhau về report và view, nên vẫn là hai case riêng (ví dụ `crisis` tách khỏi `brand`, `rival` tách khỏi `project`).
+- `projects.case` lưu id case BĐS thay cho bộ case social listening chung (`general`, `campaign`, `cx`…). Danh sách nằm trong `lib/projects/project-cases.ts`:
+  `brand`, `project`, `ir`, `launch`, `broker`, `lead`, `rival`, `market`, `policy`, `kol`, `crisis`, `residents`.
+- Case cũ được chuyển bằng `npm run projects:migrate-cases`: `general → brand`, `campaign → project`, `competitor → market`, `cx → broker`, `crisis → crisis`. Các case cũ không có trong demo (`reputation`, `trend`, `care`, `employer`…) được chuyển về case gần nhất.
+- Giai đoạn 3 làm thật 3 case: `project`, `market`, `brand`. Các case khác hiện ở wizard với nhãn "sắp có".
+- `lead` chưa làm vì cần nghiên cứu pháp lý về dữ liệu cá nhân.
+
+**Ưu tiên** (theo dữ liệu đang có: Facebook group/page được theo dõi chủ động, chưa có báo chí, TikTok, rao vặt)
+
+| Ưu tiên | Case | Lý do |
+|---|---|---|
+| P1 | `project`, `market` | Là nội dung chính của group review BĐS; có giá trị trực tiếp cho marketing |
+| P2 | `brand` | Dùng lại pipeline của `project` (CĐT là entity chính, các dự án là `product`); thiếu báo chí nên chỉ số uy tín chưa đầy đủ |
+| P2 | `lead` | Giá trị cao cho sales, nhưng là bài toán ý định mua (Enrich) và vướng dữ liệu cá nhân |
+| P3 | `launch`, `rival`, `crisis` | Có dữ liệu; `crisis` cần cảnh báo (giai đoạn 6) |
+| P4 | `residents`, `broker`, `policy`, `kol` | Cần group riêng tư, rao vặt, báo chí hoặc TikTok/YouTube |
+| P5 | `ir` | Cần diễn đàn chứng khoán, báo chí; ít liên quan tới marketing |
+
+**Cấu hình project**
+- Entity theo case:
+  - `project`: 1 `primary` (dự án, alias là tên phân khu, tên cũ) và các `competitor` (dự án cạnh tranh).
+  - `brand`: 1 `primary` (CĐT, alias gồm mã cổ phiếu), các `product` (dự án của CĐT) và các `competitor` (CĐT khác, dùng cho SoV).
+  - `market`: các `area` (khu vực), không có `primary`.
+- Mỗi entity có một truy vấn được sinh sẵn (`include` = tên + alias), sửa thêm được `with` và `exclude`.
+- Trường riêng theo case (phân khúc, giai đoạn, giá tham chiếu, kỳ báo cáo…) nằm trong `projects.case_config` (jsonb, validate bằng zod theo case).
+- Aspect khởi tạo từ template theo case, sửa được.
+- Nguồn: chỉ chọn trong `sources` đã có, **không thêm group mới từ wizard** (thêm nguồn vẫn qua `npm run collect:facebook`). Project `live` chỉ chọn được nguồn `origin = connector`; project `sandbox` chọn được cả nguồn giả.
+- `config_version` của project tăng mỗi khi sửa cấu hình. `project_queries.version` tăng khi sửa `include`, `with`, `exclude` của truy vấn đó.
+- Bước cảnh báo và chia sẻ trong wizard tạm ẩn tới giai đoạn 6.
+- `projects.is_demo` đánh dấu các project demo (dashboard số liệu mẫu). Project thật chưa hiện dashboard demo, tránh nhầm số liệu mẫu với số liệu thật.
+
+**Hoãn lại**
+- Bộ địa danh dùng chung (alias, tên trước/sau sáp nhập tỉnh) cho `market`: tạm thời người dùng tự nhập alias khu vực.
+- Truy vấn không từ khóa (mọi nội dung của nguồn đã chọn đều là mention): cần cho `lead` và một phần `market`.

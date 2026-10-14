@@ -33,6 +33,7 @@ export async function seedDemoProjects(params: {
           name: demo.name,
           description: demo.description,
           listeningCase: demo.case,
+          isDemo: true,
         })
         .where(
           and(eq(projects.id, legacy.id), eq(projects.workspaceId, params.workspaceId)),
@@ -51,7 +52,7 @@ export async function seedDemoProjects(params: {
     });
     await db
       .update(projects)
-      .set({ createdAt: new Date(orderBase + index * 1000) })
+      .set({ createdAt: new Date(orderBase + index * 1000), isDemo: true })
       .where(eq(projects.id, project.id));
     names.add(demo.name);
     created.push(demo.name);
