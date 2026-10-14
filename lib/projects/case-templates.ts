@@ -94,6 +94,54 @@ export type CaseUpgradeValues = {
   aspects: { id: string; key?: string; name: string; description?: string }[];
 };
 
+export const PRICE_UNITS = ["trieu_m2", "ty_can", "trieu_thang", "khac"] as const;
+export const PRICE_KINDS = ["rao_ban", "cho_thue", "gia_cdt", "khac"] as const;
+
+const priceQuoteSchema = z.object({
+  amount: z.number().describe("Số tiền, chỉ phần số, ví dụ 46 hoặc 2.5"),
+  unit: z.enum(PRICE_UNITS).describe("triệu/m², tỷ/căn, triệu/tháng (giá thuê) hoặc khác"),
+  kind: z.enum(PRICE_KINDS).describe("Giá rao bán lại, giá cho thuê, giá chủ đầu tư công bố, hoặc khác"),
+  quote: z.string().describe("Đoạn văn bản nhắc tới giá, giữ nguyên"),
+});
+
+/** A field Enrich extracts for one case; stored in `mention_extractions` (D14). */
+export type CaseExtraction = {
+  key: string;
+  label: string;
+  /** Instruction for the Enrich prompt. */
+  description: string;
+  /** True: zero or more per mention. False: at most one. */
+  many: boolean;
+  schema: z.ZodObject<z.ZodRawShape>;
+};
+
+const PRICE_QUOTE: CaseExtraction = {
+  key: "price_quote",
+  label: "Giá được nhắc",
+  description: "Mỗi mức giá cụ thể được nhắc tới (rao bán, cho thuê, giá chủ đầu tư). Bỏ qua nếu không có con số.",
+  many: true,
+  schema: priceQuoteSchema,
+};
+
+const BUYER_QUESTION: CaseExtraction = {
+  key: "buyer_question",
+  label: "Câu hỏi của người mua",
+  description: "Khi mục là câu hỏi của người đang cân nhắc mua hoặc thuê: chủ đề và câu hỏi.",
+  many: false,
+  schema: z.object({
+    topic: z.string().describe("Chủ đề ngắn: pháp lý, giá, tiến độ, vay, tiện ích…"),
+    question: z.string().describe("Câu hỏi, viết gọn"),
+  }),
+};
+
+const AREA_PRICE_QUOTE: CaseExtraction = {
+  ...PRICE_QUOTE,
+  description: "Mỗi mức giá cụ thể được nhắc tới, kèm khu vực của mức giá đó nếu xác định được.",
+  schema: priceQuoteSchema.extend({
+    area: z.string().nullable().describe("Tên khu vực của mức giá, null nếu không rõ"),
+  }),
+};
+
 export type CaseTemplate = {
   /** Starts at 1; a project keeps its version until the user upgrades it. */
   version: number;
@@ -103,6 +151,8 @@ export type CaseTemplate = {
   defaultConfig: Record<string, unknown>;
   /** Rules a new project of this version starts with. */
   alertSeeds: AlertRuleSeed[];
+  /** Case-specific fields Enrich extracts. */
+  extractions: CaseExtraction[];
   /**
    * How a project moves here from the previous version. `notes` are shown in
    * the upgrade banner; `migrate` prefills the new form, which the user then
@@ -153,6 +203,7 @@ export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
     ],
     configSchema: projectCaseConfigSchema,
     defaultConfig: { segment: "Căn hộ", stage: "Đang mở bán" },
+    extractions: [PRICE_QUOTE, BUYER_QUESTION],
     alertSeeds: [
       { kind: "negative_share", scope: { type: "aspect_key", key: "legal" } },
       { kind: "negative_share", scope: { type: "aspect_key", key: "progress" } },
@@ -184,6 +235,7 @@ export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
     ],
     configSchema: marketCaseConfigSchema,
     defaultConfig: { segments: ["Căn hộ"], period: "week" },
+    extractions: [AREA_PRICE_QUOTE],
     alertSeeds: [
       { kind: "volume_growth", scope: { type: "each_role", role: "area" } },
       {
@@ -236,6 +288,7 @@ export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
     ],
     configSchema: brandCaseConfigSchema,
     defaultConfig: { period: "month" },
+    extractions: [],
     alertSeeds: [
       { kind: "negative_share", scope: { type: "first_of_role", role: "primary" }, threshold: 20 },
       {

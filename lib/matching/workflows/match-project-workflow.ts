@@ -1,6 +1,8 @@
 import type { RouteFunction, WorkflowServeOptions } from "@upstash/workflow";
 import { z } from "zod";
 
+import { triggerProjectEnrich } from "@/lib/enrichment/services/trigger-project-enrich";
+
 import { MATCH_CONFIG } from "../config";
 import { finalizeProjectMatch } from "../services/finalize-project-match";
 import { judgeThreads } from "../services/judge-threads";
@@ -20,6 +22,7 @@ export const matchProjectWorkflowPayloadSchema = z.object({
  *    match runs a full match instead.
  * 2. judge-{n}: tier 2 for a few threads per step.
  * 3. finalize (full only): drop stale mentions and record the signature.
+ * 4. enrich: start Enrich for the project's new or changed mentions.
  */
 export const matchProjectWorkflow: RouteFunction<MatchProjectWorkflowPayload> = async (
   context,
@@ -52,6 +55,10 @@ export const matchProjectWorkflow: RouteFunction<MatchProjectWorkflowPayload> = 
       finalizeProjectMatch({ projectId, signature: lexical.signature }),
     );
   }
+
+  await context.run("enrich", () =>
+    triggerProjectEnrich({ projectId, runKey: context.workflowRunId.replace(/^wfr_/, "") }),
+  );
 };
 
 export const matchProjectWorkflowOptions: WorkflowServeOptions<MatchProjectWorkflowPayload> = {

@@ -39,6 +39,8 @@ export async function getLabelSampleTask(params: {
       parentText: parent.text,
       parentIsRoot: sql<boolean>`${parent.id} = ${root.id}`,
       label: itemLabels.isRelevant,
+      labelSentiment: itemLabels.sentiment,
+      labelAspectKeys: itemLabels.aspectKeys,
     })
     .from(labelSampleItems)
     .innerJoin(contentItems, eq(contentItems.id, labelSampleItems.contentItemId))
@@ -65,7 +67,16 @@ export async function getLabelSampleTask(params: {
     .limit(1);
 
   if (!row) {
-    return { sample, position: start, item: null, root: null, parent: null, label: null };
+    return {
+      sample,
+      position: start,
+      item: null,
+      root: null,
+      parent: null,
+      label: null,
+      labelSentiment: null,
+      labelAspectKeys: null,
+    };
   }
 
   return {
@@ -83,5 +94,7 @@ export async function getLabelSampleTask(params: {
     root: row.rootId ? { text: row.rootText ?? "", url: row.rootUrl } : null,
     parent: row.parentText && !row.parentIsRoot ? { text: row.parentText } : null,
     label: row.label ?? null,
+    labelSentiment: row.labelSentiment ?? null,
+    labelAspectKeys: row.labelAspectKeys ?? null,
   };
 }

@@ -4,12 +4,13 @@ import { itemLabels, labelSampleItems, labelSamples, projects } from "@/db/schem
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 
-import type { LabelSampleSummary } from "../types";
+import type { LabelSampleKind, LabelSampleSummary } from "../types";
 
 /** Samples of a project with progress; one sample when `sampleId` is given. */
 export async function listLabelSampleSummaries(params: {
   projectId: string;
   sampleId?: string;
+  kind?: LabelSampleKind;
 }): Promise<LabelSampleSummary[]> {
   const labeled = db
     .select({ sampleId: labelSampleItems.sampleId, n: count().as("labeled") })
@@ -32,6 +33,7 @@ export async function listLabelSampleSummaries(params: {
   const rows = await db
     .select({
       id: labelSamples.id,
+      kind: labelSamples.kind,
       name: labelSamples.name,
       createdAt: labelSamples.createdAt,
       strata: labelSamples.strata,
@@ -48,12 +50,14 @@ export async function listLabelSampleSummaries(params: {
       and(
         eq(labelSamples.projectId, params.projectId),
         params.sampleId ? eq(labelSamples.id, params.sampleId) : undefined,
+        params.kind ? eq(labelSamples.kind, params.kind) : undefined,
       ),
     )
     .orderBy(desc(labelSamples.createdAt));
 
   return rows.map((row) => ({
     id: row.id,
+    kind: row.kind === "enrich" ? "enrich" : "match",
     name: row.name,
     createdAt: row.createdAt.toISOString(),
     size: row.size,

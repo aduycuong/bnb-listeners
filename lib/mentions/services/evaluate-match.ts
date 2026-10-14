@@ -24,7 +24,7 @@ export async function evaluateMatch(params: {
     const [latest] = await db
       .select({ id: labelSamples.id })
       .from(labelSamples)
-      .where(eq(labelSamples.projectId, params.projectId))
+      .where(and(eq(labelSamples.projectId, params.projectId), eq(labelSamples.kind, "match")))
       .orderBy(desc(labelSamples.createdAt))
       .limit(1);
     if (!latest) throw new NotFoundError("label sample for project", params.projectId);

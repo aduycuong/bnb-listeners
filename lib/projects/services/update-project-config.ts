@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import { InvalidInputError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
+import { triggerProjectEnrich } from "@/lib/enrichment/services/trigger-project-enrich";
 import { syncProjectMatch } from "@/lib/matching/services/sync-project-match";
 
 import { getCaseTemplate, hasCaseVersion } from "../case-templates";
@@ -331,7 +332,9 @@ export async function updateProjectConfig(
     ...writes,
   ]);
 
-  await syncProjectMatch({ projectId });
+  // A new match ends by starting Enrich; otherwise aspects or entities may still have changed.
+  const match = await syncProjectMatch({ projectId });
+  if (!match.triggered) await triggerProjectEnrich({ projectId });
 
   const updated = await getProjectConfig({
     workspaceId: params.workspaceId,

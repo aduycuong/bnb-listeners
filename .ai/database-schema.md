@@ -316,6 +316,14 @@ A content item that matched a project (docs/decisions.md D11). Tier 2 rejections
 | match_reason | text | YES | — | Tier 2 reason |
 | match_signature | text | NO | — | Project signature when written; stale rows are removed after a full match |
 | user_corrected | boolean | NO | `false` | Hand-corrected relevance survives re-matching |
+| sentiment | text | YES | — | Effective sentiment (label or Enrich): `positive`, `neutral`, `negative` |
+| auto_sentiment | text | YES | — | Enrich's sentiment, kept for evaluation |
+| sentiment_score | real | YES | — | -1 … 1 from Enrich |
+| emotion | text | YES | — | One of six emotions (`hai_long`, `tin_tuong`, `bat_ngo`, `lo_lang`, `tuc_gian`, `that_vong`) |
+| enrich_status | text | NO | `pending` | `pending`, `done`, `skipped` (not relevant), `failed` |
+| enrich_signature | text | YES | — | Enrich signature at enrich time (docs/decisions.md D14) |
+| enriched_content_hash | text | YES | — | Item content hash at enrich time |
+| enriched_at | timestamptz | YES | — | |
 | created_at / updated_at | timestamptz | NO | `now()` | |
 
 **Indexes:** `mentions_project_item_idx` UNIQUE `(project_id, content_item_id)`; `mentions_project_published_idx`; `mentions_project_root_idx`; `mentions_content_item_id_idx`
@@ -330,6 +338,8 @@ Hand label of one item in one project, kept apart from Match output (docs/decisi
 | project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
 | content_item_id | uuid | NO | — | FK → `content_items.id` ON DELETE CASCADE |
 | is_relevant | boolean | NO | — | Labeler's answer |
+| sentiment | text | YES | — | Labeled sentiment; null when not labeled |
+| aspect_keys | jsonb | YES | — | Labeled aspect keys; null = not labeled, [] = no aspect |
 | sample_id | uuid | YES | — | FK → `label_samples.id` ON DELETE SET NULL; set when labeled in a sample |
 | labeled_by | uuid | YES | — | FK → `users.id` ON DELETE SET NULL |
 | labeled_at | timestamptz | NO | `now()` | |
@@ -345,6 +355,7 @@ Stratified random sample of a project's items to label.
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
 | name | text | NO | — | e.g. `Mẫu 1` |
+| kind | text | NO | `match` | `match` (relevance, stratified) or `enrich` (sentiment and aspects of enriched mentions) |
 | strata | jsonb | NO | `{}` | `{ relevant, rejected, unmatched }` → `{ population, sampled }` |
 | match_signature | text | YES | — | Project match signature when sampled |
 | created_by | uuid | YES | — | FK → `users.id` ON DELETE SET NULL |
@@ -356,10 +367,48 @@ Stratified random sample of a project's items to label.
 | ------ | ---- | -------- | ------- | ----------- |
 | sample_id | uuid | NO | — | FK → `label_samples.id` ON DELETE CASCADE |
 | content_item_id | uuid | NO | — | FK → `content_items.id` ON DELETE CASCADE |
-| stratum | text | NO | — | `relevant`, `rejected` or `unmatched` |
+| stratum | text | NO | — | `relevant`, `rejected`, `unmatched` (match samples) or `enriched` |
 | position | integer | NO | — | Labeling order |
 
 **Keys:** primary key `(sample_id, content_item_id)`; `label_sample_items_sample_position_idx`
+
+### `mention_entities`
+
+Sentiment toward each tracked entity a mention talks about (Enrich).
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| mention_id | uuid | NO | — | FK → `mentions.id` ON DELETE CASCADE |
+| entity_id | uuid | NO | — | FK → `project_entities.id` ON DELETE CASCADE |
+| sentiment | text | NO | — | |
+
+**Keys:** primary key `(mention_id, entity_id)`; `mention_entities_entity_id_idx`
+
+### `mention_aspects`
+
+Aspects of a mention from Enrich. Labeled aspects live in `item_labels.aspect_keys` and take precedence.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| mention_id | uuid | NO | — | FK → `mentions.id` ON DELETE CASCADE |
+| aspect_id | uuid | NO | — | FK → `project_aspects.id` ON DELETE CASCADE |
+| source | text | NO | — | `auto` |
+| sentiment | text | YES | — | Sentiment toward this aspect |
+
+**Keys:** primary key `(mention_id, aspect_id, source)`; `mention_aspects_aspect_id_idx`
+
+### `mention_extractions`
+
+Case-specific fields from Enrich (`price_quote`, `buyer_question`, …).
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| mention_id | uuid | NO | — | FK → `mentions.id` ON DELETE CASCADE |
+| schema_key | text | NO | — | Extraction key from the case version |
+| data | jsonb | NO | — | Validated by the extraction's zod schema |
+
+**Indexes:** `mention_extractions_mention_id_idx`, `mention_extractions_schema_key_idx`
 
 ### `match_judgments`
 

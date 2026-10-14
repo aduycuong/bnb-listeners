@@ -10,6 +10,8 @@ export const PUT = createApiHandler(
       userId: ctx.userId,
       contentItemId: params.contentItemId,
       isRelevant: params.isRelevant,
+      sentiment: params.sentiment,
+      aspectKeys: params.aspectKeys,
       sampleId: params.sampleId,
     }),
   { allowedRoles: [], minWorkspacePermission: "edit", requireProject: true },
