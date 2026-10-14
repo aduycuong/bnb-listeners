@@ -224,4 +224,6 @@ Chi tiết ở [plan.md](plan.md#giai-đoạn-3--cấu-hình-project-và-match-l
 - Wizard: bước Nguồn đứng trước bước Đối tượng; bước Đối tượng xem trước số item khớp tầng 1 trong 30 ngày trên các nguồn đã chọn.
 - Đo: bộ sinh dữ liệu giả nhận `--target`; mỗi item ghi `metadata.aboutTarget`. `npm run match:eval` tính precision/recall theo tầng.
 
+**Giới hạn đã biết**: comment so sánh đối tượng với dự án khác ("tầm giá này mua được 2 căn Topaz City") đôi khi bị tầng 2 loại. Thử thêm quy tắc vào prompt không sửa được ca này mà làm recall trên dữ liệu giả giảm (0,991 → 0,965), nên giữ prompt v1.
+
 **Hoãn lại**: partition `mentions` theo tháng (giai đoạn 5), bộ mẫu thật gán nhãn tay (cần màn hình gán nhãn).

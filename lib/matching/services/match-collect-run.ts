@@ -26,7 +26,7 @@ export async function matchCollectRun(params: {
       name: "match-project",
       body: { projectId: project.id, collectRunId: params.collectRunId },
       workflowRunId: `match-${project.id}-${params.collectRunId}`,
-      label: `match ${project.id}`,
+      label: `match-${project.id}`,
     });
   }
 

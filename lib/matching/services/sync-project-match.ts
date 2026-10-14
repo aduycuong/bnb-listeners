@@ -19,7 +19,7 @@ export async function syncProjectMatch(params: {
       body: { projectId: params.projectId },
       // Same config → same run id, so double saves do not start two matches.
       workflowRunId: `match-${params.projectId}-${ctx.signature}`,
-      label: `match ${params.projectId}`,
+      label: `match-${params.projectId}`,
     });
     return { triggered: true };
   } catch (error) {

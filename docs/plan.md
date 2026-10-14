@@ -157,7 +157,15 @@ Case BĐS, thứ tự ưu tiên và cấu hình theo case: xem [D10](decisions.m
 - [x] So khớp lại khi chữ ký truy vấn/nguồn đổi (workflow `match-project`); so khớp tăng dần sau mỗi lần thu thập
 - [x] Bước Nguồn trước bước Đối tượng; xem trước số khớp tầng 1 trong wizard và settings
 - [x] `npm run match:project`, `npm run match:eval`; bộ sinh dữ liệu giả nhận `--target`
-- [ ] Đo precision/recall trên dữ liệu giả có nhãn
+- [x] Đo precision/recall trên dữ liệu giả có nhãn (2026-10-14, 193 item, 3 run: 2 về Lavita Thuận An có câu trùng tên, 1 về Picity Sky Park; project chỉ theo dõi Lavita):
+
+  | Cách | Precision | Recall | F1 |
+  |---|---|---|---|
+  | Tầng 1 (item nhắc tên) | 0,967 | 0,513 | 0,670 |
+  | Tầng 1 + tự kế thừa ngữ cảnh (A) | 0,935 | 1,000 | 0,966 |
+  | Tầng 1 + tầng 2 LLM (B) | 1,000 | 0,991 | 0,996 |
+
+  Trên group thật (Vinhomes, 682 item trong 30 ngày): 20 item nhắc tên, 255 comment ngữ cảnh qua tầng 2 (10 lần gọi LLM), 182 được tính. Chạy lại dùng cache, không gọi LLM.
 
 **Kết quả:** tạo được project `project`, `market`, `brand` cho workspace với cấu hình thật; precision/recall của Match đo được trên dữ liệu giả.
 
