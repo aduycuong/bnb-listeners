@@ -45,8 +45,6 @@ export const syntheticThreadsParamsSchema = z.object({
   styleSourceId: z.uuid().optional(),
   /** Look-alike sentences (same name, other meaning) mixed in as noise comments. */
   distractors: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
-  /** Entity the threads are about; labels items with `aboutTarget` for Match evaluation (D11). */
-  target: z.string().trim().min(1).max(120).optional(),
 });
 
 export type SyntheticThreadsParams = z.infer<typeof syntheticThreadsParamsSchema>;
@@ -89,10 +87,6 @@ export const syntheticRecordSchema = z.object({
     noise: z.enum(["spam", "off-topic", "distractor"]).nullable(),
     /** Degradations applied to the LLM text: `no-diacritics`, `typo`. */
     degraded: z.array(z.string()),
-    /** Optional: only runs started with a target carry these labels. */
-    target: z.string().nullable().optional(),
-    /** True when the item discusses the target; noise items are false. */
-    aboutTarget: z.boolean().nullable().optional(),
   }),
 });
 

@@ -64,7 +64,7 @@ Payload R2 là danh sách record phẳng (mỗi record một post, comment hoặ
 
 Một yêu cầu sinh nhiều hơn `maxThreadsPerRun` được chia thành nhiều run (`startSyntheticGeneration`), run thứ `i` dùng `seed + i`.
 
-Spec của từng item được ghi vào `content_items.metadata`: `personaId`, `panelId`, `brief`, `threadIndex`, `sentiment`, `aspect`, `length`, `briefRelevance` (`direct`, `related`, `general`: bám sự kiện trong brief nhiều hay ít), `noise` (`spam`, `off-topic`, `distractor` hoặc null), `degraded` (`typo`, `no-diacritics`). Sau này có thể dựng `synthetic_labels` từ đây mà không cần sinh lại.
+Spec của từng item được ghi vào `content_items.metadata`: `personaId`, `panelId`, `brief`, `threadIndex`, `sentiment`, `aspect`, `length`, `briefRelevance` (`direct`, `related`, `general`: bám sự kiện trong brief nhiều hay ít), `noise` (`spam`, `off-topic`, `distractor` hoặc null), `degraded` (`typo`, `no-diacritics`). Đây chỉ là dấu vết lúc sinh, không dùng làm nhãn để kiểm chứng (xem [D12](decisions.md#d12--dữ-liệu-giả-không-dùng-để-kiểm-chứng-2026-10-14)).
 
 `sources` giả: `origin = synthetic`, `platform = facebook`, `source_type = group`, để hạ nguồn thấy cùng hình dạng với dữ liệu thật.
 
@@ -74,12 +74,12 @@ Giới hạn cần đo: `fetchRecords` chạy trong một bước workflow, nên
 
 - LLM viết nội dung có xu hướng "sạch" và đồng nhất hơn mạng xã hội thật. Cần trộn nhiễu: lỗi chính tả, nội dung không liên quan, spam, các ca trùng tên (ví dụ "La Pura" là nước hoa).
 - Nội dung sinh ra không tất định. Muốn tái hiện đúng, giữ payload R2 và `metadata`; `seed` chỉ cố định kế hoạch (số lượng, thời điểm, phân bổ persona).
-- Dữ liệu giả không thay thế bộ mẫu thật có gán nhãn khi đo chất lượng Match và Enrich.
+- Dữ liệu giả không dùng để đo chất lượng Match và Enrich; chỉ đo trên mẫu thật gán nhãn tay (D12). Sau khi vào kho thô, dữ liệu giả được xử lý như dữ liệu thật.
 - Nghiên cứu về LLM đóng vai persona cho thấy xu hướng đồng nhất hóa và rập khuôn; vì vậy đầu ra chưa được coi là dự báo phản ứng cộng đồng.
 
 ## Để sau
 
-- **`scenarios`** (timeline sự kiện, tham số phản ứng) và **`synthetic_labels`** (đáp án đúng để đo Match/Enrich, dựng từ `metadata`).
+- **`scenarios`** (timeline sự kiện, tham số phản ứng).
 - **Chế độ replay**: phát dần theo thời gian, để test cảnh báo (giai đoạn 6).
 - **Dự báo phản ứng**: dự đoán phân bố phản ứng theo panel và stimulus, chạy nhiều lượt, hiệu chỉnh theo tần suất lịch sử, so với baseline không persona, backtest trên sự kiện thật. Chỉ làm khi có dữ liệu thật từ nhiều nguồn để đối chiếu.
 - **Persona phức tạp hơn**: khai thác từ dữ liệu thật (gom cụm tác giả và comment), mẫu giọng văn gắn theo persona, thuộc tính hành vi (giờ hoạt động, độ trễ phản ứng, mức ảnh hưởng).

@@ -133,7 +133,7 @@ Mục tiêu thu hẹp: có dữ liệu post và comment nằm trong kho thô đ�
 
 **Kết quả:** từ một panel và một `brief`, sinh được post, comment và reply vào kho thô với `origin = synthetic`, truy vết được theo `collect_run_id` và persona.
 
-**Để sau** (không làm trong giai đoạn này): bảng `scenarios`, `synthetic_labels` (dựng từ `metadata` khi cần đo Enrich ở giai đoạn 4), chế độ replay (giai đoạn 6), dự báo phản ứng và backtest, khai thác persona từ dữ liệu thật, quy tắc cô lập dữ liệu giả theo project.
+**Để sau** (không làm trong giai đoạn này): bảng `scenarios`, chế độ replay (giai đoạn 6), dự báo phản ứng và backtest, khai thác persona từ dữ liệu thật, quy tắc cô lập dữ liệu giả theo project.
 
 ## Giai đoạn 3 — Cấu hình project và Match (L2 + `mentions`)
 
@@ -156,30 +156,31 @@ Case BĐS, thứ tự ưu tiên và cấu hình theo case: xem [D10](decisions.m
 - [x] Match tầng 1 (từ vựng) và tầng 2 (LLM theo thread, có cache) cho comment theo ngữ cảnh, khớp không dấu và tên dễ nhầm
 - [x] So khớp lại khi chữ ký truy vấn/nguồn đổi (workflow `match-project`); so khớp tăng dần sau mỗi lần thu thập
 - [x] Bước Nguồn trước bước Đối tượng; xem trước số khớp tầng 1 trong wizard và settings
-- [x] `npm run match:project`, `npm run match:eval`; bộ sinh dữ liệu giả nhận `--target`
-- [x] Đo precision/recall trên dữ liệu giả có nhãn (2026-10-14, 193 item, 3 run: 2 về Lavita Thuận An có câu trùng tên, 1 về Picity Sky Park; project chỉ theo dõi Lavita):
+- [x] `npm run match:project`
+- [x] Chạy thử trên group thật (Vinhomes, 682 item trong 30 ngày): 20 item nhắc tên, 255 comment ngữ cảnh qua tầng 2 (10 lần gọi LLM), 182 được tính. Chạy lại dùng cache, không gọi LLM.
+- [ ] Đo precision/recall trên mẫu thật gán nhãn tay (cùng đợt gán nhãn ở giai đoạn 4a). Dữ liệu giả không dùng để đo (D12).
 
-  | Cách | Precision | Recall | F1 |
-  |---|---|---|---|
-  | Tầng 1 (item nhắc tên) | 0,967 | 0,513 | 0,670 |
-  | Tầng 1 + tự kế thừa ngữ cảnh (A) | 0,935 | 1,000 | 0,966 |
-  | Tầng 1 + tầng 2 LLM (B) | 1,000 | 0,991 | 0,996 |
-
-  Trên group thật (Vinhomes, 682 item trong 30 ngày): 20 item nhắc tên, 255 comment ngữ cảnh qua tầng 2 (10 lần gọi LLM), 182 được tính. Chạy lại dùng cache, không gọi LLM.
-
-**Kết quả:** tạo được project `project`, `market`, `brand` cho workspace với cấu hình thật; precision/recall của Match đo được trên dữ liệu giả.
+**Kết quả:** tạo được project `project`, `market`, `brand` cho workspace với cấu hình thật; Match chạy trên dữ liệu thật và giả như nhau.
 
 ## Giai đoạn 4 — Enrich
 
-- [ ] Prompt structured output sinh từ cấu hình project
-- [ ] Sentiment, emotion, aspect, entity; extraction riêng theo case `general` trước
-- [ ] Chạy theo batch, cache theo `content_hash` + `config_version`
-- [ ] Gom cụm topic và đặt tên
-- [ ] Dựng `synthetic_labels` từ `metadata` của dữ liệu giả (ý định cảm xúc và aspect đã ghi lúc sinh, xem [D8](decisions.md#d8--giai-đoạn-2-persona--connector-ảo--kho-thô-2026-10-13))
-- [ ] Đánh giá với `synthetic_labels` và một bộ mẫu thật nhỏ có gán nhãn
-- [ ] Cho phép người dùng sửa nhãn trên giao diện (`user_corrected`)
+Kiểm chứng chỉ trên mẫu thật gán nhãn tay (D12), nên trang Mentions làm trước. Chi tiết Enrich chốt khi bắt đầu 4b.
 
-**Kết quả:** đạt ngưỡng chính xác được chấp nhận trên cả dữ liệu giả và mẫu thật.
+**4a — Trang Mentions và gán nhãn**
+- [ ] Danh sách mention của project, lọc theo nguồn, loại, khớp trực tiếp/ngữ cảnh, có liên quan hay không
+- [ ] Sửa nhãn trên giao diện (`user_corrected`): có liên quan hay không; sau 4b thêm sentiment, aspect
+- [ ] Gán nhãn một bộ mẫu thật (khoảng 150 mention) và đo precision/recall của Match
+
+**4b — Enrich lõi**
+- [ ] Prompt structured output sinh từ cấu hình project và phiên bản case
+- [ ] Sentiment, emotion, aspect, entity; trích xuất riêng theo case
+- [ ] Chạy theo batch, cache để không làm giàu lại nội dung không đổi
+- [ ] Đánh giá trên bộ mẫu thật gán nhãn
+
+**4c — Topic**
+- [ ] Gom cụm topic và đặt tên
+
+**Kết quả:** đạt ngưỡng chính xác được chấp nhận trên mẫu thật gán nhãn.
 
 ## Giai đoạn 5 — Aggregate và dashboard
 

@@ -110,13 +110,13 @@ Thu hẹp giai đoạn 2 thành một đường ống tạo dữ liệu. Chi ti�
 - Module `lib/personas/` thay cho `lib/scenarios/` (cập nhật D3).
 
 **Hoãn lại**
-- Bảng `scenarios`, `synthetic_labels` (dựng từ `metadata` khi đo Enrich ở giai đoạn 4), cột `scenario_id`, `project_scenarios`.
+- Bảng `scenarios`, cột `scenario_id`, `project_scenarios`. (`synthetic_labels` bỏ hẳn, xem D12.)
 - Quy tắc cô lập dữ liệu giả theo project (`mode = sandbox`). Cột `origin` đủ để lọc khi cần.
 - Chế độ replay (giai đoạn 6), snapshot engagement giả.
 - Dự báo phản ứng cộng đồng, calibrate, backtest.
 
 **Lý do**
-- Kịch bản có nhãn đúng chỉ cần khi đo Match/Enrich; chưa cần để có dữ liệu chạy tiếp.
+- Kịch bản có nhãn đúng chỉ cần khi đo Match/Enrich; chưa cần để có dữ liệu chạy tiếp. (Đổi ở D12: dữ liệu giả không dùng để đo.)
 - Nghiên cứu về LLM đóng vai persona cho thấy xu hướng đồng nhất hóa, rập khuôn, mất phương sai; một preprint còn thấy persona kém hơn hỏi thẳng không persona với bài toán tiêu đề. Chưa có kiểm chứng với agent mạng xã hội. Vì vậy đầu ra chưa được coi là dự báo, và dự báo chỉ làm khi có dữ liệu thật từ nhiều nguồn để đối chiếu.
 - Kho thô dùng chung giữa các workspace, nên mọi số liệu cho khách hàng phải lọc theo `origin`.
 
@@ -222,8 +222,22 @@ Chi tiết ở [plan.md](plan.md#giai-đoạn-3--cấu-hình-project-và-match-l
 - `mentions` lưu cả ứng viên bị loại (`is_relevant = false`) để không hỏi lại LLM và để đo. Số liệu chỉ tính mention `is_relevant = true`.
 - So khớp lại: `projects.match_signature` là hash của id + version các truy vấn và danh sách nguồn. Chữ ký đổi thì so khớp lại toàn project (workflow `match-project`). Sau mỗi lần thu thập, chỉ so khớp item mới của run cho các project theo dõi nguồn đó.
 - Wizard: bước Nguồn đứng trước bước Đối tượng; bước Đối tượng xem trước số item khớp tầng 1 trong 30 ngày trên các nguồn đã chọn.
-- Đo: bộ sinh dữ liệu giả nhận `--target`; mỗi item ghi `metadata.aboutTarget`. `npm run match:eval` tính precision/recall theo tầng.
+- Đo: trên mẫu thật gán nhãn tay (giai đoạn 4). Bản đầu có đo trên dữ liệu giả (`--target`, `aboutTarget`, `match:eval`), đã gỡ theo D12.
 
-**Giới hạn đã biết**: comment so sánh đối tượng với dự án khác ("tầm giá này mua được 2 căn Topaz City") đôi khi bị tầng 2 loại. Thử thêm quy tắc vào prompt không sửa được ca này mà làm recall trên dữ liệu giả giảm (0,991 → 0,965), nên giữ prompt v1.
+**Giới hạn đã biết**: comment so sánh đối tượng với dự án khác ("tầm giá này mua được 2 căn Topaz City") đôi khi bị tầng 2 loại. Một lần thử thêm quy tắc vào prompt không sửa được ca này nên giữ prompt v1; cần đánh giá lại trên mẫu thật.
 
 **Hoãn lại**: partition `mentions` theo tháng (giai đoạn 5), bộ mẫu thật gán nhãn tay (cần màn hình gán nhãn).
+
+## D12 — Dữ liệu giả không dùng để kiểm chứng (2026-10-14)
+
+Thay nguyên tắc "dữ liệu giả kèm nhãn đúng để đo chất lượng" (overview, D8, plan giai đoạn 3–4).
+
+**Quyết định**
+- Từ lúc vào `content_items`, dữ liệu giả được xử lý như dữ liệu thường: cùng Match, Enrich, không nhánh riêng. `origin` chỉ để lọc khỏi số liệu cho khách hàng; project `live` vẫn chỉ chọn nguồn thật.
+- Không dùng nhãn trong `metadata` của dữ liệu giả để kiểm chứng. Metadata chỉ là dấu vết lúc sinh. Bỏ `synthetic_labels` khỏi plan; gỡ `match:eval`, tham số `--target` và nhãn `aboutTarget` của bộ sinh dữ liệu giả.
+- Chất lượng Match và Enrich được kiểm chứng trên **mẫu thật gán nhãn tay**. Vì vậy trang Mentions có xem, sửa và gán nhãn làm trước Enrich (giai đoạn 4a).
+- Dữ liệu giả vẫn dùng để có thêm nội dung chạy pipeline, demo và kiểm thử tính năng (cảnh báo, replay).
+
+**Lý do**
+- Văn bản do LLM sinh rồi được LLM chấm dễ cho điểm cao hơn thực tế (bản đo đầu của Match cho F1 0,996 trên dữ liệu giả); nhãn sinh ra là ý định, không phải đáp án đã kiểm.
+- Một chuẩn đo duy nhất (mẫu thật) tránh tối ưu theo dữ liệu giả.
