@@ -150,13 +150,22 @@ Case BĐS, thứ tự ưu tiên và cấu hình theo case: xem [D10](decisions.m
 - [x] Project thật (`is_demo = false`) không hiện dashboard số liệu mẫu
 - [x] Kiểm tay wizard và trang settings sau khi chạy migration
 
-**PR 2 — Match**
-- [ ] Chuẩn hóa tiếng Việt: bỏ dấu, alias, viết tắt
-- [ ] Schema `mentions`
-- [ ] Match tầng 1 (từ vựng) và tầng 2 (LLM cho ca mơ hồ)
-- [ ] So khớp lại khi `project_queries.version` thay đổi
-- [ ] Xem trước số mention khớp ngay trong wizard
-- [ ] Đo precision/recall trên dữ liệu giả
+**PR 2 — Match** (xem [D11](decisions.md#d11--giai-đoạn-3-match-2026-10-14))
+- [x] Chuẩn hóa tiếng Việt: bỏ dấu, viết liền, alias ngắn/viết hoa khớp nguyên từ
+- [x] Schema `mentions`, `match_judgments`, `project_queries.ambiguous`, `projects.match_signature`
+- [x] Match tầng 1 (từ vựng) và tầng 2 (LLM theo thread, có cache) cho comment theo ngữ cảnh, khớp không dấu và tên dễ nhầm
+- [x] So khớp lại khi chữ ký truy vấn/nguồn đổi (workflow `match-project`); so khớp tăng dần sau mỗi lần thu thập
+- [x] Bước Nguồn trước bước Đối tượng; xem trước số khớp tầng 1 trong wizard và settings
+- [x] `npm run match:project`, `npm run match:eval`; bộ sinh dữ liệu giả nhận `--target`
+- [x] Đo precision/recall trên dữ liệu giả có nhãn (2026-10-14, 193 item, 3 run: 2 về Lavita Thuận An có câu trùng tên, 1 về Picity Sky Park; project chỉ theo dõi Lavita):
+
+  | Cách | Precision | Recall | F1 |
+  |---|---|---|---|
+  | Tầng 1 (item nhắc tên) | 0,967 | 0,513 | 0,670 |
+  | Tầng 1 + tự kế thừa ngữ cảnh (A) | 0,935 | 1,000 | 0,966 |
+  | Tầng 1 + tầng 2 LLM (B) | 1,000 | 0,991 | 0,996 |
+
+  Trên group thật (Vinhomes, 682 item trong 30 ngày): 20 item nhắc tên, 255 comment ngữ cảnh qua tầng 2 (10 lần gọi LLM), 182 được tính. Chạy lại dùng cache, không gọi LLM.
 
 **Kết quả:** tạo được project `project`, `market`, `brand` cho workspace với cấu hình thật; precision/recall của Match đo được trên dữ liệu giả.
 

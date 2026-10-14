@@ -80,6 +80,15 @@ export function ProjectEntitiesFields({
                     Điều kiện khớp nâng cao
                   </summary>
                   <div className="mt-2 grid gap-3 md:grid-cols-2">
+                    <div className="md:col-span-2">
+                      <FormFieldTags
+                        control={form.control}
+                        name={`entities.${index}.ambiguousAliases`}
+                        label="Tên gọi dễ nhầm"
+                        placeholder="VD: Zenia"
+                        description="Vẫn được tính, nhưng bài chỉ nhắc tới tên này sẽ được AI xác nhận trước."
+                      />
+                    </div>
                     <FormFieldTags
                       control={form.control}
                       name={`entities.${index}.withTerms`}
@@ -123,6 +132,7 @@ export function ProjectEntitiesFields({
                       role: role.role,
                       name: "",
                       aliases: [],
+                      ambiguousAliases: [],
                       withTerms: [],
                       exclude: [],
                     })

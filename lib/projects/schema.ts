@@ -37,6 +37,8 @@ export const projectEntityInputSchema = z.object({
   role: z.enum(ENTITY_ROLES),
   name: z.string().trim().min(1, { error: "Nhập tên." }).max(120),
   aliases: termListSchema,
+  /** Easy-to-confuse names; matching on them alone needs LLM confirmation (D11). */
+  ambiguousAliases: termListSchema,
   /** Query terms: at least one must appear next to the name (optional). */
   withTerms: termListSchema,
   exclude: termListSchema,

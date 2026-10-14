@@ -10,6 +10,7 @@ import {
 } from "@/db/schema";
 import { CreateFailedError, InvalidInputError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
+import { syncProjectMatch } from "@/lib/matching/services/sync-project-match";
 
 import { getCaseTemplate, latestCaseVersion } from "../case-templates";
 import type { CreateProjectResult, CreateProjectWithConfigParams } from "../types";
@@ -90,6 +91,7 @@ export async function createProjectWithConfig(
               include: toQueryInclude(entity),
               withTerms: entity.withTerms,
               exclude: entity.exclude,
+              ambiguous: entity.ambiguousAliases,
             })),
           ),
         ]
@@ -123,6 +125,8 @@ export async function createProjectWithConfig(
   if (!project) {
     throw new CreateFailedError("project");
   }
+
+  await syncProjectMatch({ projectId: project.id });
 
   return {
     ...toProjectListItem(project),

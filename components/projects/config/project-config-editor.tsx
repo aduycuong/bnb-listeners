@@ -10,6 +10,7 @@ import { ProjectAlertsFields } from "@/components/projects/config/project-alerts
 import { ProjectAspectsFields } from "@/components/projects/config/project-aspects-fields";
 import { ProjectCaseConfigFields } from "@/components/projects/config/project-case-config-fields";
 import { ProjectEntitiesFields } from "@/components/projects/config/project-entities-fields";
+import { ProjectMatchPreview } from "@/components/projects/config/project-match-preview";
 import { ProjectSourcesFields } from "@/components/projects/config/project-sources-fields";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -268,6 +269,7 @@ function ProjectConfigForm({
           description="Sửa tên, tên gọi khác hoặc điều kiện khớp sẽ tăng phiên bản truy vấn và so khớp lại."
         >
           <ProjectEntitiesFields form={form} projectCase={projectCase} />
+          <ProjectMatchPreview form={form} workspaceId={workspaceId} />
         </Section>
         <Section title="Thông tin của case">
           <ProjectCaseConfigFields form={form} projectCase={projectCase} />

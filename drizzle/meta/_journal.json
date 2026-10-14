@@ -330,6 +330,13 @@
       "when": 1791964656818,
       "tag": "0046_next_riptide",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791970428090,
+      "tag": "0047_solid_tigra",
+      "breakpoints": true
     }
   ]
 }
