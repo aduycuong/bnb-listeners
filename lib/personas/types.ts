@@ -69,3 +69,47 @@ export type PlannedThread = {
 export type SourceStyleSample = {
   text: string;
 };
+
+// --- Admin rows --------------------------------------------------------------
+
+export type PersonaRow = {
+  id: string;
+  templateKey: string | null;
+  name: string;
+  kind: PersonaKindValue;
+  description: string;
+  tone: string;
+  concerns: string[];
+  version: number;
+  source: string;
+  reviewStatus: string;
+  /** Panels that use this persona. */
+  panelCount: number;
+  /** Synthetic authors created from this persona. */
+  authorCount: number;
+  updatedAt: string;
+};
+
+export type PanelRow = {
+  id: string;
+  templateKey: string | null;
+  name: string;
+  description: string;
+  memberCount: number;
+  updatedAt: string;
+};
+
+export type PanelMemberRow = {
+  personaId: string;
+  name: string;
+  kind: PersonaKindValue;
+  weight: number;
+};
+
+export type PanelDetail = PanelRow & { members: PanelMemberRow[] };
+
+export type StartedGeneration = {
+  sourceId: string;
+  collectRunIds: string[];
+  threadsPerRun: number[];
+};

@@ -14,6 +14,10 @@ export const adminQueryKeys = {
     ["admin", "collect-runs", "payload", id, offset] as const,
   refreshSchedules: (filters: Record<string, string | number>) =>
     ["admin", "refresh-schedules", filters] as const,
+  personas: () => ["admin", "personas"] as const,
+  persona: (id: string) => ["admin", "personas", id] as const,
+  panels: () => ["admin", "persona-panels"] as const,
+  panel: (id: string) => ["admin", "persona-panels", id] as const,
   scheduler: () => ["admin", "scheduler"] as const,
   workflowRuns: (workflow: string) => ["admin", "workflow-runs", workflow] as const,
 };

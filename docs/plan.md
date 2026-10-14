@@ -128,7 +128,8 @@ Mục tiêu thu hẹp: có dữ liệu post và comment nằm trong kho thô đ�
 - [x] `npm run source:delete-content -- --source <id> [--origin synthetic] --yes` để dọn nội dung của một source
 
 **Bước 3 — Giao diện**
-- [ ] Màn hình tạo persona, panel và chạy sinh (làm sau cùng, bước 1–2 chạy được bằng script)
+- [x] Màn hình trong admin console: `/admin/personas` (xem, tạo, sửa; sửa tăng `version`), `/admin/panels` (chọn persona và `weight`, hiển thị tỷ lệ), `/admin/generate` (form chạy sinh kèm bảng run gần đây). Chưa có xóa persona/panel và chưa có sinh persona bằng LLM
+- [ ] Kiểm tay màn hình sau khi đăng nhập admin (đã kiểm: route compile, API trả 401 khi chưa đăng nhập)
 
 **Kết quả:** từ một panel và một `brief`, sinh được post, comment và reply vào kho thô với `origin = synthetic`, truy vết được theo `collect_run_id` và persona.
 
