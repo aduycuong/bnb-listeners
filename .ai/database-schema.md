@@ -966,11 +966,12 @@ New pipeline tables (see `docs/data-model.md`). Shared across workspaces — no 
 | avatar_url | text | YES | — | |
 | follower_count | integer | YES | — | |
 | author_type | text | YES | — | `kol` \| `agency` \| `community` \| `brand` \| `individual` \| `media` |
+| persona_id | uuid | YES | — | FK → `personas.id` ON DELETE SET NULL; synthetic authors only |
 | origin | text | NO | `connector` | |
 | metadata | jsonb | NO | `{}` | |
 | created_at / updated_at | timestamptz | NO | `now()` | |
 
-**Indexes:** unique `(platform, external_id)`.
+**Indexes:** unique `(platform, external_id)`; `persona_id`.
 
 ### `collect_runs`
 
@@ -1052,6 +1053,51 @@ Next comment-refresh checkpoint per post (checkpoints are config, e.g. +6h / +24
 | created_at / updated_at | timestamptz | NO | `now()` | |
 
 **Indexes:** `next_refresh_at`.
+
+### `personas`
+
+A reusable kind of person or organization that the synthetic connector writes as. See `docs/synthetic-data.md`.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| template_key | text | YES | — | Stable key of a seeded template; null for hand-made or generated personas |
+| name | text | NO | — | |
+| kind | text | NO | `individual` | `individual` \| `organization` |
+| description | text | NO | — | One or two sentences |
+| tone | text | NO | `''` | Free-text writing voice |
+| concerns | jsonb | NO | `[]` | `string[]` of aspects the persona cares about |
+| attributes | jsonb | NO | `{}` | Extra traits, no migration needed |
+| version | integer | NO | `1` | |
+| source | text | NO | `manual` | `template` \| `manual` \| `llm_generated` |
+| review_status | text | NO | `draft` | `draft` \| `approved` |
+| created_at / updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** unique `template_key` (nulls allowed many times).
+
+### `persona_panels`
+
+A set of personas with weights that stands for one community.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| template_key | text | YES | — | Stable key of a seeded template panel |
+| name | text | NO | — | |
+| description | text | NO | `''` | |
+| created_at / updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** unique `template_key`.
+
+### `persona_panel_members`
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| panel_id | uuid | NO | — | FK → `persona_panels.id` ON DELETE CASCADE |
+| persona_id | uuid | NO | — | FK → `personas.id` ON DELETE CASCADE |
+| weight | real | NO | `1` | Relative share inside the panel; normalized in code |
+
+**Primary key:** `(panel_id, persona_id)`. **Indexes:** `persona_id`.
 
 ---
 

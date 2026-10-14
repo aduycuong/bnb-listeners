@@ -31,7 +31,10 @@
     "probe:bright-data": "tsx scripts/probe-bright-data-facebook.ts",
     "refresh:check": "tsx scripts/check-item-refreshes.ts",
     "collect:renormalize": "tsx scripts/renormalize-collect-run.ts",
-    "schedules:sync": "tsx scripts/sync-collection-schedules.ts"
+    "schedules:sync": "tsx scripts/sync-collection-schedules.ts",
+    "synthetic:seed-personas": "tsx scripts/seed-persona-templates.ts",
+    "synthetic:generate": "tsx scripts/generate-synthetic-data.ts",
+    "source:delete-content": "tsx scripts/delete-source-content.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1135.0",

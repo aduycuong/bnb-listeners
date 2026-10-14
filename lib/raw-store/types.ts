@@ -19,6 +19,8 @@ export type NormalizedAuthor = {
   url: string | null;
   avatarUrl?: string | null;
   followerCount?: number | null;
+  /** Synthetic authors only: the persona the author was created from. */
+  personaId?: string | null;
   metadata?: Record<string, unknown>;
 };
 
@@ -101,6 +103,21 @@ export type WriteContentItemsResult = {
   updated: number;
   /** Existing rows left untouched because of `onExisting: "skip"`. */
   skippedExisting: number;
+};
+
+export type DeleteSourceContentItemsParams = {
+  sourceId: string;
+  /** Only delete items of this origin; all origins when omitted. */
+  origin?: RawOrigin;
+  /** Count only; nothing is deleted. */
+  dryRun?: boolean;
+};
+
+export type DeleteSourceContentItemsResult = {
+  sourceName: string | null;
+  groups: { kind: string; origin: string; count: number }[];
+  total: number;
+  deleted: number;
 };
 
 export type GetSourceLatestPublishedAtParams = {

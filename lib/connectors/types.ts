@@ -1,6 +1,6 @@
 import type { z } from "zod";
 
-import type { NormalizedContentItem } from "@/lib/raw-store/types";
+import type { NormalizedContentItem, RawOrigin } from "@/lib/raw-store/types";
 
 import type { ConnectorKey } from "./constants";
 
@@ -40,6 +40,8 @@ export type AfterNormalizeResult = {
 type ConnectorBase<TParams> = {
   key: ConnectorKey;
   platform: string;
+  /** Written to `content_items.origin` and `authors.origin`. Defaults to `connector`. */
+  origin?: RawOrigin;
   paramsSchema: z.ZodType<TParams>;
   /** `skip` leaves items already in the raw store untouched. Defaults to `update`. */
   onExisting?: "update" | "skip";

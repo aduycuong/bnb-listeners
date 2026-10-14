@@ -113,16 +113,19 @@ Chi phí comment là con số ước lượng thô, cần đo lại sau một tu
 Mục tiêu thu hẹp: có dữ liệu post và comment nằm trong kho thô để các giai đoạn sau chạy tiếp. Dữ liệu giả và dữ liệu thật được phép trộn lẫn. Persona ban đầu chỉ cần đủ dùng, sẽ nâng cấp sau khi mở rộng sources. Xem [synthetic-data.md](synthetic-data.md).
 
 **Bước 1 — Persona và panel**
-- [ ] Schema `personas` (`attributes jsonb`, `version`), `persona_panels`, `persona_panel_members` (`weight`), cột `authors.persona_id`
-- [ ] Script seed 8–10 persona và 3 panel mẫu cho BĐS (group review, cư dân dự án, nhà đầu tư)
+- [x] Schema `personas` (`attributes jsonb`, `version`), `persona_panels`, `persona_panel_members` (`weight`), cột `authors.persona_id`
+- [x] Script seed 10 persona và 3 panel mẫu cho BĐS (group review, cư dân dự án, nhà đầu tư): `npm run synthetic:seed-personas`
 
 **Bước 2 — Connector ảo**
-- [ ] Connector `synthetic-threads` (`DirectConnector`): code lập kế hoạch, LLM viết từng thread, code ghép lại; ghi spec vào `content_items.metadata`
-- [ ] `sources` giả (`origin = synthetic`, `platform = facebook`, `source_type = group`)
-- [ ] Mẫu giọng văn: few-shot từ comment thật của source được chọn
-- [ ] Chèn nhiễu nhẹ (bỏ dấu, lỗi chính tả, spam, ca trùng tên)
-- [ ] `npm run synthetic:generate -- --panel … --source … --brief … --posts 10 --yes`
-- [ ] Đo thời gian một run để chốt số thread mỗi run (rủi ro giới hạn thời gian của bước workflow)
+- [x] Connector `synthetic-threads` (`DirectConnector`): code lập kế hoạch, LLM viết từng thread, code ghép lại; ghi spec vào `content_items.metadata`
+- [x] `sources` giả (`origin = synthetic`, `platform = facebook`, `source_type = group`)
+- [x] Mẫu giọng văn: few-shot từ comment thật của source được chọn (`--style-source`)
+- [x] Chèn nhiễu nhẹ (bỏ dấu, lỗi chính tả, spam, ngoài chủ đề, ca trùng tên qua `--distractor`)
+- [x] `npm run synthetic:generate -- --panel … --source … --brief … --posts 10 --yes`
+- [x] Chạy thật lần 1 (2026-10-13): 10 thread, 68 item, 19,6s, không thread nào bị bỏ. Đã nâng `maxThreadsPerRun` lên 30 (ước lượng, cần đo lại)
+- [x] Chỉnh sau khi đọc mẫu: OP giữ cảm xúc của bài, cấm bịa chi tiết, mức bám brief (`briefRelevance`), độ dài bài theo persona
+- [ ] Chạy lại với `--style-source` (source thật) và đọc lại mẫu; chỉnh `lib/personas/config.ts` nếu văn bản vẫn đồng nhất
+- [x] `npm run source:delete-content -- --source <id> [--origin synthetic] --yes` để dọn nội dung của một source
 
 **Bước 3 — Giao diện**
 - [ ] Màn hình tạo persona, panel và chạy sinh (làm sau cùng, bước 1–2 chạy được bằng script)
