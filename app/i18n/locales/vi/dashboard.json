@@ -51,38 +51,38 @@
     "settings": "Cài đặt"
   },
   "caseGroups": {
-    "brand": "Thương hiệu",
+    "developer": "Chủ đầu tư",
+    "sales": "Bán hàng",
     "market": "Thị trường",
-    "customer": "Khách hàng",
-    "partners": "Đối tác & nội bộ"
+    "afterSales": "Sau bán hàng"
   },
   "cases": {
-    "general": "Sức khỏe thương hiệu",
-    "campaign": "Đo lường chiến dịch",
-    "crisis": "Quản trị khủng hoảng",
-    "reputation": "Danh tiếng lãnh đạo, ESG",
-    "competitor": "So sánh đối thủ",
-    "trend": "Xu hướng & insight",
-    "market": "Đánh giá thị trường mới",
-    "cx": "Phản hồi khách hàng (CX)",
-    "care": "CSKH trên mạng xã hội",
+    "brand": "Uy tín chủ đầu tư",
+    "project": "Theo dõi dự án",
+    "ir": "Quan hệ nhà đầu tư",
+    "launch": "Mở bán, ra mắt dự án",
+    "broker": "Giám sát sàn phân phối",
     "lead": "Tìm khách hàng tiềm năng",
-    "kol": "Tìm & đánh giá KOL",
-    "employer": "Thương hiệu tuyển dụng"
+    "rival": "Đối thủ cùng khu vực",
+    "market": "Tâm lý thị trường khu vực",
+    "policy": "Chính sách, quy hoạch, hạ tầng",
+    "kol": "KOL bất động sản",
+    "crisis": "Khủng hoảng",
+    "residents": "Cư dân & vận hành"
   },
   "caseNav": {
-    "general": "Chỉ số uy tín",
-    "campaign": "Chi tiết dự án",
+    "brand": "Chỉ số uy tín",
+    "project": "Chi tiết dự án",
+    "ir": "Tài chính & cổ phiếu",
+    "launch": "Sức nóng mở bán",
+    "broker": "Vi phạm của sàn",
+    "lead": "Nhu cầu mua, thuê",
+    "rival": "So sánh đối thủ",
+    "market": "Bản đồ khu vực",
+    "policy": "Chính sách & quy hoạch",
+    "kol": "KOL & kênh review",
     "crisis": "Diễn biến khủng hoảng",
-    "reputation": "Danh tiếng lãnh đạo, ESG",
-    "competitor": "Bản đồ khu vực",
-    "trend": "Xu hướng & insight",
-    "market": "Đánh giá thị trường mới",
-    "cx": "Vi phạm của sàn",
-    "care": "CSKH trên mạng xã hội",
-    "lead": "Tìm khách hàng tiềm năng",
-    "kol": "Tìm & đánh giá KOL",
-    "employer": "Thương hiệu tuyển dụng"
+    "residents": "Cư dân & vận hành"
   },
   "settingsMenu": {
     "profile": "Hồ sơ"

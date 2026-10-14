@@ -137,13 +137,28 @@ Mục tiêu thu hẹp: có dữ liệu post và comment nằm trong kho thô đ�
 
 ## Giai đoạn 3 — Cấu hình project và Match (L2 + `mentions`)
 
-- [ ] Schema `projects` (thêm `mode`), `project_entities`, `project_queries`, `project_aspects`, `project_sources` (`project_scenarios` chỉ thêm khi có `scenarios`, xem [D8](decisions.md#d8--giai-đoạn-2-persona--connector-ảo--kho-thô-2026-10-13))
-- [ ] Form cấu hình truy vấn, entity và aspect (theo `.cursor/rules/form-creation.mdc`)
+Case BĐS, thứ tự ưu tiên và cấu hình theo case: xem [D10](decisions.md#d10--giai-đoạn-3-case-bđs-và-cấu-hình-project-2026-10-14). Giai đoạn này làm thật 3 case `project`, `market`, `brand`.
+
+**PR 1 — Cấu hình project**
+- [x] Đổi `projects.case` sang id case BĐS; `npm run projects:migrate-cases` chuyển case cũ và đánh dấu project demo (`is_demo`)
+- [x] Schema `projects` (thêm `mode`, `timezone`, `config_version`, `case_config`, `is_demo`), `project_entities`, `project_queries`, `project_aspects`, `project_sources` (`project_scenarios` chỉ thêm khi có `scenarios`, xem [D8](decisions.md#d8--giai-đoạn-2-persona--connector-ảo--kho-thô-2026-10-13))
+- [x] Template entity, aspect và trường riêng cho `project`, `market`, `brand`
+- [x] Wizard tạo project thật: case → thông tin → entity/khu vực và truy vấn → aspect → nguồn → cảnh báo & báo cáo → xem lại (theo `.cursor/rules/form-creation.mdc`)
+- [x] Phiên bản case (`projects.case_version`, `CASE_VERSIONS`): project chạy ở phiên bản cũ, người dùng tự nâng cấp trong trang settings
+- [x] Lưu cấu hình cảnh báo (`alert_rules`, `projects.notification_config`); đánh giá rule và gửi thông báo làm ở giai đoạn 6
+- [x] Sửa cấu hình trong trang settings của project, tăng `config_version` và `project_queries.version`
+- [x] Project thật (`is_demo = false`) không hiện dashboard số liệu mẫu
+- [x] Kiểm tay wizard và trang settings sau khi chạy migration
+
+**PR 2 — Match**
 - [ ] Chuẩn hóa tiếng Việt: bỏ dấu, alias, viết tắt
+- [ ] Schema `mentions`
 - [ ] Match tầng 1 (từ vựng) và tầng 2 (LLM cho ca mơ hồ)
 - [ ] So khớp lại khi `project_queries.version` thay đổi
+- [ ] Xem trước số mention khớp ngay trong wizard
+- [ ] Đo precision/recall trên dữ liệu giả
 
-**Kết quả:** precision/recall của Match đo được trên dữ liệu giả.
+**Kết quả:** tạo được project `project`, `market`, `brand` cho workspace với cấu hình thật; precision/recall của Match đo được trên dữ liệu giả.
 
 ## Giai đoạn 4 — Enrich
 
@@ -170,7 +185,7 @@ Mục tiêu thu hẹp: có dữ liệu post và comment nằm trong kho thô đ�
 ## Giai đoạn 6 — Cảnh báo, insight, báo cáo
 
 - [ ] `engagement_snapshots` định kỳ cho bài đang nóng
-- [ ] Rule ngưỡng và phát hiện bất thường trên `metrics_hourly`
+- [ ] Đánh giá `alert_rules` đã cấu hình từ giai đoạn 3 (ngưỡng, tăng trưởng) và phát hiện bất thường trên `metrics_hourly`
 - [ ] Connector ảo chế độ replay để test cảnh báo
 - [ ] Insight và báo cáo AI có trích dẫn mention
 - [ ] Gửi thông báo (email trước, các kênh khác sau)

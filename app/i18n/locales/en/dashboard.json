@@ -51,38 +51,38 @@
     "settings": "Settings"
   },
   "caseGroups": {
-    "brand": "Brand",
+    "developer": "Developer",
+    "sales": "Sales",
     "market": "Market",
-    "customer": "Customers",
-    "partners": "Partners & internal"
+    "afterSales": "After sales"
   },
   "cases": {
-    "general": "Brand health",
-    "campaign": "Campaign measurement",
-    "crisis": "Crisis management",
-    "reputation": "Leadership & ESG reputation",
-    "competitor": "Competitor comparison",
-    "trend": "Trends & insight",
-    "market": "New market assessment",
-    "cx": "Customer feedback (CX)",
-    "care": "Social customer care",
+    "brand": "Developer reputation",
+    "project": "Project tracking",
+    "ir": "Investor relations",
+    "launch": "Project launch",
+    "broker": "Broker monitoring",
     "lead": "Lead discovery",
-    "kol": "KOL discovery",
-    "employer": "Employer brand"
+    "rival": "Local competitors",
+    "market": "Area market sentiment",
+    "policy": "Policy, zoning, infrastructure",
+    "kol": "Real estate KOLs",
+    "crisis": "Crisis",
+    "residents": "Residents & operations"
   },
   "caseNav": {
-    "general": "Reputation index",
-    "campaign": "Project detail",
+    "brand": "Reputation index",
+    "project": "Project detail",
+    "ir": "Finance & stock",
+    "launch": "Launch heat",
+    "broker": "Broker violations",
+    "lead": "Buy & rent demand",
+    "rival": "Competitor comparison",
+    "market": "Area map",
+    "policy": "Policy & zoning",
+    "kol": "KOLs & review channels",
     "crisis": "Crisis timeline",
-    "reputation": "Leadership & ESG reputation",
-    "competitor": "Area map",
-    "trend": "Trends & insight",
-    "market": "New market assessment",
-    "cx": "Broker violations",
-    "care": "Social customer care",
-    "lead": "Lead discovery",
-    "kol": "KOL discovery",
-    "employer": "Employer brand"
+    "residents": "Residents & operations"
   },
   "settingsMenu": {
     "profile": "Profile"

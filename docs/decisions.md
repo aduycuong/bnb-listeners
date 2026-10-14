@@ -143,3 +143,64 @@ Rà lại việc lấy dữ liệu Facebook trước giai đoạn 3.
 - Thứ tự chọn `authors.external_id` (`to-facebook-comment-author.ts`): id số trong `user_id` hoặc trong link profile (`commentator_profile`) → link profile dạng username → token `pfbid` (gắn `metadata.idStable = false`). Trên dữ liệu probe, số comment đổi id tác giả giữa các lần cào giảm từ 32 xuống 17 (trên 135).
 - Item đã có trong kho giữ nguyên `author_id` khi được lấy lại, và không tạo author mới cho item đó.
 - **Giới hạn:** khoảng 23% dòng comment chỉ có `pfbid`. Cùng một người comment ở nhiều bài có thể thành nhiều dòng `authors`, nên số tác giả duy nhất từ comment bị đếm dư. Chỉ số theo tác giả nên tách hoặc ghi chú phần `idStable = false`.
+
+## D10 — Giai đoạn 3: case BĐS và cấu hình project (2026-10-14)
+
+Đánh giá lại các case trước khi làm cấu hình project. Chi tiết ở [plan.md](plan.md#giai-đoạn-3--cấu-hình-project-và-match-l2--mentions).
+
+**Case**
+- Case là một **tình huống theo dõi cụ thể**, không chung chung. Hai case có thể giống nhau ở Collect và Enrich nhưng khác nhau về report và view, nên vẫn là hai case riêng (ví dụ `crisis` tách khỏi `brand`, `rival` tách khỏi `project`).
+- `projects.case` lưu id case BĐS thay cho bộ case social listening chung (`general`, `campaign`, `cx`…). Danh sách nằm trong `lib/projects/project-cases.ts`:
+  `brand`, `project`, `ir`, `launch`, `broker`, `lead`, `rival`, `market`, `policy`, `kol`, `crisis`, `residents`.
+- Case cũ được chuyển bằng `npm run projects:migrate-cases`: `general → brand`, `campaign → project`, `competitor → market`, `cx → broker`, `crisis → crisis`. Các case cũ không có trong demo (`reputation`, `trend`, `care`, `employer`…) được chuyển về case gần nhất.
+- Giai đoạn 3 làm thật 3 case: `project`, `market`, `brand`. Các case khác hiện ở wizard với nhãn "sắp có".
+- `lead` chưa làm vì cần nghiên cứu pháp lý về dữ liệu cá nhân.
+
+**Ưu tiên** (theo dữ liệu đang có: Facebook group/page được theo dõi chủ động, chưa có báo chí, TikTok, rao vặt)
+
+| Ưu tiên | Case | Lý do |
+|---|---|---|
+| P1 | `project`, `market` | Là nội dung chính của group review BĐS; có giá trị trực tiếp cho marketing |
+| P2 | `brand` | Dùng lại pipeline của `project` (CĐT là entity chính, các dự án là `product`); thiếu báo chí nên chỉ số uy tín chưa đầy đủ |
+| P2 | `lead` | Giá trị cao cho sales, nhưng là bài toán ý định mua (Enrich) và vướng dữ liệu cá nhân |
+| P3 | `launch`, `rival`, `crisis` | Có dữ liệu; `crisis` cần cảnh báo (giai đoạn 6) |
+| P4 | `residents`, `broker`, `policy`, `kol` | Cần group riêng tư, rao vặt, báo chí hoặc TikTok/YouTube |
+| P5 | `ir` | Cần diễn đàn chứng khoán, báo chí; ít liên quan tới marketing |
+
+**Cấu hình project**
+- Entity theo case:
+  - `project`: 1 `primary` (dự án, alias là tên phân khu, tên cũ) và các `competitor` (dự án cạnh tranh).
+  - `brand`: 1 `primary` (CĐT, alias gồm mã cổ phiếu), các `product` (dự án của CĐT) và các `competitor` (CĐT khác, dùng cho SoV).
+  - `market`: các `area` (khu vực), không có `primary`.
+- Mỗi entity có một truy vấn được sinh sẵn (`include` = tên + alias), sửa thêm được `with` và `exclude`.
+- Trường riêng theo case (phân khúc, giai đoạn, giá tham chiếu, kỳ báo cáo…) nằm trong `projects.case_config` (jsonb, validate bằng zod theo case).
+- Aspect khởi tạo từ template theo case, sửa được.
+- Nguồn: chỉ chọn trong `sources` đã có, **không thêm group mới từ wizard** (thêm nguồn vẫn qua `npm run collect:facebook`). Project `live` chỉ chọn được nguồn `origin = connector`; project `sandbox` chọn được cả nguồn giả.
+- `config_version` của project tăng mỗi khi sửa cấu hình. `project_queries.version` tăng khi sửa `include`, `with`, `exclude` của truy vấn đó.
+- Wizard có đủ input cho cả phần chưa chạy (đổi ngày 2026-10-14): cấu hình được lưu ngay, phần xử lý làm ở giai đoạn của nó mà không phải sửa lại form.
+  - Cảnh báo: người dùng thêm, sửa, xóa rule chọn từ **danh mục loại rule có cấu trúc** (`lib/projects/alert-templates.ts`), không có bộ dựng tự do. Mỗi loại ứng với một chỉ số sẽ có ở L4 hoặc một trường trích xuất ở Enrich, nên giai đoạn 6 chỉ viết một bộ đánh giá cho mỗi loại.
+    - Loại chung: lượng thảo luận tăng, tỷ lệ tiêu cực vượt, một bài lan rộng, từ khóa xuất hiện. Loại riêng `project`: giá lệch giá tham chiếu, câu hỏi người mua tăng.
+    - Tham số: phạm vi (toàn project, một entity, một aspect, từng entity của một vai trò), ngưỡng, khoảng thời gian, lượng mention tối thiểu (chống nhiễu khi group ít bài), từ khóa. Cùng một loại được thêm nhiều lần; tối đa 20 rule mỗi project.
+    - Mỗi case khởi tạo sẵn vài rule (`ALERT_RULE_SEEDS`). Rule trỏ tới entity/aspect bằng id; id của entity, aspect, rule mới do client sinh để rule tham chiếu được trước khi lưu. Xóa entity/aspect mà còn rule trỏ tới thì form báo lỗi.
+    - Bỏ rule "tin chưa kiểm chứng về quy hoạch": cần bộ phân loại tin đồn, không có trong plan; thay bằng lượng thảo luận tăng theo aspect hạ tầng & quy hoạch.
+  - Kênh gửi, người nhận và lịch báo cáo AI dùng chung cho cả project (`projects.notification_config`); cột `alert_rules.channels` để dành cho kênh riêng từng rule. Rule bắt đầu chạy từ giai đoạn 6; Email trước, Zalo/SMS/Slack sau.
+  - Sửa cảnh báo không tăng `config_version`, vì không ảnh hưởng Match/Enrich.
+  - Bỏ "thành viên dự án" khỏi wizard: quyền vẫn theo workspace, sẽ mở rộng ở phần workspace member.
+- `projects.is_demo` đánh dấu các project demo (dashboard số liệu mẫu). Project thật chưa hiện dashboard demo, tránh nhầm số liệu mẫu với số liệu thật.
+
+**Phiên bản case**
+- Case không đổi được sau khi tạo, nhưng định nghĩa case thay đổi theo thời gian (vai trò entity, aspect mẫu, trường riêng, rule mẫu, report). Mỗi case có danh sách phiên bản trong `CASE_VERSIONS` (`lib/projects/case-templates.ts`); project lưu `projects.case_version`.
+- Project chạy được ở phiên bản cũ. Người dùng tự quyết định nâng cấp: trang settings hiện banner khi có phiên bản mới, kèm ghi chú thay đổi; bấm xem thì form chuyển sang phiên bản mới, được điền sẵn bằng `upgrade.migrate` của từng phiên bản; người dùng bổ sung trường mới rồi lưu thì `case_version` tăng. Không lưu thì giữ phiên bản cũ. Không hạ phiên bản.
+- Project mới luôn dùng phiên bản mới nhất.
+- Không tạo case id mới cho mỗi phiên bản (kiểu "Theo dõi dự án v2"): phân mảnh danh sách case và project cũ vẫn kẹt ở bản cũ.
+- Thay đổi chỉ thêm (report mới đọc dữ liệu có sẵn, trường không bắt buộc, loại rule mới) không cần phiên bản mới. Phiên bản mới dành cho thay đổi phá vỡ: trường bắt buộc mới, đổi tên trường, đổi nghĩa vai trò, đổi key aspect.
+- Chi phí: code phải giữ mọi phiên bản còn project đang chạy. Report, prompt Enrich và bộ đánh giá cảnh báo (giai đoạn 4–6) đọc `case_version` để chọn đúng định nghĩa. Phiên bản cũ chỉ được xóa khi không còn project nào dùng.
+- Nâng cấp phiên bản tăng `config_version` (cấu hình phân tích đổi).
+
+**Không làm**
+- "Bộ dữ liệu" của workspace gom mention cho nhiều project (ý tưởng trong wizard demo cũ): thu thập theo nguồn nên không tiết kiệm chi phí cào; gom bộ không liên quan làm sai số liệu và SoV. Mention luôn tính theo truy vấn của từng project trên kho thô.
+- Thư viện đối tượng của workspace và danh sách loại trừ chung cho project: chưa làm.
+
+**Hoãn lại**
+- Bộ địa danh dùng chung (alias, tên trước/sau sáp nhập tỉnh) cho `market`: tạm thời người dùng tự nhập alias khu vực.
+- Truy vấn không từ khóa (mọi nội dung của nguồn đã chọn đều là mention): cần cho `lead` và một phần `market`.

@@ -110,7 +110,31 @@ export const projects = pgTable(
     autoCreateTerms: boolean("auto_create_terms").notNull().default(true),
     termLanguage: text("term_language").notNull().default("auto"),
     termCriteria: text("term_criteria").notNull().default(""),
-    listeningCase: text("case").notNull().default("general"),
+    /** Real estate case id, see `lib/projects/project-cases.ts` and docs/decisions.md D10. */
+    listeningCase: text("case").notNull().default("project"),
+    /** Version of the case definition the project runs on; the user decides when to upgrade. */
+    caseVersion: integer("case_version").notNull().default(1),
+    /** live | sandbox; live projects only follow `origin = connector` sources. */
+    mode: text("mode").notNull().default("live"),
+    timezone: text("timezone").notNull().default("Asia/Ho_Chi_Minh"),
+    /** Bumped on every config change (entities, queries, aspects, sources, case config). */
+    configVersion: integer("config_version").notNull().default(1),
+    /** Case-specific fields, validated by the case's zod schema. */
+    caseConfig: jsonb("case_config")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    /** Demo projects render the sample dashboard instead of real data. */
+    isDemo: boolean("is_demo").notNull().default(false),
+    /** Default alert channels, recipients and the AI report schedule. */
+    notificationConfig: jsonb("notification_config")
+      .$type<{
+        channels?: string[];
+        recipients?: string[];
+        reportSchedule?: string;
+      }>()
+      .notNull()
+      .default({}),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1386,3 +1410,164 @@ export const itemRefreshSchedules = pgTable(
 
 export type ItemRefreshSchedule = typeof itemRefreshSchedules.$inferSelect;
 export type NewItemRefreshSchedule = typeof itemRefreshSchedules.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// L2 — Project config. See docs/data-model.md and docs/decisions.md D10.
+// ---------------------------------------------------------------------------
+
+/** A brand, project, competitor or area that a project listens for. */
+export const projectEntities = pgTable(
+  "project_entities",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** primary | competitor | product | person | area */
+    role: text("role").notNull(),
+    name: text("name").notNull(),
+    aliases: jsonb("aliases").$type<string[]>().notNull().default([]),
+    color: text("color"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [index("project_entities_project_id_idx").on(table.projectId)],
+);
+
+export type ProjectEntity = typeof projectEntities.$inferSelect;
+export type NewProjectEntity = typeof projectEntities.$inferInsert;
+
+/** Lexical rule that turns a raw content item into a mention of the project. */
+export const projectQueries = pgTable(
+  "project_queries",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    entityId: uuid("entity_id").references(() => projectEntities.id, {
+      onDelete: "cascade",
+    }),
+    /** Any one of these terms must appear. */
+    include: jsonb("include").$type<string[]>().notNull().default([]),
+    /** When non-empty, at least one of these must also appear. */
+    withTerms: jsonb("with_terms").$type<string[]>().notNull().default([]),
+    /** None of these may appear. */
+    exclude: jsonb("exclude").$type<string[]>().notNull().default([]),
+    /** Max words between an `include` and a `with` term; null = anywhere in the item. */
+    proximity: integer("proximity"),
+    /** Bumped when include / with / exclude / proximity change; triggers re-matching. */
+    version: integer("version").notNull().default(1),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("project_queries_project_id_idx").on(table.projectId),
+    index("project_queries_entity_id_idx").on(table.entityId),
+  ],
+);
+
+export type ProjectQuery = typeof projectQueries.$inferSelect;
+export type NewProjectQuery = typeof projectQueries.$inferInsert;
+
+/** Aspect a project measures sentiment on (pháp lý, tiến độ, giá…). */
+export const projectAspects = pgTable(
+  "project_aspects",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** Stable slug, e.g. `legal`; template aspects keep the template key. */
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    /** Guidance for the Enrich prompt. */
+    description: text("description").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("project_aspects_project_key_idx").on(table.projectId, table.key),
+  ],
+);
+
+export type ProjectAspect = typeof projectAspects.$inferSelect;
+export type NewProjectAspect = typeof projectAspects.$inferInsert;
+
+/** Sources a project follows; required for Facebook, which has no keyword search. */
+export const projectSources = pgTable(
+  "project_sources",
+  {
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    sourceId: uuid("source_id")
+      .notNull()
+      .references(() => sources.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.projectId, table.sourceId] }),
+    index("project_sources_source_id_idx").on(table.sourceId),
+  ],
+);
+
+export type ProjectSource = typeof projectSources.$inferSelect;
+export type NewProjectSource = typeof projectSources.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// L5 — Outputs. Rules are configured now; evaluation starts in phase 6.
+// ---------------------------------------------------------------------------
+
+/** One alert rule of a project; `kind` comes from `lib/projects/alert-templates.ts`. */
+export const alertRules = pgTable(
+  "alert_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** volume_growth | negative_share | viral_post | keyword_hit | price_deviation | buyer_questions_growth */
+    kind: text("kind").notNull(),
+    /** `{ scope, threshold, window, minMentions, keywords }`, validated per kind. */
+    params: jsonb("params")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    /** Overrides `projects.notification_config.channels`; null = project default. */
+    channels: jsonb("channels").$type<string[]>(),
+    enabled: boolean("enabled").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [index("alert_rules_project_id_idx").on(table.projectId)],
+);
+
+export type AlertRule = typeof alertRules.$inferSelect;
+export type NewAlertRule = typeof alertRules.$inferInsert;

@@ -188,7 +188,7 @@ Tenant container for members, data sources, documents, and projects.
 
 Scoring prompts (`score_text_part`, `score_media_part`, `score_comment_stances`) are built from `data_collection_scope`. Term prompts (`classify_terms`, `propose_term`) also use that scope plus the project's `term_language` and `term_criteria`.
 
-A default workspace is created for each user on first sign-in. Creating a workspace seeds five demo listening projects (brand health, campaign, crisis, competitors, and customer feedback).
+A default workspace is created for each user on first sign-in. Creating a workspace seeds five demo listening projects (`is_demo = true`: developer reputation, project, area market, broker monitoring, crisis).
 
 ---
 
@@ -205,7 +205,14 @@ Social listening scope inside a workspace: one brand, campaign, or similar liste
 | auto_create_terms | boolean | NO | `true` | When true, LLM-proposed terms that match no existing term in this project are created |
 | term_language | text | NO | `auto` | Language for generated term names/descriptions (`term_language` enum) |
 | term_criteria | text | NO | `''` | Multiline rules for new term creation in this project |
-| case | text | NO | `general` | Listening case: `general`, `campaign`, `crisis`, `reputation`, `competitor`, `trend`, `market`, `cx`, `care`, `lead`, `kol`, `employer` |
+| case | text | NO | `project` | Real estate case id (`docs/decisions.md` D10): `brand`, `project`, `ir`, `launch`, `broker`, `lead`, `rival`, `market`, `policy`, `kol`, `crisis`, `residents`. Only `project`, `market`, `brand` have a real config yet |
+| case_version | integer | NO | `1` | Case definition version (`CASE_VERSIONS` in `lib/projects/case-templates.ts`); raised only when the user saves an upgraded config |
+| mode | text | NO | `live` | `live` (only `origin = connector` sources) or `sandbox` (synthetic sources allowed) |
+| timezone | text | NO | `Asia/Ho_Chi_Minh` | Timezone for buckets and reports |
+| config_version | integer | NO | `1` | Bumped on every config change |
+| case_config | jsonb | NO | `{}` | Case-specific fields, validated by the case's zod schema in `lib/projects/case-templates.ts` |
+| is_demo | boolean | NO | `false` | Demo projects render the sample dashboard |
+| notification_config | jsonb | NO | `{}` | `{ channels, recipients, reportSchedule }`: default alert delivery and AI report schedule |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
@@ -217,6 +224,90 @@ Social listening scope inside a workspace: one brand, campaign, or similar liste
 **Relations**
 
 - ← `terms.project_id`
+- ← `project_entities.project_id`, `project_queries.project_id`, `project_aspects.project_id`, `project_sources.project_id`, `alert_rules.project_id`
+
+---
+
+### `project_entities`
+
+Brand, project, competitor or area a project listens for.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| role | text | NO | — | `primary`, `competitor`, `product`, `person`, `area` |
+| name | text | NO | — | Display name |
+| aliases | jsonb | NO | `[]` | Other names (string[]) |
+| color | text | YES | — | Chart color |
+| sort_order | integer | NO | `0` | Display order |
+| created_at / updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** `project_entities_project_id_idx` on `project_id`
+
+### `project_queries`
+
+Lexical rule that makes a content item a mention. One generated query per entity.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| entity_id | uuid | YES | — | FK → `project_entities.id` ON DELETE CASCADE |
+| include | jsonb | NO | `[]` | Any one term must appear (entity name + aliases) |
+| with_terms | jsonb | NO | `[]` | When non-empty, at least one must also appear |
+| exclude | jsonb | NO | `[]` | None may appear |
+| proximity | integer | YES | — | Max words between include and with terms; null = anywhere |
+| version | integer | NO | `1` | Bumped when terms change; triggers re-matching |
+| enabled | boolean | NO | `true` | |
+| created_at / updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** `project_queries_project_id_idx`, `project_queries_entity_id_idx`
+
+### `project_aspects`
+
+Aspects a project measures sentiment on, initialized from the case template.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| key | text | NO | — | Stable slug (template key or derived from name) |
+| name | text | NO | — | Display name |
+| description | text | NO | `''` | Guidance for the Enrich prompt |
+| sort_order | integer | NO | `0` | Display order |
+| created_at / updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** `project_aspects_project_key_idx` — UNIQUE on `(project_id, key)`
+
+### `project_sources`
+
+Sources a project follows (required for Facebook, which has no keyword search).
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| source_id | uuid | NO | — | FK → `sources.id` ON DELETE CASCADE |
+| created_at | timestamptz | NO | `now()` | |
+
+**Keys:** primary key `(project_id, source_id)`; `project_sources_source_id_idx` on `source_id`
+
+### `alert_rules`
+
+Alert rule of a project; `kind` comes from the catalog in `lib/projects/alert-templates.ts` and may repeat. Configured from phase 3; evaluated from phase 6.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key (client-generated for new rules) |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| kind | text | NO | — | `volume_growth`, `negative_share`, `viral_post`, `keyword_hit`, `price_deviation`, `buyer_questions_growth` |
+| params | jsonb | NO | `{}` | `{ scope, threshold, window, minMentions, keywords }`; `scope` is `{ type: project }`, `{ type: entity, entityId }`, `{ type: aspect, aspectId }` or `{ type: each_role, role }` |
+| channels | jsonb | YES | — | Overrides `projects.notification_config.channels`; null = project default |
+| enabled | boolean | NO | `true` | |
+| sort_order | integer | NO | `0` | Display order |
+| created_at / updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** `alert_rules_project_id_idx` on `project_id`
 
 ---
 

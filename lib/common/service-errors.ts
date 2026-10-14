@@ -4,6 +4,7 @@ export type ServiceErrorCode =
   | "CREATE_FAILED"
   | "UPDATE_FAILED"
   | "DELETE_FAILED"
+  | "INVALID"
   | "UNKNOWN";
 
 export class ServiceError extends Error {
@@ -56,6 +57,14 @@ export class DeleteFailedError extends ServiceError {
   constructor(public readonly entity: string) {
     super("DELETE_FAILED", `Failed to delete ${entity}`);
     this.name = "DeleteFailedError";
+  }
+}
+
+/** Input passed schema validation but breaks a business rule. */
+export class InvalidInputError extends ServiceError {
+  constructor(message: string) {
+    super("INVALID", message);
+    this.name = "InvalidInputError";
   }
 }
 

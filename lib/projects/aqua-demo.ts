@@ -2,11 +2,11 @@ import rawJson from "./aqua-demo-cases.json";
 import type { ProjectCase } from "./project-cases";
 
 export const AQUA_CASE_IDS = [
-  "general",
-  "campaign",
+  "brand",
+  "project",
   "crisis",
-  "competitor",
-  "cx",
+  "market",
+  "broker",
 ] as const;
 
 export type AquaCaseId = (typeof AQUA_CASE_IDS)[number];
@@ -130,7 +130,8 @@ const raw = rawJson as unknown as {
     p: number;
     t: string;
   }[];
-  CASES: Record<AquaCaseId, RawCase>;
+  // Keys predate D10 (generic case ids); AQUA_CASES maps them to real estate ids.
+  CASES: Record<"general" | "campaign" | "crisis" | "competitor" | "cx", RawCase>;
 };
 
 export const AQUA_DAYS = raw.DAYS;
@@ -254,11 +255,11 @@ function mapCase(id: AquaCaseId, item: RawCase): AquaCase {
 }
 
 export const AQUA_CASES: Record<AquaCaseId, AquaCase> = {
-  general: mapCase("general", raw.CASES.general),
-  campaign: mapCase("campaign", raw.CASES.campaign),
+  brand: mapCase("brand", raw.CASES.general),
+  project: mapCase("project", raw.CASES.campaign),
   crisis: mapCase("crisis", raw.CASES.crisis),
-  competitor: mapCase("competitor", raw.CASES.competitor),
-  cx: mapCase("cx", raw.CASES.cx),
+  market: mapCase("market", raw.CASES.competitor),
+  broker: mapCase("broker", raw.CASES.cx),
 };
 
 export function isAquaCase(value: ProjectCase): value is AquaCaseId {
@@ -327,7 +328,7 @@ export function formatSigned(value: number, suffix = "") {
 }
 
 export function channelSentiment(caseId: AquaCaseId) {
-  const negBase = caseId === "crisis" ? 38 : caseId === "cx" ? 18 : 8;
+  const negBase = caseId === "crisis" ? 38 : caseId === "broker" ? 18 : 8;
   const positiveBase = [64, 70, 60, 48, 44, 76, 68];
   const neutral = [26, 22, 32, 46, 30, 18, 14];
   const negativeBase = [10, 8, 8, 6, 26, 6, 18];

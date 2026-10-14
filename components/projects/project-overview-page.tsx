@@ -1,6 +1,7 @@
 "use client";
 
 import { AquaDemoDashboard } from "@/components/projects/demo/demo-dashboard";
+import { ProjectPendingDashboard } from "@/components/projects/project-pending-dashboard";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
 
@@ -20,6 +21,15 @@ export function ProjectOverviewPage({
 
   if (!project) {
     return null;
+  }
+
+  if (!project.isDemo) {
+    return (
+      <ProjectPendingDashboard
+        project={project}
+        settingsHref={getProjectNavHref(workspaceIndex, projectIndex, "settings")}
+      />
+    );
   }
 
   return (

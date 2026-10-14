@@ -65,25 +65,25 @@ const DATASETS = {
 } as const;
 
 export const AQUA_ALERT_RULES: Record<AquaCaseId, string[][]> = {
-  general: [
+  brand: [
     ["Tỷ lệ tiêu cực vượt", "20%", "Email, Zalo"],
     ["Báo chí nhắc tên kèm từ nhạy cảm", "1 bài", "Email, Zalo"],
     ["Thảo luận về tài chính, trái phiếu tăng", "30% trong 24 giờ", "Email, Zalo"],
     ["Bài lan truyền mạnh", "500 lượt chia sẻ", "Email, Zalo"],
   ],
-  campaign: [
+  project: [
     ["Tin rao lệch giá tham chiếu quá", "15%", "Email, Zalo"],
     ["Tiêu cực về pháp lý, tiến độ vượt", "30%", "Email, Zalo"],
     ["Câu hỏi của người mua tăng", "30% trong tuần", "Email, Zalo"],
     ["Video review đạt", "100.000 lượt xem", "Email, Zalo"],
   ],
-  competitor: [
+  market: [
     ["Khu vực tăng thảo luận", "30% trong tuần", "Email, Zalo"],
     ["Tin chưa kiểm chứng về quy hoạch lan trên", "10 group", "Email, Zalo"],
     ["Từ khóa cắt lỗ, bán gấp tăng", "20%", "Email, Zalo"],
     ["Lo ngại lãi suất vượt", "30%", "Email, Zalo"],
   ],
-  cx: [
+  broker: [
     ["Phát hiện vi phạm mới, từ", "1 tin", "Email"],
     ["Một sàn vượt", "10 vi phạm/tháng", "Email"],
     ["Vi phạm chưa khắc phục sau", "3 ngày", "Email"],
@@ -178,7 +178,7 @@ function shareRows(input: {
 }
 
 export const AQUA_PROFILES: Record<AquaCaseId, AquaProjectProfile> = {
-  general: {
+  brand: {
     owner: "Lan Hương (bạn)",
     modeLabel: "Liên tục",
     datasets: ["Thương hiệu Phát Đạt", "Chủ đầu tư cùng khu vực"],
@@ -248,7 +248,7 @@ export const AQUA_PROFILES: Record<AquaCaseId, AquaProjectProfile> = {
       },
     ],
   },
-  campaign: {
+  project: {
     owner: "Quốc Bảo",
     modeLabel: "Liên tục",
     datasets: ["Dự án La Pura"],
@@ -332,7 +332,7 @@ export const AQUA_PROFILES: Record<AquaCaseId, AquaProjectProfile> = {
       },
     ],
   },
-  competitor: {
+  market: {
     owner: "Thanh Vy",
     modeLabel: "01/09/2026 – 31/12/2026",
     datasets: ["Thị trường căn hộ Đông Bắc TP.HCM", "Dự án La Pura"],
@@ -411,7 +411,7 @@ export const AQUA_PROFILES: Record<AquaCaseId, AquaProjectProfile> = {
       },
     ],
   },
-  cx: {
+  broker: {
     owner: "Minh Khang",
     modeLabel: "Liên tục",
     datasets: ["Tin rao & quảng cáo của sàn", "Dự án La Pura"],
