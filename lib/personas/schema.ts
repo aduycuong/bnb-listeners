@@ -91,3 +91,85 @@ export const syntheticRecordSchema = z.object({
 });
 
 export type SyntheticRecord = z.infer<typeof syntheticRecordSchema>;
+
+// --- Admin forms and API bodies ---------------------------------------------
+
+export const PERSONA_KINDS = ["individual", "organization"] as const;
+export const PERSONA_REVIEW_STATUSES = ["draft", "approved"] as const;
+
+export const personaBodySchema = z.object({
+  name: z.string().trim().min(1, "Name is required.").max(120),
+  kind: personaKindSchema,
+  description: z.string().trim().min(1, "Description is required.").max(600),
+  tone: z.string().trim().max(400),
+  concerns: z.array(z.string().trim().min(1).max(60)).max(12),
+  reviewStatus: z.enum(PERSONA_REVIEW_STATUSES),
+});
+
+export type PersonaBody = z.infer<typeof personaBodySchema>;
+
+/** The form edits concerns as one comma-separated line. */
+export const personaFormSchema = personaBodySchema.extend({
+  concerns: z.string().max(600),
+});
+
+export type PersonaFormValues = z.infer<typeof personaFormSchema>;
+
+export const panelBodySchema = z.object({
+  name: z.string().trim().min(1, "Name is required.").max(120),
+  description: z.string().trim().max(400),
+  members: z
+    .array(
+      z.object({
+        personaId: z.uuid("Pick a persona."),
+        weight: z
+          .number("Weight must be a number.")
+          .positive("Weight must be above 0.")
+          .max(1000),
+      }),
+    )
+    .min(1, "Add at least one persona.")
+    .refine(
+      (members) =>
+        new Set(members.map((member) => member.personaId)).size === members.length,
+      { error: "A persona can appear only once." },
+    ),
+});
+
+export type PanelBody = z.infer<typeof panelBodySchema>;
+
+const generateFieldsSchema = z.object({
+  panelId: z.uuid("Pick a panel."),
+  /** Synthetic group name; the same name reuses the same source. */
+  sourceName: z.string().trim().min(1, "Source name is required.").max(120),
+  brief: z.string().trim().min(1, "Brief is required.").max(2000),
+  posts: z.number("Posts must be a number.").int().min(1).max(500),
+  minComments: z.number("Min comments must be a number.").int().min(0).max(200),
+  maxComments: z.number("Max comments must be a number.").int().min(0).max(200),
+  hours: z.number("Hours must be a number.").min(1).max(24 * 30),
+});
+
+const commentRangeRule = {
+  path: ["maxComments"],
+  error: "Max comments must be at least min comments.",
+};
+
+export const generateBodySchema = generateFieldsSchema
+  .extend({
+    styleSourceId: z.uuid().optional(),
+    distractors: z.array(z.string().trim().min(1).max(500)).max(20),
+  })
+  .refine((value) => value.minComments <= value.maxComments, commentRangeRule);
+
+export type GenerateBody = z.infer<typeof generateBodySchema>;
+
+/** The form edits distractors as one sentence per line; `styleSourceId` is "none" or a source id. */
+export const generateFormSchema = generateFieldsSchema
+  .extend({
+    panelId: z.string().min(1, "Pick a panel."),
+    styleSourceId: z.string(),
+    distractors: z.string().max(4000),
+  })
+  .refine((value) => value.minComments <= value.maxComments, commentRangeRule);
+
+export type GenerateFormValues = z.infer<typeof generateFormSchema>;
