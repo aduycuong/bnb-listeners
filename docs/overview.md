@@ -11,7 +11,7 @@ Mỗi **project** là một case listening (`general`, `campaign`, `crisis`, `co
 1. **Mention là đơn vị trung tâm.** Mọi chỉ số đều đếm và tổng hợp từ mention, bao gồm cả comment.
 2. **Kho thô không phụ thuộc project.** Đổi từ khóa hoặc thêm đối thủ thì so khớp lại trên dữ liệu đã có, không cào lại.
 3. **Mỗi bước có version và chạy lại được.** Đổi cấu hình hoặc prompt thì tính lại, không phải sửa tay.
-4. **Dữ liệu giả là công dân hạng nhất.** Dữ liệu từ connector ảo đi cùng pipeline với dữ liệu thật, được đánh cờ và kèm nhãn đúng để đo chất lượng phân tích.
+4. **Dữ liệu giả được xử lý như dữ liệu thật.** Từ lúc vào kho thô, dữ liệu từ connector ảo đi cùng pipeline, không có nhánh xử lý riêng. Cột `origin` chỉ dùng để lọc khỏi số liệu cho khách hàng. Dữ liệu giả không dùng để kiểm chứng chất lượng phân tích; kiểm chứng dựa trên mẫu thật gán nhãn tay (xem [D12](decisions.md#d12--dữ-liệu-giả-không-dùng-để-kiểm-chứng-2026-10-14)).
 
 ## Các lớp xử lý
 

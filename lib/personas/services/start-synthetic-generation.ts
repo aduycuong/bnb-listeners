@@ -21,7 +21,6 @@ type StartSyntheticGenerationParams = {
       | "model"
       | "styleSourceId"
       | "distractors"
-      | "target"
     >
   >;
 
@@ -62,7 +61,6 @@ export async function startSyntheticGeneration(
         ...(params.model && { model: params.model }),
         ...(params.styleSourceId && { styleSourceId: params.styleSourceId }),
         ...(params.distractors && { distractors: params.distractors }),
-        ...(params.target && { target: params.target }),
       },
     });
     collectRunIds.push(run.collectRunId);

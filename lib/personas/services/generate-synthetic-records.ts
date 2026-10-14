@@ -67,7 +67,6 @@ export async function generateSyntheticRecords(
       writeThreadTexts({
         thread,
         brief: params.brief,
-        target: params.target,
         samples,
         model: params.model,
       }),
@@ -171,8 +170,6 @@ function assembleThread(input: {
         briefRelevance: item.briefRelevance,
         noise: item.noise,
         degraded,
-        target: params.target ?? null,
-        aboutTarget: params.target ? item.noise === null : null,
       },
     };
   });

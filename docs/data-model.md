@@ -83,7 +83,7 @@ Dùng chung, không gắn với workspace hay project. Dữ liệu `synthetic` p
 - `persona_panels`: `name`, `description`
 - `persona_panel_members`: `panel_id`, `persona_id`, `weight`
 
-Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` và `synthetic_labels` chưa có trong schema (để sau).
+Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` chưa có trong schema (để sau). Dữ liệu giả không có bảng nhãn riêng: không dùng để kiểm chứng (D12).
 
 ## L2 — Project config
 

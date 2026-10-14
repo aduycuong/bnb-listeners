@@ -37,7 +37,6 @@ const optionsSchema = z
     model: chatModelIdSchema.optional(),
     styleSource: z.uuid().optional(),
     distractor: z.array(z.string().min(1)).default([]),
-    target: z.string().min(1).optional(),
     wait: z.boolean(),
     dryRun: z.boolean(),
     yes: z.boolean(),
@@ -71,7 +70,6 @@ function parseArgs(): Options {
       (value: string, previous: string[]) => [...previous, value],
       [] as string[],
     )
-    .option("--target <name>", "Entity the threads are about; labels items for Match evaluation")
     .option("--wait", "Wait for the runs and print their duration", false)
     .option("--dry-run", "Show what would run without writing", false)
     .option("--yes", "Register the source and start the runs", false);
@@ -120,7 +118,6 @@ async function main() {
     model: options.model,
     styleSourceId: options.styleSource,
     distractors: options.distractor,
-    target: options.target,
   });
   console.log(`[${SCRIPT}] Runs started`, result);
 
