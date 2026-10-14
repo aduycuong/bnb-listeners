@@ -5,7 +5,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 import { formatPercent } from "./mention-labels";
-import { useMatchEvaluation, type MentionsApiScope } from "./use-mentions-api";
+import {
+  useEnrichEvaluation,
+  useMatchEvaluation,
+  type MentionsApiScope,
+} from "./use-mentions-api";
 
 /** Precision and recall of Match on the latest labeled sample. */
 export function MatchEvaluationCard({
@@ -16,6 +20,7 @@ export function MatchEvaluationCard({
   labelHref: string;
 }) {
   const { data, error, isLoading } = useMatchEvaluation(scope);
+  const enrich = useEnrichEvaluation(scope);
 
   return (
     <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border px-4 py-3">
@@ -24,6 +29,15 @@ export function MatchEvaluationCard({
         <p className="text-sm text-muted-foreground">
           Chưa có mẫu gán nhãn. Tạo một mẫu ngẫu nhiên để đo độ chính xác của Match.
         </p>
+      ) : null}
+      {enrich.data ? (
+        <div className="flex w-full flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+          <span>
+            <b>{enrich.data.sampleName}</b>: {enrich.data.labeled} mention đã gán nhãn
+          </span>
+          <span>Sentiment đúng {formatPercent(enrich.data.sentimentAccuracy)}</span>
+          <span>Khía cạnh F1 {formatPercent(enrich.data.aspect.f1)}</span>
+        </div>
       ) : null}
       {data ? (
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">

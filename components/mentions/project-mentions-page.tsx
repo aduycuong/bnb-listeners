@@ -15,8 +15,11 @@ import type { ProjectConfigDetail } from "@/lib/projects/types";
 import { projectFetch } from "@/lib/projects/utils/project-fetch";
 import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
 
+import { SENTIMENT_LABELS, SENTIMENTS } from "@/lib/enrichment/config";
+
 import { HighlightTerms } from "./highlight-terms";
 import { MatchEvaluationCard } from "./match-evaluation-card";
+import { MentionEnrichment } from "./mention-enrichment";
 import { MentionFilterSelect } from "./mention-filter-select";
 import { MentionLabelButtons } from "./mention-label-buttons";
 import {
@@ -26,6 +29,7 @@ import {
   formatDateTime,
 } from "./mention-labels";
 import { MentionThreadSheet } from "./mention-thread-sheet";
+import { SentimentAspectPicker } from "./sentiment-aspect-picker";
 import { useMentionsList, useSetItemLabel, type MentionsApiScope } from "./use-mentions-api";
 
 const ALL = "all";
@@ -94,6 +98,10 @@ function MentionsList({
     },
   });
   const entityNames = new Map(config?.entities.map((entity) => [entity.id, entity.name]) ?? []);
+  const aspectNames = new Map(
+    config?.aspects.map((aspect) => [aspect.id, { key: aspect.key, name: aspect.name }]) ?? [],
+  );
+  const [editing, setEditing] = useState<string | null>(null);
 
   const update = (patch: Partial<ListMentionsQuery>) =>
     setFilters((current) => ({ ...current, ...patch, page: patch.page ?? 1 }));
@@ -153,6 +161,26 @@ function MentionsList({
               ...config.entities.map((entity) => ({ value: entity.id, label: entity.name })),
             ]}
             onChange={(value) => update({ entityId: value === ALL ? undefined : value })}
+          />
+        ) : null}
+        <MentionFilterSelect
+          label="Cảm xúc"
+          value={filters.sentiment ?? ALL}
+          options={[
+            { value: ALL, label: "Mọi cảm xúc" },
+            ...SENTIMENTS.map((value) => ({ value, label: SENTIMENT_LABELS[value] })),
+          ]}
+          onChange={(value) => update({ sentiment: value as ListMentionsQuery["sentiment"] })}
+        />
+        {config && config.aspects.length > 0 ? (
+          <MentionFilterSelect
+            label="Khía cạnh"
+            value={filters.aspectId ?? ALL}
+            options={[
+              { value: ALL, label: "Mọi khía cạnh" },
+              ...config.aspects.map((aspect) => ({ value: aspect.id, label: aspect.name })),
+            ]}
+            onChange={(value) => update({ aspectId: value === ALL ? undefined : value })}
           />
         ) : null}
         <MentionFilterSelect
@@ -260,6 +288,36 @@ function MentionsList({
             {mention.matchReason ? (
               <p className="text-xs text-muted-foreground">AI: {mention.matchReason}</p>
             ) : null}
+            <MentionEnrichment mention={mention} aspectNames={aspectNames} />
+            {editing === mention.id && config ? (
+              <div className="rounded-xl bg-muted px-3 py-2">
+                <SentimentAspectPicker
+                  aspects={config.aspects}
+                  sentiment={mention.labelSentiment ?? mention.sentiment}
+                  aspectKeys={
+                    mention.labelAspectKeys ??
+                    mention.aspects
+                      .map((aspect) => aspectNames.get(aspect.aspectId)?.key)
+                      .filter((key): key is string => Boolean(key))
+                  }
+                  disabled={setLabel.isPending}
+                  onSentiment={(sentiment) =>
+                    setLabel.mutate({
+                      contentItemId: mention.contentItemId,
+                      isRelevant: mention.label ?? true,
+                      sentiment,
+                    })
+                  }
+                  onAspects={(aspectKeys) =>
+                    setLabel.mutate({
+                      contentItemId: mention.contentItemId,
+                      isRelevant: mention.label ?? true,
+                      aspectKeys,
+                    })
+                  }
+                />
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center justify-between gap-2">
               {canEdit ? (
                 <MentionLabelButtons
@@ -273,6 +331,17 @@ function MentionsList({
               ) : (
                 <span />
               )}
+              <div className="flex gap-1">
+              {canEdit && mention.isRelevant ? (
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => setEditing(editing === mention.id ? null : mention.id)}
+                >
+                  {editing === mention.id ? "Xong" : "Sửa cảm xúc, khía cạnh"}
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 size="xs"
@@ -287,6 +356,7 @@ function MentionsList({
                 <MessagesSquareIcon />
                 Xem thread
               </Button>
+              </div>
             </div>
           </article>
         ))}

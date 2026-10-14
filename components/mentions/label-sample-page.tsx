@@ -1,22 +1,31 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftIcon, ExternalLinkIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { FormFieldText } from "@/components/forms/form-field-text";
 import { Button } from "@/components/ui/button";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
+import type { Sentiment } from "@/lib/enrichment/config";
 import { createLabelSampleBodySchema } from "@/lib/mentions/schema";
+import type { LabelSampleTask } from "@/lib/mentions/types";
+import type { ProjectConfigDetail } from "@/lib/projects/types";
+import { projectFetch } from "@/lib/projects/utils/project-fetch";
 import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
 
 import { KIND_LABELS, formatDateTime, formatPercent } from "./mention-labels";
+import { SentimentAspectPicker } from "./sentiment-aspect-picker";
 import {
   useCreateLabelSample,
+  useEnrichEvaluation,
   useLabelSampleTask,
   useLabelSamples,
   useMatchEvaluation,
@@ -61,6 +70,18 @@ function LabelSampleWorkspace({
   mentionsHref: string;
 }) {
   const { data: samples, isLoading } = useLabelSamples(scope);
+  const { data: config } = useQuery({
+    queryKey: ["project-config", scope.projectId],
+    queryFn: async () => {
+      const res = await projectFetch(
+        scope.workspaceId,
+        scope.projectId,
+        `/api/projects/${scope.projectId}/config`,
+      );
+      if (!res.ok) throw new Error("Không tải được cấu hình.");
+      return (await res.json()) as ProjectConfigDetail;
+    },
+  });
   const [chosen, setChosen] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const sampleId = chosen ?? samples?.items[0]?.id ?? null;
@@ -74,8 +95,8 @@ function LabelSampleWorkspace({
           </Link>
           <h1 className="font-heading text-xl font-bold">Gán nhãn mẫu</h1>
           <p className="text-[13px] text-muted-foreground">
-            Mẫu ngẫu nhiên gồm mention, ứng viên bị loại và nội dung không khớp. Chỉ trả lời: nội dung này
-            có nói về đối tượng của project không? Kết quả của hệ thống được ẩn để không ảnh hưởng.
+            Mẫu Match: nội dung có nói về đối tượng của project không. Mẫu Enrich: cảm xúc và khía cạnh của
+            mention. Kết quả của hệ thống được ẩn để không ảnh hưởng.
           </p>
         </div>
         {canEdit ? (
@@ -99,7 +120,7 @@ function LabelSampleWorkspace({
         )
       ) : null}
 
-      {samples && samples.items.length > 1 ? (
+      {samples && samples.items.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {samples.items.map((sample) => (
             <Button
@@ -114,7 +135,15 @@ function LabelSampleWorkspace({
         </div>
       ) : null}
 
-      {sampleId ? <LabelTask key={sampleId} scope={scope} sampleId={sampleId} canEdit={canEdit} /> : null}
+      {sampleId ? (
+        <LabelTask
+          key={sampleId}
+          scope={scope}
+          sampleId={sampleId}
+          canEdit={canEdit}
+          aspects={config?.aspects ?? []}
+        />
+      ) : null}
     </div>
   );
 }
@@ -134,8 +163,9 @@ function CreateSampleForm({
   const create = useCreateLabelSample(scope);
   const form = useForm<z.input<typeof createFormSchema>, unknown, z.output<typeof createFormSchema>>({
     resolver: zodResolver(createFormSchema),
-    defaultValues: { mentions: 100, unmatched: 50 },
+    defaultValues: { kind: "match", mentions: 100, unmatched: 50 },
   });
+  const kind = useWatch({ control: form.control, name: "kind" });
 
   return (
     <form
@@ -145,20 +175,50 @@ function CreateSampleForm({
         onCreated(sample.id);
       })}
     >
+      <Controller
+        control={form.control}
+        name="kind"
+        render={({ field }) => (
+          <RadioGroup value={field.value} onValueChange={field.onChange} className="md:col-span-3">
+            {[
+              { value: "match", label: "Mẫu Match", hint: "Có liên quan hay không, trên mọi loại nội dung" },
+              { value: "enrich", label: "Mẫu Enrich", hint: "Cảm xúc và khía cạnh của mention đã làm giàu" },
+            ].map((option) => (
+              <Field key={option.value} orientation="horizontal">
+                <RadioGroupItem value={option.value} id={`sample-kind-${option.value}`} />
+                <FieldContent>
+                  <FieldLabel htmlFor={`sample-kind-${option.value}`}>
+                    {option.label}
+                    <span className="ml-2 font-normal text-muted-foreground">{option.hint}</span>
+                  </FieldLabel>
+                </FieldContent>
+              </Field>
+            ))}
+          </RadioGroup>
+        )}
+      />
       <FormFieldText
         control={form.control}
         name="mentions"
         type="number"
-        label="Từ mention và ứng viên bị loại"
-        description="Chia theo tỉ lệ, ít nhất 10 ứng viên bị loại nếu có"
+        label={kind === "enrich" ? "Số mention" : "Từ mention và ứng viên bị loại"}
+        description={
+          kind === "enrich"
+            ? "Lấy ngẫu nhiên trong mention có liên quan đã làm giàu"
+            : "Chia theo tỉ lệ, ít nhất 10 ứng viên bị loại nếu có"
+        }
       />
-      <FormFieldText
-        control={form.control}
-        name="unmatched"
-        type="number"
-        label="Từ nội dung không khớp"
-        description="Để ước tính số bị bỏ sót (recall)"
-      />
+      {kind === "enrich" ? (
+        <span />
+      ) : (
+        <FormFieldText
+          control={form.control}
+          name="unmatched"
+          type="number"
+          label="Từ nội dung không khớp"
+          description="Để ước tính số bị bỏ sót (recall)"
+        />
+      )}
       <Button type="submit" disabled={create.isPending}>
         {create.isPending ? <Loader2Icon className="animate-spin" /> : null}
         Tạo mẫu
@@ -171,15 +231,18 @@ function LabelTask({
   scope,
   sampleId,
   canEdit,
+  aspects,
 }: {
   scope: MentionsApiScope;
   sampleId: string;
   canEdit: boolean;
+  aspects: { key: string; name: string }[];
 }) {
   const [cursor, setCursor] = useState({ position: 0, next: true });
   const { data: task, isFetching } = useLabelSampleTask(scope, sampleId, cursor.position, cursor.next);
   const setLabel = useSetItemLabel(scope);
   const done = task && !task.item;
+  const enrichMode = task?.sample.kind === "enrich";
 
   const answer = (value: boolean) => {
     if (!task?.item || !canEdit) return;
@@ -192,7 +255,7 @@ function LabelTask({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
-      if (!task?.item || setLabel.isPending) return;
+      if (!task?.item || setLabel.isPending || enrichMode) return;
       const key = event.key.toLowerCase();
       if (key === "y") answer(true);
       else if (key === "n") answer(false);
@@ -231,7 +294,15 @@ function LabelTask({
       </div>
 
       {done ? (
-        <SampleResult scope={scope} sampleId={sampleId} onRestart={() => setCursor({ position: 0, next: true })} />
+        enrichMode ? (
+          <EnrichSampleResult
+            scope={scope}
+            sampleId={sampleId}
+            onRestart={() => setCursor({ position: 0, next: true })}
+          />
+        ) : (
+          <SampleResult scope={scope} sampleId={sampleId} onRestart={() => setCursor({ position: 0, next: true })} />
+        )
       ) : (
         <section className="flex flex-col gap-3 rounded-[22px] border-[1.5px] border-border bg-card px-4 py-4">
           {task.root ? (
@@ -263,7 +334,23 @@ function LabelTask({
             <p className="text-base whitespace-pre-line">{task.item!.text || "(không có chữ)"}</p>
           </div>
 
-          {canEdit ? (
+          {canEdit && enrichMode ? (
+            <EnrichAnswer
+              key={task.item!.contentItemId}
+              task={task}
+              aspects={aspects}
+              busy={setLabel.isPending || isFetching}
+              onBack={() => setCursor({ position: task.position - 1, next: false })}
+              onSkip={() => setCursor({ position: task.position + 1, next: true })}
+              onSave={(value) =>
+                setLabel.mutate(
+                  { contentItemId: task.item!.contentItemId, sampleId, ...value },
+                  { onSuccess: () => setCursor({ position: task.position + 1, next: true }) },
+                )
+              }
+            />
+          ) : null}
+          {canEdit && !enrichMode ? (
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
               <Button
                 size="sm"
@@ -332,6 +419,121 @@ function SampleResult({
       <p className="text-xs text-muted-foreground">
         Mục đã bỏ qua vẫn chưa có nhãn; bắt đầu lại để gán nốt.
       </p>
+      <div>
+        <Button size="sm" variant="outline" onClick={onRestart}>
+          Bắt đầu lại từ đầu mẫu
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+type EnrichAnswerValue = {
+  isRelevant: boolean;
+  sentiment: Sentiment | null;
+  aspectKeys: string[] | null;
+};
+
+/** Sentiment and aspects of one mention; keys 1/2/3 sentiment, N not relevant, Enter save, S skip. */
+function EnrichAnswer({
+  task,
+  aspects,
+  busy,
+  onSave,
+  onSkip,
+  onBack,
+}: {
+  task: LabelSampleTask;
+  aspects: { key: string; name: string }[];
+  busy: boolean;
+  onSave: (value: EnrichAnswerValue) => void;
+  onSkip: () => void;
+  onBack: () => void;
+}) {
+  const [sentiment, setSentiment] = useState<Sentiment | null>(
+    (task.labelSentiment as Sentiment | null) ?? null,
+  );
+  const [aspectKeys, setAspectKeys] = useState<string[]>(task.labelAspectKeys ?? []);
+  const save = () => {
+    if (sentiment) onSave({ isRelevant: true, sentiment, aspectKeys });
+  };
+  const notRelevant = () => onSave({ isRelevant: false, sentiment: null, aspectKeys: null });
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+      if (busy) return;
+      const key = event.key.toLowerCase();
+      if (key === "1") setSentiment("positive");
+      else if (key === "2") setSentiment("neutral");
+      else if (key === "3") setSentiment("negative");
+      else if (key === "n") notRelevant();
+      else if (key === "s") onSkip();
+      else if (event.key === "Enter") save();
+      else if (event.key === "ArrowLeft" && task.position > 0) onBack();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-border pt-3">
+      <SentimentAspectPicker
+        aspects={aspects}
+        sentiment={sentiment}
+        aspectKeys={aspectKeys}
+        disabled={busy}
+        onSentiment={setSentiment}
+        onAspects={setAspectKeys}
+        shortcuts
+      />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button size="sm" variant="ghost" disabled={task.position === 0} onClick={onBack}>
+          ← Trước
+        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" disabled={busy} onClick={notRelevant}>
+            Không liên quan (N)
+          </Button>
+          <Button variant="ghost" disabled={busy} onClick={onSkip}>
+            Bỏ qua (S)
+          </Button>
+          <Button disabled={busy || !sentiment} onClick={save}>
+            Lưu (Enter)
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EnrichSampleResult({
+  scope,
+  sampleId,
+  onRestart,
+}: {
+  scope: MentionsApiScope;
+  sampleId: string;
+  onRestart: () => void;
+}) {
+  const { data } = useEnrichEvaluation(scope, sampleId);
+
+  return (
+    <section className="flex flex-col gap-3 rounded-[22px] border-[1.5px] border-border bg-card px-4 py-4">
+      <h2 className="text-base font-semibold">Không còn mục chưa gán nhãn</h2>
+      {data ? (
+        <div className="grid gap-2 text-sm md:grid-cols-2">
+          <span>Sentiment đúng: <b>{formatPercent(data.sentimentAccuracy)}</b></span>
+          <span>Khía cạnh F1: <b>{formatPercent(data.aspect.f1)}</b></span>
+          {data.byAspect
+            .filter((row) => row.support > 0)
+            .map((row) => (
+              <span key={row.key} className="text-muted-foreground">
+                {row.name}: F1 {formatPercent(row.f1)} (n={row.support})
+              </span>
+            ))}
+        </div>
+      ) : null}
       <div>
         <Button size="sm" variant="outline" onClick={onRestart}>
           Bắt đầu lại từ đầu mẫu

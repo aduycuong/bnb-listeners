@@ -1,7 +1,16 @@
-import { and, count, desc, eq, gte, ilike, lt, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray, lt, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-import { authors, contentItems, itemLabels, mentions, sources } from "@/db/schema";
+import {
+  authors,
+  contentItems,
+  itemLabels,
+  mentionAspects,
+  mentionExtractions,
+  mentions,
+  projectAspects,
+  sources,
+} from "@/db/schema";
 import { db } from "@/lib/db";
 
 import { MENTION_PAGE_SIZE } from "../schema";
@@ -24,6 +33,19 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
     filters.push(sql`${mentions.matchedEntityIds} @> ${JSON.stringify([params.entityId])}::jsonb`);
   }
   if (params.sourceId) filters.push(eq(mentions.sourceId, params.sourceId));
+  if (params.sentiment !== "all") filters.push(eq(mentions.sentiment, params.sentiment));
+  if (params.aspectId) {
+    // Effective aspects: the label's keys when labeled, else Enrich's rows (D14).
+    filters.push(sql`(
+      (${itemLabels.aspectKeys} is not null and ${itemLabels.aspectKeys} @> jsonb_build_array(
+        (select pa.key from ${projectAspects} pa where pa.id = ${params.aspectId})
+      ))
+      or (${itemLabels.aspectKeys} is null and exists (
+        select 1 from ${mentionAspects} ma
+        where ma.mention_id = ${mentions.id} and ma.aspect_id = ${params.aspectId} and ma.source = 'auto'
+      ))
+    )`);
+  }
   if (params.from) filters.push(gte(mentions.publishedAt, new Date(params.from)));
   if (params.to) filters.push(lt(mentions.publishedAt, new Date(Date.parse(params.to) + DAY_MS)));
   if (params.q) filters.push(ilike(contentItems.text, `%${params.q}%`));
@@ -50,6 +72,12 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
       autoIsRelevant: mentions.autoIsRelevant,
       userCorrected: mentions.userCorrected,
       label: itemLabels.isRelevant,
+      sentiment: mentions.sentiment,
+      autoSentiment: mentions.autoSentiment,
+      emotion: mentions.emotion,
+      enrichStatus: mentions.enrichStatus,
+      labelSentiment: itemLabels.sentiment,
+      labelAspectKeys: itemLabels.aspectKeys,
     })
     .from(mentions)
     .innerJoin(contentItems, eq(contentItems.id, mentions.contentItemId))
@@ -84,10 +112,33 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
       .where(where),
   ]);
 
+  const ids = rows.map((row) => row.id);
+  const [aspectRows, extractionRows] = ids.length
+    ? await Promise.all([
+        db.select().from(mentionAspects).where(inArray(mentionAspects.mentionId, ids)),
+        db
+          .select({
+            mentionId: mentionExtractions.mentionId,
+            schemaKey: mentionExtractions.schemaKey,
+            data: mentionExtractions.data,
+          })
+          .from(mentionExtractions)
+          .where(inArray(mentionExtractions.mentionId, ids)),
+      ])
+    : [[], []];
+
   return {
     items: rows.map(
       (row): MentionListItem => ({
         ...row,
+        aspects: aspectRows
+          .filter((aspect) => aspect.mentionId === row.id && aspect.source === "auto")
+          .map((aspect) => ({ aspectId: aspect.aspectId, sentiment: aspect.sentiment })),
+        extractions: extractionRows
+          .filter((extraction) => extraction.mentionId === row.id)
+          .map(({ schemaKey, data }) => ({ schemaKey, data })),
+        labelSentiment: row.labelSentiment ?? null,
+        labelAspectKeys: row.labelAspectKeys ?? null,
         matchType: row.matchType as MentionListItem["matchType"],
         matchTier: row.matchTier as MentionListItem["matchTier"],
         publishedAt: row.publishedAt?.toISOString() ?? null,

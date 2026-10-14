@@ -4,18 +4,20 @@ import {
   contentItems,
   itemLabels,
   mentions,
+  projectAspects,
   projects,
   projectSources,
 } from "@/db/schema";
-import { NotFoundError } from "@/lib/common/service-errors";
+import { InvalidInputError, NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 
 import type { SetItemLabelParams, SetItemLabelResult } from "../types";
 
 /**
  * Stores a labeler's answer apart from Match's output (D13) and applies it:
- * the mention's `is_relevant` follows the label; a missed item labeled
- * relevant becomes a `manual` mention. A null answer removes the label.
+ * the mention's `is_relevant` and `sentiment` follow the label; a missed item
+ * labeled relevant becomes a `manual` mention. Sentiment and aspects are only
+ * changed when given. A null answer removes the whole label.
  */
 export async function setItemLabel(params: SetItemLabelParams): Promise<SetItemLabelResult> {
   const followed = db
@@ -55,6 +57,7 @@ export async function setItemLabel(params: SetItemLabelParams): Promise<SetItemL
         .update(mentions)
         .set({
           isRelevant: sql`coalesce(${mentions.autoIsRelevant}, false)`,
+          sentiment: sql`${mentions.autoSentiment}`,
           userCorrected: false,
           updatedAt: new Date(),
         })
@@ -68,12 +71,24 @@ export async function setItemLabel(params: SetItemLabelParams): Promise<SetItemL
     };
   }
 
+  if (params.aspectKeys?.length) {
+    const known = await db
+      .select({ key: projectAspects.key })
+      .from(projectAspects)
+      .where(eq(projectAspects.projectId, params.projectId));
+    const keys = new Set(known.map((row) => row.key));
+    const unknown = params.aspectKeys.find((key) => !keys.has(key));
+    if (unknown) throw new InvalidInputError(`Khía cạnh "${unknown}" không thuộc project.`);
+  }
+
   await db
     .insert(itemLabels)
     .values({
       projectId: params.projectId,
       contentItemId: item.id,
       isRelevant: params.isRelevant,
+      sentiment: params.sentiment ?? null,
+      aspectKeys: params.aspectKeys ?? null,
       sampleId: params.sampleId ?? null,
       labeledBy: params.userId,
     })
@@ -81,6 +96,8 @@ export async function setItemLabel(params: SetItemLabelParams): Promise<SetItemL
       target: [itemLabels.projectId, itemLabels.contentItemId],
       set: {
         isRelevant: params.isRelevant,
+        ...(params.sentiment !== undefined && { sentiment: params.sentiment }),
+        ...(params.aspectKeys !== undefined && { aspectKeys: params.aspectKeys }),
         labeledBy: params.userId,
         labeledAt: new Date(),
         // A label given in a sample stays a sample label when corrected later.
@@ -91,7 +108,14 @@ export async function setItemLabel(params: SetItemLabelParams): Promise<SetItemL
   if (mention) {
     await db
       .update(mentions)
-      .set({ isRelevant: params.isRelevant, userCorrected: true, updatedAt: new Date() })
+      .set({
+        isRelevant: params.isRelevant,
+        ...(params.sentiment !== undefined && {
+          sentiment: params.sentiment ?? sql`${mentions.autoSentiment}`,
+        }),
+        userCorrected: true,
+        updatedAt: new Date(),
+      })
       .where(eq(mentions.id, mention.id));
   } else if (params.isRelevant) {
     const [project] = await db
@@ -113,6 +137,7 @@ export async function setItemLabel(params: SetItemLabelParams): Promise<SetItemL
       matchTier: "user",
       isRelevant: true,
       autoIsRelevant: null,
+      sentiment: params.sentiment ?? null,
       matchSignature: project?.matchSignature ?? "",
       userCorrected: true,
     });

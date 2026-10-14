@@ -6,6 +6,7 @@ export const WORKFLOW_NAMES = [
   "collect-source",
   "schedule-collections",
   "match-project",
+  "enrich-project",
 ] as const;
 
 export type WorkflowName = (typeof WORKFLOW_NAMES)[number];

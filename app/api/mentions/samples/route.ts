@@ -17,6 +17,7 @@ export const POST = createApiHandler(
     createLabelSample({
       projectId: ctx.projectId!,
       userId: ctx.userId,
+      kind: params.kind,
       mentions: params.mentions,
       unmatched: params.unmatched,
     }),

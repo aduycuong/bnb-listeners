@@ -11,7 +11,7 @@ import {
 import { InvalidInputError, NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 
-import type { CreateLabelSampleParams, LabelSampleStratum, LabelSampleSummary } from "../types";
+import type { CreateLabelSampleParams, LabelSampleSummary } from "../types";
 import { getLabelSampleSummary } from "./get-label-sample-summary";
 
 /** Rejected candidates get at least this many of the mention slots, when there are that many. */
@@ -24,6 +24,53 @@ function shuffle<T>(values: T[]): T[] {
     [copy[index], copy[other]] = [copy[other], copy[index]];
   }
   return copy;
+}
+
+/** Random relevant, enriched mentions for labeling sentiment and aspects (D14). */
+async function createEnrichSample(params: CreateLabelSampleParams, matchSignature: string) {
+  const enriched = and(
+    eq(mentions.projectId, params.projectId),
+    eq(mentions.isRelevant, true),
+    eq(mentions.enrichStatus, "done"),
+  );
+  const [[total], rows, [{ n: existing } = { n: 0 }]] = await Promise.all([
+    db.select({ n: count() }).from(mentions).where(enriched),
+    db
+      .select({ id: mentions.contentItemId })
+      .from(mentions)
+      .where(enriched)
+      .orderBy(sql`random()`)
+      .limit(params.mentions),
+    db
+      .select({ n: count() })
+      .from(labelSamples)
+      .where(and(eq(labelSamples.projectId, params.projectId), eq(labelSamples.kind, "enrich"))),
+  ]);
+  if (rows.length === 0) {
+    throw new InvalidInputError("Chưa có mention nào được làm giàu để lấy mẫu.");
+  }
+
+  const sampleId = crypto.randomUUID();
+  await db.batch([
+    db.insert(labelSamples).values({
+      id: sampleId,
+      projectId: params.projectId,
+      kind: "enrich",
+      name: `Mẫu Enrich ${existing + 1}`,
+      strata: { enriched: { population: total?.n ?? 0, sampled: rows.length } },
+      matchSignature,
+      createdBy: params.userId,
+    }),
+    db.insert(labelSampleItems).values(
+      rows.map((row, position) => ({
+        sampleId,
+        contentItemId: row.id,
+        stratum: "enriched",
+        position,
+      })),
+    ),
+  ]);
+  return getLabelSampleSummary({ projectId: params.projectId, sampleId });
 }
 
 /**
@@ -43,6 +90,7 @@ export async function createLabelSample(
   if (!project.matchSignature) {
     throw new InvalidInputError("Project chưa chạy Match xong, chưa lấy mẫu được.");
   }
+  if (params.kind === "enrich") return createEnrichSample(params, project.matchSignature);
 
   const followed = db
     .select({ sourceId: projectSources.sourceId })
@@ -66,7 +114,7 @@ export async function createLabelSample(
     db.select({ n: count() }).from(mentions).where(mentionStratum(false)),
     db.select({ n: count() }).from(contentItems).where(unmatchedWhere),
   ]);
-  const population: Record<LabelSampleStratum, number> = {
+  const population = {
     relevant: relevantCount?.n ?? 0,
     rejected: rejectedCount?.n ?? 0,
     unmatched: unmatchedCount?.n ?? 0,
@@ -117,7 +165,7 @@ export async function createLabelSample(
   const [{ n: existing } = { n: 0 }] = await db
     .select({ n: count() })
     .from(labelSamples)
-    .where(eq(labelSamples.projectId, params.projectId));
+    .where(and(eq(labelSamples.projectId, params.projectId), eq(labelSamples.kind, "match")));
 
   const sampleId = crypto.randomUUID();
   await db.batch([

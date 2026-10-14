@@ -254,3 +254,17 @@ Thay nguyên tắc "dữ liệu giả kèm nhãn đúng để đo chất lượn
 - Khi gán nhãn mẫu, giao diện không hiện quyết định của hệ thống.
 - Precision và recall chỉ tính trên nhãn của đợt mẫu; nhãn sửa lẻ trong danh sách không tính (lệch về phía ca sai người dùng tự thấy). Precision = tỉ lệ đúng trong tầng `relevant`; recall = ước lượng đúng tìm được / (đúng tìm được + đúng bị bỏ sót), mỗi tầng nhân theo kích thước. Đổi cấu hình Match sau khi lấy mẫu thì mẫu bị đánh dấu không còn khớp, nên lấy mẫu mới.
 - Quyền: `edit` mới gán và sửa nhãn, `read` chỉ xem.
+
+## D14 — Giai đoạn 4b: Enrich (2026-10-14)
+
+**Quyết định**
+- Làm giàu theo thread: mỗi lần gọi `gpt-4.1-mini` gồm bài gốc (ngữ cảnh) và tối đa 20 mention có liên quan của thread. Mention không liên quan được đánh dấu `skipped`, không làm giàu.
+- Kết quả mỗi mention (structured output, schema dựng theo cấu hình project): `sentiment` + `sentiment_score` (thái độ với đối tượng theo dõi, không phải tâm trạng chung), `emotion` (6 cảm xúc của demo hoặc null), aspect của project kèm sentiment (`mention_aspects`), sentiment theo từng entity (`mention_entities`), trích xuất riêng theo case (`mention_extractions`).
+- Trích xuất định nghĩa trong `CASE_VERSIONS` (`extractions`): `project` có `price_quote`, `buyer_question`; `market` có `price_quote` kèm khu vực; `brand` chưa có. Thêm trường này là thay đổi chỉ thêm nên giữ phiên bản case.
+- Chữ ký Enrich thay cho `config_version`: hash của aspect (và mô tả), entity, case + phiên bản case, các trường trích xuất, phiên bản prompt và model. Mention được làm giàu lại khi chữ ký đổi, nội dung item đổi (`enriched_content_hash`) hoặc lần trước lỗi.
+- Chạy: workflow `enrich-project` được gọi ở cuối `match-project` (cả toàn bộ lẫn tăng dần) và khi lưu cấu hình mà không phải so khớp lại. `npm run enrich:project` để chạy tay.
+- Nhãn không ghi đè kết quả AI (theo D13): `mentions.auto_sentiment` giữ kết quả AI, `mentions.sentiment` theo nhãn nếu có. Aspect gán tay nằm ở `item_labels.aspect_keys` (null = chưa gán, [] = không có aspect) và được ưu tiên hơn `mention_aspects` (chỉ chứa kết quả AI).
+- Đo: mẫu loại `enrich` lấy ngẫu nhiên từ mention có liên quan đã làm giàu; khi gán nhãn không hiện kết quả AI. `npm run eval:enrich` và trang Mentions: accuracy sentiment kèm ma trận nhầm lẫn, precision/recall/F1 aspect (micro và từng aspect). Chưa đo emotion và trích xuất.
+- Ngưỡng chấp nhận trên mẫu thật: sentiment accuracy ≥ 80%, aspect F1 ≥ 0,7.
+- `buyer_question.topic` chọn trong aspect của project (hoặc `other`) thay vì chữ tự do, để câu hỏi người mua nhóm theo cùng bộ khía cạnh (`aspectField` trong định nghĩa trích xuất).
+- Prompt v2 (sau khi chạy thử trên dữ liệu thật): dấu phẩy là dấu thập phân ("2,4 tỷ" = 2.4); tin rao bán, cho thuê, quảng cáo là trung tính trừ khi có thái độ. Câu mỉa mai đôi khi vẫn bị chấm ngược, cần đo trên mẫu.

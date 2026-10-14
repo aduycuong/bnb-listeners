@@ -5,6 +5,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { toast } from "@/components/ui/toast";
 import type { ListMentionsQuery } from "@/lib/mentions/schema";
 import type {
+  EnrichEvaluation,
   GetMentionThreadResult,
   LabelSampleSummary,
   LabelSampleTask,
@@ -59,7 +60,13 @@ export function useMentionThread(scope: MentionsApiScope, rootId: string | null)
 export function useSetItemLabel(scope: MentionsApiScope) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { contentItemId: string; isRelevant: boolean | null; sampleId?: string }) =>
+    mutationFn: (body: {
+      contentItemId: string;
+      isRelevant: boolean | null;
+      sentiment?: "positive" | "neutral" | "negative" | null;
+      aspectKeys?: string[] | null;
+      sampleId?: string;
+    }) =>
       fetchJson<SetItemLabelResult>(scope, "/api/mentions/labels", {
         method: "PUT",
         body: JSON.stringify(body),
@@ -81,7 +88,7 @@ export function useLabelSamples(scope: MentionsApiScope) {
 export function useCreateLabelSample(scope: MentionsApiScope) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { mentions: number; unmatched: number }) =>
+    mutationFn: (body: { kind: "match" | "enrich"; mentions: number; unmatched: number }) =>
       fetchJson<LabelSampleSummary>(scope, "/api/mentions/samples", {
         method: "POST",
         body: JSON.stringify(body),
@@ -117,6 +124,18 @@ export function useMatchEvaluation(scope: MentionsApiScope, sampleId?: string) {
       fetchJson<MatchEvaluation>(
         scope,
         `/api/mentions/evaluation${sampleId ? `?sampleId=${sampleId}` : ""}`,
+      ),
+    retry: false,
+  });
+}
+
+export function useEnrichEvaluation(scope: MentionsApiScope, sampleId?: string) {
+  return useQuery({
+    queryKey: [...mentionsQueryKey(scope.projectId), "enrich-evaluation", sampleId ?? "latest"],
+    queryFn: () =>
+      fetchJson<EnrichEvaluation>(
+        scope,
+        `/api/mentions/enrich-evaluation${sampleId ? `?sampleId=${sampleId}` : ""}`,
       ),
     retry: false,
   });

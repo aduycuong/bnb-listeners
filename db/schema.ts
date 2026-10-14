@@ -1620,6 +1620,20 @@ export const mentions = pgTable(
     matchReason: text("match_reason"),
     matchSignature: text("match_signature").notNull(),
     userCorrected: boolean("user_corrected").notNull().default(false),
+    /** Effective sentiment: the label when there is one, else Enrich's. positive | neutral | negative */
+    sentiment: text("sentiment"),
+    /** Enrich's own sentiment, kept for evaluation (D13). */
+    autoSentiment: text("auto_sentiment"),
+    /** -1 (very negative) to 1 (very positive), from Enrich. */
+    sentimentScore: real("sentiment_score"),
+    emotion: text("emotion"),
+    /** pending | done | skipped (not relevant) | failed */
+    enrichStatus: text("enrich_status").notNull().default("pending"),
+    /** Hash of aspects, entities, case version and prompt version at enrich time (D14). */
+    enrichSignature: text("enrich_signature"),
+    /** Item content hash at enrich time; a changed text is enriched again. */
+    enrichedContentHash: text("enriched_content_hash"),
+    enrichedAt: timestamp("enriched_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1666,6 +1680,10 @@ export const itemLabels = pgTable(
       .notNull()
       .references(() => contentItems.id, { onDelete: "cascade" }),
     isRelevant: boolean("is_relevant").notNull(),
+    /** positive | neutral | negative; null when not labeled. */
+    sentiment: text("sentiment"),
+    /** Aspect keys of the project; null when not labeled, [] for "no aspect". */
+    aspectKeys: jsonb("aspect_keys").$type<string[]>(),
     /** Set when the label was given in a random sample; only these count in evaluation. */
     sampleId: uuid("sample_id").references(() => labelSamples.id, { onDelete: "set null" }),
     labeledBy: uuid("labeled_by").references(() => users.id, { onDelete: "set null" }),
@@ -1691,6 +1709,8 @@ export const labelSamples = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    /** match: relevance of all items (strata). enrich: sentiment and aspects of relevant mentions. */
+    kind: text("kind").notNull().default("match"),
     /** Per stratum: `{ population, sampled }` at sampling time, for weighted recall. */
     strata: jsonb("strata")
       .$type<Record<string, { population: number; sampled: number }>>()
@@ -1730,3 +1750,70 @@ export const labelSampleItems = pgTable(
 
 export type LabelSampleItem = typeof labelSampleItems.$inferSelect;
 export type NewLabelSampleItem = typeof labelSampleItems.$inferInsert;
+
+/** Sentiment toward each entity a mention talks about (SoV, competitor comparison). */
+export const mentionEntities = pgTable(
+  "mention_entities",
+  {
+    mentionId: uuid("mention_id")
+      .notNull()
+      .references(() => mentions.id, { onDelete: "cascade" }),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => projectEntities.id, { onDelete: "cascade" }),
+    sentiment: text("sentiment").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.mentionId, table.entityId] }),
+    index("mention_entities_entity_id_idx").on(table.entityId),
+  ],
+);
+
+export type MentionEntity = typeof mentionEntities.$inferSelect;
+export type NewMentionEntity = typeof mentionEntities.$inferInsert;
+
+/**
+ * Aspects of a mention from Enrich (`source = auto`). Labeled aspects live in
+ * `item_labels.aspect_keys` and take precedence when not null (D14).
+ */
+export const mentionAspects = pgTable(
+  "mention_aspects",
+  {
+    mentionId: uuid("mention_id")
+      .notNull()
+      .references(() => mentions.id, { onDelete: "cascade" }),
+    aspectId: uuid("aspect_id")
+      .notNull()
+      .references(() => projectAspects.id, { onDelete: "cascade" }),
+    /** auto | user */
+    source: text("source").notNull(),
+    sentiment: text("sentiment"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.mentionId, table.aspectId, table.source] }),
+    index("mention_aspects_aspect_id_idx").on(table.aspectId),
+  ],
+);
+
+export type MentionAspect = typeof mentionAspects.$inferSelect;
+export type NewMentionAspect = typeof mentionAspects.$inferInsert;
+
+/** Case-specific fields Enrich extracts, e.g. `price_quote`, `buyer_question` (D14). */
+export const mentionExtractions = pgTable(
+  "mention_extractions",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    mentionId: uuid("mention_id")
+      .notNull()
+      .references(() => mentions.id, { onDelete: "cascade" }),
+    schemaKey: text("schema_key").notNull(),
+    data: jsonb("data").$type<Record<string, unknown>>().notNull(),
+  },
+  (table) => [
+    index("mention_extractions_mention_id_idx").on(table.mentionId),
+    index("mention_extractions_schema_key_idx").on(table.schemaKey),
+  ],
+);
+
+export type MentionExtraction = typeof mentionExtractions.$inferSelect;
+export type NewMentionExtraction = typeof mentionExtractions.$inferInsert;

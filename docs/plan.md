@@ -174,11 +174,13 @@ Kiểm chứng chỉ trên mẫu thật gán nhãn tay (D12), nên trang Mention
 - [x] Precision/recall có trọng số: trên trang Mentions và `npm run eval:match`
 - [ ] Gán nhãn một bộ mẫu thật (khoảng 150 item) và ghi kết quả đo Match
 
-**4b — Enrich lõi**
-- [ ] Prompt structured output sinh từ cấu hình project và phiên bản case
-- [ ] Sentiment, emotion, aspect, entity; trích xuất riêng theo case
-- [ ] Chạy theo batch, cache để không làm giàu lại nội dung không đổi
-- [ ] Đánh giá trên bộ mẫu thật gán nhãn
+**4b — Enrich lõi** (xem [D14](decisions.md#d14--giai-đoạn-4b-enrich-2026-10-14))
+- [x] Prompt structured output sinh từ cấu hình project và phiên bản case
+- [x] Sentiment, emotion, aspect, entity; trích xuất `price_quote`, `buyer_question` (`project`), `price_quote` theo khu vực (`market`)
+- [x] Làm giàu theo thread; chữ ký Enrich để không làm giàu lại nội dung không đổi; workflow `enrich-project` sau Match
+- [x] Trang Mentions hiện và cho sửa sentiment, aspect; mẫu `enrich` và màn hình gán nhãn; `npm run eval:enrich`
+- [x] Chạy thật: Vinhomes 202 mention (16 lần gọi LLM, ~80 giây), sandbox 114 mention (18 lần gọi); chạy lại không gọi LLM
+- [ ] Gán nhãn mẫu Enrich trên dữ liệu thật và ghi kết quả (ngưỡng: sentiment ≥ 80%, aspect F1 ≥ 0,7)
 
 **4c — Topic**
 - [ ] Gom cụm topic và đặt tên
