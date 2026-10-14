@@ -84,6 +84,7 @@ export async function getProjectConfig(
         role: entity.role as EntityRole,
         name: entity.name,
         aliases: entity.aliases,
+        ambiguousAliases: query?.ambiguous ?? [],
         queryId: query?.id ?? null,
         withTerms: query?.withTerms ?? [],
         exclude: query?.exclude ?? [],

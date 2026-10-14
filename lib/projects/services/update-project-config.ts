@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import { InvalidInputError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
+import { syncProjectMatch } from "@/lib/matching/services/sync-project-match";
 
 import { getCaseTemplate, hasCaseVersion } from "../case-templates";
 import type { UpdateProjectConfigParams, UpdateProjectConfigResult } from "../types";
@@ -115,6 +116,7 @@ export async function updateProjectConfig(
           include,
           withTerms: entity.withTerms,
           exclude: entity.exclude,
+          ambiguous: entity.ambiguousAliases,
         }),
       );
       return;
@@ -152,12 +154,14 @@ export async function updateProjectConfig(
           include,
           withTerms: entity.withTerms,
           exclude: entity.exclude,
+          ambiguous: entity.ambiguousAliases,
         }),
       );
     } else if (
       !sameSet(currentInclude, include) ||
       !sameSet(existing.withTerms, entity.withTerms) ||
-      !sameSet(existing.exclude, entity.exclude)
+      !sameSet(existing.exclude, entity.exclude) ||
+      !sameSet(existing.ambiguousAliases, entity.ambiguousAliases)
     ) {
       changed = true;
       writes.push(
@@ -167,6 +171,7 @@ export async function updateProjectConfig(
             include,
             withTerms: entity.withTerms,
             exclude: entity.exclude,
+            ambiguous: entity.ambiguousAliases,
             version: (existing.queryVersion ?? 1) + 1,
           })
           .where(eq(projectQueries.id, existing.queryId)),
@@ -325,6 +330,8 @@ export async function updateProjectConfig(
       .where(eq(projects.id, projectId)),
     ...writes,
   ]);
+
+  await syncProjectMatch({ projectId });
 
   const updated = await getProjectConfig({
     workspaceId: params.workspaceId,

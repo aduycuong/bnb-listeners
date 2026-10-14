@@ -87,7 +87,7 @@ Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` 
 
 ## L2 — Project config
 
-**`projects`**: `workspace_id`, `name`, `case` (id case BĐS, xem [D10](decisions.md#d10--giai-đoạn-3-case-bđs-và-cấu-hình-project-2026-10-14)), `case_version` (phiên bản định nghĩa case project đang chạy, người dùng tự nâng cấp), `mode` (`live` | `sandbox`), `timezone`, `config_version`, `case_config` (jsonb, trường riêng theo case), `is_demo`, `notification_config` (jsonb: kênh gửi, người nhận, lịch báo cáo AI)
+**`projects`**: `workspace_id`, `name`, `case` (id case BĐS, xem [D10](decisions.md#d10--giai-đoạn-3-case-bđs-và-cấu-hình-project-2026-10-14)), `case_version` (phiên bản định nghĩa case project đang chạy, người dùng tự nâng cấp), `mode` (`live` | `sandbox`), `timezone`, `config_version`, `case_config` (jsonb, trường riêng theo case), `is_demo`, `match_signature` + `matched_at` (lần so khớp toàn bộ gần nhất), `notification_config` (jsonb: kênh gửi, người nhận, lịch báo cáo AI)
 
 **`project_entities`**: đối tượng được theo dõi.
 - `role` (`primary`, `competitor`, `product`, `person`, `area`)
@@ -95,7 +95,7 @@ Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` 
 
 **`project_queries`**: điều kiện để một nội dung được tính là mention.
 - `entity_id` (nullable)
-- `include` (từ khóa chính, khớp một trong các từ), `with_terms` (bắt buộc đi kèm ít nhất một từ), `exclude`, `proximity`
+- `include` (từ khóa chính, khớp một trong các từ), `with_terms` (bắt buộc đi kèm ít nhất một từ), `exclude`, `proximity`, `ambiguous` (tên dễ nhầm: chỉ khớp qua các từ này thì LLM xác nhận)
 - `version`: tăng mỗi khi sửa `include`, `with_terms`, `exclude`, kéo theo việc so khớp lại
 
 **`project_aspects`**: bộ khía cạnh (pháp lý, tiến độ, giá & thanh toán…). Khởi tạo từ template theo case, sửa được.
@@ -107,14 +107,17 @@ Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` 
 
 ## L3 — Analysis
 
-**`mentions`**: một nội dung khớp với một project.
+**`mentions`**: một nội dung khớp với một project (xem [D11](decisions.md#d11--giai-đoạn-3-match-2026-10-14)).
 - `project_id`, `content_item_id`, `root_item_id`, `kind`
 - Copy từ L1 để lọc nhanh: `platform`, `source_id`, `author_id`, `published_at`, `origin`
-- So khớp: `matched_query_ids[]`, `is_relevant`, `match_version`
+- So khớp: `matched_query_ids[]`, `matched_entity_ids[]`, `matched_terms[]`, `match_type` (`direct` | `context`), `match_tier` (`lexical` | `llm`), `is_relevant` (ứng viên bị LLM loại vẫn được lưu với `false`), `match_reason`, `match_signature`
+- Các cột Enrich dưới đây thêm ở giai đoạn 4
 - Làm giàu: `sentiment` (`positive` | `neutral` | `negative`), `sentiment_score`, `emotion`, `enrich_status`, `enrich_version`
 - Chỉ số: `reach_estimate`, `engagement_total`
 - `user_corrected`: nhãn đã được người dùng sửa tay
 - Unique: `(project_id, content_item_id)`. Partition theo tháng của `published_at`.
+
+**`match_judgments`**: cache quyết định của tầng 2 theo nội dung item, bài gốc và bộ từ khóa của entity; dùng chung giữa các project.
 
 **`mention_entities`**: `mention_id`, `entity_id`, `sentiment`. Dùng cho SoV và so sánh đối thủ.
 

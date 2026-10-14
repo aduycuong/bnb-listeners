@@ -57,6 +57,7 @@ export type ThreadPrompt = {
 export function buildThreadPrompt(params: {
   thread: PlannedThread;
   brief: string;
+  target?: string;
   samples: SourceStyleSample[];
 }): ThreadPrompt {
   const writable = params.thread.items.filter((item) => !item.noise);
@@ -69,7 +70,13 @@ export function buildThreadPrompt(params: {
     personas.push(item.persona);
   }
 
-  const lines: string[] = [`Bối cảnh: ${params.brief}`, ""];
+  const lines: string[] = [`Bối cảnh: ${params.brief}`];
+  if (params.target) {
+    lines.push(
+      `Đối tượng được bàn: ${params.target}. Bài đăng gọi tên đối tượng (có thể viết tắt hoặc gọi tên khác); comment thường không nhắc lại tên.`,
+    );
+  }
+  lines.push("");
 
   if (params.samples.length > 0) {
     lines.push(

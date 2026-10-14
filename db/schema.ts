@@ -126,6 +126,9 @@ export const projects = pgTable(
       .default({}),
     /** Demo projects render the sample dashboard instead of real data. */
     isDemo: boolean("is_demo").notNull().default(false),
+    /** Hash of query ids + versions and sources at the last full match; null = never matched. */
+    matchSignature: text("match_signature"),
+    matchedAt: timestamp("matched_at", { withTimezone: true }),
     /** Default alert channels, recipients and the AI report schedule. */
     notificationConfig: jsonb("notification_config")
       .$type<{
@@ -1460,6 +1463,8 @@ export const projectQueries = pgTable(
     withTerms: jsonb("with_terms").$type<string[]>().notNull().default([]),
     /** None of these may appear. */
     exclude: jsonb("exclude").$type<string[]>().notNull().default([]),
+    /** Include terms that are easy to confuse; a match on them alone needs LLM confirmation. */
+    ambiguous: jsonb("ambiguous").$type<string[]>().notNull().default([]),
     /** Max words between an `include` and a `with` term; null = anywhere in the item. */
     proximity: integer("proximity"),
     /** Bumped when include / with / exclude / proximity change; triggers re-matching. */
@@ -1571,3 +1576,74 @@ export const alertRules = pgTable(
 
 export type AlertRule = typeof alertRules.$inferSelect;
 export type NewAlertRule = typeof alertRules.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// L3 — Analysis. See docs/data-model.md and docs/decisions.md D11.
+// ---------------------------------------------------------------------------
+
+/** A content item that matched a project. Candidates rejected by the LLM stay with `is_relevant = false`. */
+export const mentions = pgTable(
+  "mentions",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    contentItemId: uuid("content_item_id")
+      .notNull()
+      .references(() => contentItems.id, { onDelete: "cascade" }),
+    rootItemId: uuid("root_item_id"),
+    /** post | comment | reply | … copied from the item. */
+    kind: text("kind").notNull(),
+    platform: text("platform").notNull(),
+    sourceId: uuid("source_id"),
+    authorId: uuid("author_id"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    origin: text("origin").notNull(),
+    matchedQueryIds: jsonb("matched_query_ids").$type<string[]>().notNull().default([]),
+    /** Entities the item is about; for context mentions, the root post's entities. */
+    matchedEntityIds: jsonb("matched_entity_ids").$type<string[]>().notNull().default([]),
+    /** Terms found in the item text (empty for context mentions). */
+    matchedTerms: jsonb("matched_terms").$type<string[]>().notNull().default([]),
+    /** direct: the item names the entity. context: it sits under a matching post. */
+    matchType: text("match_type").notNull(),
+    /** lexical: tier 1 alone. llm: confirmed or rejected by tier 2. */
+    matchTier: text("match_tier").notNull(),
+    isRelevant: boolean("is_relevant").notNull(),
+    /** Tier 2 explanation, kept for review. */
+    matchReason: text("match_reason"),
+    matchSignature: text("match_signature").notNull(),
+    userCorrected: boolean("user_corrected").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("mentions_project_item_idx").on(table.projectId, table.contentItemId),
+    index("mentions_project_published_idx").on(table.projectId, table.publishedAt),
+    index("mentions_project_root_idx").on(table.projectId, table.rootItemId),
+    index("mentions_content_item_id_idx").on(table.contentItemId),
+  ],
+);
+
+export type Mention = typeof mentions.$inferSelect;
+export type NewMention = typeof mentions.$inferInsert;
+
+/** Cached tier 2 decisions, shared by projects with the same entity definition. */
+export const matchJudgments = pgTable("match_judgments", {
+  /** sha256 of item content hash, root content hash, entity terms and prompt version. */
+  cacheKey: text("cache_key").primaryKey(),
+  isRelevant: boolean("is_relevant").notNull(),
+  reason: text("reason"),
+  model: text("model").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type MatchJudgment = typeof matchJudgments.$inferSelect;
+export type NewMatchJudgment = typeof matchJudgments.$inferInsert;

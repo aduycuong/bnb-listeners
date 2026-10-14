@@ -204,3 +204,24 @@ Rà lại việc lấy dữ liệu Facebook trước giai đoạn 3.
 **Hoãn lại**
 - Bộ địa danh dùng chung (alias, tên trước/sau sáp nhập tỉnh) cho `market`: tạm thời người dùng tự nhập alias khu vực.
 - Truy vấn không từ khóa (mọi nội dung của nguồn đã chọn đều là mention): cần cho `lead` và một phần `market`.
+
+## D11 — Giai đoạn 3: Match (2026-10-14)
+
+Chi tiết ở [plan.md](plan.md#giai-đoạn-3--cấu-hình-project-và-match-l2--mentions).
+
+**Bối cảnh**: trong group BĐS, tên dự án gần như chỉ có ở bài gốc; comment viết "ở đây", "chủ đầu tư", "vụ này". So khớp từ khóa trên từng item sẽ mất phần lớn comment.
+
+**Quyết định**
+- Chuẩn hóa: chữ thường, NFC, bỏ dấu (đ → d), gộp khoảng trắng và dấu câu, khớp theo ranh giới từ. Từ khóa tự sinh biến thể không dấu và viết liền. Alias ngắn (≤ 3 ký tự) hoặc viết hoa toàn bộ chỉ khớp nguyên từ trên văn bản gốc, phân biệt hoa thường, không bỏ dấu.
+- Tầng 1 (từ vựng): `include` một trong các từ; `with_terms` (nếu có) thêm một từ, trong `proximity` từ nếu đặt; không chứa `exclude`. Chỉ quét nội dung của `project_sources`.
+- Tầng 2 (LLM, theo thread): một lần gọi cho bài gốc kèm các item cần xác nhận của thread. Các ca:
+  - comment/reply không tự khớp nhưng bài gốc là mention (`match_type = context`);
+  - item chỉ khớp ở dạng không dấu trong khi từ khóa có dấu;
+  - item chỉ khớp qua alias được đánh dấu dễ nhầm (`project_queries.ambiguous`).
+  Kết quả cache trong `match_judgments` theo nội dung item, bài gốc và bộ từ khóa của entity, nên hai project cùng định nghĩa không gọi LLM hai lần.
+- `mentions` lưu cả ứng viên bị loại (`is_relevant = false`) để không hỏi lại LLM và để đo. Số liệu chỉ tính mention `is_relevant = true`.
+- So khớp lại: `projects.match_signature` là hash của id + version các truy vấn và danh sách nguồn. Chữ ký đổi thì so khớp lại toàn project (workflow `match-project`). Sau mỗi lần thu thập, chỉ so khớp item mới của run cho các project theo dõi nguồn đó.
+- Wizard: bước Nguồn đứng trước bước Đối tượng; bước Đối tượng xem trước số item khớp tầng 1 trong 30 ngày trên các nguồn đã chọn.
+- Đo: bộ sinh dữ liệu giả nhận `--target`; mỗi item ghi `metadata.aboutTarget`. `npm run match:eval` tính precision/recall theo tầng.
+
+**Hoãn lại**: partition `mentions` theo tháng (giai đoạn 5), bộ mẫu thật gán nhãn tay (cần màn hình gán nhãn).

@@ -22,6 +22,7 @@ import { ProjectAspectsFields } from "@/components/projects/config/project-aspec
 import { ProjectCaseConfigFields } from "@/components/projects/config/project-case-config-fields";
 import { ProjectConfigSummary } from "@/components/projects/config/project-config-summary";
 import { ProjectEntitiesFields } from "@/components/projects/config/project-entities-fields";
+import { ProjectMatchPreview } from "@/components/projects/config/project-match-preview";
 import { ProjectSourcesFields } from "@/components/projects/config/project-sources-fields";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,18 +61,18 @@ type FormValues = CreateProjectWithConfigInput;
 const STEPS = [
   "Kiểu case",
   "Thông tin chung",
+  "Nguồn",
   "Đối tượng theo dõi",
   "Khía cạnh",
-  "Nguồn",
   "Cảnh báo & báo cáo",
   "Xem lại",
 ] as const;
 
 const STEP_FIELDS: Record<number, FieldPath<FormValues>[]> = {
   1: ["name", "description", "mode"],
-  2: ["entities", "caseConfig"],
-  3: ["aspects"],
-  4: ["sourceIds"],
+  2: ["sourceIds"],
+  3: ["entities", "caseConfig"],
+  4: ["aspects"],
   5: ["alerts"],
 };
 
@@ -79,10 +80,10 @@ const STEP_OF_FIELD: Record<string, number> = {
   name: 1,
   description: 1,
   mode: 1,
-  entities: 2,
-  caseConfig: 2,
-  aspects: 3,
-  sourceIds: 4,
+  sourceIds: 2,
+  entities: 3,
+  caseConfig: 3,
+  aspects: 4,
   alerts: 5,
 };
 
@@ -146,7 +147,7 @@ export function CreateProjectPage({
         aspects: values.aspects,
         alerts: values.alerts,
       },
-      { config: index === 2, entities: index === 2, aspects: index === 3, alerts: index === 5 },
+      { config: index === 3, entities: index === 3, aspects: index === 4, alerts: index === 5 },
     );
     for (const issue of issues) {
       const path = issue.path.join(".");
@@ -318,13 +319,14 @@ export function CreateProjectPage({
             </StepBody>
           ) : null}
 
-          {step === 2 && projectCase ? (
+          {step === 3 && projectCase ? (
             <StepBody
               title={ENTITY_STEP_TITLE[projectCase]}
               description="Mỗi mục sinh một truy vấn: nội dung nhắc tới tên hoặc tên gọi khác sẽ được tính là mention."
             >
               <div className="flex flex-col gap-6">
                 <ProjectEntitiesFields form={form} projectCase={projectCase} />
+                <ProjectMatchPreview form={form} workspaceId={workspace.id} />
                 <div className="flex flex-col gap-2">
                   <h3 className="text-sm font-semibold">Thông tin của case</h3>
                   <ProjectCaseConfigFields form={form} projectCase={projectCase} />
@@ -333,7 +335,7 @@ export function CreateProjectPage({
             </StepBody>
           ) : null}
 
-          {step === 3 && projectCase ? (
+          {step === 4 && projectCase ? (
             <StepBody
               title="Khía cạnh"
               description="Cảm xúc được đo riêng theo từng khía cạnh. Bộ mẫu theo case, sửa được."
@@ -342,7 +344,7 @@ export function CreateProjectPage({
             </StepBody>
           ) : null}
 
-          {step === 4 ? (
+          {step === 2 ? (
             <StepBody
               title="Nguồn theo dõi"
               description="Facebook không cho tìm theo từ khóa, nên project chỉ nghe các group, page đã chọn."

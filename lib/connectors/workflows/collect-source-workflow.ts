@@ -1,6 +1,8 @@
 import type { RouteFunction, WorkflowServeOptions } from "@upstash/workflow";
 import { z } from "zod";
 
+import { matchCollectRun } from "@/lib/matching/services/match-collect-run";
+
 import {
   COLLECT_WEBHOOK_TIMEOUT_SECONDS,
   NORMALIZE_BATCH_SIZE,
@@ -17,7 +19,6 @@ import type {
   StoreRawPayloadResult,
 } from "../types";
 import { getCollectRunEventId } from "../utils/get-collect-run-event-id";
-
 export const collectSourceWorkflowPayloadSchema = z.object({
   collectRunId: z.uuid(),
 });
@@ -31,6 +32,7 @@ export const collectSourceWorkflowPayloadSchema = z.object({
  * 3. normalize-{offset}: write the payload into the raw store in batches.
  * 4. after-normalize: the connector's post-write hook (schedules, tier, stats).
  * 5. finish, then one step per follow-up run (e.g. comments for refreshed posts).
+ * 6. match: incremental Match for projects following the source, when items were added.
  */
 export const collectSourceWorkflow: RouteFunction<
   CollectSourceWorkflowPayload
@@ -94,6 +96,10 @@ export const collectSourceWorkflow: RouteFunction<
 
   for (const [index, followUp] of (after.followUps ?? []).entries()) {
     await context.run(`follow-up-${index}`, () => createCollectRun(followUp));
+  }
+
+  if (stats.inserted > 0) {
+    await context.run("match", () => matchCollectRun({ collectRunId }));
   }
 };
 

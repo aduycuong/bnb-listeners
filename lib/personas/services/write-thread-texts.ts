@@ -22,6 +22,7 @@ const responseSchema = z.object({
 type WriteThreadTextsParams = {
   thread: PlannedThread;
   brief: string;
+  target?: string;
   samples: SourceStyleSample[];
   model: ChatModelId;
 };

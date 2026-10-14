@@ -73,6 +73,7 @@ export type ProjectEntityDetail = {
   role: EntityRole;
   name: string;
   aliases: string[];
+  ambiguousAliases: string[];
   queryId: string | null;
   withTerms: string[];
   exclude: string[];

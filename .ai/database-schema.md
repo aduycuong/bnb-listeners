@@ -212,6 +212,8 @@ Social listening scope inside a workspace: one brand, campaign, or similar liste
 | config_version | integer | NO | `1` | Bumped on every config change |
 | case_config | jsonb | NO | `{}` | Case-specific fields, validated by the case's zod schema in `lib/projects/case-templates.ts` |
 | is_demo | boolean | NO | `false` | Demo projects render the sample dashboard |
+| match_signature | text | YES | — | Hash of query ids + versions and sources at the last full Match |
+| matched_at | timestamptz | YES | — | Last full Match |
 | notification_config | jsonb | NO | `{}` | `{ channels, recipients, reportSchedule }`: default alert delivery and AI report schedule |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
@@ -257,6 +259,7 @@ Lexical rule that makes a content item a mention. One generated query per entity
 | include | jsonb | NO | `[]` | Any one term must appear (entity name + aliases) |
 | with_terms | jsonb | NO | `[]` | When non-empty, at least one must also appear |
 | exclude | jsonb | NO | `[]` | None may appear |
+| ambiguous | jsonb | NO | `[]` | Include terms that need LLM confirmation when they are the only match |
 | proximity | integer | YES | — | Max words between include and with terms; null = anywhere |
 | version | integer | NO | `1` | Bumped when terms change; triggers re-matching |
 | enabled | boolean | NO | `true` | |
@@ -291,6 +294,42 @@ Sources a project follows (required for Facebook, which has no keyword search).
 | created_at | timestamptz | NO | `now()` | |
 
 **Keys:** primary key `(project_id, source_id)`; `project_sources_source_id_idx` on `source_id`
+
+### `mentions`
+
+A content item that matched a project (docs/decisions.md D11). Tier 2 rejections are kept with `is_relevant = false`.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| content_item_id | uuid | NO | — | FK → `content_items.id` ON DELETE CASCADE |
+| root_item_id | uuid | YES | — | Root post of the thread |
+| kind, platform, source_id, author_id, published_at, origin | — | — | — | Copied from the item for filtering |
+| matched_query_ids | jsonb | NO | `[]` | Queries that matched |
+| matched_entity_ids | jsonb | NO | `[]` | Entities the item is about |
+| matched_terms | jsonb | NO | `[]` | Terms found in the text |
+| match_type | text | NO | — | `direct` or `context` |
+| match_tier | text | NO | — | `lexical` or `llm` |
+| is_relevant | boolean | NO | — | Counted in metrics when true |
+| match_reason | text | YES | — | Tier 2 reason |
+| match_signature | text | NO | — | Project signature when written; stale rows are removed after a full match |
+| user_corrected | boolean | NO | `false` | Hand-corrected relevance survives re-matching |
+| created_at / updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** `mentions_project_item_idx` UNIQUE `(project_id, content_item_id)`; `mentions_project_published_idx`; `mentions_project_root_idx`; `mentions_content_item_id_idx`
+
+### `match_judgments`
+
+Tier 2 cache shared by projects.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| cache_key | text | NO | — | Primary key: sha256 of prompt version, model, entity terms, root and item content hashes |
+| is_relevant | boolean | NO | — | |
+| reason | text | YES | — | |
+| model | text | NO | — | |
+| created_at | timestamptz | NO | `now()` | |
 
 ### `alert_rules`
 

@@ -24,10 +24,15 @@ function quote(terms: string[]) {
 function describeQuery(entity: {
   name: string;
   aliases?: string[];
+  ambiguousAliases?: string[];
   withTerms?: string[];
   exclude?: string[];
 }) {
-  const include = toQueryInclude({ name: entity.name, aliases: entity.aliases ?? [] });
+  const include = toQueryInclude({
+    name: entity.name,
+    aliases: entity.aliases ?? [],
+    ambiguousAliases: entity.ambiguousAliases ?? [],
+  });
   let text = `(${quote(include)})`;
   if (entity.withTerms?.length) text += ` AND (${quote(entity.withTerms)})`;
   if (entity.exclude?.length) text += ` NOT (${quote(entity.exclude)})`;
