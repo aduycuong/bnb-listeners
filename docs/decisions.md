@@ -139,6 +139,7 @@ Rà lại việc lấy dữ liệu Facebook trước giai đoạn 3.
 
 **Định danh tác giả comment**
 - `user_id` của Bright Data là id số (ổn định) hoặc token `pfbid…` đổi giữa các lần cào cùng một comment (31/43 comment `pfbid` thấy ở nhiều lần cào bị đổi id).
+- `pfbid` là dạng id ẩn danh của người dùng Facebook: Facebook che id số thật của profile bằng token này, nên không đổi ngược về id số được và không dùng làm khóa định danh lâu dài.
 - Thứ tự chọn `authors.external_id` (`to-facebook-comment-author.ts`): id số trong `user_id` hoặc trong link profile (`commentator_profile`) → link profile dạng username → token `pfbid` (gắn `metadata.idStable = false`). Trên dữ liệu probe, số comment đổi id tác giả giữa các lần cào giảm từ 32 xuống 17 (trên 135).
 - Item đã có trong kho giữ nguyên `author_id` khi được lấy lại, và không tạo author mới cho item đó.
 - **Giới hạn:** khoảng 23% dòng comment chỉ có `pfbid`. Cùng một người comment ở nhiều bài có thể thành nhiều dòng `authors`, nên số tác giả duy nhất từ comment bị đếm dư. Chỉ số theo tác giả nên tách hoặc ghi chú phần `idStable = false`.

@@ -55,7 +55,7 @@ Dùng chung, không gắn với workspace hay project. Dữ liệu `synthetic` p
 - `author_type` (`kol`, `agency`, `community`, `brand`, `individual`, `media`), được LLM gán và có thể sửa tay
 - `origin`
 - `persona_id` (nullable): chỉ có ở tác giả giả, trỏ tới persona đã sinh ra tác giả đó
-- `metadata.idStable = false`: id không ổn định giữa các lần cào (Facebook `pfbid`), cùng một người có thể có nhiều dòng. Xem [D9](decisions.md#d9--lấy-reply-và-định-danh-tác-giả-comment-2026-10-14)
+- `metadata.idStable = false`: id không ổn định giữa các lần cào (Facebook `pfbid`, dạng id ẩn danh của người dùng), cùng một người có thể có nhiều dòng. Xem [D9](decisions.md#d9--lấy-reply-và-định-danh-tác-giả-comment-2026-10-14)
 
 **`content_items`**: gộp post, comment và reply vào một bảng.
 - `kind` (`post`, `comment`, `reply`, `article`, `video`, `listing`)

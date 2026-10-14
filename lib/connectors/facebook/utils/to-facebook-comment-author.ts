@@ -15,10 +15,11 @@ const VANITY_PROFILE_PATTERN = /facebook\.com\/([A-Za-z0-9.]+)\/?$/;
 
 /**
  * Picks the most stable id Bright Data gives for a commenter. `user_id` is
- * either the numeric Facebook id (stable) or a `pfbid…` token that changes
- * between scrapes of the same comment (probes of 2026-10-12/13). The profile
- * link (`commentator_profile`) often carries the numeric id or a username, so
- * it is tried before falling back to the token:
+ * either the numeric Facebook id (stable) or a `pfbid…` token, Facebook's
+ * anonymized form of a user id, which changes between scrapes of the same
+ * comment (probes of 2026-10-12/13) and cannot be turned back into the
+ * numeric id. The profile link (`commentator_profile`) often carries the
+ * numeric id or a username, so it is tried before falling back to the token:
  *
  * 1. numeric `user_id`, or a numeric id inside the profile link (same id
  *    space as post authors' `profile_id`);
