@@ -79,6 +79,9 @@ export const brightDataFacebookCommentSchema = z.object({
   comment_link: optional(z.url()),
   reply: optional(z.boolean()),
   parent_comment_id: optional(z.string()),
+  /** Profile link: `/{username}`, `/people/{name}/{id}/` or null. */
+  commentator_profile: optional(z.string()),
+  /** Avatar image, despite the name. */
   commentator_profile_url: optional(z.string()),
   attached_images: optional(z.array(z.string())),
   type: optional(z.string()),

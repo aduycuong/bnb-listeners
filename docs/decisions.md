@@ -85,9 +85,9 @@ Dựa trên các thử nghiệm Bright Data ngày 2026-10-12 và 2026-10-13 (`np
   - chưa lấy lần nào và `num_comments > 100`;
   - chưa lấy lần nào, `num_comments > 0` và bài đã đăng ≥ 24 giờ;
   - đã lấy rồi và `num_comments` tăng ≥ 15% so với lần lấy trước (không có ngưỡng tuyệt đối).
-- Mỗi lần lấy tối đa 100 comment gốc, `get_all_replies = false`, sort "Most relevant".
+- ~~Mỗi lần lấy tối đa 100 comment gốc, `get_all_replies = false`, sort "Most relevant".~~ Thay bằng D9 (2026-10-14): 150 dòng/bài, có reply.
 - Run comment ghi `posts[]` (`numComments`, `collected`, `replies`) vào stats để soát các lần lấy thiếu; không tự lấy lại.
-- **Lý do:** phần lớn bài ít comment chỉ cần lấy một lần ở mốc 24 giờ; bài nóng được lấy sớm. Bỏ reply giúp 100 dòng đều là comment gốc. "Most relevant" và "All comments" trả cùng tập comment trên bài thử.
+- **Lý do:** phần lớn bài ít comment chỉ cần lấy một lần ở mốc 24 giờ; bài nóng được lấy sớm. "Most relevant" và "All comments" trả cùng tập comment trên bài thử.
 
 **Ngân sách**
 - `sources.monthly_record_limit` (null = không giới hạn). Usage tháng = tổng `collect_runs.item_count` của mọi run thuộc source trong tháng (UTC). Hết ngân sách thì không lên lịch run post và run refresh. Run comment chưa bị chặn theo ngân sách còn lại.
@@ -122,3 +122,23 @@ Thu hẹp giai đoạn 2 thành một đường ống tạo dữ liệu. Chi ti�
 
 **Rủi ro cần đo ở bước 2**
 - `fetchRecords` chạy trong một bước workflow; số thread mỗi run phải đủ nhỏ để không vượt giới hạn thời gian của hàm, nếu cần thì chia thành nhiều run.
+
+## D9 — Lấy reply và định danh tác giả comment (2026-10-14)
+
+Rà lại việc lấy dữ liệu Facebook trước giai đoạn 3.
+
+**Lấy reply**
+- `get_all_replies = true`, `maxRowsPerPost` = 150 (`lib/connectors/config.ts`). Reply gồm phản hồi cho comment gốc và phản hồi cho reply khác (Facebook lồng nhiều tầng); `parent_id` trỏ đúng tới cha, `root_id` là bài.
+- Run comment ghi `posts[].collected` (mọi dòng) và `posts[].replies` (số dòng reply) để so với `num_comments`.
+- **Lý do:**
+  - Reply chiếm khoảng 1/3 thảo luận (dữ liệu cũ: 3.089/9.707; probe: ~1/3). Câu trả lời cho câu hỏi người mua và tranh luận đồng ý/phản đối chủ yếu nằm ở reply.
+  - Dữ liệu cũ (`legacy_import`) có reply; bỏ reply làm gãy chuỗi số liệu tại mốc chuyển.
+  - `num_comments` đếm cả reply, nên luật "tăng ≥ 15%" vốn đã kích hoạt khi reply tăng; trước đây lần lấy lại chỉ trả về comment gốc cũ.
+  - `limit_records` đếm cả reply và reply nằm xen giữa comment gốc (28% số dòng ở các bài chạm giới hạn trong dữ liệu cũ), nên nâng từ 100 lên 150.
+- Chi phí comment ước tính tăng khoảng 50%.
+
+**Định danh tác giả comment**
+- `user_id` của Bright Data là id số (ổn định) hoặc token `pfbid…` đổi giữa các lần cào cùng một comment (31/43 comment `pfbid` thấy ở nhiều lần cào bị đổi id).
+- Thứ tự chọn `authors.external_id` (`to-facebook-comment-author.ts`): id số trong `user_id` hoặc trong link profile (`commentator_profile`) → link profile dạng username → token `pfbid` (gắn `metadata.idStable = false`). Trên dữ liệu probe, số comment đổi id tác giả giữa các lần cào giảm từ 32 xuống 17 (trên 135).
+- Item đã có trong kho giữ nguyên `author_id` khi được lấy lại, và không tạo author mới cho item đó.
+- **Giới hạn:** khoảng 23% dòng comment chỉ có `pfbid`. Cùng một người comment ở nhiều bài có thể thành nhiều dòng `authors`, nên số tác giả duy nhất từ comment bị đếm dư. Chỉ số theo tác giả nên tách hoặc ghi chú phần `idStable = false`.

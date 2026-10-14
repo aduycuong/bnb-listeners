@@ -11,6 +11,7 @@ import {
   type BrightDataFacebookComment,
   brightDataFacebookCommentSchema,
 } from "./schema";
+import { toFacebookCommentAuthor } from "./utils/to-facebook-comment-author";
 import { toFacebookCommentExternalId } from "./utils/to-facebook-comment-external-id";
 
 const COMMENTS_DATASET_ID = "gd_lkay758p1eanlolqw8";
@@ -33,8 +34,8 @@ function toContentItem(
   const images = comment.attached_images ?? [];
   if (!text && images.length === 0) return null;
 
+  // A reply's parent is a top-level comment or another reply.
   const isReply = !!comment.reply && !!comment.parent_comment_id;
-  const userId = comment.user_id?.trim();
 
   return {
     kind: isReply ? "reply" : "comment",
@@ -50,14 +51,7 @@ function toContentItem(
     shareCount: 0,
     viewCount: 0,
     reactions: null,
-    author: userId
-      ? {
-          externalId: userId,
-          name: comment.user_name?.trim() || null,
-          url: `https://www.facebook.com/${userId}`,
-          avatarUrl: comment.commentator_profile_url ?? null,
-        }
-      : null,
+    author: toFacebookCommentAuthor(comment),
     parentExternalId: isReply
       ? toFacebookCommentExternalId(comment.parent_comment_id!, comment.post_id)
       : comment.post_id,
