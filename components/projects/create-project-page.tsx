@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Controller,
   useForm,
@@ -109,6 +109,11 @@ export function CreateProjectPage({
     defaultValues: toNewProjectFormValues("project"),
   });
   const projectsHref = `/w/${workspaceIndex}/projects`;
+  const topRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    topRef.current?.scrollIntoView({ block: "start" });
+  }, [step]);
 
   function chooseCase(next: AvailableProjectCase) {
     if (next !== projectCase) {
@@ -200,7 +205,10 @@ export function CreateProjectPage({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-5 md:px-7">
+    <div
+      ref={topRef}
+      className="mx-auto flex w-full max-w-4xl scroll-mt-16 flex-col gap-4 px-4 py-5 md:px-7"
+    >
       <div>
         <h1 className="font-heading text-xl font-bold">Tạo project</h1>
         <p className="text-[13px] text-muted-foreground">
