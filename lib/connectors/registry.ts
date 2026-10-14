@@ -2,12 +2,14 @@ import { CONNECTOR_KEYS, type ConnectorKey } from "./constants";
 import { facebookCommentsConnector } from "./facebook/facebook-comments-connector";
 import { facebookPostRefreshConnector } from "./facebook/facebook-post-refresh-connector";
 import { facebookPostsConnector } from "./facebook/facebook-posts-connector";
+import { syntheticThreadsConnector } from "./synthetic/synthetic-threads-connector";
 import type { Connector } from "./types";
 
 const connectors = {
   "facebook-posts": facebookPostsConnector,
   "facebook-post-refresh": facebookPostRefreshConnector,
   "facebook-comments": facebookCommentsConnector,
+  "synthetic-threads": syntheticThreadsConnector,
 } satisfies Record<ConnectorKey, unknown>;
 
 /**

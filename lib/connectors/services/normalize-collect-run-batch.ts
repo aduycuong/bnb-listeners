@@ -33,7 +33,7 @@ export async function normalizeCollectRunBatch(
 
   const written = await writeContentItems({
     platform: connector.platform,
-    origin: "connector",
+    origin: connector.origin ?? "connector",
     items: normalized.items,
     sourceId: run.sourceId,
     collectRunId: run.id,

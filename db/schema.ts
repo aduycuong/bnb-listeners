@@ -1059,6 +1059,97 @@ export const sources = pgTable(
 export type Source = typeof sources.$inferSelect;
 export type NewSource = typeof sources.$inferInsert;
 
+/**
+ * A reusable kind of person (or organization) that the synthetic connector
+ * writes as. See docs/synthetic-data.md.
+ */
+export const personas = pgTable(
+  "personas",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    /** Stable key of a seeded template persona; null for hand-made or generated ones. */
+    templateKey: text("template_key"),
+    name: text("name").notNull(),
+    /** individual | organization */
+    kind: text("kind").notNull().default("individual"),
+    /** One or two sentences; the whole persona must stay near 150 prompt tokens. */
+    description: text("description").notNull(),
+    /** Free-text writing voice. */
+    tone: text("tone").notNull().default(""),
+    /** Aspects this persona cares about, e.g. `giá`, `pháp lý`, `tiến độ`. */
+    concerns: jsonb("concerns").$type<string[]>().notNull().default([]),
+    /** Room for richer traits later without a migration. */
+    attributes: jsonb("attributes")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    version: integer("version").notNull().default(1),
+    /** template | manual | llm_generated */
+    source: text("source").notNull().default("manual"),
+    /** draft | approved */
+    reviewStatus: text("review_status").notNull().default("draft"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("personas_template_key_idx").on(table.templateKey),
+  ],
+);
+
+export type Persona = typeof personas.$inferSelect;
+export type NewPersona = typeof personas.$inferInsert;
+
+/** A set of personas with weights that stands for one community. */
+export const personaPanels = pgTable(
+  "persona_panels",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    /** Stable key of a seeded template panel; null for hand-made ones. */
+    templateKey: text("template_key"),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("persona_panels_template_key_idx").on(table.templateKey),
+  ],
+);
+
+export type PersonaPanel = typeof personaPanels.$inferSelect;
+export type NewPersonaPanel = typeof personaPanels.$inferInsert;
+
+export const personaPanelMembers = pgTable(
+  "persona_panel_members",
+  {
+    panelId: uuid("panel_id")
+      .notNull()
+      .references(() => personaPanels.id, { onDelete: "cascade" }),
+    personaId: uuid("persona_id")
+      .notNull()
+      .references(() => personas.id, { onDelete: "cascade" }),
+    /** Relative share within the panel; code normalizes, it need not sum to 1. */
+    weight: real("weight").notNull().default(1),
+  },
+  (table) => [
+    primaryKey({ columns: [table.panelId, table.personaId] }),
+    index("persona_panel_members_persona_id_idx").on(table.personaId),
+  ],
+);
+
+export type PersonaPanelMember = typeof personaPanelMembers.$inferSelect;
+export type NewPersonaPanelMember = typeof personaPanelMembers.$inferInsert;
+
 /** The account that published a content item. */
 export const authors = pgTable(
   "authors",
@@ -1072,6 +1163,10 @@ export const authors = pgTable(
     followerCount: integer("follower_count"),
     /** kol | agency | community | brand | individual | media; set later by the LLM or by hand. */
     authorType: text("author_type"),
+    /** Synthetic authors only: the persona this author was created from. */
+    personaId: uuid("persona_id").references(() => personas.id, {
+      onDelete: "set null",
+    }),
     origin: text("origin").notNull().default("connector"),
     metadata: jsonb("metadata")
       .$type<Record<string, unknown>>()
@@ -1090,6 +1185,7 @@ export const authors = pgTable(
       table.platform,
       table.externalId,
     ),
+    index("authors_persona_id_idx").on(table.personaId),
   ],
 );
 

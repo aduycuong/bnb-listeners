@@ -45,19 +45,26 @@ Persona đưa vào prompt phải ngắn (khoảng 150 token).
 
 ## Connector ảo
 
-Tham số của run (`collect_runs.params`):
+Tham số của run (`collect_runs.params`; source là `collect_runs.source_id`):
 
 ```
-{ panelId, sourceId, brief, postCount, commentsPerPost: [min, max],
-  window: { from, to }, language, seed }
+{ panelId, brief, postCount, commentsPerPost: [min, max],
+  window: { from, to }, language, seed, model, styleSourceId?, distractors[] }
 ```
+
+Mã nguồn: connector ở `lib/connectors/synthetic/`, phần sinh ở `lib/personas/` (kế hoạch, tác giả, prompt, nhiễu). Tham số điều chỉnh nằm ở `lib/personas/config.ts`.
 
 Bên trong `fetchRecords`:
-1. **Code lập kế hoạch**: số bài, số comment mỗi bài, persona đăng bài và persona bình luận theo `weight`, `published_at` rải theo giờ Việt Nam.
-2. **LLM viết từng thread** (1 post cùng các comment), mỗi vị trí đã được gán persona. Trả JSON có cấu trúc. Few-shot lấy từ vài comment thật của source được chọn.
-3. **Code ghép lại**: tác giả nhất quán, `external_id` (`syn:{run}:{n}`), cây `parent_id`/`root_id`, engagement ngẫu nhiên, chèn nhiễu nhẹ.
+1. **Code lập kế hoạch** (`plan-threads`): số bài, số comment mỗi bài (lệch về ít comment), persona đăng bài và bình luận theo `weight`, `published_at` rải theo giờ Việt Nam, cảm xúc, aspect (lấy từ `concerns` của persona) và độ dài của từng item. `seed` làm kế hoạch lặp lại được.
+2. **Gán tác giả** (`assign-thread-authors`): persona cá nhân dùng lại một tác giả đã có (tỷ lệ cấu hình) hoặc tạo tác giả mới; persona tổ chức luôn là một tài khoản. Người đăng bài đôi khi tự trả lời lại.
+3. **LLM viết từng thread** (1 post cùng comment và reply trong một lần gọi), persona định nghĩa một lần rồi được tham chiếu. Trả JSON có cấu trúc; thiếu item thì thử lại, vẫn thiếu thì bỏ cả thread. Few-shot lấy từ vài comment thật của `styleSourceId`.
+4. **Code ghép lại**: `external_id` (`syn:{run}:{n}`), cây `parent_id`/`root_id`, engagement ngẫu nhiên, nhiễu. Comment nhiễu (spam, ngoài chủ đề, ca trùng tên từ `distractors`) lấy từ danh sách cố định, không qua LLM; comment và reply còn có thể bị bỏ dấu hoặc gõ sai.
 
-Spec của từng item (`personaId`, `panelId`, `brief`, ý định cảm xúc và aspect) được ghi vào `content_items.metadata`. Sau này có thể dựng `synthetic_labels` từ đây mà không cần sinh lại.
+Payload R2 là danh sách record phẳng (mỗi record một post, comment hoặc reply kèm spec), nên `collect:renormalize` chạy lại mà không gọi LLM.
+
+Một yêu cầu sinh nhiều hơn `maxThreadsPerRun` được chia thành nhiều run (`startSyntheticGeneration`), run thứ `i` dùng `seed + i`.
+
+Spec của từng item được ghi vào `content_items.metadata`: `personaId`, `panelId`, `brief`, `threadIndex`, `sentiment`, `aspect`, `length`, `briefRelevance` (`direct`, `related`, `general`: bám sự kiện trong brief nhiều hay ít), `noise` (`spam`, `off-topic`, `distractor` hoặc null), `degraded` (`typo`, `no-diacritics`). Sau này có thể dựng `synthetic_labels` từ đây mà không cần sinh lại.
 
 `sources` giả: `origin = synthetic`, `platform = facebook`, `source_type = group`, để hạ nguồn thấy cùng hình dạng với dữ liệu thật.
 

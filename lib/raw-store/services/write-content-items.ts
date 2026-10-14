@@ -106,6 +106,7 @@ async function upsertAuthors(
         url: author.url,
         avatarUrl: author.avatarUrl ?? null,
         followerCount: author.followerCount ?? null,
+        personaId: author.personaId ?? null,
         origin,
         metadata: author.metadata ?? {},
       })),
@@ -113,6 +114,7 @@ async function upsertAuthors(
     .onConflictDoUpdate({
       target: [authors.platform, authors.externalId],
       set: {
+        personaId: sql`coalesce(excluded.persona_id, ${authors.personaId})`,
         name: sql`coalesce(excluded.name, ${authors.name})`,
         url: sql`coalesce(excluded.url, ${authors.url})`,
         avatarUrl: sql`coalesce(excluded.avatar_url, ${authors.avatarUrl})`,

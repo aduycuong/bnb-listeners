@@ -2,6 +2,7 @@ export const CONNECTOR_KEYS = [
   "facebook-posts",
   "facebook-post-refresh",
   "facebook-comments",
+  "synthetic-threads",
 ] as const;
 
 export type ConnectorKey = (typeof CONNECTOR_KEYS)[number];
