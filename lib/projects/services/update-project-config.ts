@@ -24,6 +24,19 @@ function sameList(a: readonly string[], b: readonly string[]) {
   return a.length === b.length && a.every((item, index) => item === b[index]);
 }
 
+/** JSON with sorted keys; Postgres jsonb does not keep key order. */
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value)
+      .sort()
+      .filter((key) => (value as Record<string, unknown>)[key] !== undefined)
+      .map((key) => `${JSON.stringify(key)}:${stableJson((value as Record<string, unknown>)[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 function sameSet(a: readonly string[], b: readonly string[]) {
   const left = new Set(a);
   const right = new Set(b);
@@ -55,7 +68,7 @@ export async function updateProjectConfig(
   const writes: BatchItem<"pg">[] = [];
   let changed =
     current.mode !== params.mode ||
-    JSON.stringify(current.caseConfig) !== JSON.stringify(caseConfig);
+    stableJson(current.caseConfig) !== stableJson(caseConfig);
 
   // Entities and their queries.
   const currentEntities = new Map(current.entities.map((entity) => [entity.id, entity]));
