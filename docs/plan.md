@@ -71,7 +71,7 @@ Script `npm run probe:bright-data` (`scripts/probe-bright-data-facebook.ts`), k�
      - đã lấy rồi và `num_comments` tăng ≥ 15% so với `comments_collected_count`. Không kèm mức tối thiểu tuyệt đối: bài ít comment có tăng phần trăm lớn thì lấy lại cũng chỉ tốn vài bản ghi.
 
      Các ngưỡng 100, 1 ngày, 15% là config.
-  3. Lấy comment: tối đa **100 dòng/bài**, không lấy reply (`get_all_replies = false`, config), sort "Most relevant". Lưu `comments_collected_count = num_comments` tại thời điểm lấy.
+  3. Lấy comment: tối đa **150 dòng/bài**, lấy cả reply (`get_all_replies = true`, config), sort "Most relevant". Lưu `comments_collected_count = num_comments` tại thời điểm lấy. Đổi ngày 2026-10-14, xem [D9](decisions.md#d9--lấy-reply-và-định-danh-tác-giả-comment-2026-10-14).
 
 **Usage**
 - `sources.monthly_record_limit` (null = không giới hạn). Usage tháng = tổng `collect_runs.item_count` của mọi run thuộc source.
@@ -89,13 +89,13 @@ Script `npm run probe:bright-data` (`scripts/probe-bright-data-facebook.ts`), k�
 |---|---|
 | Run post: bài mới + chồng lấn 2 giờ (bài trùng vẫn bị tính tiền), 12 run | ~70 |
 | Lấy lại post theo URL (3 mốc, trừ bài vừa có trong run post) | ≤ 105 |
-| Comment (lần đầu ≤ 100 dòng/bài, lấy lại khi tăng ≥ 15%) | ~500–1.000 |
+| Comment kèm reply (lần đầu ≤ 150 dòng/bài, lấy lại khi tăng ≥ 15%) | ~750–1.500 |
 
 Chi phí comment là con số ước lượng thô, cần đo lại sau một tuần chạy thật.
 
 ### Còn mở
 - Giá trị mặc định của `monthly_record_limit`.
-- Giới hạn đã biết: chỉ biết comment tăng tại các mốc; comment bị xóa không được phát hiện; với bài trên 100 comment, lần lấy lại "Most relevant" có thể không chứa comment mới. Bài có 1–100 comment chỉ được lấy comment từ mốc +24 giờ. Nếu job post bị cắt bởi `limit_multiple_results` thì phần bài cũ hơn bị sót.
+- Giới hạn đã biết: chỉ biết comment tăng tại các mốc; comment bị xóa không được phát hiện; với bài trên 150 dòng comment và reply, lần lấy lại "Most relevant" có thể không chứa comment mới. Bài có 1–100 comment chỉ được lấy comment từ mốc +24 giờ. Nếu job post bị cắt bởi `limit_multiple_results` thì phần bài cũ hơn bị sót.
 - Chưa kiểm chứng: bài ghim hoặc bài cũ có hoạt động mới có làm job post dừng sớm hay không.
 
 ### Việc cần làm

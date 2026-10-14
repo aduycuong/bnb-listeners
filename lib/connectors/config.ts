@@ -39,10 +39,13 @@ export const COLLECT_CONFIG = {
     firstCollectMinAgeHours: 24,
     /** Recollect when `num_comments` grew by at least this ratio since the last collection. */
     recollectGrowthRatio: 0.15,
-    /** Rows per post (Bright Data `limit_records`; counts replies when they are fetched). */
-    maxRowsPerPost: 100,
-    /** Bright Data `get_all_replies`; off so the rows go to top-level comments. */
-    includeReplies: false,
+    /**
+     * Rows per post (Bright Data `limit_records`). Replies count toward it and
+     * arrive interleaved with top-level comments (about 1/3 of the rows).
+     */
+    maxRowsPerPost: 150,
+    /** Bright Data `get_all_replies`; replies to comments and to other replies. */
+    includeReplies: true,
     sort: "Most relevant",
     /** Post URLs per `facebook-post-refresh` or `facebook-comments` run. */
     postsPerRun: 100,

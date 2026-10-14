@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, sum } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 
 import { contentItems } from "@/db/schema";
 import { db } from "@/lib/db";
@@ -13,9 +13,9 @@ type PostCommentCoverage = {
   postExternalId: string;
   /** The post's `num_comments` (replies included) when the run finished. */
   numComments: number;
-  /** Rows delivered for the post (top-level comments when replies are off). */
+  /** Rows delivered for the post: top-level comments and replies. */
   collected: number;
-  /** Sum of `num_replies` over those rows. */
+  /** Replies among those rows. */
   replies: number;
 };
 
@@ -26,10 +26,9 @@ type MeasureCommentCoverageResult = {
 };
 
 /**
- * Per-post numbers to spot a short comment scrape later: when
- * `collected + replies` is far below `numComments` and `collected` is under
- * the limit, the provider probably stopped early (deleted or hidden comments
- * also explain small gaps).
+ * Per-post numbers to spot a short comment scrape later: when `collected` is
+ * far below `numComments` and under the limit, the provider probably stopped
+ * early (deleted or hidden comments also explain small gaps).
  */
 export async function measureCommentCoverage(
   params: MeasureCommentCoverageParams,
@@ -51,7 +50,7 @@ export async function measureCommentCoverage(
     .select({
       rootId: contentItems.rootId,
       collected: count(),
-      replies: sum(contentItems.commentCount),
+      replies: sql<number>`count(*) filter (where ${contentItems.kind} = 'reply')`.mapWith(Number),
     })
     .from(contentItems)
     .where(

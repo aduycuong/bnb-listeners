@@ -17,12 +17,16 @@ import type {
 } from "../types";
 import { computeContentHash } from "../utils/compute-content-hash";
 
-type ItemRef = { id: string; sourceId: string | null };
+type ItemRef = { id: string; sourceId: string | null; authorId: string | null };
 
 /**
  * Idempotent upsert of normalized items into `content_items`, with their
  * authors and one engagement snapshot per item per collect run. With
  * `onExisting: "skip"` rows that already exist are left as they are.
+ *
+ * An existing row keeps its author: some platforms hand out a different
+ * author id for the same item on each scrape (Facebook `pfbid` tokens), so a
+ * re-collect would otherwise move the item to a new author row.
  *
  * Items are written in passes so a parent in the same batch is stored before
  * its replies and the reply gets a real `parent_id`. A parent that is still
@@ -35,11 +39,12 @@ export async function writeContentItems(
   let items = dedupeByExternalId(params.items);
   let skippedExisting = 0;
 
-  if (params.onExisting === "skip" && items.length > 0) {
-    const existing = await findItemRefs(
-      params.platform,
-      items.map((item) => item.externalId),
-    );
+  const existing = await findItemRefs(
+    params.platform,
+    items.map((item) => item.externalId),
+  );
+
+  if (params.onExisting === "skip") {
     skippedExisting = existing.size;
     items = items.filter((item) => !existing.has(item.externalId));
   }
@@ -48,10 +53,14 @@ export async function writeContentItems(
     return { items: [], inserted: 0, updated: 0, skippedExisting };
   }
 
+  // Rows that already have an author keep it, so their author is not upserted.
   const authorIds = await upsertAuthors(
     params.platform,
     params.origin,
-    items.map((item) => item.author).filter((a): a is NormalizedAuthor => !!a),
+    items
+      .filter((item) => !existing.get(item.externalId)?.authorId)
+      .map((item) => item.author)
+      .filter((a): a is NormalizedAuthor => !!a),
   );
 
   const written: WrittenContentItem[] = [];
@@ -137,6 +146,7 @@ async function findItemRefs(
       id: contentItems.id,
       externalId: contentItems.externalId,
       sourceId: contentItems.sourceId,
+      authorId: contentItems.authorId,
       commentCount: contentItems.commentCount,
     })
     .from(contentItems)
@@ -217,7 +227,7 @@ async function writePass(
       target: [contentItems.platform, contentItems.externalId],
       set: {
         sourceId: sql`coalesce(${contentItems.sourceId}, excluded.source_id)`,
-        authorId: sql`coalesce(excluded.author_id, ${contentItems.authorId})`,
+        authorId: sql`coalesce(${contentItems.authorId}, excluded.author_id)`,
         parentId: sql`coalesce(excluded.parent_id, ${contentItems.parentId})`,
         rootId: sql`coalesce(excluded.root_id, ${contentItems.rootId})`,
         url: sql`coalesce(excluded.url, ${contentItems.url})`,
