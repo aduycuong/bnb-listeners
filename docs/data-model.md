@@ -110,12 +110,16 @@ Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` 
 **`mentions`**: một nội dung khớp với một project (xem [D11](decisions.md#d11--giai-đoạn-3-match-2026-10-14)).
 - `project_id`, `content_item_id`, `root_item_id`, `kind`
 - Copy từ L1 để lọc nhanh: `platform`, `source_id`, `author_id`, `published_at`, `origin`
-- So khớp: `matched_query_ids[]`, `matched_entity_ids[]`, `matched_terms[]`, `match_type` (`direct` | `context`), `match_tier` (`lexical` | `llm`), `is_relevant` (ứng viên bị LLM loại vẫn được lưu với `false`), `match_reason`, `match_signature`
+- So khớp: `matched_query_ids[]`, `matched_entity_ids[]`, `matched_terms[]`, `match_type` (`direct` | `context` | `manual`), `match_tier` (`lexical` | `llm` | `user`), `is_relevant` (giá trị cuối cùng: theo nhãn nếu có; ứng viên bị LLM loại vẫn được lưu với `false`), `auto_is_relevant` (quyết định của Match), `match_reason`, `match_signature`
 - Các cột Enrich dưới đây thêm ở giai đoạn 4
 - Làm giàu: `sentiment` (`positive` | `neutral` | `negative`), `sentiment_score`, `emotion`, `enrich_status`, `enrich_version`
 - Chỉ số: `reach_estimate`, `engagement_total`
 - `user_corrected`: nhãn đã được người dùng sửa tay
 - Unique: `(project_id, content_item_id)`. Partition theo tháng của `published_at`.
+
+**`item_labels`**: nhãn tay của một item trong một project (`is_relevant`, sau thêm sentiment, aspect), `sample_id` nếu gán trong đợt mẫu, `labeled_by`. Tách khỏi kết quả của hệ thống để đo ([D13](decisions.md#d13--nhãn-tay-và-đo-trên-mẫu-thật-2026-10-14)).
+
+**`label_samples`**, **`label_sample_items`**: đợt mẫu ngẫu nhiên phân tầng (`relevant`, `rejected`, `unmatched`) kèm kích thước từng tầng.
 
 **`match_judgments`**: cache quyết định của tầng 2 theo nội dung item, bài gốc và bộ từ khóa của entity; dùng chung giữa các project.
 

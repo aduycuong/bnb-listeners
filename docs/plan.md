@@ -166,10 +166,13 @@ Case BĐS, thứ tự ưu tiên và cấu hình theo case: xem [D10](decisions.m
 
 Kiểm chứng chỉ trên mẫu thật gán nhãn tay (D12), nên trang Mentions làm trước. Chi tiết Enrich chốt khi bắt đầu 4b.
 
-**4a — Trang Mentions và gán nhãn**
-- [ ] Danh sách mention của project, lọc theo nguồn, loại, khớp trực tiếp/ngữ cảnh, có liên quan hay không
-- [ ] Sửa nhãn trên giao diện (`user_corrected`): có liên quan hay không; sau 4b thêm sentiment, aspect
-- [ ] Gán nhãn một bộ mẫu thật (khoảng 150 mention) và đo precision/recall của Match
+**4a — Trang Mentions và gán nhãn** (xem [D13](decisions.md#d13--nhãn-tay-và-đo-trên-mẫu-thật-2026-10-14))
+- [x] Schema `item_labels`, `label_samples`, `label_sample_items`, `mentions.auto_is_relevant`
+- [x] Trang Mentions: danh sách, lọc (liên quan, cách khớp, loại, đối tượng, nhãn, ngày, tìm chữ), xem thread
+- [x] Sửa nhãn trên giao diện (`user_corrected`): có liên quan hay không; item bỏ sót thành mention `manual`. Sau 4b thêm sentiment, aspect
+- [x] Đợt mẫu ngẫu nhiên phân tầng, gán nhãn từng item có phím tắt, ẩn quyết định của hệ thống
+- [x] Precision/recall có trọng số: trên trang Mentions và `npm run eval:match`
+- [ ] Gán nhãn một bộ mẫu thật (khoảng 150 item) và ghi kết quả đo Match
 
 **4b — Enrich lõi**
 - [ ] Prompt structured output sinh từ cấu hình project và phiên bản case

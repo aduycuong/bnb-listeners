@@ -34,12 +34,13 @@ export function toMentionRow(
     matchType: match.matchType,
     matchTier: decision.tier,
     isRelevant: decision.isRelevant,
+    autoIsRelevant: decision.isRelevant,
     matchReason: decision.reason ?? null,
     matchSignature: signature,
   };
 }
 
-/** Upserts by (project, item). A relevance the user corrected by hand is kept. */
+/** Upserts by (project, item). A labeled relevance is kept; Match's own decision is always refreshed. */
 export async function writeMentions(rows: NewMention[]): Promise<void> {
   for (let offset = 0; offset < rows.length; offset += MATCH_CONFIG.writeBatchSize) {
     const batch = rows.slice(offset, offset + MATCH_CONFIG.writeBatchSize);
@@ -56,6 +57,7 @@ export async function writeMentions(rows: NewMention[]): Promise<void> {
           matchType: sql`excluded.match_type`,
           matchTier: sql`excluded.match_tier`,
           isRelevant: sql`case when ${mentions.userCorrected} then ${mentions.isRelevant} else excluded.is_relevant end`,
+          autoIsRelevant: sql`excluded.auto_is_relevant`,
           matchReason: sql`excluded.match_reason`,
           matchSignature: sql`excluded.match_signature`,
           publishedAt: sql`excluded.published_at`,

@@ -1,0 +1,141 @@
+import type { z } from "zod";
+
+import type { listMentionsQuerySchema } from "./schema";
+
+export type MentionMatchType = "direct" | "context" | "manual";
+export type MentionMatchTier = "lexical" | "llm" | "user";
+
+/** One row of the Mentions list. */
+export type MentionListItem = {
+  id: string;
+  contentItemId: string;
+  rootItemId: string | null;
+  kind: string;
+  text: string;
+  url: string | null;
+  publishedAt: string | null;
+  sourceName: string | null;
+  authorName: string | null;
+  rootText: string | null;
+  matchType: MentionMatchType;
+  matchTier: MentionMatchTier;
+  matchedEntityIds: string[];
+  matchedTerms: string[];
+  matchReason: string | null;
+  isRelevant: boolean;
+  autoIsRelevant: boolean | null;
+  userCorrected: boolean;
+  /** The labeler's answer, when there is one. */
+  label: boolean | null;
+};
+
+export type ListMentionsParams = { projectId: string } & z.infer<typeof listMentionsQuerySchema>;
+
+export type ListMentionsResult = {
+  items: MentionListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+/** One item of a thread with its mention state, for the thread panel. */
+export type ThreadItem = {
+  contentItemId: string;
+  parentId: string | null;
+  kind: string;
+  text: string;
+  url: string | null;
+  publishedAt: string | null;
+  authorName: string | null;
+  mention: {
+    id: string;
+    matchType: MentionMatchType;
+    matchTier: MentionMatchTier;
+    matchedTerms: string[];
+    matchReason: string | null;
+    isRelevant: boolean;
+    autoIsRelevant: boolean | null;
+  } | null;
+  label: boolean | null;
+};
+
+export type GetMentionThreadResult = {
+  rootId: string;
+  items: ThreadItem[];
+};
+
+export type SetItemLabelParams = {
+  projectId: string;
+  contentItemId: string;
+  /** Null removes the label and returns the item to Match's decision. */
+  isRelevant: boolean | null;
+  userId: string;
+  sampleId?: string;
+};
+
+export type SetItemLabelResult = {
+  contentItemId: string;
+  label: boolean | null;
+  isRelevant: boolean | null;
+  message: string;
+};
+
+export type LabelSampleStratum = "relevant" | "rejected" | "unmatched";
+
+export type LabelSampleSummary = {
+  id: string;
+  name: string;
+  createdAt: string;
+  size: number;
+  labeled: number;
+  strata: Record<string, { population: number; sampled: number }>;
+  /** False when Match ran again with another config after sampling. */
+  current: boolean;
+};
+
+export type ListLabelSamplesResult = { items: LabelSampleSummary[] };
+
+export type CreateLabelSampleParams = {
+  projectId: string;
+  userId: string;
+  mentions: number;
+  unmatched: number;
+};
+
+/** An item to label, without Match's decision so the labeler is not led. */
+export type LabelSampleTask = {
+  sample: LabelSampleSummary;
+  position: number;
+  item: {
+    contentItemId: string;
+    kind: string;
+    text: string;
+    url: string | null;
+    publishedAt: string | null;
+    authorName: string | null;
+    sourceName: string | null;
+  } | null;
+  /** Root post and the direct parent, for context. */
+  root: { text: string; url: string | null } | null;
+  parent: { text: string } | null;
+  label: boolean | null;
+};
+
+export type MatchEvaluation = {
+  sampleId: string;
+  sampleName: string;
+  current: boolean;
+  labeled: number;
+  strata: {
+    stratum: LabelSampleStratum;
+    population: number;
+    sampled: number;
+    labeled: number;
+    labeledRelevant: number;
+  }[];
+  /** Share of Match's relevant mentions that labelers confirmed. */
+  precision: number | null;
+  /** Estimated share of truly relevant items Match found, weighted by stratum size. */
+  recall: number | null;
+  precisionByMatchType: { matchType: string; labeled: number; precision: number | null }[];
+};
