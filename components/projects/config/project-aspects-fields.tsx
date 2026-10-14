@@ -72,7 +72,7 @@ export function ProjectAspectsFields({
           variant="outline"
           size="sm"
           disabled={fields.length >= 20}
-          onClick={() => append({ name: "", description: "" })}
+          onClick={() => append({ id: crypto.randomUUID(), name: "", description: "" })}
         >
           <PlusIcon />
           Thêm khía cạnh
@@ -87,9 +87,10 @@ export function ProjectAspectsFields({
                 const kept = form
                   .getValues("aspects")
                   .find((item) => item.name === aspect.name);
+                // Keep ids of aspects that stay, so alert rules pointing at them still match.
                 return {
-                  id: kept?.id,
-                  key: kept?.key,
+                  id: kept?.id ?? crypto.randomUUID(),
+                  key: kept?.key ?? aspect.key,
                   name: aspect.name,
                   description: aspect.description,
                 };

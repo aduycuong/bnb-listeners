@@ -293,20 +293,20 @@ Sources a project follows (required for Facebook, which has no keyword search).
 
 ### `alert_rules`
 
-Alert rule of a project, created from the case's alert template (`lib/projects/alert-templates.ts`). Configured from phase 3; evaluated from phase 6.
+Alert rule of a project; `kind` comes from the catalog in `lib/projects/alert-templates.ts` and may repeat. Configured from phase 3; evaluated from phase 6.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
-| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| id | uuid | NO | `gen_random_uuid()` | Primary key (client-generated for new rules) |
 | project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
-| key | text | NO | — | Template rule key |
-| type | text | NO | — | `threshold` or `growth` |
-| params | jsonb | NO | `{}` | Template params plus `threshold` |
+| kind | text | NO | — | `volume_growth`, `negative_share`, `viral_post`, `keyword_hit`, `price_deviation`, `buyer_questions_growth` |
+| params | jsonb | NO | `{}` | `{ scope, threshold, window, minMentions, keywords }`; `scope` is `{ type: project }`, `{ type: entity, entityId }`, `{ type: aspect, aspectId }` or `{ type: each_role, role }` |
 | channels | jsonb | YES | — | Overrides `projects.notification_config.channels`; null = project default |
 | enabled | boolean | NO | `true` | |
+| sort_order | integer | NO | `0` | Display order |
 | created_at / updated_at | timestamptz | NO | `now()` | |
 
-**Indexes:** `alert_rules_project_key_idx` — UNIQUE on `(project_id, key)`
+**Indexes:** `alert_rules_project_id_idx` on `project_id`
 
 ---
 

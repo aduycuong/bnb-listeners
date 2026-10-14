@@ -2,7 +2,8 @@
 
 import { useSelectableSources } from "@/components/projects/config/project-sources-fields";
 import {
-  ALERT_TEMPLATES,
+  ALERT_RULE_KIND_DEFS,
+  ALERT_WINDOW_LABELS,
   NOTIFICATION_CHANNEL_LABELS,
   REPORT_SCHEDULE_LABELS,
   type NotificationChannel,
@@ -31,6 +32,22 @@ function describeQuery(entity: {
   if (entity.withTerms?.length) text += ` AND (${quote(entity.withTerms)})`;
   if (entity.exclude?.length) text += ` NOT (${quote(entity.exclude)})`;
   return text;
+}
+
+function describeScope(values: CreateProjectWithConfigInput, scope: string) {
+  const [type, ref] = scope.split(":");
+  if (type === "entity") {
+    return values.entities?.find((entity) => entity.id === ref)?.name || "(đối tượng đã xóa)";
+  }
+  if (type === "aspect") {
+    const name = values.aspects?.find((aspect) => aspect.id === ref)?.name;
+    return name ? `khía cạnh ${name}` : "(khía cạnh đã xóa)";
+  }
+  if (type === "each_role") {
+    const role = CASE_TEMPLATES[values.case].roles.find((item) => item.role === ref);
+    return `từng mục ${role?.label.toLowerCase() ?? ref}`;
+  }
+  return "toàn project";
 }
 
 function describeCaseConfig(values: CreateProjectWithConfigInput) {
@@ -110,10 +127,15 @@ export function ProjectConfigSummary({
         return (
           <ul className="flex flex-col gap-0.5">
             {enabled.map((rule) => {
-              const template = ALERT_TEMPLATES[values.case].find((item) => item.key === rule.key);
+              const def = ALERT_RULE_KIND_DEFS[rule.kind];
+              const window = rule.window ? ` trong ${ALERT_WINDOW_LABELS[rule.window]}` : "";
+              const keywords = rule.keywords?.length ? ` (${rule.keywords.join(", ")})` : "";
               return (
-                <li key={rule.key}>
-                  {template?.label} {rule.threshold} {template?.unit}
+                <li key={rule.id}>
+                  {def.label}, {describeScope(values, rule.scope)}: {def.thresholdLabel.toLowerCase()}{" "}
+                  {rule.threshold} {def.unit}
+                  {window}
+                  {keywords}
                 </li>
               );
             })}

@@ -178,7 +178,12 @@ Rà lại việc lấy dữ liệu Facebook trước giai đoạn 3.
 - Nguồn: chỉ chọn trong `sources` đã có, **không thêm group mới từ wizard** (thêm nguồn vẫn qua `npm run collect:facebook`). Project `live` chỉ chọn được nguồn `origin = connector`; project `sandbox` chọn được cả nguồn giả.
 - `config_version` của project tăng mỗi khi sửa cấu hình. `project_queries.version` tăng khi sửa `include`, `with`, `exclude` của truy vấn đó.
 - Wizard có đủ input cho cả phần chưa chạy (đổi ngày 2026-10-14): cấu hình được lưu ngay, phần xử lý làm ở giai đoạn của nó mà không phải sửa lại form.
-  - Cảnh báo: template rule theo case (`lib/projects/alert-templates.ts`), mỗi rule một dòng `alert_rules` (`key`, `type`, `params` gồm ngưỡng, `enabled`). Kênh gửi, người nhận và lịch báo cáo AI nằm ở `projects.notification_config`. Rule bắt đầu chạy từ giai đoạn 6; Email trước, Zalo/SMS/Slack sau.
+  - Cảnh báo: người dùng thêm, sửa, xóa rule chọn từ **danh mục loại rule có cấu trúc** (`lib/projects/alert-templates.ts`), không có bộ dựng tự do. Mỗi loại ứng với một chỉ số sẽ có ở L4 hoặc một trường trích xuất ở Enrich, nên giai đoạn 6 chỉ viết một bộ đánh giá cho mỗi loại.
+    - Loại chung: lượng thảo luận tăng, tỷ lệ tiêu cực vượt, một bài lan rộng, từ khóa xuất hiện. Loại riêng `project`: giá lệch giá tham chiếu, câu hỏi người mua tăng.
+    - Tham số: phạm vi (toàn project, một entity, một aspect, từng entity của một vai trò), ngưỡng, khoảng thời gian, lượng mention tối thiểu (chống nhiễu khi group ít bài), từ khóa. Cùng một loại được thêm nhiều lần; tối đa 20 rule mỗi project.
+    - Mỗi case khởi tạo sẵn vài rule (`ALERT_RULE_SEEDS`). Rule trỏ tới entity/aspect bằng id; id của entity, aspect, rule mới do client sinh để rule tham chiếu được trước khi lưu. Xóa entity/aspect mà còn rule trỏ tới thì form báo lỗi.
+    - Bỏ rule "tin chưa kiểm chứng về quy hoạch": cần bộ phân loại tin đồn, không có trong plan; thay bằng lượng thảo luận tăng theo aspect hạ tầng & quy hoạch.
+  - Kênh gửi, người nhận và lịch báo cáo AI dùng chung cho cả project (`projects.notification_config`); cột `alert_rules.channels` để dành cho kênh riêng từng rule. Rule bắt đầu chạy từ giai đoạn 6; Email trước, Zalo/SMS/Slack sau.
   - Sửa cảnh báo không tăng `config_version`, vì không ảnh hưởng Match/Enrich.
   - Bỏ "thành viên dự án" khỏi wizard: quyền vẫn theo workspace, sẽ mở rộng ở phần workspace member.
 - `projects.is_demo` đánh dấu các project demo (dashboard số liệu mẫu). Project thật chưa hiện dashboard demo, tránh nhầm số liệu mẫu với số liệu thật.

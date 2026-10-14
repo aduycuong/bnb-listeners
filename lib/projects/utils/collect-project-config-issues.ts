@@ -1,4 +1,4 @@
-import { ALERT_TEMPLATES } from "../alert-templates";
+import { ALERT_RULE_KIND_DEFS, type AlertRuleKind } from "../alert-templates";
 import { CASE_TEMPLATES, type EntityRole } from "../case-templates";
 import type { AvailableProjectCase } from "../project-cases";
 
@@ -16,10 +16,16 @@ export function collectProjectConfigIssues(
   value: {
     case: AvailableProjectCase;
     caseConfig?: Record<string, unknown>;
-    entities?: { role: EntityRole }[];
-    aspects?: { name: string }[];
+    entities?: { id?: string; role: EntityRole }[];
+    aspects?: { id?: string; name: string }[];
     alerts?: {
-      rules?: { key: string; enabled: boolean }[];
+      rules?: {
+        kind: AlertRuleKind;
+        enabled: boolean;
+        scope: string;
+        window?: string | null;
+        keywords?: string[];
+      }[];
       channels?: string[];
       recipients?: string[];
       reportSchedule?: string;
@@ -87,22 +93,40 @@ export function collectProjectConfigIssues(
 
   if (parts.alerts && value.alerts) {
     const alerts = value.alerts;
-    const templates = new Map(ALERT_TEMPLATES[value.case].map((rule) => [rule.key, rule]));
     const rules = alerts.rules ?? [];
+    const entityIds = new Set((value.entities ?? []).map((entity) => entity.id));
+    const aspectIds = new Set((value.aspects ?? []).map((aspect) => aspect.id));
+    const roles = new Set(template.roles.map((role) => role.role as string));
 
     rules.forEach((rule, index) => {
-      const template = templates.get(rule.key);
-      if (!template) {
-        issues.push({
-          path: ["alerts", "rules", index, "key"],
-          message: `Cảnh báo "${rule.key}" không dùng cho case này.`,
-        });
+      const path = ["alerts", "rules", index];
+      const def = ALERT_RULE_KIND_DEFS[rule.kind];
+      if (def.cases !== "all" && !def.cases.includes(value.case)) {
+        issues.push({ path: [...path, "kind"], message: `"${def.label}" không dùng cho case này.` });
         return;
       }
-      const required = template.requiresConfig;
+
+      const [scopeType, scopeRef] = rule.scope.split(":") as [string, string | undefined];
+      if (!(def.scopes as string[]).includes(scopeType)) {
+        issues.push({ path: [...path, "scope"], message: "Phạm vi không dùng cho loại cảnh báo này." });
+      } else if (scopeType === "entity" && !entityIds.has(scopeRef)) {
+        issues.push({ path: [...path, "scope"], message: "Đối tượng của cảnh báo đã bị xóa." });
+      } else if (scopeType === "aspect" && !aspectIds.has(scopeRef)) {
+        issues.push({ path: [...path, "scope"], message: "Khía cạnh của cảnh báo đã bị xóa." });
+      } else if (scopeType === "each_role" && !roles.has(scopeRef ?? "")) {
+        issues.push({ path: [...path, "scope"], message: "Phạm vi không dùng cho case này." });
+      }
+
+      if (def.defaultWindow && !rule.window) {
+        issues.push({ path: [...path, "window"], message: "Chọn khoảng thời gian." });
+      }
+      if (def.usesKeywords && (rule.keywords ?? []).length === 0) {
+        issues.push({ path: [...path, "keywords"], message: "Nhập ít nhất một từ khóa." });
+      }
+      const required = def.requiresConfig;
       if (rule.enabled && required && value.caseConfig?.[required] === undefined) {
         issues.push({
-          path: ["alerts", "rules", index, "threshold"],
+          path: [...path, "threshold"],
           message: "Cần nhập giá tham chiếu ở bước đối tượng theo dõi.",
         });
       }

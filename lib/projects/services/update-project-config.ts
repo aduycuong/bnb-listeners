@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { and, eq, inArray } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 
@@ -11,14 +9,15 @@ import {
   projects,
   projectSources,
 } from "@/db/schema";
-import { InvalidInputError, NotFoundError } from "@/lib/common/service-errors";
+import { InvalidInputError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 
 import { CASE_TEMPLATES } from "../case-templates";
 import type { UpdateProjectConfigParams, UpdateProjectConfigResult } from "../types";
-import { toAlertRuleRows } from "../utils/to-alert-rule-rows";
+import { toAlertRuleRow } from "../utils/to-alert-rule-rows";
 import { toAspectKey } from "../utils/to-aspect-key";
 import { toQueryInclude } from "../utils/to-query-include";
+import { assertConfigIdsUnused } from "./assert-config-ids-unused";
 import { assertSourcesSelectable } from "./assert-sources-selectable";
 import { getProjectConfig } from "./get-project-config";
 
@@ -65,6 +64,16 @@ export async function updateProjectConfig(
 
   await assertSourcesSelectable({ sourceIds: params.sourceIds, mode: params.mode });
 
+  // Ids not in the current config are new items created in the form.
+  const currentEntityIds = new Set(current.entities.map((entity) => entity.id));
+  const currentAspectIds = new Set(current.aspects.map((aspect) => aspect.id));
+  const currentRuleIds = new Set(current.alerts.rules.map((rule) => rule.id));
+  await assertConfigIdsUnused({
+    entityIds: params.entities.map((item) => item.id).filter((id) => !currentEntityIds.has(id)),
+    aspectIds: params.aspects.map((item) => item.id).filter((id) => !currentAspectIds.has(id)),
+    ruleIds: params.alerts.rules.map((item) => item.id).filter((id) => !currentRuleIds.has(id)),
+  });
+
   const template = CASE_TEMPLATES[params.case];
   const caseConfig = template.configSchema.parse(params.caseConfig);
   const projectId = current.projectId;
@@ -79,14 +88,10 @@ export async function updateProjectConfig(
 
   params.entities.forEach((entity, sortOrder) => {
     const include = toQueryInclude(entity);
-    const existing = entity.id ? currentEntities.get(entity.id) : undefined;
-
-    if (entity.id && !existing) {
-      throw new NotFoundError("project entity", entity.id);
-    }
+    const existing = currentEntities.get(entity.id);
 
     if (!existing) {
-      const entityId = randomUUID();
+      const entityId = entity.id;
       changed = true;
       writes.push(
         db.insert(projectEntities).values({
@@ -184,10 +189,7 @@ export async function updateProjectConfig(
   const currentAspects = new Map(current.aspects.map((aspect) => [aspect.id, aspect]));
   const keptAspectIds = new Set<string>();
   params.aspects.forEach((aspect) => {
-    if (aspect.id && !currentAspects.has(aspect.id)) {
-      throw new NotFoundError("project aspect", aspect.id);
-    }
-    if (aspect.id) keptAspectIds.add(aspect.id);
+    if (currentAspects.has(aspect.id)) keptAspectIds.add(aspect.id);
   });
   const takenKeys = new Set(
     current.aspects.filter((aspect) => keptAspectIds.has(aspect.id)).map((aspect) => aspect.key),
@@ -211,7 +213,7 @@ export async function updateProjectConfig(
   }
 
   params.aspects.forEach((aspect, sortOrder) => {
-    const existing = aspect.id ? currentAspects.get(aspect.id) : undefined;
+    const existing = currentAspects.get(aspect.id);
 
     if (!existing) {
       const templateKey = template.aspects.find((item) => item.name === aspect.name)?.key;
@@ -223,6 +225,7 @@ export async function updateProjectConfig(
       changed = true;
       writes.push(
         db.insert(projectAspects).values({
+          id: aspect.id,
           projectId,
           key,
           name: aspect.name,
@@ -260,20 +263,37 @@ export async function updateProjectConfig(
     );
   }
 
-  // Alerts: upsert by key so rule ids stay stable for future alert rows.
+  // Alerts: upsert by id so rule ids stay stable for future alert rows.
   const alertsChanged = stableJson(current.alerts) !== stableJson(params.alerts);
   if (alertsChanged) {
-    for (const rule of toAlertRuleRows(params.case, params.alerts.rules)) {
+    const keptRuleIds = new Set(params.alerts.rules.map((rule) => rule.id));
+    const removedRuleIds = current.alerts.rules
+      .map((rule) => rule.id)
+      .filter((id) => !keptRuleIds.has(id));
+    if (removedRuleIds.length > 0) {
       writes.push(
         db
-          .insert(alertRules)
-          .values({ ...rule, projectId })
-          .onConflictDoUpdate({
-            target: [alertRules.projectId, alertRules.key],
-            set: { type: rule.type, params: rule.params, enabled: rule.enabled, updatedAt: new Date() },
-          }),
+          .delete(alertRules)
+          .where(and(eq(alertRules.projectId, projectId), inArray(alertRules.id, removedRuleIds))),
       );
     }
+    params.alerts.rules.forEach((rule, sortOrder) => {
+      const row = toAlertRuleRow(rule, sortOrder);
+      writes.push(
+        currentRuleIds.has(rule.id)
+          ? db
+              .update(alertRules)
+              .set({
+                kind: row.kind,
+                params: row.params,
+                enabled: row.enabled,
+                sortOrder,
+                updatedAt: new Date(),
+              })
+              .where(and(eq(alertRules.id, rule.id), eq(alertRules.projectId, projectId)))
+          : db.insert(alertRules).values({ ...row, projectId }),
+      );
+    });
   }
 
   if (!changed && !alertsChanged) {

@@ -144,7 +144,7 @@ Các công thức (reach ước tính, NSS, SoV, mức độ khủng hoảng) đ
 
 ## L5 — Outputs
 
-- **`alert_rules`**: `project_id`, `key` (template rule theo case, unique theo project), `type` (`threshold`, `growth`; sau thêm bất thường, từ khóa mới), `params` (ngưỡng và tham số của template), `channels` (null = dùng `projects.notification_config`), `enabled`. Đã lưu từ giai đoạn 3, đánh giá từ giai đoạn 6.
+- **`alert_rules`**: `project_id`, `kind` (loại rule trong danh mục, một loại có thể lặp lại), `params` (`scope`, `threshold`, `window`, `minMentions`, `keywords`, validate theo loại), `channels` (null = dùng `projects.notification_config`), `enabled`, `sort_order`. Đã lưu từ giai đoạn 3, đánh giá từ giai đoạn 6.
 - **`alerts`**: `rule_id`, `triggered_at`, `payload`, `status`, `mention_ids[]`
 - **`insights`**: tóm tắt và nhận định do AI sinh. Luôn kèm `mention_ids[]` để trích dẫn, kèm `period` và `model`.
 - **`reports`**: báo cáo định kỳ (`period`, `content`, `status`)

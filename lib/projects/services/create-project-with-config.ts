@@ -13,10 +13,11 @@ import { db } from "@/lib/db";
 
 import { CASE_TEMPLATES } from "../case-templates";
 import type { CreateProjectResult, CreateProjectWithConfigParams } from "../types";
-import { toAlertRuleRows } from "../utils/to-alert-rule-rows";
+import { toAlertRuleRow } from "../utils/to-alert-rule-rows";
 import { toAspectKey } from "../utils/to-aspect-key";
 import { toProjectListItem } from "../utils/to-project-list-item";
 import { toQueryInclude } from "../utils/to-query-include";
+import { assertConfigIdsUnused } from "./assert-config-ids-unused";
 import { assertSourcesSelectable } from "./assert-sources-selectable";
 import { assertUniqueProjectName } from "./assert-unique-project-name";
 
@@ -27,14 +28,15 @@ export async function createProjectWithConfig(
   const name = params.name.trim();
   await assertUniqueProjectName(params.workspaceId, name);
   await assertSourcesSelectable({ sourceIds: params.sourceIds, mode: params.mode });
+  await assertConfigIdsUnused({
+    entityIds: params.entities.map((entity) => entity.id),
+    aspectIds: params.aspects.map((aspect) => aspect.id),
+    ruleIds: params.alerts.rules.map((rule) => rule.id),
+  });
 
   const template = CASE_TEMPLATES[params.case];
   const projectId = randomUUID();
-  const entities = params.entities.map((entity, index) => ({
-    ...entity,
-    id: randomUUID(),
-    sortOrder: index,
-  }));
+  const entities = params.entities.map((entity, index) => ({ ...entity, sortOrder: index }));
   const takenKeys = new Set<string>();
   const aspects = params.aspects.map((aspect, index) => {
     const templateKey = template.aspects.find((item) => item.name === aspect.name)?.key;
@@ -89,6 +91,7 @@ export async function createProjectWithConfig(
       : []),
     db.insert(projectAspects).values(
       aspects.map((aspect) => ({
+        id: aspect.id,
         projectId,
         key: aspect.key,
         name: aspect.name,
@@ -99,12 +102,16 @@ export async function createProjectWithConfig(
     db.insert(projectSources).values(
       [...new Set(params.sourceIds)].map((sourceId) => ({ projectId, sourceId })),
     ),
-    db.insert(alertRules).values(
-      toAlertRuleRows(params.case, params.alerts.rules).map((rule) => ({
-        ...rule,
-        projectId,
-      })),
-    ),
+    ...(params.alerts.rules.length > 0
+      ? [
+          db.insert(alertRules).values(
+            params.alerts.rules.map((rule, index) => ({
+              ...toAlertRuleRow(rule, index),
+              projectId,
+            })),
+          ),
+        ]
+      : []),
   ]);
 
   const project = created[0];

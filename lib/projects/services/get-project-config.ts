@@ -12,15 +12,15 @@ import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 
 import {
-  ALERT_TEMPLATES,
   NOTIFICATION_CHANNELS,
   REPORT_SCHEDULES,
   type NotificationChannel,
   type ReportSchedule,
 } from "../alert-templates";
 import type { EntityRole } from "../case-templates";
-import { isAvailableProjectCase, parseProjectCase } from "../project-cases";
+import { parseProjectCase } from "../project-cases";
 import type { GetProjectConfigParams, ProjectConfigDetail } from "../types";
+import { fromAlertRuleRow } from "../utils/to-alert-rule-rows";
 
 export async function getProjectConfig(
   params: GetProjectConfigParams,
@@ -56,7 +56,11 @@ export async function getProjectConfig(
       .select({ sourceId: projectSources.sourceId })
       .from(projectSources)
       .where(eq(projectSources.projectId, project.id)),
-    db.select().from(alertRules).where(eq(alertRules.projectId, project.id)),
+    db
+      .select()
+      .from(alertRules)
+      .where(eq(alertRules.projectId, project.id))
+      .orderBy(asc(alertRules.sortOrder), asc(alertRules.createdAt)),
   ]);
 
   const queryByEntity = new Map(
@@ -64,7 +68,6 @@ export async function getProjectConfig(
   );
 
   const projectCase = parseProjectCase(project.listeningCase);
-  const rulesByKey = new Map(ruleRows.map((row) => [row.key, row]));
   const notification = project.notificationConfig;
 
   return {
@@ -94,18 +97,7 @@ export async function getProjectConfig(
     })),
     sourceIds: sourceRows.map((row) => row.sourceId),
     alerts: {
-      // Template order; rules without a row yet show at the default threshold, disabled.
-      rules: (isAvailableProjectCase(projectCase) ? ALERT_TEMPLATES[projectCase] : []).map(
-        (template) => {
-          const row = rulesByKey.get(template.key);
-          const threshold = row?.params.threshold;
-          return {
-            key: template.key,
-            enabled: row?.enabled ?? false,
-            threshold: typeof threshold === "number" ? threshold : template.defaultThreshold,
-          };
-        },
-      ),
+      rules: ruleRows.map(fromAlertRuleRow).filter((rule) => rule !== null),
       channels: (notification.channels ?? ["email"]).filter(
         (channel): channel is NotificationChannel =>
           (NOTIFICATION_CHANNELS as readonly string[]).includes(channel),

@@ -1,8 +1,9 @@
-import { ALERT_TEMPLATES } from "../alert-templates";
+import { ALERT_RULE_SEEDS } from "../alert-templates";
 import { CASE_TEMPLATES } from "../case-templates";
 import type { AvailableProjectCase } from "../project-cases";
 import type { CreateProjectWithConfigInput } from "../schema";
 import type { ProjectConfigDetail } from "../types";
+import { seedToAlertRuleInput } from "./to-alert-rule-input";
 
 /** Form values for a new project of `projectCase`: template aspects and required entity rows. */
 export function toNewProjectFormValues(
@@ -11,6 +12,22 @@ export function toNewProjectFormValues(
   recipient?: string | null,
 ): CreateProjectWithConfigInput {
   const template = CASE_TEMPLATES[projectCase];
+  const entities = template.roles.flatMap((role) =>
+    Array.from({ length: role.min }, () => ({
+      id: crypto.randomUUID(),
+      role: role.role,
+      name: "",
+      aliases: [],
+      withTerms: [],
+      exclude: [],
+    })),
+  );
+  const aspects = template.aspects.map((aspect) => ({
+    id: crypto.randomUUID(),
+    key: aspect.key,
+    name: aspect.name,
+    description: aspect.description,
+  }));
 
   return {
     name: current?.name ?? "",
@@ -18,27 +35,13 @@ export function toNewProjectFormValues(
     case: projectCase,
     mode: current?.mode ?? "live",
     caseConfig: structuredClone(template.defaultConfig),
-    entities: template.roles.flatMap((role) =>
-      Array.from({ length: role.min }, () => ({
-        role: role.role,
-        name: "",
-        aliases: [],
-        withTerms: [],
-        exclude: [],
-      })),
-    ),
-    aspects: template.aspects.map((aspect) => ({
-      name: aspect.name,
-      description: aspect.description,
-    })),
+    entities,
+    aspects,
     sourceIds: current?.sourceIds ?? [],
     alerts: {
-      // Rules needing a case field the user has not filled start disabled.
-      rules: ALERT_TEMPLATES[projectCase].map((rule) => ({
-        key: rule.key,
-        enabled: !rule.requiresConfig,
-        threshold: rule.defaultThreshold,
-      })),
+      rules: ALERT_RULE_SEEDS[projectCase]
+        .map((seed) => seedToAlertRuleInput(seed, entities, aspects))
+        .filter((rule) => rule !== null),
       channels: ["email"],
       recipients: recipient ? [recipient] : [],
       reportSchedule: "weekly",

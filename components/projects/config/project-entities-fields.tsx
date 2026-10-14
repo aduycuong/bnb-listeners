@@ -118,6 +118,7 @@ export function ProjectEntitiesFields({
                   size="sm"
                   onClick={() =>
                     append({
+                      id: crypto.randomUUID(),
                       role: role.role,
                       name: "",
                       aliases: [],

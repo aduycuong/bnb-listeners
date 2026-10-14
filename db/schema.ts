@@ -1537,7 +1537,7 @@ export type NewProjectSource = typeof projectSources.$inferInsert;
 // L5 — Outputs. Rules are configured now; evaluation starts in phase 6.
 // ---------------------------------------------------------------------------
 
-/** One alert rule of a project, created from the case's alert template. */
+/** One alert rule of a project; `kind` comes from `lib/projects/alert-templates.ts`. */
 export const alertRules = pgTable(
   "alert_rules",
   {
@@ -1545,11 +1545,9 @@ export const alertRules = pgTable(
     projectId: uuid("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
-    /** Template key, e.g. `negative_aspect_share`; unique per project. */
-    key: text("key").notNull(),
-    /** threshold | growth */
-    type: text("type").notNull(),
-    /** Template inputs plus the user's `threshold`. */
+    /** volume_growth | negative_share | viral_post | keyword_hit | price_deviation | buyer_questions_growth */
+    kind: text("kind").notNull(),
+    /** `{ scope, threshold, window, minMentions, keywords }`, validated per kind. */
     params: jsonb("params")
       .$type<Record<string, unknown>>()
       .notNull()
@@ -1557,6 +1555,7 @@ export const alertRules = pgTable(
     /** Overrides `projects.notification_config.channels`; null = project default. */
     channels: jsonb("channels").$type<string[]>(),
     enabled: boolean("enabled").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1565,9 +1564,7 @@ export const alertRules = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
-  (table) => [
-    uniqueIndex("alert_rules_project_key_idx").on(table.projectId, table.key),
-  ],
+  (table) => [index("alert_rules_project_id_idx").on(table.projectId)],
 );
 
 export type AlertRule = typeof alertRules.$inferSelect;

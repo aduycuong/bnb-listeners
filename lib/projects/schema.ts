@@ -5,7 +5,13 @@ import {
   TERM_LANGUAGES,
 } from "@/lib/workspaces/constants";
 
-import { NOTIFICATION_CHANNELS, REPORT_SCHEDULES } from "./alert-templates";
+import {
+  ALERT_RULE_KINDS,
+  ALERT_WINDOWS,
+  MAX_ALERT_RULES,
+  NOTIFICATION_CHANNELS,
+  REPORT_SCHEDULES,
+} from "./alert-templates";
 import { ENTITY_ROLES } from "./case-templates";
 import { AVAILABLE_PROJECT_CASES, PROJECT_CASES } from "./project-cases";
 import { collectProjectConfigIssues } from "./utils/collect-project-config-issues";
@@ -26,8 +32,8 @@ const termListSchema = z
   .default([]);
 
 export const projectEntityInputSchema = z.object({
-  /** Existing entity id when editing; omitted for new entities. */
-  id: z.uuid().optional(),
+  /** Client-generated for new entities so alert rules can point at them before saving. */
+  id: z.uuid(),
   role: z.enum(ENTITY_ROLES),
   name: z.string().trim().min(1, { error: "Nhập tên." }).max(120),
   aliases: termListSchema,
@@ -37,21 +43,35 @@ export const projectEntityInputSchema = z.object({
 });
 
 export const projectAspectInputSchema = z.object({
-  id: z.uuid().optional(),
+  /** Client-generated for new aspects, like entity ids. */
+  id: z.uuid(),
   key: z.string().trim().max(60).optional(),
   name: z.string().trim().min(1, { error: "Nhập tên khía cạnh." }).max(80),
   description: z.string().trim().max(300).default(""),
 });
 
+export const ALERT_SCOPE_PATTERN =
+  /^(project|entity:[0-9a-f-]{36}|aspect:[0-9a-f-]{36}|each_role:[a-z]+)$/;
+
 export const projectAlertRuleInputSchema = z.object({
-  key: z.string().trim().min(1).max(60),
+  /** Client-generated for new rules; kept on edit so alert rows stay linked. */
+  id: z.uuid(),
+  kind: z.enum(ALERT_RULE_KINDS),
   enabled: z.boolean(),
+  /** `project`, `entity:<id>`, `aspect:<id>` or `each_role:<role>`. */
+  scope: z.string().regex(ALERT_SCOPE_PATTERN, { error: "Chọn phạm vi." }),
   threshold: z.number({ error: "Nhập ngưỡng." }).positive({ error: "Ngưỡng phải lớn hơn 0." }),
+  window: z.enum(ALERT_WINDOWS).nullable().default(null),
+  minMentions: z.number().int().min(0).nullable().default(null),
+  keywords: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
 });
 
 /** Alert rules and delivery; stored now, evaluated from phase 6. */
 export const projectAlertsInputSchema = z.object({
-  rules: z.array(projectAlertRuleInputSchema).max(20).default([]),
+  rules: z
+    .array(projectAlertRuleInputSchema)
+    .max(MAX_ALERT_RULES, { error: `Tối đa ${MAX_ALERT_RULES} cảnh báo.` })
+    .default([]),
   channels: z.array(z.enum(NOTIFICATION_CHANNELS)).default(["email"]),
   recipients: z
     .array(z.email({ error: "Email không hợp lệ." }))

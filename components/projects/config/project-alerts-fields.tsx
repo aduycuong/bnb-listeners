@@ -1,24 +1,33 @@
 "use client";
 
+import { PlusIcon, Trash2Icon } from "lucide-react";
 import { Controller, useFieldArray, useWatch, type UseFormReturn } from "react-hook-form";
 
 import { FormFieldSelect } from "@/components/forms/form-field-select";
 import { FormFieldTags } from "@/components/forms/form-field-tags";
+import { FormFieldText } from "@/components/forms/form-field-text";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import {
-  ALERT_TEMPLATES,
+  ALERT_RULE_KIND_DEFS,
+  ALERT_WINDOW_LABELS,
+  ALERT_WINDOWS,
+  MAX_ALERT_RULES,
   NOTIFICATION_CHANNEL_LABELS,
   NOTIFICATION_CHANNELS,
   REPORT_SCHEDULE_LABELS,
   REPORT_SCHEDULES,
+  alertKindsForCase,
+  type AlertRuleKindDef,
 } from "@/lib/projects/alert-templates";
+import { CASE_TEMPLATES } from "@/lib/projects/case-templates";
 import type { AvailableProjectCase } from "@/lib/projects/project-cases";
 import type {
   CreateProjectWithConfigBody,
   CreateProjectWithConfigInput,
 } from "@/lib/projects/schema";
+import { toAlertRuleInput } from "@/lib/projects/utils/to-alert-rule-input";
 import { cn } from "@/lib/utils";
 
 type ProjectForm = UseFormReturn<
@@ -27,7 +36,38 @@ type ProjectForm = UseFormReturn<
   CreateProjectWithConfigBody
 >;
 
-/** Alert rules suggested for the case, delivery channels and the AI report schedule. */
+type ScopeOption = { value: string; label: string; type: string };
+
+/** Scope choices built from the entities and aspects currently in the form. */
+function useScopeOptions(form: ProjectForm, projectCase: AvailableProjectCase): ScopeOption[] {
+  const entities = useWatch({ control: form.control, name: "entities" }) ?? [];
+  const aspects = useWatch({ control: form.control, name: "aspects" }) ?? [];
+  const roles = CASE_TEMPLATES[projectCase].roles;
+  const roleLabel = new Map(roles.map((role) => [role.role, role.label]));
+
+  return [
+    { value: "project", label: "Toàn project", type: "project" },
+    ...roles
+      .filter((role) => role.max > 1)
+      .map((role) => ({
+        value: `each_role:${role.role}`,
+        label: `Từng mục: ${role.label.toLowerCase()}`,
+        type: "each_role",
+      })),
+    ...entities.map((entity) => ({
+      value: `entity:${entity.id}`,
+      label: `${roleLabel.get(entity.role) ?? entity.role}: ${entity.name || "(chưa đặt tên)"}`,
+      type: "entity",
+    })),
+    ...aspects.map((aspect) => ({
+      value: `aspect:${aspect.id}`,
+      label: `Khía cạnh: ${aspect.name || "(chưa đặt tên)"}`,
+      type: "aspect",
+    })),
+  ];
+}
+
+/** Alert rules picked from the kind catalog, delivery channels and the AI report schedule. */
 export function ProjectAlertsFields({
   form,
   projectCase,
@@ -35,10 +75,15 @@ export function ProjectAlertsFields({
   form: ProjectForm;
   projectCase: AvailableProjectCase;
 }) {
-  const { fields } = useFieldArray({ control: form.control, name: "alerts.rules" });
-  const templates = new Map(ALERT_TEMPLATES[projectCase].map((rule) => [rule.key, rule]));
-  const rules = useWatch({ control: form.control, name: "alerts.rules" });
-  const rootError = form.formState.errors.alerts?.root?.message;
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "alerts.rules",
+  });
+  const scopeOptions = useScopeOptions(form, projectCase);
+  const kinds = alertKindsForCase(projectCase);
+  const rulesError =
+    form.formState.errors.alerts?.rules?.message ??
+    form.formState.errors.alerts?.rules?.root?.message;
 
   return (
     <div className="flex flex-col gap-5">
@@ -47,57 +92,40 @@ export function ProjectAlertsFields({
         được hỗ trợ trước, các kênh khác sau.
       </p>
 
-      <div className="flex flex-col divide-y divide-border rounded-2xl border border-border">
-        {fields.map((field, index) => {
-          const template = templates.get(field.key);
-          if (!template) return null;
-          const enabled = rules?.[index]?.enabled ?? false;
-          return (
-            <div key={field.id} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
-              <Controller
-                control={form.control}
-                name={`alerts.rules.${index}.enabled`}
-                render={({ field: enabledField }) => (
-                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      className="accent-primary"
-                      checked={enabledField.value}
-                      onChange={(event) => enabledField.onChange(event.target.checked)}
-                    />
-                    {template.label}
-                  </label>
-                )}
-              />
-              <Controller
-                control={form.control}
-                name={`alerts.rules.${index}.threshold`}
-                render={({ field: thresholdField, fieldState }) => (
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        className="w-28"
-                        disabled={!enabled}
-                        aria-label={`Ngưỡng: ${template.label}`}
-                        aria-invalid={fieldState.invalid}
-                        value={thresholdField.value ?? ""}
-                        onBlur={thresholdField.onBlur}
-                        onChange={(event) =>
-                          thresholdField.onChange(
-                            event.target.value === "" ? undefined : Number(event.target.value),
-                          )
-                        }
-                      />
-                      <span className="w-44 text-xs text-muted-foreground">{template.unit}</span>
-                    </div>
-                    <FieldError errors={[fieldState.error]} />
-                  </div>
-                )}
-              />
-            </div>
-          );
-        })}
+      <div className="flex flex-col gap-3">
+        {fields.map((field, index) => (
+          <AlertRuleCard
+            key={field.id}
+            form={form}
+            index={index}
+            def={ALERT_RULE_KIND_DEFS[field.kind]}
+            scopeOptions={scopeOptions}
+            onRemove={() => remove(index)}
+          />
+        ))}
+        {fields.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Chưa có cảnh báo nào.</p>
+        ) : null}
+        {rulesError ? <p className="text-xs text-destructive">{rulesError}</p> : null}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">Thêm cảnh báo</span>
+        <div className="flex flex-wrap gap-2">
+          {kinds.map((def) => (
+            <Button
+              key={def.kind}
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={fields.length >= MAX_ALERT_RULES}
+              onClick={() => append(toAlertRuleInput(def.kind))}
+            >
+              <PlusIcon />
+              {def.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -159,7 +187,111 @@ export function ProjectAlertsFields({
           }))}
         />
       </div>
-      {rootError ? <p className="text-xs text-destructive">{rootError}</p> : null}
+    </div>
+  );
+}
+
+function AlertRuleCard({
+  form,
+  index,
+  def,
+  scopeOptions,
+  onRemove,
+}: {
+  form: ProjectForm;
+  index: number;
+  def: AlertRuleKindDef;
+  scopeOptions: ScopeOption[];
+  onRemove: () => void;
+}) {
+  const enabled = useWatch({ control: form.control, name: `alerts.rules.${index}.enabled` });
+  const options = scopeOptions.filter((option) =>
+    (def.scopes as string[]).includes(option.type),
+  );
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-3 rounded-2xl border border-border px-3 py-3",
+        !enabled && "opacity-70",
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <Controller
+          control={form.control}
+          name={`alerts.rules.${index}.enabled`}
+          render={({ field }) => (
+            <label className="flex cursor-pointer items-start gap-2">
+              <input
+                type="checkbox"
+                className="mt-1 accent-primary"
+                checked={field.value}
+                onChange={(event) => field.onChange(event.target.checked)}
+              />
+              <span>
+                <b className="block text-sm">{def.label}</b>
+                <span className="text-xs text-muted-foreground">{def.description}</span>
+              </span>
+            </label>
+          )}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Xóa cảnh báo ${def.label}`}
+          onClick={onRemove}
+        >
+          <Trash2Icon />
+        </Button>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {options.length > 1 ? (
+          <FormFieldSelect
+            control={form.control}
+            name={`alerts.rules.${index}.scope`}
+            label="Phạm vi"
+            options={options}
+          />
+        ) : null}
+        <FormFieldText
+          control={form.control}
+          name={`alerts.rules.${index}.threshold`}
+          type="number"
+          label={`${def.thresholdLabel} (${def.unit})`}
+        />
+        {def.defaultWindow ? (
+          <FormFieldSelect
+            control={form.control}
+            name={`alerts.rules.${index}.window`}
+            label="Trong khoảng"
+            options={ALERT_WINDOWS.map((value) => ({
+              value,
+              label: ALERT_WINDOW_LABELS[value],
+            }))}
+          />
+        ) : null}
+        {def.defaultMinMentions !== null ? (
+          <FormFieldText
+            control={form.control}
+            name={`alerts.rules.${index}.minMentions`}
+            type="number"
+            label="Chỉ xét khi có ít nhất (mention)"
+            description="Tránh cảnh báo khi lượng thảo luận quá ít"
+          />
+        ) : null}
+        {def.usesKeywords ? (
+          <div className="md:col-span-2">
+            <FormFieldTags
+              control={form.control}
+              name={`alerts.rules.${index}.keywords`}
+              label="Từ khóa"
+              placeholder="VD: lừa đảo"
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
