@@ -241,3 +241,16 @@ Thay nguyên tắc "dữ liệu giả kèm nhãn đúng để đo chất lượn
 **Lý do**
 - Văn bản do LLM sinh rồi được LLM chấm dễ cho điểm cao hơn thực tế (bản đo đầu của Match cho F1 0,996 trên dữ liệu giả); nhãn sinh ra là ý định, không phải đáp án đã kiểm.
 - Một chuẩn đo duy nhất (mẫu thật) tránh tối ưu theo dữ liệu giả.
+
+## D13 — Nhãn tay và đo trên mẫu thật (2026-10-14)
+
+Áp dụng D12: chất lượng được đo trên mẫu thật gán nhãn tay. Chi tiết ở [plan.md](plan.md#giai-đoạn-4--enrich).
+
+**Quyết định**
+- Nhãn lưu riêng trong `item_labels` (một nhãn cho một item trong một project), không ghi đè kết quả của hệ thống. `mentions.auto_is_relevant` giữ quyết định của Match; `mentions.is_relevant` là giá trị cuối cùng để tính số liệu (có nhãn thì theo nhãn, `user_corrected = true`).
+- Item Match bỏ sót mà được gán "có liên quan" thành mention `match_type = manual`, `match_tier = user`. Bỏ nhãn thì item trở về quyết định của Match (mention `manual` bị xóa).
+- Mention đã gán nhãn mà Match không còn chọn sau khi đổi cấu hình được giữ lại dưới dạng `manual`, `auto_is_relevant = null`.
+- Đợt mẫu (`label_samples`, `label_sample_items`) là mẫu ngẫu nhiên phân tầng theo quyết định của Match lúc lấy mẫu: `relevant`, `rejected` (tầng 2 loại), `unmatched` (không là ứng viên, trong nguồn của project). Mặc định 100 từ mention và ứng viên bị loại (tối thiểu 10 ứng viên bị loại nếu có), 50 từ nội dung không khớp. Kích thước từng tầng được lưu để tính recall có trọng số.
+- Khi gán nhãn mẫu, giao diện không hiện quyết định của hệ thống.
+- Precision và recall chỉ tính trên nhãn của đợt mẫu; nhãn sửa lẻ trong danh sách không tính (lệch về phía ca sai người dùng tự thấy). Precision = tỉ lệ đúng trong tầng `relevant`; recall = ước lượng đúng tìm được / (đúng tìm được + đúng bị bỏ sót), mỗi tầng nhân theo kích thước. Đổi cấu hình Match sau khi lấy mẫu thì mẫu bị đánh dấu không còn khớp, nên lấy mẫu mới.
+- Quyền: `edit` mới gán và sửa nhãn, `read` chỉ xem.

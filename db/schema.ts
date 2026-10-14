@@ -1605,11 +1605,17 @@ export const mentions = pgTable(
     matchedEntityIds: jsonb("matched_entity_ids").$type<string[]>().notNull().default([]),
     /** Terms found in the item text (empty for context mentions). */
     matchedTerms: jsonb("matched_terms").$type<string[]>().notNull().default([]),
-    /** direct: the item names the entity. context: it sits under a matching post. */
+    /**
+     * direct: the item names the entity. context: it sits under a matching post.
+     * manual: Match missed it and a labeler marked it relevant.
+     */
     matchType: text("match_type").notNull(),
-    /** lexical: tier 1 alone. llm: confirmed or rejected by tier 2. */
+    /** lexical: tier 1 alone. llm: confirmed or rejected by tier 2. user: added by a labeler. */
     matchTier: text("match_tier").notNull(),
+    /** Effective relevance used by metrics: the label when there is one, else Match's decision. */
     isRelevant: boolean("is_relevant").notNull(),
+    /** Match's own decision, kept for evaluation; null for manual mentions. */
+    autoIsRelevant: boolean("auto_is_relevant"),
     /** Tier 2 explanation, kept for review. */
     matchReason: text("match_reason"),
     matchSignature: text("match_signature").notNull(),
@@ -1647,3 +1653,80 @@ export const matchJudgments = pgTable("match_judgments", {
 
 export type MatchJudgment = typeof matchJudgments.$inferSelect;
 export type NewMatchJudgment = typeof matchJudgments.$inferInsert;
+
+/** A labeler's answer for one item in one project; kept apart from Match output (docs/decisions.md D13). */
+export const itemLabels = pgTable(
+  "item_labels",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    contentItemId: uuid("content_item_id")
+      .notNull()
+      .references(() => contentItems.id, { onDelete: "cascade" }),
+    isRelevant: boolean("is_relevant").notNull(),
+    /** Set when the label was given in a random sample; only these count in evaluation. */
+    sampleId: uuid("sample_id").references(() => labelSamples.id, { onDelete: "set null" }),
+    labeledBy: uuid("labeled_by").references(() => users.id, { onDelete: "set null" }),
+    labeledAt: timestamp("labeled_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("item_labels_project_item_idx").on(table.projectId, table.contentItemId),
+    index("item_labels_sample_id_idx").on(table.sampleId),
+  ],
+);
+
+export type ItemLabel = typeof itemLabels.$inferSelect;
+export type NewItemLabel = typeof itemLabels.$inferInsert;
+
+/** A stratified random sample of a project's items to label. */
+export const labelSamples = pgTable(
+  "label_samples",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Per stratum: `{ population, sampled }` at sampling time, for weighted recall. */
+    strata: jsonb("strata")
+      .$type<Record<string, { population: number; sampled: number }>>()
+      .notNull()
+      .default({}),
+    /** Match signature when sampled; strata are defined against it. */
+    matchSignature: text("match_signature"),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("label_samples_project_id_idx").on(table.projectId)],
+);
+
+export type LabelSample = typeof labelSamples.$inferSelect;
+export type NewLabelSample = typeof labelSamples.$inferInsert;
+
+export const labelSampleItems = pgTable(
+  "label_sample_items",
+  {
+    sampleId: uuid("sample_id")
+      .notNull()
+      .references(() => labelSamples.id, { onDelete: "cascade" }),
+    contentItemId: uuid("content_item_id")
+      .notNull()
+      .references(() => contentItems.id, { onDelete: "cascade" }),
+    /** relevant | rejected | unmatched: Match's decision when sampled. */
+    stratum: text("stratum").notNull(),
+    position: integer("position").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.sampleId, table.contentItemId] }),
+    index("label_sample_items_sample_position_idx").on(table.sampleId, table.position),
+  ],
+);
+
+export type LabelSampleItem = typeof labelSampleItems.$inferSelect;
+export type NewLabelSampleItem = typeof labelSampleItems.$inferInsert;

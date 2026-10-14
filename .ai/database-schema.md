@@ -309,15 +309,57 @@ A content item that matched a project (docs/decisions.md D11). Tier 2 rejections
 | matched_query_ids | jsonb | NO | `[]` | Queries that matched |
 | matched_entity_ids | jsonb | NO | `[]` | Entities the item is about |
 | matched_terms | jsonb | NO | `[]` | Terms found in the text |
-| match_type | text | NO | — | `direct` or `context` |
-| match_tier | text | NO | — | `lexical` or `llm` |
-| is_relevant | boolean | NO | — | Counted in metrics when true |
+| match_type | text | NO | — | `direct`, `context` or `manual` (added by a labeler) |
+| match_tier | text | NO | — | `lexical`, `llm` or `user` |
+| is_relevant | boolean | NO | — | Effective relevance (the label when there is one); counted in metrics when true |
+| auto_is_relevant | boolean | YES | — | Match's own decision; null for manual mentions |
 | match_reason | text | YES | — | Tier 2 reason |
 | match_signature | text | NO | — | Project signature when written; stale rows are removed after a full match |
 | user_corrected | boolean | NO | `false` | Hand-corrected relevance survives re-matching |
 | created_at / updated_at | timestamptz | NO | `now()` | |
 
 **Indexes:** `mentions_project_item_idx` UNIQUE `(project_id, content_item_id)`; `mentions_project_published_idx`; `mentions_project_root_idx`; `mentions_content_item_id_idx`
+
+### `item_labels`
+
+Hand label of one item in one project, kept apart from Match output (docs/decisions.md D13).
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| content_item_id | uuid | NO | — | FK → `content_items.id` ON DELETE CASCADE |
+| is_relevant | boolean | NO | — | Labeler's answer |
+| sample_id | uuid | YES | — | FK → `label_samples.id` ON DELETE SET NULL; set when labeled in a sample |
+| labeled_by | uuid | YES | — | FK → `users.id` ON DELETE SET NULL |
+| labeled_at | timestamptz | NO | `now()` | |
+
+**Indexes:** `item_labels_project_item_idx` UNIQUE `(project_id, content_item_id)`; `item_labels_sample_id_idx`
+
+### `label_samples`
+
+Stratified random sample of a project's items to label.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| name | text | NO | — | e.g. `Mẫu 1` |
+| strata | jsonb | NO | `{}` | `{ relevant, rejected, unmatched }` → `{ population, sampled }` |
+| match_signature | text | YES | — | Project match signature when sampled |
+| created_by | uuid | YES | — | FK → `users.id` ON DELETE SET NULL |
+| created_at | timestamptz | NO | `now()` | |
+
+### `label_sample_items`
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| sample_id | uuid | NO | — | FK → `label_samples.id` ON DELETE CASCADE |
+| content_item_id | uuid | NO | — | FK → `content_items.id` ON DELETE CASCADE |
+| stratum | text | NO | — | `relevant`, `rejected` or `unmatched` |
+| position | integer | NO | — | Labeling order |
+
+**Keys:** primary key `(sample_id, content_item_id)`; `label_sample_items_sample_position_idx`
 
 ### `match_judgments`
 
