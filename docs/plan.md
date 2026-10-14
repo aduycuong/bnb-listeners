@@ -146,7 +146,7 @@ Case BĐS, thứ tự ưu tiên và cấu hình theo case: xem [D10](decisions.m
 - [x] Wizard tạo project thật: case → thông tin → entity/khu vực và truy vấn → aspect → nguồn → xem lại (theo `.cursor/rules/form-creation.mdc`)
 - [x] Sửa cấu hình trong trang settings của project, tăng `config_version` và `project_queries.version`
 - [x] Project thật (`is_demo = false`) không hiện dashboard số liệu mẫu
-- [ ] Kiểm tay wizard và trang settings sau khi chạy migration
+- [x] Kiểm tay wizard và trang settings sau khi chạy migration
 
 **PR 2 — Match**
 - [ ] Chuẩn hóa tiếng Việt: bỏ dấu, alias, viết tắt
