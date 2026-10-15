@@ -126,6 +126,7 @@ Mục tiêu thu hẹp: có dữ liệu post và comment nằm trong kho thô đ�
 - [x] Chỉnh sau khi đọc mẫu: OP giữ cảm xúc của bài, cấm bịa chi tiết, mức bám brief (`briefRelevance`), độ dài bài theo persona
 - [ ] Chạy lại với `--style-source` (source thật) và đọc lại mẫu; chỉnh `lib/personas/config.ts` nếu văn bản vẫn đồng nhất
 - [x] `npm run source:delete-content -- --source <id> [--origin synthetic] --yes` để dọn nội dung của một source
+- [x] Seed lịch sử theo kịch bản (`npm run synthetic:seed-history -- --scenario <file>`): mỗi đoạn có brief, cửa sổ ngày trong quá khứ và số bài riêng, để báo cáo theo kỳ (tăng trưởng topic) có dữ liệu kỳ trước. Kịch bản đầu: `scripts/synthetic-scenarios/lavita-topic-history.json` (28 ngày, 93 bài, vào "Match eval BĐS giả")
 
 **Bước 3 — Giao diện**
 - [x] Màn hình trong admin console: `/admin/personas` (xem, tạo, sửa; sửa tăng `version`), `/admin/panels` (chọn persona và `weight`, hiển thị tỷ lệ), `/admin/generate` (form chạy sinh kèm bảng run gần đây). Chưa có xóa persona/panel và chưa có sinh persona bằng LLM
