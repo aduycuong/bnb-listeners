@@ -1,0 +1,58 @@
+{
+  "description": "Lavita Thuận An over 28 days so the Topics report has a previous period: price and legal talk early, a handover delay surge and a new water complaint in the last 14 days.",
+  "panel": "Group review bất động sản",
+  "source": "Match eval BĐS giả",
+  "seed": 20261015,
+  "commentsPerPost": [2, 10],
+  "segments": [
+    {
+      "brief": "Người mua hỏi giá bán căn hộ Lavita Thuận An (Bình Dương), so sánh giá với các dự án cùng khu vực Thuận An và hỏi chương trình ưu đãi, chiết khấu",
+      "posts": 18,
+      "fromDays": 28,
+      "toDays": 14
+    },
+    {
+      "brief": "Người mua thắc mắc tình trạng pháp lý dự án Lavita Thuận An: tiến độ cấp sổ hồng, hợp đồng mua bán",
+      "posts": 12,
+      "fromDays": 28,
+      "toDays": 14
+    },
+    {
+      "brief": "Cư dân Lavita Thuận An bàn về tiện ích nội khu: hồ bơi, công viên, khu thương mại chưa hoàn thiện như quảng cáo",
+      "posts": 6,
+      "fromDays": 26,
+      "toDays": 14
+    },
+    {
+      "brief": "Dự án Lavita Thuận An của Hưng Thịnh tiếp tục chậm bàn giao, cư dân bức xúc vì phải vừa trả góp vừa thuê nhà, đòi chủ đầu tư phạt chậm bàn giao",
+      "posts": 20,
+      "fromDays": 12,
+      "toDays": 0,
+      "distractors": ["Nhà hàng Lavita ở Quận 1 nấu mì Ý ngon lắm"]
+    },
+    {
+      "brief": "Người mua hỏi giá bán lại căn hộ Lavita Thuận An và ưu đãi còn không",
+      "posts": 7,
+      "fromDays": 14,
+      "toDays": 0
+    },
+    {
+      "brief": "Người mua thắc mắc tình trạng pháp lý dự án Lavita Thuận An: tiến độ cấp sổ hồng, hợp đồng mua bán",
+      "posts": 10,
+      "fromDays": 14,
+      "toDays": 0
+    },
+    {
+      "brief": "Cư dân Lavita Thuận An bàn về tiện ích nội khu: hồ bơi, công viên, khu thương mại chưa hoàn thiện như quảng cáo",
+      "posts": 12,
+      "fromDays": 14,
+      "toDays": 0
+    },
+    {
+      "brief": "Cư dân Lavita Thuận An phản ánh nước sinh hoạt yếu, mất nước nhiều giờ ở các tầng cao, ban quản lý chậm xử lý",
+      "posts": 8,
+      "fromDays": 5,
+      "toDays": 0
+    }
+  ]
+}
