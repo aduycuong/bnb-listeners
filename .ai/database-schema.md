@@ -324,9 +324,11 @@ A content item that matched a project (docs/decisions.md D11). Tier 2 rejections
 | enrich_signature | text | YES | — | Enrich signature at enrich time (docs/decisions.md D14) |
 | enriched_content_hash | text | YES | — | Item content hash at enrich time |
 | enriched_at | timestamptz | YES | — | |
+| topic_hint | text | YES | — | Short phrase from Enrich naming what the mention is about (docs/decisions.md D15) |
+| topic_status | text | NO | `pending` | `pending` (to embed or assign), `assigned`, `unassigned` (waiting for a new topic), `none` (no hint) |
 | created_at / updated_at | timestamptz | NO | `now()` | |
 
-**Indexes:** `mentions_project_item_idx` UNIQUE `(project_id, content_item_id)`; `mentions_project_published_idx`; `mentions_project_root_idx`; `mentions_content_item_id_idx`
+**Indexes:** `mentions_project_item_idx` UNIQUE `(project_id, content_item_id)`; `mentions_project_published_idx`; `mentions_project_root_idx`; `mentions_content_item_id_idx`; `mentions_project_topic_status_idx` `(project_id, topic_status)`
 
 ### `item_labels`
 
@@ -409,6 +411,49 @@ Case-specific fields from Enrich (`price_quote`, `buyer_question`, …).
 | data | jsonb | NO | — | Validated by the extraction's zod schema |
 
 **Indexes:** `mention_extractions_mention_id_idx`, `mention_extractions_schema_key_idx`
+
+### `topics`
+
+Topic of a project: a cluster of mention `topic_hint`s named by the LLM (docs/decisions.md D15).
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| name | text | NO | — | Topic name (LLM, editable) |
+| description | text | NO | `''` | One sentence (LLM, editable) |
+| aspect_id | uuid | YES | — | FK → `project_aspects.id` ON DELETE SET NULL; dominant aspect when created |
+| status | text | NO | `active` | `active`, `hidden` (still receives mentions), `merged` |
+| merged_into_id | uuid | YES | — | FK → `topics.id` ON DELETE SET NULL |
+| centroid | vector(1536) | YES | — | Mean embedding of the topic's relevant mentions |
+| mention_count | integer | NO | `0` | Relevant mentions, refreshed after each run |
+| created_at / updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** `topics_project_status_idx` `(project_id, status)`
+
+### `mention_topics`
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| mention_id | uuid | NO | — | Primary key; FK → `mentions.id` ON DELETE CASCADE (one topic per mention) |
+| topic_id | uuid | NO | — | FK → `topics.id` ON DELETE CASCADE |
+| confidence | real | NO | — | Cosine similarity to the topic centroid when assigned |
+| created_at | timestamptz | NO | `now()` | |
+
+**Indexes:** `mention_topics_topic_id_idx`
+
+### `mention_embeddings`
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| mention_id | uuid | NO | — | FK → `mentions.id` ON DELETE CASCADE |
+| kind | text | NO | — | `topic_hint` |
+| model | text | NO | — | e.g. `text-embedding-3-small` |
+| text_hash | text | NO | — | Hash of the embedded text |
+| embedding | vector(1536) | NO | — | |
+| created_at | timestamptz | NO | `now()` | |
+
+**Keys:** primary key `(mention_id, kind)`
 
 ### `match_judgments`
 

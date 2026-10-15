@@ -268,3 +268,23 @@ Thay nguyên tắc "dữ liệu giả kèm nhãn đúng để đo chất lượn
 - Ngưỡng chấp nhận trên mẫu thật: sentiment accuracy ≥ 80%, aspect F1 ≥ 0,7.
 - `buyer_question.topic` chọn trong aspect của project (hoặc `other`) thay vì chữ tự do, để câu hỏi người mua nhóm theo cùng bộ khía cạnh (`aspectField` trong định nghĩa trích xuất).
 - Prompt v2 (sau khi chạy thử trên dữ liệu thật): dấu phẩy là dấu thập phân ("2,4 tỷ" = 2.4); tin rao bán, cho thuê, quảng cáo là trung tính trừ khi có thái độ. Câu mỉa mai đôi khi vẫn bị chấm ngược, cần đo trên mẫu.
+
+## D15 — Giai đoạn 4c: Topic (2026-10-15)
+
+Topic là chủ đề cụ thể nổi lên từ dữ liệu ("chậm bàn giao tòa S2", "phí quản lý tăng"), khác aspect là bộ khía cạnh cố định do project cấu hình. Topic phải ổn định theo thời gian để tính được tăng trưởng.
+
+**Quyết định**
+- Enrich (prompt v3) trả thêm `topic_hint` cho mỗi mention: cụm từ ngắn nêu sự việc hoặc vấn đề cụ thể mà mention bàn tới, dùng bài gốc làm ngữ cảnh; null với cảm thán, tag người, nội dung không có ý. Không gọi LLM riêng cho từng mention.
+- Gom cụm trên `topic_hint` chứ không trên văn bản gốc: comment ngắn và nhiễu gom cụm kém. Embedding `text-embedding-3-small`, lưu ở `mention_embeddings` (`kind = topic_hint`, kèm hash văn bản để biết khi nào embed lại); bảng này dùng lại được cho hỏi đáp AI.
+- Topic gắn với từng mention (một mention thuộc tối đa một topic) và thuộc về project. Topic không bị tính lại từ đầu mỗi lần chạy; mention đã gán thì giữ topic, trừ khi `topic_hint` đổi hoặc topic bị gộp.
+- Mỗi lần chạy (workflow `topic-project`, gọi ở cuối `enrich-project`; `npm run topics:project` để chạy tay):
+  1. Embed các `topic_hint` mới hoặc đã đổi.
+  2. Gán: mention chưa có topic được gán vào topic gần nhất (cosine với tâm topic, pgvector) nếu độ tương đồng ≥ ngưỡng gán; nếu không, mention nằm trong hàng chờ (`topic_status = unassigned`).
+  3. Tìm topic mới trong hàng chờ: gom cụm theo mật độ (điểm có nhiều hàng xóm nhất làm hạt nhân, hàng xóm có độ tương đồng ≥ ngưỡng cụm), cụm đủ lớn thành topic. Một lần gọi LLM đặt `name` và `description` cho mọi cụm mới. Sau đó gán lại hàng chờ.
+  4. Gộp: cặp topic có tâm gần nhau được hỏi LLM có phải cùng một chủ đề không; topic nhỏ hơn được gộp vào topic lớn hơn (`status = merged`, `merged_into_id`).
+  5. Tính lại tâm (trung bình embedding) và số mention có liên quan của mỗi topic.
+- `topics.aspect_id` (có thể null): aspect chiếm ≥ 40% mention của topic lúc tạo, lấy từ kết quả Enrich, không hỏi thêm LLM.
+- Topic có `status`: `active`, `hidden` (người dùng ẩn; vẫn nhận mention để không nổi lên lại thành topic mới), `merged`.
+- Người dùng (quyền `edit`) đổi tên, sửa mô tả, ẩn/hiện và gộp topic. Trang Mentions có lọc theo topic. Biểu đồ Topics làm ở giai đoạn 5.
+- Các ngưỡng (gán, cụm, gộp, kích thước cụm tối thiểu) nằm trong `lib/topics/config.ts`, chỉnh sau khi chạy trên dữ liệu thật.
+- Đo: mẫu loại `topic` (mention có topic, gán nhãn "đúng topic hay không") làm sau phần lõi.

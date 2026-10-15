@@ -83,6 +83,7 @@ export function MentionEnrichment({
             {name}
           </Badge>
         ))}
+        {mention.topic ? <Badge variant="outline"># {mention.topic.name}</Badge> : null}
       </div>
       {mention.extractions.map((extraction, index) => (
         <p key={index} className="text-xs text-muted-foreground">

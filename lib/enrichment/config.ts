@@ -33,11 +33,13 @@ export const EMOTION_LABELS: Record<Emotion, string> = {
 export const ENRICH_CONFIG = {
   model: "gpt-4.1-mini" satisfies ChatModelId,
   /** Bump when the prompt or output shape changes; mentions are enriched again. */
-  promptVersion: 2,
+  promptVersion: 3,
   /** Mentions per model call; longer threads are split. */
   mentionsPerCall: 20,
   /** Threads enriched per workflow step. */
   threadsPerStep: 8,
   maxPostChars: 1500,
   maxItemChars: 700,
+  /** Longest `topic_hint` kept (D15). */
+  maxTopicHintChars: 80,
 } as const;

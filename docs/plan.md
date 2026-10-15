@@ -182,8 +182,14 @@ Kiểm chứng chỉ trên mẫu thật gán nhãn tay (D12), nên trang Mention
 - [x] Chạy thật: Vinhomes 202 mention (16 lần gọi LLM, ~80 giây), sandbox 114 mention (18 lần gọi); chạy lại không gọi LLM
 - [ ] Gán nhãn mẫu Enrich trên dữ liệu thật và ghi kết quả (ngưỡng: sentiment ≥ 80%, aspect F1 ≥ 0,7)
 
-**4c — Topic**
-- [ ] Gom cụm topic và đặt tên
+**4c — Topic** (xem [D15](decisions.md#d15--giai-đoạn-4c-topic-2026-10-15))
+- [x] Schema `topics`, `mention_topics`, `mention_embeddings`, `mentions.topic_hint`, `mentions.topic_status`
+- [x] Enrich prompt v3 trả `topic_hint`
+- [x] Embed `topic_hint`, gán vào topic gần nhất, tìm topic mới trong hàng chờ, LLM đặt tên, gộp topic gần nhau
+- [x] Workflow `topic-project` sau `enrich-project`; `npm run topics:project`
+- [x] Trang Topics cho project thật: danh sách, đổi tên, sửa mô tả, ẩn/hiện, gộp; lọc theo topic trên trang Mentions
+- [ ] Chạy thật trên Vinhomes và sandbox, chỉnh ngưỡng trong `lib/topics/config.ts`
+- [ ] Mẫu `topic` và đo tỉ lệ gán đúng topic
 
 **Kết quả:** đạt ngưỡng chính xác được chấp nhận trên mẫu thật gán nhãn.
 
