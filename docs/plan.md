@@ -199,22 +199,26 @@ Kiểm chứng chỉ trên mẫu thật gán nhãn tay (D12), nên trang Mention
 
 Làm trang Topics trước: đây là trang đã có dữ liệu thật đầy đủ nhất (giai đoạn 4c), nên dùng để chốt cách tổ chức L4 và API cho các trang còn lại.
 
-**Topics trước**
+### 5a — Topics (xong 2026-10-15)
 - [x] Route: `/p/[i]/topics` là trang báo cáo như demo; trang quản lý hiện tại (sửa tên/mô tả, ẩn/hiện, gộp, xem mention) chuyển sang `/p/[i]/topics/manage`. Sidebar giữ một mục "Topics"; trang báo cáo có nút "Quản lý topic" (quyền `edit`). Không đưa vào Settings vì topic là dữ liệu hệ thống sinh ra, không phải cấu hình.
 - [x] Trang báo cáo bám demo (demo đã được duyệt): đám mây từ khóa, biểu đồ tăng trưởng chủ đề (thanh ngang % tăng trưởng mỗi topic như `GrowthChart` của demo, không phải biểu đồ theo ngày), bảng chủ đề (đề cập, tăng trưởng, % tích cực, % tiêu cực). Bấm một chủ đề mở Mentions lọc theo topic. Topic chưa có số của kỳ trước hiện "mới" và không vào biểu đồ.
 - [x] Một khoảng thời gian dùng chung cho cả trang, chọn ở header (hiện chỉ có "14 ngày gần nhất" như demo, thêm lựa chọn ở `TOPIC_CONFIG.reportPeriodDays`). Số đề cập và tỷ lệ cảm xúc tính trong khoảng đó; tăng trưởng so với cùng số ngày liền trước. Khoảng trượt tính từ lúc xem, theo `published_at`. Trang quản lý giữ 7 so với 7.
 - [x] Bản đầu đọc thẳng từ `mention_topics` (`GET /api/topics/report`); chuyển sang L4 (`topic_metrics_daily`) khi dữ liệu lớn mà giao diện giữ nguyên.
 - [x] Từ khóa ([D16](decisions.md#d16--từ-khóa-2026-10-15)): Enrich v5 trả `keywords`, lưu ở `mention_keywords`, đám mây từ khóa đếm theo kỳ báo cáo thay dữ liệu mẫu.
-- [ ] Enrich lại toàn bộ mention theo v5 sau khi chạy migration `mention_keywords`; xem lại từ khóa chung kiểu "giá", "vị trí" trên dữ liệu thật.
+- [x] Enrich lại toàn bộ mention theo v5 sau khi chạy migration `mention_keywords` (Sandbox 635/652 mention có từ khóa, Vinhomes 173/202).
+- [x] Seed lịch sử 28 ngày cho Sandbox (`npm run synthetic:seed-history`) để biểu đồ tăng trưởng có kỳ trước; sửa topic trùng tên và tên topic chứa tên dự án (PR #24, #25).
+- [ ] Từ khóa chung chung (để mở, làm ở session riêng): trên Sandbox đứng đầu là "tiện ích" 132, "vị trí" 110, "pháp lý" 106, "giá" 100, trùng tên aspect; có cả "dự án", "chủ đầu tư", "mua", "nhà", "căn hộ"; "giá" và "giá bán" tách nhau. Hướng xét: loại từ khóa trùng tên aspect hoặc quá chung, gộp biến thể.
 
-**Các trang còn lại**
+**Kết quả 5a:** trang báo cáo Topics bám demo chạy trên dữ liệu thật (Vinhomes) và sandbox có 2 kỳ (Lavita).
+
+### 5b — Các trang còn lại (chưa làm)
 - [ ] `metrics_hourly`, `metrics_daily`, cập nhật tăng dần
 - [ ] Công thức reach, NSS, SoV trong `lib/`
 - [ ] API trả dữ liệu đúng shape mà dashboard demo đang dùng
 - [ ] Nối dữ liệu thật vào các trang Overview, Mentions, Sentiment, Topics
 - [ ] Sau đó: Channels, Authors và trang riêng theo case
 
-**Kết quả:** một project `general` thật và một project sandbox chạy end-to-end.
+**Kết quả giai đoạn 5:** một project `general` thật và một project sandbox chạy end-to-end.
 
 ## Giai đoạn 6 — Cảnh báo, insight, báo cáo
 
