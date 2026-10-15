@@ -37,6 +37,8 @@ export type MentionListItem = {
   aspects: { aspectId: string; sentiment: string | null }[];
   labelAspectKeys: string[] | null;
   extractions: { schemaKey: string; data: Record<string, unknown> }[];
+  /** Topic of the mention (D15); null when it has none. */
+  topic: { id: string; name: string } | null;
 };
 
 export type ListMentionsParams = { projectId: string } & z.infer<typeof listMentionsQuerySchema>;

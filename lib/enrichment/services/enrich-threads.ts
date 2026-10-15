@@ -9,6 +9,7 @@ import {
   mentionEntities,
   mentionExtractions,
   mentions,
+  mentionTopics,
 } from "@/db/schema";
 import { db } from "@/lib/db";
 import { createChatModel } from "@/lib/langchain";
@@ -79,10 +80,19 @@ function toWrites(
     }));
   });
 
+  const topicHint =
+    result.topicHint?.replace(/\s+/g, " ").trim().slice(0, ENRICH_CONFIG.maxTopicHintChars) || null;
+
   const writes: BatchItem<"pg">[] = [
     db
       .update(mentions)
       .set({
+        topicHint,
+        // A hint that disappears leaves its topic; one that appears waits for the topic stage,
+        // which also notices a changed hint by its embedding hash (D15).
+        topicStatus: topicHint
+          ? sql`case when ${mentions.topicStatus} = 'none' then 'pending' else ${mentions.topicStatus} end`
+          : "none",
         autoSentiment: result.sentiment,
         sentiment: labeledSentiment ?? result.sentiment,
         sentimentScore: Math.max(-1, Math.min(1, result.sentimentScore)),
@@ -100,6 +110,7 @@ function toWrites(
       .where(and(eq(mentionAspects.mentionId, item.mentionId), eq(mentionAspects.source, "auto"))),
     db.delete(mentionExtractions).where(eq(mentionExtractions.mentionId, item.mentionId)),
   ];
+  if (!topicHint) writes.push(db.delete(mentionTopics).where(eq(mentionTopics.mentionId, item.mentionId)));
   if (entities.length > 0) {
     writes.push(
       db.insert(mentionEntities).values(

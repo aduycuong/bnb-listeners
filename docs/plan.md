@@ -182,8 +182,15 @@ Kiểm chứng chỉ trên mẫu thật gán nhãn tay (D12), nên trang Mention
 - [x] Chạy thật: Vinhomes 202 mention (16 lần gọi LLM, ~80 giây), sandbox 114 mention (18 lần gọi); chạy lại không gọi LLM
 - [ ] Gán nhãn mẫu Enrich trên dữ liệu thật và ghi kết quả (ngưỡng: sentiment ≥ 80%, aspect F1 ≥ 0,7)
 
-**4c — Topic**
-- [ ] Gom cụm topic và đặt tên
+**4c — Topic** (xem [D15](decisions.md#d15--giai-đoạn-4c-topic-2026-10-15))
+- [x] Schema `topics`, `mention_topics`, `mention_embeddings`, `mentions.topic_hint`, `mentions.topic_status`
+- [x] Enrich prompt v4 trả `topic_hint`
+- [x] Embed `topic_hint`; LLM gán hint vào topic cũ hoặc topic mới; gộp topic gần nhau
+- [x] Workflow `topic-project` sau `enrich-project`; `npm run topics:project`
+- [x] Trang Topics cho project thật: danh sách, đổi tên, sửa mô tả, ẩn/hiện, gộp; lọc theo topic trên trang Mentions
+- [x] Chạy thật trên Vinhomes (2026-10-15). Lần 1 gom bằng embedding: topic bị tên khu chi phối, chuyển sang LLM (D15). Lần cuối (`gpt-4.1`, 2 lần gọi, ~9 giây): 6 topic cụ thể ("Dự án mang danh châu Âu nhưng không giống" 17, "Giá bán không hợp lý hoặc ảo" 13, "Giá thứ cấp giảm, cắt lỗ" 10, …), 59/187 mention có hint được gán; phần còn lại chung chung hoặc lẻ, chờ các lần chạy sau. `gpt-4.1-mini` gán nhiều hơn nhưng tạo topic rộng như aspect.
+- [ ] Theo dõi độ phủ và chất lượng topic sau 1–2 tuần chạy theo lịch; sandbox không dùng để đánh giá vì dữ liệu giả sinh theo aspect
+- [ ] Mẫu `topic` và đo tỉ lệ gán đúng topic
 
 **Kết quả:** đạt ngưỡng chính xác được chấp nhận trên mẫu thật gán nhãn.
 

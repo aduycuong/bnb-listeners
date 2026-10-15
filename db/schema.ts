@@ -1634,6 +1634,10 @@ export const mentions = pgTable(
     /** Item content hash at enrich time; a changed text is enriched again. */
     enrichedContentHash: text("enriched_content_hash"),
     enrichedAt: timestamp("enriched_at", { withTimezone: true }),
+    /** Short phrase from Enrich naming what the mention is about; clustered into topics (D15). */
+    topicHint: text("topic_hint"),
+    /** pending (to embed or assign) | assigned | unassigned (waiting for a new topic) | none (no hint) */
+    topicStatus: text("topic_status").notNull().default("pending"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1647,6 +1651,7 @@ export const mentions = pgTable(
     index("mentions_project_published_idx").on(table.projectId, table.publishedAt),
     index("mentions_project_root_idx").on(table.projectId, table.rootItemId),
     index("mentions_content_item_id_idx").on(table.contentItemId),
+    index("mentions_project_topic_status_idx").on(table.projectId, table.topicStatus),
   ],
 );
 
@@ -1817,3 +1822,83 @@ export const mentionExtractions = pgTable(
 
 export type MentionExtraction = typeof mentionExtractions.$inferSelect;
 export type NewMentionExtraction = typeof mentionExtractions.$inferInsert;
+
+/** A topic of a project: mention `topic_hint`s grouped and named by the LLM (D15). */
+export const topics = pgTable(
+  "topics",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    /** Aspect most of the topic's mentions discuss when it was created; null if none dominates. */
+    aspectId: uuid("aspect_id").references(() => projectAspects.id, { onDelete: "set null" }),
+    /** active | hidden (still receives mentions) | merged */
+    status: text("status").notNull().default("active"),
+    mergedIntoId: uuid("merged_into_id").references((): AnyPgColumn => topics.id, {
+      onDelete: "set null",
+    }),
+    /** Mean embedding of the topic's relevant mentions; close topics are checked for a merge. */
+    centroid: pgVector1536("centroid"),
+    /** Relevant mentions in the topic, refreshed after each run. */
+    mentionCount: integer("mention_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [index("topics_project_status_idx").on(table.projectId, table.status)],
+);
+
+export type Topic = typeof topics.$inferSelect;
+export type NewTopic = typeof topics.$inferInsert;
+
+/** The topic of a mention; at most one per mention (D15). */
+export const mentionTopics = pgTable(
+  "mention_topics",
+  {
+    mentionId: uuid("mention_id")
+      .primaryKey()
+      .references(() => mentions.id, { onDelete: "cascade" }),
+    topicId: uuid("topic_id")
+      .notNull()
+      .references(() => topics.id, { onDelete: "cascade" }),
+    /** 1 when assigned by the LLM. */
+    confidence: real("confidence").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("mention_topics_topic_id_idx").on(table.topicId)],
+);
+
+export type MentionTopic = typeof mentionTopics.$inferSelect;
+export type NewMentionTopic = typeof mentionTopics.$inferInsert;
+
+/** Embeddings of mention text, one per kind; `topic_hint` for topic merges (D15). */
+export const mentionEmbeddings = pgTable(
+  "mention_embeddings",
+  {
+    mentionId: uuid("mention_id")
+      .notNull()
+      .references(() => mentions.id, { onDelete: "cascade" }),
+    /** topic_hint */
+    kind: text("kind").notNull(),
+    model: text("model").notNull(),
+    /** Hash of the embedded text; a changed text is embedded again. */
+    textHash: text("text_hash").notNull(),
+    embedding: pgVector1536("embedding").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.mentionId, table.kind] })],
+);
+
+export type MentionEmbedding = typeof mentionEmbeddings.$inferSelect;
+export type NewMentionEmbedding = typeof mentionEmbeddings.$inferInsert;

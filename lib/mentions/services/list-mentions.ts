@@ -8,8 +8,10 @@ import {
   mentionAspects,
   mentionExtractions,
   mentions,
+  mentionTopics,
   projectAspects,
   sources,
+  topics,
 } from "@/db/schema";
 import { db } from "@/lib/db";
 
@@ -32,6 +34,7 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
   if (params.entityId) {
     filters.push(sql`${mentions.matchedEntityIds} @> ${JSON.stringify([params.entityId])}::jsonb`);
   }
+  if (params.topicId) filters.push(eq(mentionTopics.topicId, params.topicId));
   if (params.sourceId) filters.push(eq(mentions.sourceId, params.sourceId));
   if (params.sentiment !== "all") filters.push(eq(mentions.sentiment, params.sentiment));
   if (params.aspectId) {
@@ -78,6 +81,8 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
       enrichStatus: mentions.enrichStatus,
       labelSentiment: itemLabels.sentiment,
       labelAspectKeys: itemLabels.aspectKeys,
+      topicId: topics.id,
+      topicName: topics.name,
     })
     .from(mentions)
     .innerJoin(contentItems, eq(contentItems.id, mentions.contentItemId))
@@ -90,7 +95,9 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
         eq(itemLabels.projectId, mentions.projectId),
         eq(itemLabels.contentItemId, mentions.contentItemId),
       ),
-    );
+    )
+    .leftJoin(mentionTopics, eq(mentionTopics.mentionId, mentions.id))
+    .leftJoin(topics, eq(topics.id, mentionTopics.topicId));
 
   const [rows, [totals]] = await Promise.all([
     base
@@ -109,6 +116,7 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
           eq(itemLabels.contentItemId, mentions.contentItemId),
         ),
       )
+      .leftJoin(mentionTopics, eq(mentionTopics.mentionId, mentions.id))
       .where(where),
   ]);
 
@@ -129,8 +137,9 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
 
   return {
     items: rows.map(
-      (row): MentionListItem => ({
+      ({ topicId, topicName, ...row }): MentionListItem => ({
         ...row,
+        topic: topicId && topicName ? { id: topicId, name: topicName } : null,
         aspects: aspectRows
           .filter((aspect) => aspect.mentionId === row.id && aspect.source === "auto")
           .map((aspect) => ({ aspectId: aspect.aspectId, sentiment: aspect.sentiment })),

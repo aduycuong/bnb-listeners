@@ -127,15 +127,17 @@ Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` 
 
 **`mention_aspects`**: `mention_id`, `aspect_id`, `source` (`auto`), `sentiment`. Chỉ chứa kết quả AI; aspect gán tay ở `item_labels.aspect_keys` được ưu tiên.
 
-**`mention_topics`**: `mention_id`, `topic_id`, `confidence`
+**`mention_topics`**: `mention_id` (khóa chính: một mention thuộc tối đa một topic), `topic_id`, `confidence` (1 khi LLM gán). Xem [D15](decisions.md#d15--giai-đoạn-4c-topic-2026-10-15).
 
 **`mention_extractions`**: các trường riêng theo case.
 - `mention_id`, `schema_key` (ví dụ `price_quote`, `violation`, `buyer_question`, `location`), `data` (jsonb, validate bằng zod)
 
-**`topics`**: chủ đề theo project, gom cụm từ embedding rồi để LLM đặt tên.
-- `project_id`, `name`, `description`, `status`, `merged_into_id`
+**`topics`**: chủ đề theo project, LLM gom `mentions.topic_hint` thành topic và đặt tên (D15).
+- `project_id`, `name`, `description`, `aspect_id` (nullable), `status` (`active` | `hidden` | `merged`), `merged_into_id`, `centroid` (vector), `mention_count`
 
-Embedding của mention được dùng cho gom cụm topic và hỏi đáp AI. Có thể lưu ở bảng riêng `mention_embeddings` hoặc theo `content_item_id`, quyết định khi làm.
+**`mention_embeddings`**: `mention_id`, `kind` (`topic_hint`), `model`, `text_hash`, `embedding`. Khóa chính `(mention_id, kind)`. Dùng để tìm topic nên gộp và sau này cho hỏi đáp AI.
+
+Trên `mentions`: `topic_hint` (từ Enrich), `topic_status` (`pending` | `assigned` | `unassigned` | `none`).
 
 ## L4 — Aggregates
 

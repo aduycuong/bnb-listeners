@@ -1,6 +1,8 @@
 import type { RouteFunction, WorkflowServeOptions } from "@upstash/workflow";
 import { z } from "zod";
 
+import { triggerProjectTopics } from "@/lib/topics/services/trigger-project-topics";
+
 import { ENRICH_CONFIG } from "../config";
 import { enrichThreads } from "../services/enrich-threads";
 import { planProjectEnrich } from "../services/plan-project-enrich";
@@ -14,6 +16,7 @@ export const enrichProjectWorkflowPayloadSchema = z.object({ projectId: z.uuid()
  * 1. plan: threads with relevant mentions that are new, changed or enriched
  *    under another signature; irrelevant mentions are marked skipped.
  * 2. enrich-{n}: a few threads per step, one model call per thread.
+ * 3. topics: start the topic stage for the new or changed hints (D15).
  */
 export const enrichProjectWorkflow: RouteFunction<EnrichProjectWorkflowPayload> = async (
   context,
@@ -29,6 +32,10 @@ export const enrichProjectWorkflow: RouteFunction<EnrichProjectWorkflowPayload> 
       }),
     );
   }
+
+  await context.run("topics", () =>
+    triggerProjectTopics({ projectId, runKey: context.workflowRunId.replace(/^wfr_/, "") }),
+  );
 };
 
 export const enrichProjectWorkflowOptions: WorkflowServeOptions<EnrichProjectWorkflowPayload> = {

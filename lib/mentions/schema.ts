@@ -12,6 +12,7 @@ export const listMentionsQuerySchema = z.object({
   sentiment: z.enum([...SENTIMENTS, "all"]).default("all"),
   aspectId: z.uuid().optional(),
   entityId: z.uuid().optional(),
+  topicId: z.uuid().optional(),
   sourceId: z.uuid().optional(),
   from: z.iso.date().optional(),
   to: z.iso.date().optional(),

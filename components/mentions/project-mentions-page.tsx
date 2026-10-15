@@ -2,11 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLinkIcon, MessagesSquareIcon } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { ProjectSectionPage } from "@/components/projects/project-section-page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useTopicsList } from "@/components/topics/use-topics-api";
 import { Input } from "@/components/ui/input";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
@@ -80,7 +82,12 @@ function MentionsList({
   canEdit: boolean;
   labelHref: string;
 }) {
-  const [filters, setFilters] = useState<ListMentionsQuery>({ relevance: "relevant", page: 1 });
+  const searchParams = useSearchParams();
+  const [filters, setFilters] = useState<ListMentionsQuery>({
+    relevance: "relevant",
+    page: 1,
+    topicId: searchParams.get("topicId") ?? undefined,
+  });
   const [search, setSearch] = useState("");
   const [thread, setThread] = useState<{ rootId: string; focusId: string } | null>(null);
   const { data, isFetching, error } = useMentionsList(scope, filters);
@@ -97,6 +104,7 @@ function MentionsList({
       return (await res.json()) as ProjectConfigDetail;
     },
   });
+  const { data: topicList } = useTopicsList(scope, true);
   const entityNames = new Map(config?.entities.map((entity) => [entity.id, entity.name]) ?? []);
   const aspectNames = new Map(
     config?.aspects.map((aspect) => [aspect.id, { key: aspect.key, name: aspect.name }]) ?? [],
@@ -181,6 +189,17 @@ function MentionsList({
               ...config.aspects.map((aspect) => ({ value: aspect.id, label: aspect.name })),
             ]}
             onChange={(value) => update({ aspectId: value === ALL ? undefined : value })}
+          />
+        ) : null}
+        {topicList && topicList.items.length > 0 ? (
+          <MentionFilterSelect
+            label="Topic"
+            value={filters.topicId ?? ALL}
+            options={[
+              { value: ALL, label: "Mọi topic" },
+              ...topicList.items.map((topic) => ({ value: topic.id, label: topic.name })),
+            ]}
+            onChange={(value) => update({ topicId: value === ALL ? undefined : value })}
           />
         ) : null}
         <MentionFilterSelect
