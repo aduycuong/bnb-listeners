@@ -92,13 +92,11 @@ function assignmentWrites(topicId: string, members: string[]): BatchItem<"pg">[]
 /** One model call over some hints; writes topics and assignments, returns who was assigned. */
 async function assignHints(params: {
   projectId: string;
-  projectName: string;
   hints: Hint[];
 }): Promise<{ assigned: Set<string>; created: AssignTopicsResult["created"] }> {
   const { topicByKey, promptTopics } = await loadTopics(params.projectId);
 
   const prompt = buildTopicAssignmentPrompt({
-    projectName: params.projectName,
     topics: promptTopics,
     hints: params.hints.map((hint) => ({ text: hint.text, count: hint.rows.length })),
     minNewTopicMentions: TOPIC_CONFIG.minNewTopicMentions,
@@ -225,7 +223,7 @@ export async function assignTopics(params: { projectId: string }): Promise<Assig
   if (!project) throw new NotFoundError("project", params.projectId);
 
   const assigned = new Set<string>();
-  const first = await assignHints({ projectId: params.projectId, projectName: project.name, hints });
+  const first = await assignHints({ projectId: params.projectId, hints });
   result.llmCalls += 1;
   first.assigned.forEach((id) => assigned.add(id));
   result.created.push(...first.created);
