@@ -64,13 +64,16 @@ function ChartBox({
 export function TrendChart({
   trend,
   brands,
+  days = AQUA_DAYS,
 }: {
   trend: AquaTrend;
   brands: Record<string, number[]> | null;
+  /** Axis labels, one per value; the demo's 14 days by default. */
+  days?: readonly string[];
 }) {
   if (brands) {
     const names = Object.keys(brands);
-    const data = AQUA_DAYS.map((day, index) => ({
+    const data = days.map((day, index) => ({
       day,
       ...Object.fromEntries(names.map((name) => [name, brands[name][index]])),
     }));
@@ -104,7 +107,7 @@ export function TrendChart({
     );
   }
 
-  const data = AQUA_DAYS.map((day, index) => ({
+  const data = days.map((day, index) => ({
     day,
     positive: trend.pos[index],
     neutral: trend.neu[index],
@@ -173,8 +176,15 @@ export function DonutChart({
   );
 }
 
-export function NssChart({ values }: { values: number[] }) {
-  const data = AQUA_DAYS.map((day, index) => ({ day, nss: values[index] }));
+export function NssChart({
+  values,
+  days = AQUA_DAYS,
+}: {
+  /** One value per day; null leaves a gap (no mention with a sentiment that day). */
+  values: (number | null)[];
+  days?: readonly string[];
+}) {
+  const data = days.map((day, index) => ({ day, nss: values[index] }));
 
   return (
     <ChartBox height={260} config={{ nss: { label: "NSS", color: "var(--primary)" } }}>
@@ -193,9 +203,9 @@ export function NssChart({ values }: { values: number[] }) {
             const { cx, cy, payload } = props as {
               cx?: number;
               cy?: number;
-              payload?: { nss: number };
+              payload?: { nss: number | null };
             };
-            if (cx == null || cy == null) {
+            if (cx == null || cy == null || payload?.nss == null) {
               return <g />;
             }
             return (
@@ -203,7 +213,7 @@ export function NssChart({ values }: { values: number[] }) {
                 cx={cx}
                 cy={cy}
                 r={3}
-                fill={payload && payload.nss < 0 ? "var(--neg)" : "var(--primary)"}
+                fill={payload.nss < 0 ? "var(--neg)" : "var(--primary)"}
               />
             );
           }}
@@ -237,10 +247,13 @@ export function EmotionChart({ values }: { values: number[] }) {
 
 export function AspectChart({
   aspects,
+  names = AQUA_ASPECTS,
 }: {
   aspects: { positive: number; negative: number }[];
+  /** Aspect names in the order of `aspects`; the demo's aspects by default. */
+  names?: readonly string[];
 }) {
-  const data = AQUA_ASPECTS.map((name, index) => ({
+  const data = names.map((name, index) => ({
     name,
     positive: aspects[index]?.positive ?? 0,
     negative: -(aspects[index]?.negative ?? 0),

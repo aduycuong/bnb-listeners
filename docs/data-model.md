@@ -145,13 +145,15 @@ Trên `mentions`: `topic_hint` (từ Enrich), `topic_status` (`pending` | `assig
 
 Cập nhật tăng dần bằng cơ chế stale-queue. Dashboard chỉ đọc từ L4; chỉ khi drill-down mới đọc L3.
 
+Chưa làm: Topics, Overview và Sentiment hiện đọc thẳng L3 qua `lib/metrics/` và `lib/topics/` vì dữ liệu còn nhỏ ([D17](decisions.md#d17--giai-đoạn-5b-số-liệu-dashboard-2026-10-15)).
+
 **`metrics_hourly`** và **`metrics_daily`**
 - Khóa: `project_id`, `bucket`, `platform`, `source_type`, `entity_id` (nullable = tổng), `sentiment`, `origin`
 - Giá trị: `mention_count`, `engagement`, `reach`, `unique_authors`
 
 Các bảng phụ theo ngày, thêm khi cần: `topic_metrics_daily`, `aspect_metrics_daily`, `author_metrics_daily`, `place_metrics_daily`.
 
-Các công thức (reach ước tính, NSS, SoV, mức độ khủng hoảng) đặt trong `lib/` để dùng chung, không viết trong SQL rải rác.
+Các công thức (tương tác, NSS, SoV, mức độ khủng hoảng; reach khi có nguồn có lượt xem) đặt trong `lib/metrics/` để dùng chung, không viết trong SQL rải rác.
 
 ## L5 — Outputs
 

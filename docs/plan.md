@@ -211,12 +211,25 @@ Làm trang Topics trước: đây là trang đã có dữ liệu thật đầy �
 
 **Kết quả 5a:** trang báo cáo Topics bám demo chạy trên dữ liệu thật (Vinhomes) và sandbox có 2 kỳ (Lavita).
 
-### 5b — Các trang còn lại (chưa làm)
-- [ ] `metrics_hourly`, `metrics_daily`, cập nhật tăng dần
-- [ ] Công thức reach, NSS, SoV trong `lib/`
-- [ ] API trả dữ liệu đúng shape mà dashboard demo đang dùng
-- [ ] Nối dữ liệu thật vào các trang Overview, Mentions, Sentiment, Topics
-- [ ] Sau đó: Channels, Authors và trang riêng theo case
+### 5b — Các trang còn lại
+
+Xem [D17](decisions.md#d17--giai-đoạn-5b-số-liệu-dashboard-2026-10-15).
+
+**PR 1 — Overview + Sentiment**
+- [x] `lib/metrics/`: công thức NSS, tỉ lệ, tăng trưởng, SoV, tương tác; kỳ báo cáo theo ngày trọn và múi giờ project
+- [x] `GET /api/metrics/overview`, `GET /api/metrics/sentiment`, đọc thẳng L3; chưa làm `metrics_daily` (D17), `metrics_hourly` chuyển sang giai đoạn 6
+- [x] Overview cho project thật: 6 KPI (đề cập, tương tác, tác giả, NSS, SoV, tỉ lệ tiêu cực) so với kỳ trước, đề cập theo ngày và cảm xúc, phân bổ cảm xúc, kênh theo nguồn, chủ đề nổi bật. Reach bỏ, thay bằng tương tác
+- [x] Sentiment cho project thật: NSS theo ngày, cảm xúc chi tiết, cảm xúc theo khía cạnh
+- [x] Chart demo nhận nhãn ngày và tên khía cạnh thật
+- [x] Kiểm trên Sandbox Lavita (14 và 30 ngày) và Vinhomes (chưa có kỳ trước)
+
+**PR 2 — Channels + Authors**
+- [ ] Bản đồ nhiệt giờ × thứ, nguồn ảnh hưởng nhất, cảm xúc theo nguồn
+- [ ] Tác giả ảnh hưởng nhất; cơ cấu tác giả chờ có `authors.author_type`
+
+**Sau đó**
+- [ ] Trang riêng theo case
+- [ ] `metrics_daily` khi dữ liệu lớn
 
 **Kết quả giai đoạn 5:** một project `general` thật và một project sandbox chạy end-to-end.
 

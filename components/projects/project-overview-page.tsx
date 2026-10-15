@@ -1,7 +1,7 @@
 "use client";
 
+import { ProjectOverviewReport } from "@/components/metrics/project-overview-report";
 import { AquaDemoDashboard } from "@/components/projects/demo/demo-dashboard";
-import { ProjectPendingDashboard } from "@/components/projects/project-pending-dashboard";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
 
@@ -14,20 +14,21 @@ export function ProjectOverviewPage({
   workspaceIndexParam,
   projectIndexParam,
 }: ProjectOverviewPageProps) {
-  const { project, workspaceIndex, projectIndex } = useProjectRouteContext(
+  const { workspace, project, workspaceIndex, projectIndex } = useProjectRouteContext(
     workspaceIndexParam,
     projectIndexParam,
   );
 
-  if (!project) {
+  if (!workspace || !project) {
     return null;
   }
 
   if (!project.isDemo) {
     return (
-      <ProjectPendingDashboard
-        project={project}
-        settingsHref={getProjectNavHref(workspaceIndex, projectIndex, "settings")}
+      <ProjectOverviewReport
+        scope={{ workspaceId: workspace.id, projectId: project.id }}
+        projectName={project.name}
+        mentionsHref={getProjectNavHref(workspaceIndex, projectIndex, "mentions")}
       />
     );
   }
