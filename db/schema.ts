@@ -1902,3 +1902,24 @@ export const mentionEmbeddings = pgTable(
 
 export type MentionEmbedding = typeof mentionEmbeddings.$inferSelect;
 export type NewMentionEmbedding = typeof mentionEmbeddings.$inferInsert;
+
+/** Keywords Enrich extracts from a mention, for the keyword cloud (D16). */
+export const mentionKeywords = pgTable(
+  "mention_keywords",
+  {
+    mentionId: uuid("mention_id")
+      .notNull()
+      .references(() => mentions.id, { onDelete: "cascade" }),
+    /** Normalized: lowercase, NFC, single spaces; diacritics kept. */
+    keyword: text("keyword").notNull(),
+    /** As the model wrote it, shown in the cloud. */
+    text: text("text").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.mentionId, table.keyword] }),
+    index("mention_keywords_keyword_idx").on(table.keyword),
+  ],
+);
+
+export type MentionKeyword = typeof mentionKeywords.$inferSelect;
+export type NewMentionKeyword = typeof mentionKeywords.$inferInsert;

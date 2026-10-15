@@ -8,6 +8,7 @@ import {
   mentionAspects,
   mentionEntities,
   mentionExtractions,
+  mentionKeywords,
   mentions,
   mentionTopics,
 } from "@/db/schema";
@@ -21,6 +22,7 @@ import {
   buildEnrichSchema,
   type EnrichResponse,
 } from "../utils/build-enrich-request";
+import { normalizeKeyword } from "../utils/normalize-keyword";
 import { loadEnrichContext } from "./load-enrich-context";
 
 type ItemResult = EnrichResponse["items"][number];
@@ -45,6 +47,28 @@ async function callModel(
     if (item) results.set(item.mentionId, entry);
   }
   return results;
+}
+
+/**
+ * Up to `maxKeywords` distinct keywords, normalized (D16). Keywords naming a tracked
+ * entity are dropped: the cloud is about what people discuss, not who.
+ */
+function pickKeywords(ctx: ProjectEnrichContext, keywords: string[]) {
+  const entityNames = ctx.entities
+    .flatMap((entity) => [entity.name, ...entity.aliases])
+    .map((name) => ` ${normalizeKeyword(name)} `)
+    .filter((name) => name.trim());
+  const byKeyword = new Map<string, string>();
+  for (const raw of keywords) {
+    const text = raw.replace(/\s+/g, " ").trim();
+    const keyword = normalizeKeyword(text);
+    if (!keyword || keyword.length > ENRICH_CONFIG.maxKeywordChars || byKeyword.has(keyword)) continue;
+    const padded = ` ${keyword} `;
+    if (entityNames.some((name) => padded.includes(name) || name.includes(padded))) continue;
+    byKeyword.set(keyword, text);
+    if (byKeyword.size >= ENRICH_CONFIG.maxKeywords) break;
+  }
+  return [...byKeyword.entries()].map(([keyword, text]) => ({ keyword, text }));
 }
 
 /** Rows that replace a mention's Enrich output. Labels stay authoritative for `sentiment`. */
@@ -80,6 +104,7 @@ function toWrites(
     }));
   });
 
+  const keywords = pickKeywords(ctx, result.keywords ?? []);
   const topicHint =
     result.topicHint?.replace(/\s+/g, " ").trim().slice(0, ENRICH_CONFIG.maxTopicHintChars) || null;
 
@@ -109,6 +134,7 @@ function toWrites(
       .delete(mentionAspects)
       .where(and(eq(mentionAspects.mentionId, item.mentionId), eq(mentionAspects.source, "auto"))),
     db.delete(mentionExtractions).where(eq(mentionExtractions.mentionId, item.mentionId)),
+    db.delete(mentionKeywords).where(eq(mentionKeywords.mentionId, item.mentionId)),
   ];
   if (!topicHint) writes.push(db.delete(mentionTopics).where(eq(mentionTopics.mentionId, item.mentionId)));
   if (entities.length > 0) {
@@ -135,6 +161,11 @@ function toWrites(
     );
   }
   if (extractions.length > 0) writes.push(db.insert(mentionExtractions).values(extractions));
+  if (keywords.length > 0) {
+    writes.push(
+      db.insert(mentionKeywords).values(keywords.map((keyword) => ({ mentionId: item.mentionId, ...keyword }))),
+    );
+  }
   return writes;
 }
 

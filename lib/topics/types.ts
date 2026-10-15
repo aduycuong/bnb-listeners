@@ -68,10 +68,22 @@ export type TopicReportItem = {
   negative: number;
 };
 
+/** A keyword of the cloud: relevant mentions of the period that Enrich gave it (D16). */
+export type TopicReportKeyword = {
+  /** Normalized key. */
+  keyword: string;
+  /** The most common way the model wrote it. */
+  text: string;
+  mentions: number;
+  /** Share of negative mentions, in %. */
+  negative: number;
+};
+
 export type TopicReportParams = { projectId: string; days: number };
 
 export type TopicReportResult = {
   items: TopicReportItem[];
+  keywords: TopicReportKeyword[];
   days: number;
 };
 

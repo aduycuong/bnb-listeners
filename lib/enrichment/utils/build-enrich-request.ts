@@ -28,6 +28,9 @@ export function buildEnrichSchema(ctx: ProjectEnrichContext) {
       .string()
       .nullable()
       .describe("Short phrase naming the concrete issue or event the item is about; null if none"),
+    keywords: z
+      .array(z.string())
+      .describe("0–3 short noun phrases (1–3 words) the item talks about; [] if none"),
   };
 
   if (ctx.aspects.length > 0) {
@@ -70,6 +73,7 @@ export type EnrichResponse = {
     sentimentScore: number;
     emotion: (typeof EMOTIONS)[number] | null;
     topicHint: string | null;
+    keywords: string[];
     aspects?: { key: string; sentiment: (typeof SENTIMENTS)[number] }[];
     entities?: { entity: string; sentiment: (typeof SENTIMENTS)[number] }[];
     extractions?: Record<string, unknown>;
@@ -90,6 +94,7 @@ export function buildEnrichPrompt(params: {
     "- sentimentScore: từ -1 đến 1, khớp với sentiment.",
     `- emotion: một trong ${EMOTIONS.map((key) => `${key} (${EMOTION_LABELS[key]})`).join(", ")}, hoặc null nếu không rõ.`,
     "- topicHint: cụm từ 3–8 chữ nêu sự việc hoặc vấn đề cụ thể mục đó bàn tới, đủ cụ thể để gom các mục cùng chuyện (ví dụ \"chậm bàn giao tòa S2\", \"phí quản lý tăng\", \"dự án mang danh Châu Âu nhưng không giống\"). Ghi vấn đề, không ghi tên dự án, khu, thương hiệu, trừ khi vấn đề chỉ đúng với một nơi (ví dụ \"ngập đường Nguyễn Hữu Cảnh\"); không ghi con số cụ thể, không ghi thái độ. Bình luận ngắn hiểu theo bài gốc. null nếu chỉ là cảm thán, tag người, chấm hóng, xin thông tin chung chung.",
+    "- keywords: 0–3 cụm danh từ ngắn (1–3 chữ) mà mục đó nói tới, như sự vật, địa điểm, chi phí, thủ tục (ví dụ \"sổ hồng\", \"phí quản lý\", \"Vành đai 3\", \"ngập nước\"). Viết tiếng Việt có dấu, đúng chính tả, viết đầy đủ chữ viết tắt (\"PQL\" → \"phí quản lý\"). Không lấy tên các đối tượng theo dõi, từ chức năng, đại từ, từ chỉ thái độ hay con số đơn lẻ. [] nếu không có.",
     ctx.aspects.length ? "- aspects: các khía cạnh mục đó thực sự bàn tới, mỗi khía cạnh có sentiment riêng." : "",
     ctx.entities.length ? "- entities: các đối tượng mục đó nói tới, kèm sentiment với từng đối tượng." : "",
     ctx.extractions.length ? "- extractions: các trường riêng bên dưới; không suy đoán khi văn bản không nói rõ." : "",

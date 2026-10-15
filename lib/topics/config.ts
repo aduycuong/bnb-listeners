@@ -38,4 +38,6 @@ export const TOPIC_CONFIG = {
    * covers the chosen period, and growth compares it with the same number of days before.
    */
   reportPeriodDays: [14],
+  /** Keywords in the cloud of the Topics report, most mentioned first (D16). */
+  reportKeywords: 30,
 } as const;

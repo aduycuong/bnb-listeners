@@ -6,14 +6,13 @@ import { useState } from "react";
 
 import { MentionFilterSelect } from "@/components/mentions/mention-filter-select";
 import { GrowthChart } from "@/components/projects/demo/demo-charts";
-import { DemoKeywordCloud } from "@/components/projects/demo/demo-keyword-cloud";
+import { KeywordCloud } from "@/components/projects/demo/demo-keyword-cloud";
 import { DemoGrid, DemoPanel, DemoTable } from "@/components/projects/demo/demo-ui";
 import { ProjectSectionPage } from "@/components/projects/project-section-page";
 import { Button } from "@/components/ui/button";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
-import { AQUA_PAGE_META, formatCount, getAquaCase } from "@/lib/projects/aqua-demo";
-import type { ProjectCase } from "@/lib/projects/project-cases";
+import { AQUA_PAGE_META, formatCount } from "@/lib/projects/aqua-demo";
 import { TOPIC_CONFIG } from "@/lib/topics/config";
 import type { TopicReportItem } from "@/lib/topics/types";
 import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
@@ -50,7 +49,6 @@ export function ProjectTopicsReportPage({
     <TopicsReport
       scope={{ workspaceId: workspace.id, projectId: project.id }}
       projectName={project.name}
-      projectCase={project.case}
       manageHref={
         hasMinWorkspacePermission(workspace.permission, "edit") ? `${topicsHref}/manage` : null
       }
@@ -77,20 +75,23 @@ function GrowthCell({ topic }: { topic: TopicReportItem }) {
 function TopicsReport({
   scope,
   projectName,
-  projectCase,
   manageHref,
   mentionsHref,
 }: {
   scope: TopicsApiScope;
   projectName: string;
-  projectCase: ProjectCase;
   manageHref: string | null;
   mentionsHref: string;
 }) {
   const [days, setDays] = useState<number>(TOPIC_CONFIG.reportPeriodDays[0]);
   const { data, error, isPending, isFetching } = useTopicReport(scope, days);
-  const sample = getAquaCase(projectCase);
   const items = data?.items ?? [];
+  const keywords = (data?.keywords ?? []).map((keyword) => ({
+    key: keyword.keyword,
+    name: keyword.text,
+    mentions: keyword.mentions,
+    negative: keyword.negative,
+  }));
   const growing = items.flatMap((topic) =>
     topic.growth === null
       ? []
@@ -139,12 +140,14 @@ function TopicsReport({
           title="Đám mây từ khóa"
           span="s5"
           scope="common"
-          note="Dữ liệu mẫu: chưa trích xuất từ khóa từ mention. Cỡ chữ theo số đề cập, màu đỏ: tiêu cực chiếm đa số"
+          note="Từ khóa Enrich trích từ các mention trong kỳ. Cỡ chữ theo số đề cập, màu đỏ: tiêu cực chiếm đa số"
         >
-          {sample ? (
-            <DemoKeywordCloud data={sample} />
+          {keywords.length > 0 ? (
+            <KeywordCloud words={keywords} />
           ) : (
-            <p className="text-sm text-muted-foreground">Chưa có từ khóa.</p>
+            <p className="text-sm text-muted-foreground">
+              {isPending ? "Đang tải…" : "Chưa có từ khóa trong kỳ này."}
+            </p>
           )}
         </DemoPanel>
         <DemoPanel
