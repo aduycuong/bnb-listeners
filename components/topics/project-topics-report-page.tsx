@@ -92,7 +92,9 @@ function TopicsReport({
   const sample = getAquaCase(projectCase);
   const items = data?.items ?? [];
   const growing = items.flatMap((topic) =>
-    topic.growth === null ? [] : [{ name: topic.name, growth: topic.growth, negative: topic.negative }],
+    topic.growth === null
+      ? []
+      : [{ id: topic.id, name: topic.name, growth: topic.growth, negative: topic.negative }],
   );
 
   return (
@@ -152,7 +154,7 @@ function TopicsReport({
           note={`${days} ngày gần nhất so với ${days} ngày trước đó`}
         >
           {growing.length ? (
-            <GrowthChart topics={growing} labelWidth={220} maxLabelLength={34} />
+            <GrowthChart topics={growing} labelWidth={230} maxLabelLength={30} />
           ) : (
             <p className="rounded-xl bg-muted px-3 py-6 text-center text-sm text-muted-foreground">
               {isPending
