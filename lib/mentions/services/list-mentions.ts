@@ -36,6 +36,7 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
   }
   if (params.topicId) filters.push(eq(mentionTopics.topicId, params.topicId));
   if (params.sourceId) filters.push(eq(mentions.sourceId, params.sourceId));
+  if (params.authorId) filters.push(eq(mentions.authorId, params.authorId));
   if (params.sentiment !== "all") filters.push(eq(mentions.sentiment, params.sentiment));
   if (params.aspectId) {
     // Effective aspects: the label's keys when labeled, else Enrich's rows (D14).

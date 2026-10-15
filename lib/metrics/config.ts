@@ -8,4 +8,25 @@ export const METRICS_CONFIG = {
   /** Rows of the "Kênh thảo luận" (by source) and "Chủ đề nổi bật" panels. */
   topSources: 6,
   topTopics: 6,
+  /** Rows of the sources table on the Channels page and of the authors table. */
+  channelSources: 10,
+  topAuthors: 20,
 } as const;
+
+/**
+ * Author groups of the Authors page, as in the demo. Follower thresholds decide the KOL
+ * groups; `authors.author_type` media or brand wins. Authors without a follower count fall
+ * into "regular" until authors are classified (follow-up task).
+ */
+export const AUTHOR_TIERS = [
+  { key: "mega", label: "Mega KOL (>1 tr)", minFollowers: 1_000_000 },
+  { key: "macro", label: "Macro KOL (100K–1 tr)", minFollowers: 100_000 },
+  { key: "micro", label: "Micro KOL (10K–100K)", minFollowers: 10_000 },
+  { key: "regular", label: "Người dùng thường", minFollowers: 0 },
+  { key: "media_brand", label: "Báo chí, thương hiệu", minFollowers: null },
+] as const;
+
+export type AuthorTier = (typeof AUTHOR_TIERS)[number]["key"];
+
+/** `authors.author_type` values counted as "Báo chí, thương hiệu". */
+export const MEDIA_BRAND_AUTHOR_TYPES = ["media", "brand"] as const;

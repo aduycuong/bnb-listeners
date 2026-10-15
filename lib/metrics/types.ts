@@ -1,4 +1,6 @@
-import type { Emotion } from "@/lib/enrichment/config";
+import type { Emotion, Sentiment } from "@/lib/enrichment/config";
+
+import type { AuthorTier } from "./config";
 
 export type MetricsReportParams = { projectId: string; days: number };
 
@@ -44,4 +46,48 @@ export type SentimentMetricsResult = {
   emotions: { emotion: Emotion; mentions: number; share: number }[];
   /** Project aspects in their order; shares of the aspect's mentions, in %. */
   aspects: { id: string; name: string; mentions: number; positive: number; negative: number }[];
+};
+
+export type ChannelMetricsResult = {
+  days: number;
+  timezone: string;
+  /** Mentions of the period per channel (platform, Facebook groups apart), most first. */
+  channels: { channel: string; mentions: number; positive: number; neutral: number; negative: number }[];
+  /** Mentions per weekday (0 = Monday) and hour of the project's timezone. */
+  heat: { weekday: number; hour: number; mentions: number }[];
+  /** Sources with the most mentions in the period. */
+  sources: {
+    id: string | null;
+    name: string;
+    channel: string;
+    /** Mentions that are posts. */
+    posts: number;
+    mentions: number;
+    engagement: number;
+  }[];
+};
+
+export type AuthorMetricsItem = {
+  id: string;
+  name: string;
+  url: string | null;
+  channel: string;
+  followers: number | null;
+  tier: AuthorTier;
+  mentions: number;
+  /** Sum of the engagement of the author's mentions in the period. */
+  engagement: number;
+  /** Most frequent sentiment of the author's mentions; null when none has one. */
+  sentiment: Sentiment | null;
+};
+
+export type AuthorMetricsResult = {
+  days: number;
+  timezone: string;
+  /** Authors with the most engagement in the period. */
+  items: AuthorMetricsItem[];
+  /** Authors of the period per group, in the order of `AUTHOR_TIERS`. */
+  tiers: { tier: AuthorTier; authors: number }[];
+  /** Authors of the period without a follower count (counted as regular users). */
+  withoutFollowers: number;
 };
