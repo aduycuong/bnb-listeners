@@ -33,7 +33,7 @@ export const EMOTION_LABELS: Record<Emotion, string> = {
 export const ENRICH_CONFIG = {
   model: "gpt-4.1-mini" satisfies ChatModelId,
   /** Bump when the prompt or output shape changes; mentions are enriched again. */
-  promptVersion: 5,
+  promptVersion: 7,
   /** Mentions per model call; longer threads are split. */
   mentionsPerCall: 20,
   /** Threads enriched per workflow step. */
@@ -45,4 +45,14 @@ export const ENRICH_CONFIG = {
   /** Keywords kept per mention, and the longest one (D16). */
   maxKeywords: 3,
   maxKeywordChars: 40,
+  /**
+   * Normalized keywords too generic for the cloud, dropped even when the model
+   * returns them; aspect names of the project are dropped too (D16).
+   */
+  genericKeywords: [
+    "giá", "giá cả", "giá bán", "giá nhà", "giá căn hộ", "giá dự án",
+    "vị trí", "khu vực", "pháp lý", "tiện ích", "tiến độ", "chất lượng",
+    "dự án", "chủ đầu tư", "căn hộ", "chung cư", "nhà", "bất động sản", "thị trường",
+    "mua", "bán", "mua nhà", "mua bán", "đầu tư", "người mua", "khách hàng",
+  ],
 } as const;

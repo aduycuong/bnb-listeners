@@ -207,7 +207,7 @@ Làm trang Topics trước: đây là trang đã có dữ liệu thật đầy �
 - [x] Từ khóa ([D16](decisions.md#d16--từ-khóa-2026-10-15)): Enrich v5 trả `keywords`, lưu ở `mention_keywords`, đám mây từ khóa đếm theo kỳ báo cáo thay dữ liệu mẫu.
 - [x] Enrich lại toàn bộ mention theo v5 sau khi chạy migration `mention_keywords` (Sandbox 635/652 mention có từ khóa, Vinhomes 173/202).
 - [x] Seed lịch sử 28 ngày cho Sandbox (`npm run synthetic:seed-history`) để biểu đồ tăng trưởng có kỳ trước; sửa topic trùng tên và tên topic chứa tên dự án (PR #24, #25).
-- [ ] Từ khóa chung chung (để mở, làm ở session riêng): trên Sandbox đứng đầu là "tiện ích" 132, "vị trí" 110, "pháp lý" 106, "giá" 100, trùng tên aspect; có cả "dự án", "chủ đầu tư", "mua", "nhà", "căn hộ"; "giá" và "giá bán" tách nhau. Hướng xét: loại từ khóa trùng tên aspect hoặc quá chung, gộp biến thể.
+- [x] Từ khóa chung chung (D16, prompt v7): prompt chỉ lấy điều văn bản thực sự nhắc tới, không lấy tên khía cạnh, từ chung về bất động sản hay con số; code bỏ thêm `ENRICH_CONFIG.genericKeywords`, tên khía cạnh của project và từ khóa bắt đầu bằng chữ số. Enrich lại toàn bộ (2026-10-15). Trước: Sandbox đứng đầu "tiện ích" 132, "vị trí" 110, "pháp lý" 106, "giá" 100; Vinhomes "giá bán", "giá", "vị trí". Sau (7 ngày): Sandbox "công viên" 19, "sổ hồng" 17, "giao thông" 16, "chất lượng xây dựng" 15, "hồ bơi" 15; Vinhomes "kiến trúc", "Mizuki", "nguồn cung", "tường nứt" 3, "cắt lỗ", "ngập", "phí dịch vụ" 2. Vinhomes còn 92/202 mention có từ khóa (trước 173), vì bình luận ngắn không còn bị gán "giá", "vị trí".
 
 **Kết quả 5a:** trang báo cáo Topics bám demo chạy trên dữ liệu thật (Vinhomes) và sandbox có 2 kỳ (Lavita).
 

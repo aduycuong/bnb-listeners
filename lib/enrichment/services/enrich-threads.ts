@@ -51,18 +51,27 @@ async function callModel(
 
 /**
  * Up to `maxKeywords` distinct keywords, normalized (D16). Keywords naming a tracked
- * entity are dropped: the cloud is about what people discuss, not who.
+ * entity are dropped: the cloud is about what people discuss, not who. Generic words
+ * and aspect names ("Giá & thanh toán" → "giá", "thanh toán") are dropped as well, and
+ * so are amounts and sizes, which start with a digit ("3 tỷ", "50m2").
  */
 function pickKeywords(ctx: ProjectEnrichContext, keywords: string[]) {
   const entityNames = ctx.entities
     .flatMap((entity) => [entity.name, ...entity.aliases])
     .map((name) => ` ${normalizeKeyword(name)} `)
     .filter((name) => name.trim());
+  const generic = new Set<string>([
+    ...ENRICH_CONFIG.genericKeywords,
+    ...ctx.aspects.flatMap((aspect) =>
+      [aspect.name, ...aspect.name.split(/[&,/]| và /)].map(normalizeKeyword),
+    ),
+  ]);
   const byKeyword = new Map<string, string>();
   for (const raw of keywords) {
     const text = raw.replace(/\s+/g, " ").trim();
     const keyword = normalizeKeyword(text);
     if (!keyword || keyword.length > ENRICH_CONFIG.maxKeywordChars || byKeyword.has(keyword)) continue;
+    if (generic.has(keyword) || /^\d/.test(keyword)) continue;
     const padded = ` ${keyword} `;
     if (entityNames.some((name) => padded.includes(name) || name.includes(padded))) continue;
     byKeyword.set(keyword, text);
