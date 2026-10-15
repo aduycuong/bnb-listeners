@@ -196,6 +196,15 @@ Kiểm chứng chỉ trên mẫu thật gán nhãn tay (D12), nên trang Mention
 
 ## Giai đoạn 5 — Aggregate và dashboard
 
+Làm trang Topics trước: đây là trang đã có dữ liệu thật đầy đủ nhất (giai đoạn 4c), nên dùng để chốt cách tổ chức L4 và API cho các trang còn lại.
+
+**Topics trước**
+- [ ] Route: `/p/[i]/topics` là trang báo cáo như demo; trang quản lý hiện tại (sửa tên/mô tả, ẩn/hiện, gộp, xem mention) chuyển sang `/p/[i]/topics/manage`. Sidebar giữ một mục "Topics"; trang báo cáo có nút "Quản lý topic" (quyền `edit`). Không đưa vào Settings vì topic là dữ liệu hệ thống sinh ra, không phải cấu hình.
+- [ ] Trang báo cáo theo shape demo: đám mây từ khóa (cỡ chữ theo số mention, đỏ khi tiêu cực chiếm đa số), biểu đồ tăng trưởng chủ đề theo ngày, bảng chủ đề (đề cập, tăng trưởng, % tích cực, % tiêu cực). Bấm một chủ đề mở Mentions lọc theo topic.
+- [ ] Số mention theo ngày của từng topic (`topic_metrics_daily`); bản đầu có thể đọc thẳng từ `mention_topics` khi dữ liệu còn nhỏ, sau chuyển sang L4 mà giao diện giữ nguyên.
+- [ ] Chốt khoảng so sánh tăng trưởng (demo: so với 14 ngày trước; trang quản lý đang dùng 7 ngày so với 7 ngày trước).
+
+**Các trang còn lại**
 - [ ] `metrics_hourly`, `metrics_daily`, cập nhật tăng dần
 - [ ] Công thức reach, NSS, SoV trong `lib/`
 - [ ] API trả dữ liệu đúng shape mà dashboard demo đang dùng
