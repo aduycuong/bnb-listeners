@@ -11,6 +11,7 @@ export async function triggerWorkflow(
     workflowRunId: params.workflowRunId,
     delay: params.delaySeconds,
     label: params.label,
+    flowControl: params.flowControl,
   });
 
   return { workflowRunId };

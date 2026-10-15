@@ -17,7 +17,7 @@ export const TOPIC_CONFIG = {
   embedPerRequest: 100,
   model: "gpt-4.1" satisfies ChatModelId,
   /** Bump when the assignment or merge prompt changes. */
-  promptVersion: 1,
+  promptVersion: 2,
   /** Distinct hints per assignment call; more hints take more calls. */
   hintsPerCall: 200,
   /** Topics shown to the model per call, largest first. */
