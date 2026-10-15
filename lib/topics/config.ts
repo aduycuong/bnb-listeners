@@ -33,4 +33,9 @@ export const TOPIC_CONFIG = {
   maxMergePairsPerRun: 20,
   /** Share of a new topic's mentions an aspect needs to become the topic's aspect. */
   aspectShare: 0.4,
+  /**
+   * Periods of the Topics report, in days; the first is the default. Every number on the page
+   * covers the chosen period, and growth compares it with the same number of days before.
+   */
+  reportPeriodDays: [14],
 } as const;

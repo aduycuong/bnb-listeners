@@ -53,6 +53,28 @@ export type ListTopicsResult = {
   pending: number;
 };
 
+/** One row of the Topics report (same shape as the demo topics), over the chosen period. */
+export type TopicReportItem = {
+  id: string;
+  name: string;
+  /** Relevant mentions of the topic published in the period. */
+  mentions: number;
+  /** The same count for the period before. */
+  previousMentions: number;
+  /** Change against the period before, in %; null when the period before is empty. */
+  growth: number | null;
+  /** Share of the period's mentions, in %. */
+  positive: number;
+  negative: number;
+};
+
+export type TopicReportParams = { projectId: string; days: number };
+
+export type TopicReportResult = {
+  items: TopicReportItem[];
+  days: number;
+};
+
 export type UpdateTopicParams = { projectId: string; topicId: string } & z.infer<
   typeof updateTopicBodySchema
 >;

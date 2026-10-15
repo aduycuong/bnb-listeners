@@ -5,7 +5,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { mentionsQueryKey } from "@/components/mentions/use-mentions-api";
 import { toast } from "@/components/ui/toast";
 import { projectFetch } from "@/lib/projects/utils/project-fetch";
-import type { ListTopicsResult, TopicSummary } from "@/lib/topics/types";
+import type { ListTopicsResult, TopicReportResult, TopicSummary } from "@/lib/topics/types";
 
 export type TopicsApiScope = { workspaceId: string; projectId: string };
 
@@ -26,6 +26,14 @@ export function useTopicsList(scope: TopicsApiScope, includeHidden = false) {
     queryKey: [...topicsQueryKey(scope.projectId), "list", includeHidden],
     queryFn: () =>
       fetchJson<ListTopicsResult>(scope, `/api/topics?includeHidden=${includeHidden ? "1" : "0"}`),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useTopicReport(scope: TopicsApiScope, days: number) {
+  return useQuery({
+    queryKey: [...topicsQueryKey(scope.projectId), "report", days],
+    queryFn: () => fetchJson<TopicReportResult>(scope, `/api/topics/report?days=${days}`),
     placeholderData: keepPreviousData,
   });
 }

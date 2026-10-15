@@ -199,10 +199,11 @@ Kiểm chứng chỉ trên mẫu thật gán nhãn tay (D12), nên trang Mention
 Làm trang Topics trước: đây là trang đã có dữ liệu thật đầy đủ nhất (giai đoạn 4c), nên dùng để chốt cách tổ chức L4 và API cho các trang còn lại.
 
 **Topics trước**
-- [ ] Route: `/p/[i]/topics` là trang báo cáo như demo; trang quản lý hiện tại (sửa tên/mô tả, ẩn/hiện, gộp, xem mention) chuyển sang `/p/[i]/topics/manage`. Sidebar giữ một mục "Topics"; trang báo cáo có nút "Quản lý topic" (quyền `edit`). Không đưa vào Settings vì topic là dữ liệu hệ thống sinh ra, không phải cấu hình.
-- [ ] Trang báo cáo theo shape demo: đám mây từ khóa (cỡ chữ theo số mention, đỏ khi tiêu cực chiếm đa số), biểu đồ tăng trưởng chủ đề theo ngày, bảng chủ đề (đề cập, tăng trưởng, % tích cực, % tiêu cực). Bấm một chủ đề mở Mentions lọc theo topic.
-- [ ] Số mention theo ngày của từng topic (`topic_metrics_daily`); bản đầu có thể đọc thẳng từ `mention_topics` khi dữ liệu còn nhỏ, sau chuyển sang L4 mà giao diện giữ nguyên.
-- [ ] Chốt khoảng so sánh tăng trưởng (demo: so với 14 ngày trước; trang quản lý đang dùng 7 ngày so với 7 ngày trước).
+- [x] Route: `/p/[i]/topics` là trang báo cáo như demo; trang quản lý hiện tại (sửa tên/mô tả, ẩn/hiện, gộp, xem mention) chuyển sang `/p/[i]/topics/manage`. Sidebar giữ một mục "Topics"; trang báo cáo có nút "Quản lý topic" (quyền `edit`). Không đưa vào Settings vì topic là dữ liệu hệ thống sinh ra, không phải cấu hình.
+- [x] Trang báo cáo bám demo (demo đã được duyệt): đám mây từ khóa, biểu đồ tăng trưởng chủ đề (thanh ngang % tăng trưởng mỗi topic như `GrowthChart` của demo, không phải biểu đồ theo ngày), bảng chủ đề (đề cập, tăng trưởng, % tích cực, % tiêu cực). Bấm một chủ đề mở Mentions lọc theo topic. Topic chưa có số của kỳ trước hiện "mới" và không vào biểu đồ.
+- [x] Một khoảng thời gian dùng chung cho cả trang, chọn ở header (hiện chỉ có "14 ngày gần nhất" như demo, thêm lựa chọn ở `TOPIC_CONFIG.reportPeriodDays`). Số đề cập và tỷ lệ cảm xúc tính trong khoảng đó; tăng trưởng so với cùng số ngày liền trước. Khoảng trượt tính từ lúc xem, theo `published_at`. Trang quản lý giữ 7 so với 7.
+- [x] Bản đầu đọc thẳng từ `mention_topics` (`GET /api/topics/report`); chuyển sang L4 (`topic_metrics_daily`) khi dữ liệu lớn mà giao diện giữ nguyên.
+- [ ] Từ khóa: từ khóa khác chủ đề, chưa có bước Enrich nào sinh ra. Đám mây từ khóa tạm hiện dữ liệu mẫu của demo (có ghi chú). Sub-task Enrich từ khóa: chốt nguồn từ khóa (LLM trả `keywords` trong prompt Enrich, hay tách cụm từ từ nội dung), chuẩn hóa và gộp biến thể (có/không dấu, viết tắt), loại tên đối tượng của project, lưu theo mention, đếm số mention và tỉ lệ tiêu cực theo từ khóa; rồi thay dữ liệu mẫu trên trang.
 
 **Các trang còn lại**
 - [ ] `metrics_hourly`, `metrics_daily`, cập nhật tăng dần

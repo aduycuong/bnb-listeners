@@ -269,11 +269,18 @@ export function AspectChart({
 
 export function GrowthChart({
   topics,
+  labelWidth = 140,
+  maxLabelLength,
 }: {
-  topics: { name: string; growth: number; negative: number }[];
+  /** `id` tells topics with the same name apart; the name is used when it is missing. */
+  topics: { id?: string; name: string; growth: number; negative: number }[];
+  labelWidth?: number;
+  /** Long names are cut with an ellipsis on the axis; the tooltip keeps the full name. */
+  maxLabelLength?: number;
 }) {
   const sorted = [...topics].sort((a, b) => b.growth - a.growth);
   const data = sorted.map((topic) => ({
+    key: topic.id ?? topic.name,
     name: topic.name,
     growth: topic.growth,
     fill:
@@ -283,17 +290,37 @@ export function GrowthChart({
           ? "#FF9F43"
           : "var(--primary)",
   }));
+  const names = new Map(data.map((item) => [item.key, item.name]));
 
   return (
-    <ChartBox height={260} config={{ growth: { label: "Tăng trưởng", color: "var(--primary)" } }}>
+    <ChartBox
+      height={Math.max(260, data.length * 30)}
+      config={{ growth: { label: "Tăng trưởng", color: "var(--primary)" } }}
+    >
       <BarChart data={data} layout="vertical" margin={{ left: 12 }}>
         <CartesianGrid horizontal={false} stroke="var(--border)" />
         <XAxis type="number" tickFormatter={(value) => `${value}%`} tickLine={false} axisLine={false} />
-        <YAxis type="category" dataKey="name" width={140} tickLine={false} axisLine={false} />
-        <ChartTooltip content={<ChartTooltipContent />} />
+        <YAxis
+          type="category"
+          dataKey="key"
+          width={labelWidth}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(key: string) => {
+            const name = names.get(key) ?? key;
+            return maxLabelLength && name.length > maxLabelLength
+              ? `${name.slice(0, maxLabelLength - 1).trimEnd()}…`
+              : name;
+          }}
+        />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent labelFormatter={(key) => names.get(String(key)) ?? key} />
+          }
+        />
         <Bar dataKey="growth" radius={5}>
           {data.map((item) => (
-            <Cell key={item.name} fill={item.fill} />
+            <Cell key={item.key} fill={item.fill} />
           ))}
         </Bar>
       </BarChart>
