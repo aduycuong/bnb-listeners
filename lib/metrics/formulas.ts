@@ -1,3 +1,5 @@
+import { AUTHOR_TIERS, MEDIA_BRAND_AUTHOR_TYPES, type AuthorTier } from "./config";
+
 /**
  * Shared dashboard formulas (docs/data-model.md L4): every page and, later, the L4 rollups
  * use these instead of writing their own. Engagement is `utils/engagement-sql.ts`, as it is
@@ -26,4 +28,16 @@ export function growthPercent(current: number, previous: number) {
  */
 export function shareOfVoice(counts: { primary: number; tracked: number }) {
   return sharePercent(counts.primary, counts.tracked);
+}
+
+/** Group of an author on the Authors page, from its type and follower count. */
+export function authorTier(author: { followerCount: number | null; authorType: string | null }): AuthorTier {
+  if ((MEDIA_BRAND_AUTHOR_TYPES as readonly string[]).includes(author.authorType ?? "")) {
+    return "media_brand";
+  }
+  const followers = author.followerCount ?? 0;
+  const tier = AUTHOR_TIERS.find(
+    (item) => item.minFollowers !== null && followers >= item.minFollowers,
+  );
+  return tier?.key ?? "regular";
 }

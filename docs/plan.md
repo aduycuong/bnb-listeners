@@ -224,8 +224,10 @@ Xem [D17](decisions.md#d17--giai-đoạn-5b-số-liệu-dashboard-2026-10-15).
 - [x] Kiểm trên Sandbox Lavita (14 và 30 ngày) và Vinhomes (chưa có kỳ trước)
 
 **PR 2 — Channels + Authors**
-- [ ] Bản đồ nhiệt giờ × thứ, nguồn ảnh hưởng nhất, cảm xúc theo nguồn
-- [ ] Tác giả ảnh hưởng nhất; cơ cấu tác giả chờ có `authors.author_type`
+- [x] Channels cho project thật, giữ bố cục demo: tỷ trọng và cảm xúc theo kênh (nền tảng, group Facebook tách khỏi page), bản đồ nhiệt giờ × thứ theo múi giờ project, nguồn ảnh hưởng nhất (bài, đề cập, tương tác; bấm mở Mentions lọc theo nguồn)
+- [x] Authors cho project thật: tác giả xếp theo tổng tương tác của các đề cập trong kỳ, cơ cấu tác giả theo nhóm của demo (`AUTHOR_TIERS`)
+- [x] Trang Mentions lọc theo `authorId` và `sourceId` từ URL
+- [ ] Phân loại tác giả (`authors.author_type`, KOL, báo chí/thương hiệu) và lấy số người theo dõi: task riêng. Hiện tác giả chưa có số người theo dõi được tính là người dùng thường
 
 **Sau đó**
 - [ ] Trang riêng theo case

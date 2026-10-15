@@ -42,6 +42,7 @@ import {
   DonutChart,
   EmotionChart,
   GrowthChart,
+  HeatmapChart,
   NssChart,
   TrendChart,
 } from "./demo-charts";
@@ -475,7 +476,6 @@ function TopicsPage({ data }: { data: AquaCase }) {
 
 function ChannelsPage({ data }: { data: AquaCase }) {
   const heat = discussionHeat(data.id);
-  const hours = Array.from({ length: 24 }, (_, hour) => hour);
 
   return (
     <DemoGrid>
@@ -491,43 +491,7 @@ function ChannelsPage({ data }: { data: AquaCase }) {
         scope="common"
         note="Số đề cập theo giờ trong ngày và thứ trong tuần. Dùng để chọn giờ đăng bài, giờ trực CSKH."
       >
-        <div className="overflow-x-auto">
-          <div
-            className="grid min-w-[560px] gap-[3px] text-[10.5px] text-muted-foreground"
-            style={{ gridTemplateColumns: "34px repeat(24, minmax(18px, 1fr))" }}
-          >
-            <div />
-            {hours.map((hour) => (
-              <div key={hour} className="text-center">
-                {hour % 3 === 0 ? `${hour}h` : ""}
-              </div>
-            ))}
-            {heat.map((row) => (
-              <div key={row[0]?.day} className="contents">
-                <div className="flex items-center">{row[0]?.day}</div>
-                {row.map((cell) => (
-                  <div
-                    key={`${cell.day}-${cell.hour}`}
-                    title={`${cell.day} ${cell.hour}h: ${cell.count} đề cập`}
-                    className="h-[22px] rounded"
-                    style={{ background: `rgba(0,145,255,${cell.alpha.toFixed(2)})` }}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-          Ít
-          {[0.08, 0.35, 0.65, 1].map((alpha) => (
-            <i
-              key={alpha}
-              className="inline-block h-3 w-4 rounded-sm"
-              style={{ background: `rgba(0,145,255,${alpha})` }}
-            />
-          ))}
-          Nhiều
-        </div>
+        <HeatmapChart counts={heat.map((row) => row.map((cell) => cell.count))} />
       </DemoPanel>
       <DemoPanel title="Nguồn có ảnh hưởng nhất" span="s5" scope="common">
         <DemoTable

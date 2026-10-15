@@ -2,7 +2,12 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import type { OverviewMetricsResult, SentimentMetricsResult } from "@/lib/metrics/types";
+import type {
+  AuthorMetricsResult,
+  ChannelMetricsResult,
+  OverviewMetricsResult,
+  SentimentMetricsResult,
+} from "@/lib/metrics/types";
 import { projectFetch } from "@/lib/projects/utils/project-fetch";
 
 export type MetricsApiScope = { workspaceId: string; projectId: string };
@@ -28,6 +33,22 @@ export function useSentimentMetrics(scope: MetricsApiScope, days: number) {
   return useQuery({
     queryKey: [...metricsQueryKey(scope.projectId), "sentiment", days],
     queryFn: () => fetchJson<SentimentMetricsResult>(scope, `/api/metrics/sentiment?days=${days}`),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useChannelMetrics(scope: MetricsApiScope, days: number) {
+  return useQuery({
+    queryKey: [...metricsQueryKey(scope.projectId), "channels", days],
+    queryFn: () => fetchJson<ChannelMetricsResult>(scope, `/api/metrics/channels?days=${days}`),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useAuthorMetrics(scope: MetricsApiScope, days: number) {
+  return useQuery({
+    queryKey: [...metricsQueryKey(scope.projectId), "authors", days],
+    queryFn: () => fetchJson<AuthorMetricsResult>(scope, `/api/metrics/authors?days=${days}`),
     placeholderData: keepPreviousData,
   });
 }

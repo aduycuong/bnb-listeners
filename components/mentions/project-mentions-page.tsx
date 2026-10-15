@@ -87,6 +87,8 @@ function MentionsList({
     relevance: "relevant",
     page: 1,
     topicId: searchParams.get("topicId") ?? undefined,
+    sourceId: searchParams.get("sourceId") ?? undefined,
+    authorId: searchParams.get("authorId") ?? undefined,
   });
   const [search, setSearch] = useState("");
   const [thread, setThread] = useState<{ rootId: string; focusId: string } | null>(null);
@@ -244,6 +246,21 @@ function MentionsList({
           </Button>
         </form>
       </div>
+
+      {filters.sourceId || filters.authorId ? (
+        <div className="flex flex-wrap items-center gap-2 text-[13px]">
+          {filters.sourceId ? (
+            <Button size="sm" variant="secondary" onClick={() => update({ sourceId: undefined })}>
+              Nguồn: {data?.items[0]?.sourceName ?? "đang lọc"} ✕
+            </Button>
+          ) : null}
+          {filters.authorId ? (
+            <Button size="sm" variant="secondary" onClick={() => update({ authorId: undefined })}>
+              Tác giả: {data?.items[0]?.authorName ?? "đang lọc"} ✕
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 

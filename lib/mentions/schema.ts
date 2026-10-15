@@ -14,6 +14,7 @@ export const listMentionsQuerySchema = z.object({
   entityId: z.uuid().optional(),
   topicId: z.uuid().optional(),
   sourceId: z.uuid().optional(),
+  authorId: z.uuid().optional(),
   from: z.iso.date().optional(),
   to: z.iso.date().optional(),
   q: z.string().trim().max(200).optional(),

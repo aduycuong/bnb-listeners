@@ -343,16 +343,75 @@ export function GrowthChart({
 
 export function ChannelMixChart({
   channels,
+  names = AQUA_CHANNELS,
 }: {
   channels: number[];
+  /** Channel names in the order of `channels`; the demo's channels by default. */
+  names?: readonly string[];
 }) {
-  const data = AQUA_CHANNELS.map((name, index) => ({
+  const data = names.map((name, index) => ({
     name,
     value: channels[index],
   }));
+  // A channel keeps its demo colour wherever it sits in the list.
+  const colors = names.map((name, index) => {
+    const demoIndex = AQUA_CHANNELS.indexOf(name);
+    return AQUA_CHANNEL_COLORS[demoIndex >= 0 ? demoIndex : index % AQUA_CHANNEL_COLORS.length];
+  });
+
+  return <DonutChart data={data} colors={colors} height={260} cutout="60%" />;
+}
+
+const WEEKDAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+
+/** Mentions per weekday (rows, Monday first) and hour (columns); colour by share of the busiest cell. */
+export function HeatmapChart({ counts }: { counts: number[][] }) {
+  const max = Math.max(1, ...counts.flat());
+  const hours = Array.from({ length: 24 }, (_, hour) => hour);
 
   return (
-    <DonutChart data={data} colors={[...AQUA_CHANNEL_COLORS]} height={260} cutout="60%" />
+    <>
+      <div className="overflow-x-auto">
+        <div
+          className="grid min-w-[560px] gap-[3px] text-[10.5px] text-muted-foreground"
+          style={{ gridTemplateColumns: "34px repeat(24, minmax(18px, 1fr))" }}
+        >
+          <div />
+          {hours.map((hour) => (
+            <div key={hour} className="text-center">
+              {hour % 3 === 0 ? `${hour}h` : ""}
+            </div>
+          ))}
+          {WEEKDAYS.map((day, dayIndex) => (
+            <div key={day} className="contents">
+              <div className="flex items-center">{day}</div>
+              {hours.map((hour) => {
+                const count = counts[dayIndex]?.[hour] ?? 0;
+                return (
+                  <div
+                    key={hour}
+                    title={`${day} ${hour}h: ${count} đề cập`}
+                    className="h-[22px] rounded"
+                    style={{ background: `rgba(0,145,255,${(0.06 + (count / max) * 0.94).toFixed(2)})` }}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+        Ít
+        {[0.08, 0.35, 0.65, 1].map((alpha) => (
+          <i
+            key={alpha}
+            className="inline-block h-3 w-4 rounded-sm"
+            style={{ background: `rgba(0,145,255,${alpha})` }}
+          />
+        ))}
+        Nhiều
+      </div>
+    </>
   );
 }
 
