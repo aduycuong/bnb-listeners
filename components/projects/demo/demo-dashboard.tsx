@@ -45,6 +45,7 @@ import {
   NssChart,
   TrendChart,
 } from "./demo-charts";
+import { DemoKeywordCloud } from "./demo-keyword-cloud";
 import {
   DemoBanner,
   DemoBars,
@@ -418,18 +419,6 @@ function SentimentPage({ data }: { data: AquaCase }) {
 }
 
 function TopicsPage({ data }: { data: AquaCase }) {
-  const max = Math.max(...data.topics.map((topic) => topic.mentions), 1);
-  const colors = ["#0A6CFF", "#0B2D72", "#22C5EE", "#14B8A6", "#4A6583"];
-  const words = [
-    ...data.topics,
-    ...data.query.with.map((name, index) => ({
-      name,
-      mentions: max * (0.18 + 0.05 * index),
-      growth: 0,
-      positive: 60,
-      negative: 10,
-    })),
-  ];
   const sorted = [...data.topics].sort((a, b) => b.mentions - a.mentions);
 
   return (
@@ -440,20 +429,7 @@ function TopicsPage({ data }: { data: AquaCase }) {
         scope="common"
         note="Cỡ chữ theo số đề cập, màu đỏ: chủ đề tiêu cực chiếm đa số"
       >
-        <div className="flex flex-wrap items-baseline justify-center gap-x-3.5 gap-y-1.5 px-1 py-2 leading-tight">
-          {words.map((word, index) => (
-            <span
-              key={`${word.name}-${index}`}
-              className="font-semibold"
-              style={{
-                fontSize: 13 + Math.round((word.mentions / max) * 22),
-                color: word.negative >= 50 ? "var(--neg)" : colors[index % colors.length],
-              }}
-            >
-              {word.name}
-            </span>
-          ))}
-        </div>
+        <DemoKeywordCloud data={data} />
       </DemoPanel>
       <DemoPanel
         title="Tăng trưởng chủ đề"

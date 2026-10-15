@@ -269,8 +269,13 @@ export function AspectChart({
 
 export function GrowthChart({
   topics,
+  labelWidth = 140,
+  maxLabelLength,
 }: {
   topics: { name: string; growth: number; negative: number }[];
+  labelWidth?: number;
+  /** Long names are cut with an ellipsis on the axis; the tooltip keeps the full name. */
+  maxLabelLength?: number;
 }) {
   const sorted = [...topics].sort((a, b) => b.growth - a.growth);
   const data = sorted.map((topic) => ({
@@ -285,11 +290,25 @@ export function GrowthChart({
   }));
 
   return (
-    <ChartBox height={260} config={{ growth: { label: "Tăng trưởng", color: "var(--primary)" } }}>
+    <ChartBox
+      height={Math.max(260, data.length * 30)}
+      config={{ growth: { label: "Tăng trưởng", color: "var(--primary)" } }}
+    >
       <BarChart data={data} layout="vertical" margin={{ left: 12 }}>
         <CartesianGrid horizontal={false} stroke="var(--border)" />
         <XAxis type="number" tickFormatter={(value) => `${value}%`} tickLine={false} axisLine={false} />
-        <YAxis type="category" dataKey="name" width={140} tickLine={false} axisLine={false} />
+        <YAxis
+          type="category"
+          dataKey="name"
+          width={labelWidth}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(value: string) =>
+            maxLabelLength && value.length > maxLabelLength
+              ? `${value.slice(0, maxLabelLength - 1).trimEnd()}…`
+              : value
+          }
+        />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="growth" radius={5}>
           {data.map((item) => (

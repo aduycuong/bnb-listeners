@@ -2,7 +2,14 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
-import { EyeIcon, EyeOffIcon, MergeIcon, MessagesSquareIcon, PencilIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  EyeIcon,
+  EyeOffIcon,
+  MergeIcon,
+  MessagesSquareIcon,
+  PencilIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -38,8 +45,8 @@ import {
   type TopicsApiScope,
 } from "./use-topics-api";
 
-/** Real projects get the Topics list; demo projects keep the sample page. */
-export function ProjectTopicsPage({
+/** Topic management of real projects (rename, hide, merge); demo projects keep the sample page. */
+export function ProjectTopicsManagePage({
   workspaceIndexParam,
   projectIndexParam,
 }: {
@@ -69,6 +76,7 @@ export function ProjectTopicsPage({
       projectName={project.name}
       canEdit={hasMinWorkspacePermission(workspace.permission, "edit")}
       mentionsHref={getProjectNavHref(workspaceIndex, projectIndex, "mentions")}
+      reportHref={getProjectNavHref(workspaceIndex, projectIndex, "topics")}
     />
   );
 }
@@ -103,11 +111,13 @@ function TopicsList({
   projectName,
   canEdit,
   mentionsHref,
+  reportHref,
 }: {
   scope: TopicsApiScope;
   projectName: string;
   canEdit: boolean;
   mentionsHref: string;
+  reportHref: string;
 }) {
   const [includeHidden, setIncludeHidden] = useState(false);
   const [editing, setEditing] = useState<TopicListItem | null>(null);
@@ -132,7 +142,17 @@ function TopicsList({
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-5 md:px-7">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-heading text-xl font-bold">Topics</h1>
+          <Button
+            size="xs"
+            variant="ghost"
+            className="-ml-2 mb-1"
+            nativeButton={false}
+            render={<Link href={reportHref} />}
+          >
+            <ArrowLeftIcon />
+            Báo cáo chủ đề
+          </Button>
+          <h1 className="font-heading text-xl font-bold">Quản lý topic</h1>
           <p className="text-[13px] text-muted-foreground">
             {projectName} · chủ đề gom tự động từ các mention có liên quan.
           </p>

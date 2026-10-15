@@ -1,4 +1,4 @@
-import { ProjectTopicsPage } from "@/components/topics/project-topics-page";
+import { ProjectTopicsReportPage } from "@/components/topics/project-topics-report-page";
 
 type PageProps = {
   params: Promise<{ workspaceIndex: string; projectIndex: string }>;
@@ -7,6 +7,9 @@ type PageProps = {
 export default async function ProjectTopicsRoute({ params }: PageProps) {
   const { workspaceIndex, projectIndex } = await params;
   return (
-    <ProjectTopicsPage workspaceIndexParam={workspaceIndex} projectIndexParam={projectIndex} />
+    <ProjectTopicsReportPage
+      workspaceIndexParam={workspaceIndex}
+      projectIndexParam={projectIndex}
+    />
   );
 }
