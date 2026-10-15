@@ -2,7 +2,8 @@
 
 import type { AquaCase } from "@/lib/projects/aqua-demo";
 
-const COLORS = ["#0A6CFF", "#0B2D72", "#22C5EE", "#14B8A6", "#4A6583"];
+/** Dark navy of the demo becomes a theme color, readable on the dark theme too. */
+const COLORS = ["#0A6CFF", "var(--tile-blue-foreground)", "#22C5EE", "#14B8A6", "#4A6583"];
 
 export type KeywordCloudWord = {
   key: string;
