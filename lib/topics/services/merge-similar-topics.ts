@@ -13,18 +13,21 @@ import {
   type TopicMergeResponse,
 } from "../utils/build-topic-merge-request";
 import { uuidArraySql } from "../utils/topic-sql";
+import { mergeSameNameTopics } from "./merge-same-name-topics";
 import { mergeTopics } from "./merge-topics";
 
 const HINTS_PER_TOPIC = 8;
 
 /**
- * Asks the model whether pairs of active topics with close centroids are the
- * same topic, and merges the smaller topic of each such pair into the larger.
+ * Merges active topics with the same name, then asks the model whether pairs
+ * of active topics with close centroids are the same topic, and merges the
+ * smaller topic of each such pair into the larger.
  */
 export async function mergeSimilarTopics(params: {
   projectId: string;
 }): Promise<MergeSimilarTopicsResult> {
   const result: MergeSimilarTopicsResult = { checked: 0, merged: [], llmCalls: 0 };
+  result.merged.push(...(await mergeSameNameTopics({ projectId: params.projectId })));
 
   const { rows: pairs } = await db.execute<{ a: string; b: string }>(sql`
     select a.id as a, b.id as b
