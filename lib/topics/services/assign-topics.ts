@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 
 import { mentionAspects, mentions, mentionTopics, projects, topics } from "@/db/schema";
@@ -20,6 +20,7 @@ import {
   type TopicAssignmentResponse,
   type TopicPlacementResponse,
 } from "../utils/build-topic-assignment-request";
+import { normalizeTopicName } from "../utils/normalize-topic-name";
 import { eligibleMentionSql, uuidArraySql } from "../utils/topic-sql";
 
 type Candidate = { id: string; hint: string; status: string };
@@ -72,6 +73,21 @@ async function loadTopics(projectId: string) {
   };
 }
 
+/** Active and hidden topics of the project by normalized name, so a new topic never repeats a name. */
+async function loadTopicIdsByName(projectId: string): Promise<Map<string, string>> {
+  const rows = await db
+    .select({ id: topics.id, name: topics.name })
+    .from(topics)
+    .where(and(eq(topics.projectId, projectId), inArray(topics.status, ["active", "hidden"])))
+    .orderBy(desc(topics.mentionCount), topics.createdAt);
+  const byName = new Map<string, string>();
+  for (const row of rows) {
+    const key = normalizeTopicName(row.name);
+    if (!byName.has(key)) byName.set(key, row.id);
+  }
+  return byName;
+}
+
 /** Writes topic assignments and marks the mentions assigned. */
 function assignmentWrites(topicId: string, members: string[]): BatchItem<"pg">[] {
   return [
@@ -95,7 +111,10 @@ async function assignHints(params: {
   projectName: string;
   hints: Hint[];
 }): Promise<{ assigned: Set<string>; created: AssignTopicsResult["created"] }> {
-  const { topicByKey, promptTopics } = await loadTopics(params.projectId);
+  const [{ topicByKey, promptTopics }, topicIdByName] = await Promise.all([
+    loadTopics(params.projectId),
+    loadTopicIdsByName(params.projectId),
+  ]);
 
   const prompt = buildTopicAssignmentPrompt({
     projectName: params.projectName,
@@ -120,13 +139,17 @@ async function assignHints(params: {
     const members = indexes.flatMap((index) => params.hints[index].rows.map((row) => row.id));
     if (members.length === 0) continue;
 
-    let topicId = topicByKey.get(entry.key)?.id;
+    // A "new" topic named like an existing one (or one created earlier in this answer) joins it.
+    const name = entry.name?.trim();
+    let topicId =
+      topicByKey.get(entry.key)?.id ??
+      (entry.key === NEW_TOPIC_KEY && name ? topicIdByName.get(normalizeTopicName(name)) : undefined);
     if (!topicId) {
-      const name = entry.name?.trim();
       if (entry.key !== NEW_TOPIC_KEY || !name || members.length < TOPIC_CONFIG.minNewTopicMentions) {
         continue;
       }
       topicId = randomUUID();
+      topicIdByName.set(normalizeTopicName(name), topicId);
       writes.push(
         db.insert(topics).values({
           id: topicId,

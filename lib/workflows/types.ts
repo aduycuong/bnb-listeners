@@ -1,3 +1,5 @@
+import type { FlowControl } from "@upstash/qstash";
+
 import type { WorkflowName } from "./constants";
 
 export type TriggerWorkflowParams = {
@@ -8,6 +10,8 @@ export type TriggerWorkflowParams = {
   /** Seconds to wait before the first step runs. */
   delaySeconds?: number;
   label?: string;
+  /** Limits how many steps of runs sharing the key execute at once. */
+  flowControl?: FlowControl;
 };
 
 export type TriggerWorkflowResult = {
