@@ -414,7 +414,7 @@ Case-specific fields from Enrich (`price_quote`, `buyer_question`, …).
 
 ### `topics`
 
-Topic of a project: a cluster of mention `topic_hint`s named by the LLM (docs/decisions.md D15).
+Topic of a project: mention `topic_hint`s grouped and named by the LLM (docs/decisions.md D15).
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -437,7 +437,7 @@ Topic of a project: a cluster of mention `topic_hint`s named by the LLM (docs/de
 | ------ | ---- | -------- | ------- | ----------- |
 | mention_id | uuid | NO | — | Primary key; FK → `mentions.id` ON DELETE CASCADE (one topic per mention) |
 | topic_id | uuid | NO | — | FK → `topics.id` ON DELETE CASCADE |
-| confidence | real | NO | — | Cosine similarity to the topic centroid when assigned |
+| confidence | real | NO | — | 1 when assigned by the LLM |
 | created_at | timestamptz | NO | `now()` | |
 
 **Indexes:** `mention_topics_topic_id_idx`

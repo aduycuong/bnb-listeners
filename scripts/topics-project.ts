@@ -15,8 +15,7 @@ import { z } from "zod";
 import { mentions, topics } from "@/db/schema";
 import { db } from "@/lib/db";
 import { TOPIC_CONFIG } from "@/lib/topics/config";
-import { assignMentionsToTopics } from "@/lib/topics/services/assign-mentions-to-topics";
-import { discoverTopics } from "@/lib/topics/services/discover-topics";
+import { assignTopics } from "@/lib/topics/services/assign-topics";
 import { embedTopicHints } from "@/lib/topics/services/embed-topic-hints";
 import { mergeSimilarTopics } from "@/lib/topics/services/merge-similar-topics";
 import { refreshTopicStats } from "@/lib/topics/services/refresh-topic-stats";
@@ -38,7 +37,7 @@ const optionsSchema = z
 function parseArgs() {
   const program = new Command()
     .name(SCRIPT)
-    .description("Embed topic hints, assign mentions to topics and find new topics for one project.")
+    .description("Embed topic hints and put waiting mentions into existing or new topics for one project.")
     .requiredOption("--project <id>", "Project id")
     .option("--reset", "Delete the project's topics first", false)
     .option("--dry-run", "Show the current state", false)
@@ -92,15 +91,15 @@ async function main() {
   }
   console.log(`[${SCRIPT}] Embedded`, { embedded });
 
-  console.log(`[${SCRIPT}] Assign`, await assignMentionsToTopics({ projectId: options.project }));
-  const discovered = await discoverTopics({ projectId: options.project });
-  console.log(`[${SCRIPT}] Discover`, {
-    pool: discovered.pool,
-    llmCalls: discovered.llmCalls,
-    created: discovered.created.map((topic) => `${topic.name} (${topic.mentions})`),
-  });
-  if (discovered.created.length > 0) {
-    console.log(`[${SCRIPT}] Assign after discover`, await assignMentionsToTopics({ projectId: options.project }));
+  for (;;) {
+    const result = await assignTopics({ projectId: options.project });
+    console.log(`[${SCRIPT}] Assign`, {
+      llmCalls: result.llmCalls,
+      assigned: result.assigned,
+      waiting: result.waiting,
+      created: result.created.map((topic) => `${topic.name} (${topic.mentions})`),
+    });
+    if (!result.more) break;
   }
   await refreshTopicStats({ projectId: options.project });
   const merged = await mergeSimilarTopics({ projectId: options.project });

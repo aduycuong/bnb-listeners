@@ -274,17 +274,17 @@ Thay nguyên tắc "dữ liệu giả kèm nhãn đúng để đo chất lượn
 Topic là chủ đề cụ thể nổi lên từ dữ liệu ("chậm bàn giao tòa S2", "phí quản lý tăng"), khác aspect là bộ khía cạnh cố định do project cấu hình. Topic phải ổn định theo thời gian để tính được tăng trưởng.
 
 **Quyết định**
-- Enrich (prompt v3) trả thêm `topic_hint` cho mỗi mention: cụm từ ngắn nêu sự việc hoặc vấn đề cụ thể mà mention bàn tới, dùng bài gốc làm ngữ cảnh; null với cảm thán, tag người, nội dung không có ý. Không gọi LLM riêng cho từng mention.
-- Gom cụm trên `topic_hint` chứ không trên văn bản gốc: comment ngắn và nhiễu gom cụm kém. Embedding `text-embedding-3-small`, lưu ở `mention_embeddings` (`kind = topic_hint`, kèm hash văn bản để biết khi nào embed lại); bảng này dùng lại được cho hỏi đáp AI.
+- Enrich (prompt v4) trả thêm `topic_hint` cho mỗi mention: cụm từ ngắn nêu sự việc hoặc vấn đề cụ thể mà mention bàn tới, dùng bài gốc làm ngữ cảnh; ghi vấn đề, không ghi tên dự án, khu hay thương hiệu trừ khi vấn đề chỉ đúng với một nơi; null với cảm thán, tag người, nội dung không có ý. Không gọi LLM riêng cho từng mention.
+- Gán và tìm topic bằng LLM trên `topic_hint`, không gom cụm bằng embedding. Lần chạy thử trên Vinhomes (2026-10-15): embedding của hint bị tên khu chi phối (hint khác chuyện nhưng cùng tên khu giống nhau 0,70–0,75, hint cùng chuyện khác chữ chỉ 0,59–0,69), không ngưỡng nào tách được; chuẩn hóa hint trước khi embed thì topic thành chung chung như aspect. LLM gom trực tiếp bắt được các chủ đề embedding bỏ sót (ví dụ "Phong cách Châu Âu ở Cần Giờ").
 - Topic gắn với từng mention (một mention thuộc tối đa một topic) và thuộc về project. Topic không bị tính lại từ đầu mỗi lần chạy; mention đã gán thì giữ topic, trừ khi `topic_hint` đổi hoặc topic bị gộp.
 - Mỗi lần chạy (workflow `topic-project`, gọi ở cuối `enrich-project`; `npm run topics:project` để chạy tay):
-  1. Embed các `topic_hint` mới hoặc đã đổi.
-  2. Gán: mention chưa có topic được gán vào topic gần nhất (cosine với tâm topic, pgvector) nếu độ tương đồng ≥ ngưỡng gán; nếu không, mention nằm trong hàng chờ (`topic_status = unassigned`).
-  3. Tìm topic mới trong hàng chờ: gom cụm theo mật độ (điểm có nhiều hàng xóm nhất làm hạt nhân, hàng xóm có độ tương đồng ≥ ngưỡng cụm), cụm đủ lớn thành topic. Một lần gọi LLM đặt `name` và `description` cho mọi cụm mới. Sau đó gán lại hàng chờ.
+  1. Embed các `topic_hint` mới hoặc đã đổi (`text-embedding-3-small`, bảng `mention_embeddings` kèm hash văn bản). Hint đổi thì mention rời topic cũ và chờ gán lại. Embedding dùng để tìm cặp topic nên gộp và sau này cho hỏi đáp AI.
+  2. Gán (`gpt-4.1`): khi có mention mới chờ gán, một lần gọi LLM nhận danh sách topic đang có (`active`, `hidden`) và các hint chờ (mention mới cùng mention chưa có topic trong 30 ngày gần nhất). LLM gom hint vào topic cũ, vào topic mới (cần ≥ 3 mention, kèm `name` và `description`), hoặc để chờ (`topic_status = unassigned`). Nếu có topic mới, hint còn lại được hỏi lần hai, từng hint một, chọn một topic hoặc không: hỏi theo nhóm thì model dồn hint chung về giá vào topic hẹp "Giá bán ảo". Nhiều hint thì chia nhiều lần gọi. `gpt-4.1-mini` gán nhiều hơn nhưng tạo topic rộng như aspect, nên dùng `gpt-4.1` (1–2 lần gọi mỗi lần chạy).
+  3. Tính lại tâm (trung bình embedding) và số mention có liên quan của mỗi topic.
   4. Gộp: cặp topic có tâm gần nhau được hỏi LLM có phải cùng một chủ đề không; topic nhỏ hơn được gộp vào topic lớn hơn (`status = merged`, `merged_into_id`).
-  5. Tính lại tâm (trung bình embedding) và số mention có liên quan của mỗi topic.
 - `topics.aspect_id` (có thể null): aspect chiếm ≥ 40% mention của topic lúc tạo, lấy từ kết quả Enrich, không hỏi thêm LLM.
 - Topic có `status`: `active`, `hidden` (người dùng ẩn; vẫn nhận mention để không nổi lên lại thành topic mới), `merged`.
 - Người dùng (quyền `edit`) đổi tên, sửa mô tả, ẩn/hiện và gộp topic. Trang Mentions có lọc theo topic. Biểu đồ Topics làm ở giai đoạn 5.
-- Các ngưỡng (gán, cụm, gộp, kích thước cụm tối thiểu) nằm trong `lib/topics/config.ts`, chỉnh sau khi chạy trên dữ liệu thật.
+- Các tham số (kích thước topic mới tối thiểu, số ngày hint được chờ, ngưỡng gộp) nằm trong `lib/topics/config.ts`.
+- `mention_topics.confidence` = 1 khi LLM gán, độ tương đồng khi gán bằng cách khác về sau.
 - Đo: mẫu loại `topic` (mention có topic, gán nhãn "đúng topic hay không") làm sau phần lõi.

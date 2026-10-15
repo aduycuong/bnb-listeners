@@ -1823,7 +1823,7 @@ export const mentionExtractions = pgTable(
 export type MentionExtraction = typeof mentionExtractions.$inferSelect;
 export type NewMentionExtraction = typeof mentionExtractions.$inferInsert;
 
-/** A topic of a project: a cluster of mention `topic_hint`s named by the LLM (D15). */
+/** A topic of a project: mention `topic_hint`s grouped and named by the LLM (D15). */
 export const topics = pgTable(
   "topics",
   {
@@ -1840,7 +1840,7 @@ export const topics = pgTable(
     mergedIntoId: uuid("merged_into_id").references((): AnyPgColumn => topics.id, {
       onDelete: "set null",
     }),
-    /** Mean embedding of the topic's relevant mentions; new mentions join the nearest topic. */
+    /** Mean embedding of the topic's relevant mentions; close topics are checked for a merge. */
     centroid: pgVector1536("centroid"),
     /** Relevant mentions in the topic, refreshed after each run. */
     mentionCount: integer("mention_count").notNull().default(0),
@@ -1868,7 +1868,7 @@ export const mentionTopics = pgTable(
     topicId: uuid("topic_id")
       .notNull()
       .references(() => topics.id, { onDelete: "cascade" }),
-    /** Cosine similarity to the topic centroid when assigned. */
+    /** 1 when assigned by the LLM. */
     confidence: real("confidence").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -1880,7 +1880,7 @@ export const mentionTopics = pgTable(
 export type MentionTopic = typeof mentionTopics.$inferSelect;
 export type NewMentionTopic = typeof mentionTopics.$inferInsert;
 
-/** Embeddings of mention text, one per kind; `topic_hint` for topic clustering (D15). */
+/** Embeddings of mention text, one per kind; `topic_hint` for topic merges (D15). */
 export const mentionEmbeddings = pgTable(
   "mention_embeddings",
   {

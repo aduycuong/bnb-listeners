@@ -11,17 +11,14 @@ export type EmbedTopicHintsResult = {
   more: boolean;
 };
 
-export type AssignMentionsResult = {
+export type AssignTopicsResult = {
+  llmCalls: number;
+  /** Mentions put into a topic, and those left waiting, in this call. */
   assigned: number;
   waiting: number;
-  /** Waiting mentions that were not waiting before this run; new topics may form. */
-  newlyWaiting: number;
-};
-
-export type DiscoverTopicsResult = {
-  pool: number;
   created: { id: string; name: string; mentions: number }[];
-  llmCalls: number;
+  /** More pending mentions remain for another call. */
+  more: boolean;
 };
 
 export type MergeSimilarTopicsResult = {

@@ -89,7 +89,7 @@ export function buildEnrichPrompt(params: {
     "- sentiment: thái độ của người viết đối với các đối tượng được theo dõi (không phải tâm trạng chung). Câu hỏi, thông tin trung lập, tin rao bán, cho thuê, quảng cáo là neutral trừ khi người viết bày tỏ thái độ. Mỉa mai tính theo nghĩa thật.",
     "- sentimentScore: từ -1 đến 1, khớp với sentiment.",
     `- emotion: một trong ${EMOTIONS.map((key) => `${key} (${EMOTION_LABELS[key]})`).join(", ")}, hoặc null nếu không rõ.`,
-    "- topicHint: cụm từ 3–8 chữ nêu sự việc hoặc vấn đề cụ thể mục đó bàn tới, đủ cụ thể để gom các mục cùng chuyện (ví dụ \"chậm bàn giao tòa S2\", \"phí quản lý tăng\", \"giá căn 2PN rao bán\"). Không chứa tên đối tượng theo dõi trừ khi cần để phân biệt (ví dụ so sánh hai dự án), không chứa thái độ. Bình luận ngắn hiểu theo bài gốc. null nếu chỉ là cảm thán, tag người, chấm hóng, xin thông tin chung chung.",
+    "- topicHint: cụm từ 3–8 chữ nêu sự việc hoặc vấn đề cụ thể mục đó bàn tới, đủ cụ thể để gom các mục cùng chuyện (ví dụ \"chậm bàn giao tòa S2\", \"phí quản lý tăng\", \"dự án mang danh Châu Âu nhưng không giống\"). Ghi vấn đề, không ghi tên dự án, khu, thương hiệu, trừ khi vấn đề chỉ đúng với một nơi (ví dụ \"ngập đường Nguyễn Hữu Cảnh\"); không ghi con số cụ thể, không ghi thái độ. Bình luận ngắn hiểu theo bài gốc. null nếu chỉ là cảm thán, tag người, chấm hóng, xin thông tin chung chung.",
     ctx.aspects.length ? "- aspects: các khía cạnh mục đó thực sự bàn tới, mỗi khía cạnh có sentiment riêng." : "",
     ctx.entities.length ? "- entities: các đối tượng mục đó nói tới, kèm sentiment với từng đối tượng." : "",
     ctx.extractions.length ? "- extractions: các trường riêng bên dưới; không suy đoán khi văn bản không nói rõ." : "",
