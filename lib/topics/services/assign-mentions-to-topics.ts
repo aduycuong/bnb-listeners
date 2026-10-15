@@ -41,7 +41,7 @@ export async function assignMentionsToTopics(params: {
       on conflict (mention_id) do update
         set topic_id = excluded.topic_id, confidence = excluded.confidence, created_at = now()
       returning mention_id
-    )
+    ),
     updated as (
       update mentions
       set topic_status = case when id in (select mention_id from inserted) then 'assigned' else 'unassigned' end,
