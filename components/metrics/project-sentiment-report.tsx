@@ -1,0 +1,88 @@
+"use client";
+
+import { useState } from "react";
+
+import { AspectChart, EmotionChart, NssChart } from "@/components/projects/demo/demo-charts";
+import { DemoGrid, DemoPanel } from "@/components/projects/demo/demo-ui";
+import { METRICS_CONFIG } from "@/lib/metrics/config";
+import { AQUA_PAGE_META, formatCount } from "@/lib/projects/aqua-demo";
+
+import { formatDayLabel, MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
+import { useSentimentMetrics, type MetricsApiScope } from "./use-metrics-api";
+
+/** Sentiment page of real projects, laid out as the approved demo (phase 5b). */
+export function ProjectSentimentReport({
+  scope,
+  projectName,
+}: {
+  scope: MetricsApiScope;
+  projectName: string;
+}) {
+  const [days, setDays] = useState<number>(METRICS_CONFIG.reportPeriodDays[0]);
+  const { data, error, isPending, isFetching } = useSentimentMetrics(scope, days);
+  const hasNss = data?.daily.some((day) => day.nss !== null) ?? false;
+  const emotionTotal = data?.emotions.reduce((total, item) => total + item.mentions, 0) ?? 0;
+  const aspects = data?.aspects.filter((aspect) => aspect.mentions > 0) ?? [];
+  const loading = isPending ? "Đang tải…" : null;
+
+  return (
+    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-5 md:px-7">
+      <MetricsPageHeader
+        title={AQUA_PAGE_META.sentiment.title}
+        subtitle={`${projectName} · cảm xúc của các đề cập có liên quan`}
+        days={days}
+        onDaysChange={setDays}
+        loading={isFetching && !isPending}
+      />
+      {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
+
+      <DemoGrid>
+        <DemoPanel
+          title="Chỉ số cảm xúc (NSS) theo ngày"
+          span="s8"
+          scope="common"
+          note="Dưới 0: tiêu cực chiếm ưu thế. Ngày không có đề cập đã phân loại cảm xúc để trống."
+        >
+          {data && hasNss ? (
+            <NssChart
+              days={data.daily.map((day) => formatDayLabel(day.date))}
+              values={data.daily.map((day) => day.nss)}
+            />
+          ) : (
+            <MetricsEmpty>{loading ?? `Chưa có đề cập đã phân loại cảm xúc trong ${days} ngày gần nhất.`}</MetricsEmpty>
+          )}
+        </DemoPanel>
+        <DemoPanel
+          title="Cảm xúc chi tiết"
+          span="s4"
+          scope="common"
+          note={`Phân loại cảm xúc bằng AI · ${formatCount(emotionTotal)} đề cập có cảm xúc`}
+        >
+          {data && emotionTotal > 0 ? (
+            <EmotionChart values={data.emotions.map((item) => item.share)} />
+          ) : (
+            <MetricsEmpty>{loading ?? "Chưa có đề cập có cảm xúc trong kỳ."}</MetricsEmpty>
+          )}
+        </DemoPanel>
+        <DemoPanel
+          title="Cảm xúc theo khía cạnh"
+          span="s12"
+          scope="common"
+          note="Tỷ lệ tích cực (phải) và tiêu cực (trái) trong các đề cập nhắc đến từng khía cạnh. Khía cạnh không có đề cập trong kỳ được ẩn."
+        >
+          {aspects.length ? (
+            <>
+              <AspectChart names={aspects.map((aspect) => aspect.name)} aspects={aspects} />
+              <p className="mt-2 text-xs text-muted-foreground">
+                Số đề cập:{" "}
+                {aspects.map((aspect) => `${aspect.name} ${formatCount(aspect.mentions)}`).join(" · ")}
+              </p>
+            </>
+          ) : (
+            <MetricsEmpty>{loading ?? "Chưa có đề cập nhắc tới khía cạnh nào trong kỳ."}</MetricsEmpty>
+          )}
+        </DemoPanel>
+      </DemoGrid>
+    </div>
+  );
+}

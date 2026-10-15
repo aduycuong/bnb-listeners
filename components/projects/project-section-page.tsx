@@ -1,5 +1,6 @@
 "use client";
 
+import { ProjectSentimentReport } from "@/components/metrics/project-sentiment-report";
 import { AquaDemoDashboard } from "@/components/projects/demo/demo-dashboard";
 import { ProjectPendingDashboard } from "@/components/projects/project-pending-dashboard";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
@@ -19,13 +20,22 @@ export function ProjectSectionPage({
   projectIndexParam,
   section,
 }: ProjectSectionPageProps) {
-  const { project, workspaceIndex, projectIndex } = useProjectRouteContext(
+  const { workspace, project, workspaceIndex, projectIndex } = useProjectRouteContext(
     workspaceIndexParam,
     projectIndexParam,
   );
 
-  if (!project) {
+  if (!workspace || !project) {
     return null;
+  }
+
+  if (!project.isDemo && section === "sentiment") {
+    return (
+      <ProjectSentimentReport
+        scope={{ workspaceId: workspace.id, projectId: project.id }}
+        projectName={project.name}
+      />
+    );
   }
 
   if (!project.isDemo) {

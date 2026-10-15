@@ -306,3 +306,14 @@ Từ khóa là các cụm từ ngắn mà mention nói tới ("sổ hồng", "ph
   - Prompt: chỉ lấy sự vật, địa điểm, chi phí, thủ tục cụ thể mà văn bản thực sự nhắc tới, không suy ra nhóm chủ đề; không lấy tên khía cạnh, từ chung về bất động sản, con số, số tiền, diện tích (v6 đẩy lên "27 tỷ", "50m2" trên Vinhomes).
   - Code (`pickKeywords`): bỏ từ khóa trùng `ENRICH_CONFIG.genericKeywords` hoặc trùng tên khía cạnh của project, cả tên đầy đủ lẫn từng phần tách theo "&", ",", "/", "và" ("Giá & thanh toán" → "giá", "thanh toán"), và từ khóa bắt đầu bằng chữ số ("3 tỷ", "50m2"; mất luôn "2 phòng ngủ", chấp nhận). So khớp nguyên cụm, nên "giá thứ cấp", "phí dịch vụ" vẫn giữ; khía cạnh tên ngắn như "Phí quản lý" thì từ khóa cùng tên bị bỏ, vì khía cạnh đã có biểu đồ riêng.
   - Biến thể "giá" / "giá bán" / "giá nhà" / "giá căn hộ" không gộp mà cùng nằm trong danh sách chung. Chưa có bảng đồng nghĩa; thêm khi dữ liệu thật cho thấy cần.
+
+## D17 — Giai đoạn 5b: số liệu dashboard (2026-10-15)
+
+**Quyết định**
+- Chưa làm `metrics_hourly` / `metrics_daily`. Overview và Sentiment đọc thẳng từ L3 (`mentions`) như Topics 5a: project lớn nhất có khoảng 700 mention, hai service chạy dưới 1 giây. Truy vấn nằm trong `lib/metrics/` sau API `/api/metrics/overview` và `/api/metrics/sentiment`, nên chuyển sang L4 không đổi giao diện. `metrics_hourly` chỉ cần cho cảnh báo nên làm ở giai đoạn 6.
+- Bỏ Reach trên project thật, thay bằng **Tương tác** (like + comment + share của chính item; với comment, comment là số trả lời) và **Tác giả** (số tác giả khác nhau). Nguồn Facebook gần như không có lượt xem, chỉ có số thành viên group, nên chưa có cơ sở ước tính reach.
+- Công thức dùng chung ở `lib/metrics/formulas.ts` (NSS, tỉ lệ, tăng trưởng, SoV) và `lib/metrics/utils/engagement-sql.ts`. NSS và tỉ lệ tiêu cực tính trên mention đã có sentiment; mention chưa Enrich vẫn tính vào số đề cập.
+- SoV = mention nhắc đối tượng `primary` / mention nhắc `primary` hoặc `competitor` (`mention_entities`). Project không có đối thủ thì ô SoV hiện "—".
+- Kỳ báo cáo là N ngày trọn theo `projects.timezone`, tính cả hôm nay (`METRICS_CONFIG.reportPeriodDays`: 14, 7, 30), so với N ngày liền trước. Khác Topics 5a (khoảng trượt tính từ lúc xem) vì biểu đồ theo ngày cần ngày trọn.
+- Cảm xúc theo khía cạnh theo D14: khía cạnh của nhãn tay (kèm sentiment của mention) khi item đã gán nhãn, nếu không thì khía cạnh của Enrich kèm sentiment riêng của khía cạnh.
+- "Kênh thảo luận" trên Overview tính theo nguồn (group, page) vì hiện chỉ có Facebook. Khung AI tóm tắt và widget riêng theo case chưa hiện trên project thật (giai đoạn 6).

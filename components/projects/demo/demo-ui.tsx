@@ -127,7 +127,14 @@ export function DemoBanner({
   );
 }
 
-export function DemoKpis({ kpis }: { kpis: AquaKpi[] }) {
+export function DemoKpis({
+  kpis,
+  compareLabel = "vs 14 ngày trước",
+}: {
+  kpis: AquaKpi[];
+  /** Shown after a plain delta such as "+12%". */
+  compareLabel?: string;
+}) {
   const tiles = [
     "bg-primary text-white",
     "bg-[var(--tile-mint)] text-[var(--tile-mint-foreground)]",
@@ -173,7 +180,7 @@ export function DemoKpis({ kpis }: { kpis: AquaKpi[] }) {
           >
             {kpi.delta}
             {kpiHasOwnCompare(kpi.delta) ? null : (
-              <span className="ml-1 font-medium opacity-70">vs 14 ngày trước</span>
+              <span className="ml-1 font-medium opacity-70">{compareLabel}</span>
             )}
           </div>
         </div>
