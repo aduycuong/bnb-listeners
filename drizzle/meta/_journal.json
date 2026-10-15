@@ -358,6 +358,13 @@
       "when": 1792030825516,
       "tag": "0050_fair_fixer",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1792038853883,
+      "tag": "0051_tearful_chimera",
+      "breakpoints": true
     }
   ]
 }

@@ -11,7 +11,7 @@ L0  Raw archive      R2: payload gốc từ connector (thật và ảo)
 L1  Raw store        sources · authors · content_items · engagement_snapshots
                      (+ personas · persona_panels · persona_panel_members cho dữ liệu giả)
 L2  Project config   projects · project_entities · project_queries · project_aspects · project_sources
-L3  Analysis         mentions · mention_entities · mention_aspects · mention_topics · mention_extractions · topics
+L3  Analysis         mentions · mention_entities · mention_aspects · mention_topics · mention_keywords · mention_extractions · topics
 L4  Aggregates       metrics_hourly · metrics_daily · (topic/aspect/author daily)
 L5  Outputs          alert_rules · alerts · insights · reports
 ```
@@ -128,6 +128,8 @@ Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` 
 **`mention_aspects`**: `mention_id`, `aspect_id`, `source` (`auto`), `sentiment`. Chỉ chứa kết quả AI; aspect gán tay ở `item_labels.aspect_keys` được ưu tiên.
 
 **`mention_topics`**: `mention_id` (khóa chính: một mention thuộc tối đa một topic), `topic_id`, `confidence` (1 khi LLM gán). Xem [D15](decisions.md#d15--giai-đoạn-4c-topic-2026-10-15).
+
+**`mention_keywords`**: `mention_id`, `keyword` (chuẩn hóa: chữ thường, NFC, giữ dấu), `text` (cách model viết). Enrich trích 0–3 từ khóa mỗi mention, không lấy tên đối tượng của project; đám mây từ khóa đếm thẳng từ bảng này. Xem [D16](decisions.md#d16--từ-khóa-2026-10-15).
 
 **`mention_extractions`**: các trường riêng theo case.
 - `mention_id`, `schema_key` (ví dụ `price_quote`, `violation`, `buyer_question`, `location`), `data` (jsonb, validate bằng zod)

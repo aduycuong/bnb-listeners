@@ -455,6 +455,18 @@ Topic of a project: mention `topic_hint`s grouped and named by the LLM (docs/dec
 
 **Keys:** primary key `(mention_id, kind)`
 
+### `mention_keywords`
+
+Keywords Enrich extracts from a mention (D16).
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| mention_id | uuid | NO | — | FK → `mentions.id` ON DELETE CASCADE |
+| keyword | text | NO | — | Normalized: lowercase, NFC, single spaces; diacritics kept |
+| text | text | NO | — | As the model wrote it |
+
+**Keys:** primary key `(mention_id, keyword)`; `mention_keywords_keyword_idx`
+
 ### `match_judgments`
 
 Tier 2 cache shared by projects.

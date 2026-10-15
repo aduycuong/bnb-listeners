@@ -290,3 +290,15 @@ Topic là chủ đề cụ thể nổi lên từ dữ liệu ("chậm bàn giao 
 - Các tham số (kích thước topic mới tối thiểu, số ngày hint được chờ, ngưỡng gộp) nằm trong `lib/topics/config.ts`.
 - `mention_topics.confidence` = 1 khi LLM gán, độ tương đồng khi gán bằng cách khác về sau.
 - Đo: mẫu loại `topic` (mention có topic, gán nhãn "đúng topic hay không") làm sau phần lõi.
+
+## D16 — Từ khóa (2026-10-15)
+
+Từ khóa là các cụm từ ngắn mà mention nói tới ("sổ hồng", "phí quản lý", "Châu Âu"), hiện trên đám mây từ khóa của trang Topics. Khác topic: topic là một vấn đề nhiều người cùng bàn, từ khóa chỉ là sự vật được nhắc tới, không cần gom.
+
+**Quyết định**
+- Enrich (prompt v5, `gpt-4.1-mini`) trả thêm `keywords`: 0–3 cụm danh từ 1–3 chữ, tiếng Việt có dấu, đúng chính tả, viết đầy đủ chữ viết tắt; không lấy tên đối tượng theo dõi, từ chức năng, thái độ, con số đơn lẻ. Không tách cụm từ bằng code: cần bộ tách từ tiếng Việt, và cách đếm từ của demo ra các từ vô nghĩa ("hạ", "giảm", "tuần"). Enrich vốn gọi LLM cho mỗi mention nên gần như không tốn thêm.
+- Chuẩn hóa: NFC, chữ thường, một khoảng trắng, bỏ dấu câu và `#` ở hai đầu; giữ dấu tiếng Việt vì bỏ dấu sẽ gộp nhầm ("phí", "phi"). Biến thể không dấu và viết tắt được model viết lại khi trích. Từ khóa chứa tên hoặc tên khác của đối tượng theo dõi (theo từng chữ) bị bỏ ở code, kể cả khi model trả về.
+- Lưu ở `mention_keywords` (`mention_id`, `keyword` chuẩn hóa, `text` cách model viết); mỗi lần Enrich thay toàn bộ từ khóa của mention.
+- Trang Topics đếm thẳng từ bảng khi đọc, theo cùng kỳ báo cáo: số mention liên quan và tỉ lệ tiêu cực mỗi từ khóa, lấy `TOPIC_CONFIG.reportKeywords` (30) từ khóa nhiều nhất; tên hiển thị là cách viết gặp nhiều nhất. Chuyển sang L4 cùng lúc với topic.
+- Tăng prompt Enrich lên v5 thì mọi mention được Enrich lại. `topic_hint` có thể đổi theo, khi đó mention rời topic cũ và chờ gán lại (D15).
+- Chạy thử chỉ đọc trên sandbox Lavita và Vinhomes (2026-10-15): không còn tên đối tượng; từ khóa phổ biến vẫn là khía cạnh chung ("giá", "vị trí", "pháp lý", "tiện ích"), bên cạnh từ cụ thể ("phí quản lý", "sổ hồng", "ngập", "Châu Âu"). Chưa lọc từ khóa chung; xem lại sau khi có dữ liệu thật.
