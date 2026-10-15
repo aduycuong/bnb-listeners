@@ -17,7 +17,10 @@ export const topicAssignmentSchema = z.object({
   topics: z.array(
     z.object({
       key: z.string().describe(`Key of an existing topic (t1, t2, …) or "${NEW_TOPIC_KEY}" for a new topic`),
-      name: z.string().nullable().describe("New topic name, 2–7 words; null for an existing topic"),
+      name: z
+        .string()
+        .nullable()
+        .describe("New topic name: 2–7 words, one issue, no project name; null for an existing topic"),
       description: z
         .string()
         .nullable()
@@ -29,9 +32,11 @@ export const topicAssignmentSchema = z.object({
 
 export type TopicAssignmentResponse = z.infer<typeof topicAssignmentSchema>;
 
-/** Prompt that puts waiting hints into existing or new topics of a project (D15). */
+/**
+ * Prompt that puts waiting hints into existing or new topics of a project (D15).
+ * The project name is left out so the model does not put it in topic names.
+ */
 export function buildTopicAssignmentPrompt(params: {
-  projectName: string;
   topics: TopicAssignmentTopic[];
   hints: TopicAssignmentHint[];
   minNewTopicMentions: number;
@@ -39,16 +44,18 @@ export function buildTopicAssignmentPrompt(params: {
   const system = [
     "Bạn xếp các cụm từ tóm tắt thảo luận mạng xã hội về bất động sản vào chủ đề (topic) của một project.",
     "Mỗi cụm từ tóm tắt một bình luận hoặc bài viết; số trong ngoặc là số lần xuất hiện.",
-    "- Topic là một sự việc hoặc vấn đề cụ thể mà nhiều người cùng bàn (ví dụ \"Chậm bàn giao tòa S2\", \"Dự án mang danh Châu Âu nhưng không giống\", \"Giá thứ cấp giảm\"), không phải khía cạnh chung chung như \"Giá bán\", \"Vị trí\", \"Pháp lý\".",
+    "- Topic là một sự việc hoặc vấn đề cụ thể mà nhiều người cùng bàn, nêu được điều gì đang xảy ra (ví dụ \"Chậm bàn giao tòa S2\", \"Chất lượng xây dựng kém\", \"Giá thứ cấp giảm\", \"Chậm cấp sổ hồng\"), không phải khía cạnh chung chung như \"Giá bán\", \"Vị trí\", \"Pháp lý\", \"Tình trạng pháp lý\", \"Tiện ích dự án\".",
+    "- Cụm từ chỉ nêu khía cạnh hoặc hỏi chung (\"pháp lý dự án\", \"giá bán dự án\", \"vị trí dự án\", \"câu hỏi về vay ngân hàng\") và cụm từ ghép nhiều vấn đề (\"giá và pháp lý dự án\") không đủ để tạo topic: bỏ ra ngoài, hoặc xếp vào topic đã có nếu vấn đề chính của nó đúng là topic đó.",
     "- Gom theo vấn đề, không theo tên dự án hay khu: cùng tên khu nhưng khác vấn đề thì khác topic.",
     "- Xếp vào topic đã có chỉ khi cụm từ nói đúng vấn đề của topic, không chỉ cùng khía cạnh (ví dụ \"giá tốt để mua\" hay \"giá bán dự án\" không thuộc \"Giá bán ảo\"). Chỉ trả topic đã có (theo key) khi có cụm từ mới thuộc về nó.",
-    `- Tạo topic mới (key "${NEW_TOPIC_KEY}", kèm name 2–7 chữ tiếng Việt có dấu và description một câu) khi có ít nhất ${params.minNewTopicMentions} lần xuất hiện cùng một vấn đề chưa có topic. Tên cụ thể, không chứa thái độ, khác tên các topic đã có.`,
-    "- Một topic chỉ một vấn đề: tên không ghép hai vấn đề bằng \"và\". Nhóm rộng như \"giá bán\" phải tách theo vấn đề cụ thể (giá thứ cấp giảm, giá rao trên mạng sai thực tế, giá thuê thấp…).",
+    `- Tạo topic mới (key "${NEW_TOPIC_KEY}", kèm name và description một câu) khi có ít nhất ${params.minNewTopicMentions} lần xuất hiện cùng một vấn đề cụ thể chưa có topic.`,
+    "- Tên topic: 2–7 chữ tiếng Việt có dấu, nêu đúng một vấn đề, khác tên các topic đã có, không chứa thái độ.",
+    "- Tên topic không chứa tên dự án hay project, vì mọi topic đều thuộc cùng một project; chỉ ghi tên tòa, khu khi vấn đề chỉ xảy ra ở đó.",
+    "- Tên không có chữ \"và\" nối hai vấn đề. Khi cụm từ trộn hai vấn đề, đặt tên theo vấn đề chung của phần lớn cụm từ, hoặc tách thành hai topic.",
     "- Cụm từ chung chung hoặc không thuộc topic nào thì bỏ ra ngoài, đừng ép vào topic; để lại nhiều cụm từ là bình thường. Mỗi cụm từ thuộc tối đa một topic.",
   ].join("\n");
 
   const lines = [
-    `Project: ${params.projectName}`,
     params.topics.length
       ? `Topic đã có:\n${describeTopics(params.topics)}`
       : "Chưa có topic nào.",
