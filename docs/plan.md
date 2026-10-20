@@ -17,7 +17,7 @@ Tham chiếu: [overview.md](overview.md), [data-model.md](data-model.md), [synth
 
 ## Giai đoạn 1 — Kho thô (L0 + L1)
 
-- [x] Cài `@upstash/workflow`, dựng route workflow và bước mẫu (`/api/workflows/ping`, `npm run workflow:trigger -- --name ping`)
+- [x] Cài `@upstash/workflow`, dựng route workflow và bước mẫu (`/api/workflows/ping`, `npm run workflow:trigger -- -- --name ping`)
 - [x] Schema `sources`, `authors`, `content_items`, `engagement_snapshots`, `collect_runs` (cột `origin` có từ giai đoạn này; `scenario_id` để giai đoạn 2)
 - [x] Interface connector chung (`lib/connectors/types.ts`: chế độ `job` và `direct`)
 - [x] Connector Facebook (page/group, post + comment), viết lại trên nền tích hợp Bright Data và webhook hiện có. Lưu payload gốc lên R2. Xem [D6](decisions.md#d6--luồng-collect-chỉ-dùng-webhook-2026-10-11)
@@ -27,8 +27,8 @@ Tham chiếu: [overview.md](overview.md), [data-model.md](data-model.md), [synth
 **Kết quả:** dữ liệu Facebook thật và dữ liệu cũ nằm trong kho thô mới.
 
 Kiểm chứng sau khi chạy migration:
-1. `npm run legacy:import -- --yes`: 1.293 post, 9.707 comment (gồm reply), 5 source.
-2. `npm run collect:facebook -- --url <group> --limit 20 --yes`: một `collect_runs` chuyển sang `success`, `payload_key` trỏ tới `raw/facebook/facebook-posts/...` trên R2, sinh ra các run `facebook-comments` follow-up.
+1. `npm run legacy:import -- -- --yes`: 1.293 post, 9.707 comment (gồm reply), 5 source.
+2. `npm run collect:facebook -- -- --url <group> --limit 20 --yes`: một `collect_runs` chuyển sang `success`, `payload_key` trỏ tới `raw/facebook/facebook-posts/...` trên R2, sinh ra các run `facebook-comments` follow-up.
 
 ## Giai đoạn 1 — Phát sinh: lập lịch thu thập, tier và lấy lại comment
 
@@ -121,12 +121,12 @@ Mục tiêu thu hẹp: có dữ liệu post và comment nằm trong kho thô đ�
 - [x] `sources` giả (`origin = synthetic`, `platform = facebook`, `source_type = group`)
 - [x] Mẫu giọng văn: few-shot từ comment thật của source được chọn (`--style-source`)
 - [x] Chèn nhiễu nhẹ (bỏ dấu, lỗi chính tả, spam, ngoài chủ đề, ca trùng tên qua `--distractor`)
-- [x] `npm run synthetic:generate -- --panel … --source … --brief … --posts 10 --yes`
+- [x] `npm run synthetic:generate -- -- --panel … --source … --brief … --posts 10 --yes`
 - [x] Chạy thật lần 1 (2026-10-13): 10 thread, 68 item, 19,6s, không thread nào bị bỏ. Đã nâng `maxThreadsPerRun` lên 30 (ước lượng, cần đo lại)
 - [x] Chỉnh sau khi đọc mẫu: OP giữ cảm xúc của bài, cấm bịa chi tiết, mức bám brief (`briefRelevance`), độ dài bài theo persona
 - [ ] Chạy lại với `--style-source` (source thật) và đọc lại mẫu; chỉnh `lib/personas/config.ts` nếu văn bản vẫn đồng nhất
-- [x] `npm run source:delete-content -- --source <id> [--origin synthetic] --yes` để dọn nội dung của một source
-- [x] Seed lịch sử theo kịch bản (`npm run synthetic:seed-history -- --scenario <file>`): mỗi đoạn có brief, cửa sổ ngày trong quá khứ và số bài riêng, để báo cáo theo kỳ (tăng trưởng topic) có dữ liệu kỳ trước. Kịch bản đầu: `scripts/synthetic-scenarios/lavita-topic-history.json` (28 ngày, 93 bài, vào "Match eval BĐS giả")
+- [x] `npm run source:delete-content -- -- --source <id> [--origin synthetic] --yes` để dọn nội dung của một source
+- [x] Seed lịch sử theo kịch bản (`npm run synthetic:seed-history -- -- --scenario <file>`): mỗi đoạn có brief, cửa sổ ngày trong quá khứ và số bài riêng, để báo cáo theo kỳ (tăng trưởng topic) có dữ liệu kỳ trước. Kịch bản đầu: `scripts/synthetic-scenarios/lavita-topic-history.json` (28 ngày, 93 bài, vào "Match eval BĐS giả")
 
 **Bước 3 — Giao diện**
 - [x] Màn hình trong admin console: `/admin/personas` (xem, tạo, sửa; sửa tăng `version`), `/admin/panels` (chọn persona và `weight`, hiển thị tỷ lệ), `/admin/generate` (form chạy sinh kèm bảng run gần đây). Chưa có xóa persona/panel và chưa có sinh persona bằng LLM

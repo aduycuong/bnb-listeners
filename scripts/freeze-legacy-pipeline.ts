@@ -6,13 +6,14 @@
 // Example:
 //   npx tsx scripts/freeze-legacy-pipeline.ts --dry-run
 //   npx tsx scripts/freeze-legacy-pipeline.ts --yes
-//   npm run legacy:freeze -- --yes
+//   npm run legacy:freeze -- -- --yes
 
 import "dotenv/config";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { eq, inArray } from "drizzle-orm";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { dataSources, systemSchedules } from "@/db/schema";
@@ -40,7 +41,7 @@ function parseArgs(): Options {
     .option("--dry-run", "Preview what would be disabled without writing", false)
     .option("--yes", "Disable and delete QStash schedules", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

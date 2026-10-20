@@ -7,7 +7,7 @@ import { seedToAlertRuleInput } from "./to-alert-rule-input";
 /** Form values for a new project of `projectCase`: template aspects and required entity rows. */
 export function toNewProjectFormValues(
   projectCase: AvailableProjectCase,
-  current?: Pick<CreateProjectWithConfigInput, "name" | "description" | "mode" | "sourceIds">,
+  current?: Pick<CreateProjectWithConfigInput, "name" | "description" | "sourceIds">,
   recipient?: string | null,
 ): CreateProjectWithConfigInput {
   const template = getCaseTemplate(projectCase);
@@ -34,7 +34,6 @@ export function toNewProjectFormValues(
     description: current?.description ?? "",
     case: projectCase,
     caseVersion: template.version,
-    mode: current?.mode ?? "live",
     caseConfig: structuredClone(template.defaultConfig),
     entities,
     aspects,
@@ -60,7 +59,6 @@ export function toProjectFormValues(
     description: project.description ?? "",
     case: config.case,
     caseVersion: config.caseVersion,
-    mode: config.mode,
     caseConfig: structuredClone(config.caseConfig),
     entities: config.entities.map((entity) => ({
       id: entity.id,

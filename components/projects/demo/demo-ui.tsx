@@ -2,9 +2,6 @@
 
 import type { ReactNode } from "react";
 
-import Link from "next/link";
-
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   formatShort,
@@ -13,7 +10,6 @@ import {
   type AquaKpi,
   type AquaSentiment,
 } from "@/lib/projects/aqua-demo";
-import type { AquaReviewValue } from "@/lib/projects/aqua-demo-profile";
 
 const SPANS = {
   s3: "col-span-12 xl:col-span-3",
@@ -36,97 +32,6 @@ const PILL_CLASS: Record<AquaSentiment | AquaAlertLevel, string> = {
   low: "bg-muted text-muted-foreground",
 };
 
-export function DemoPage({
-  title,
-  subtitle,
-  banner,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  banner: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-7 py-5">
-      {banner}
-      <div>
-        <h1 className="font-heading text-xl font-bold tracking-tight">{title}</h1>
-        <p className="mt-0.5 text-[13px] text-muted-foreground">{subtitle}</p>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-export function DemoBanner({
-  icon,
-  name,
-  caseLabel,
-  description,
-  datasets,
-  modeLabel,
-  owner,
-  showSampleFlag,
-  settingsHref,
-}: {
-  icon: string;
-  name: string;
-  caseLabel: string;
-  description: string;
-  datasets: string[];
-  modeLabel: string;
-  owner: string;
-  showSampleFlag: boolean;
-  settingsHref: string;
-}) {
-  return (
-    <div className="grid items-center gap-4 rounded-[22px] bg-[var(--tile-blue)] px-5 py-4 text-foreground md:grid-cols-[auto_1fr_auto]">
-      <div className="grid size-11 place-items-center rounded-2xl bg-white text-[22px]">
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <h2 className="flex flex-wrap items-center gap-2 text-base font-bold">
-          {name}
-          <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-white">
-            Case: {caseLabel}
-          </span>
-        </h2>
-        <p className="mt-0.5 max-w-[85ch] text-[13px] text-muted-foreground">
-          {description}
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12.5px] text-muted-foreground">
-          <span>Bộ dữ liệu:</span>
-          {datasets.map((dataset) => (
-            <em
-              key={dataset}
-              className="rounded-full bg-card px-2 py-0.5 text-[12px] font-semibold text-[var(--tile-blue-foreground)] not-italic"
-            >
-              {dataset}
-            </em>
-          ))}
-          <span>
-            · {modeLabel} · Phụ trách: {owner}
-          </span>
-        </div>
-        {showSampleFlag ? (
-          <div className="mt-2 inline-flex rounded-full bg-[var(--tile-sun)] px-2.5 py-1 text-[12px] font-semibold text-[var(--tile-sun-foreground)]">
-            Dự án mới tạo: dashboard đang hiển thị dữ liệu minh họa của kiểu case này
-          </div>
-        ) : null}
-      </div>
-      <Button
-        variant="outline"
-        nativeButton={false}
-        className="bg-white text-primary hover:bg-white/90"
-        render={<Link href={settingsHref} />}
-      >
-        Cài đặt dự án
-      </Button>
-    </div>
-  );
-}
-
 export function DemoKpis({
   kpis,
   compareLabel = "vs 14 ngày trước",
@@ -140,7 +45,7 @@ export function DemoKpis({
     "bg-[var(--tile-mint)] text-[var(--tile-mint-foreground)]",
     "bg-[var(--tile-sun)] text-[var(--tile-sun-foreground)]",
     "bg-[var(--tile-blue)] text-[var(--tile-blue-foreground)]",
-    "bg-[var(--tile-violet)] text-[#3D348B]",
+    "bg-[var(--tile-violet)] text-[var(--tile-violet-foreground)]",
     "bg-[var(--tile-coral)] text-[var(--tile-coral-foreground)]",
   ];
 
@@ -165,7 +70,7 @@ export function DemoKpis({
               i
             </span>
           </div>
-          <div className="mt-1 text-[22px] leading-tight font-bold tracking-tight">
+          <div className="mt-1 text-2xl leading-tight font-bold tracking-tight">
             {kpi.value}
           </div>
           <div
@@ -174,8 +79,8 @@ export function DemoKpis({
               index === 0
                 ? "text-white"
                 : kpi.good
-                  ? "text-[#0B8A6B]"
-                  : "text-[#D5402F]",
+                  ? "text-[var(--positive)]"
+                  : "text-[var(--negative)]",
             )}
           >
             {kpi.delta}
@@ -339,56 +244,5 @@ export function DemoTable({
         </tbody>
       </table>
     </div>
-  );
-}
-
-export function ReviewValueView({ value }: { value: AquaReviewValue }) {
-  if (value.type === "text") {
-    return value.text ? (
-      <span>{value.text}</span>
-    ) : (
-      <span className="text-muted-foreground">—</span>
-    );
-  }
-
-  if (value.type === "tags") {
-    return (
-      <span className="flex flex-wrap gap-1.5">
-        {value.tags.map((tag) => (
-          <span
-            key={tag.text}
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[12px] font-semibold",
-              tag.excluded
-                ? "bg-[var(--tile-coral)] text-[var(--tile-coral-foreground)]"
-                : "bg-[var(--tile-blue)] text-[var(--tile-blue-foreground)]",
-            )}
-          >
-            {tag.text}
-          </span>
-        ))}
-      </span>
-    );
-  }
-
-  if (value.type === "datasets") {
-    return (
-      <span className="flex w-full flex-col gap-2">
-        {value.items.map((item) => (
-          <span key={item.name} className="block">
-            <b className="block">{item.name}</b>
-            <code className="text-[12px] text-muted-foreground">{item.query}</code>
-          </span>
-        ))}
-      </span>
-    );
-  }
-
-  return (
-    <span className="flex w-full flex-col gap-1">
-      {value.lines.map((line) => (
-        <span key={line}>{line}</span>
-      ))}
-    </span>
   );
 }

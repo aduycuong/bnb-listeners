@@ -1,8 +1,7 @@
 "use client";
 
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
 
 type DashboardShellProps = {
@@ -27,7 +26,9 @@ export function DashboardShell({
       />
       <SidebarInset className="bg-background">
         <div className="flex h-svh flex-col overflow-hidden">
-          <DashboardHeader />
+          <div className="flex shrink-0 items-center px-3 pt-3 md:hidden">
+            <SidebarTrigger />
+          </div>
           <div className="flex-1 overflow-y-auto">{children}</div>
         </div>
       </SidebarInset>

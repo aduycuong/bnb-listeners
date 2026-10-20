@@ -3,10 +3,11 @@
 // Example:
 //   npx tsx scripts/seed-system-schedules.ts --dry-run
 //   npx tsx scripts/seed-system-schedules.ts --yes
-//   npm run db:seed-system-schedules -- --yes
+//   npm run db:seed-system-schedules -- -- --yes
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -34,7 +35,7 @@ function parseArgs(): Options {
     .option("--dry-run", "Preview rows without writing", false)
     .option("--yes", "Apply the seed", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

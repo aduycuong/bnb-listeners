@@ -17,7 +17,6 @@ import { useForm } from "react-hook-form";
 import { FormFieldText } from "@/components/forms/form-field-text";
 import { FormFieldTextarea } from "@/components/forms/form-field-textarea";
 import { MentionFilterSelect } from "@/components/mentions/mention-filter-select";
-import { ProjectSectionPage } from "@/components/projects/project-section-page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,7 +44,7 @@ import {
   type TopicsApiScope,
 } from "./use-topics-api";
 
-/** Topic management of real projects (rename, hide, merge); demo projects keep the sample page. */
+/** Topic management: rename, hide, and merge. */
 export function ProjectTopicsManagePage({
   workspaceIndexParam,
   projectIndexParam,
@@ -59,16 +58,6 @@ export function ProjectTopicsManagePage({
   );
 
   if (!workspace || !project) return null;
-
-  if (project.isDemo) {
-    return (
-      <ProjectSectionPage
-        workspaceIndexParam={workspaceIndexParam}
-        projectIndexParam={projectIndexParam}
-        section="topics"
-      />
-    );
-  }
 
   return (
     <TopicsList

@@ -1,7 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 
 import { itemLabels, labelSampleItems, labelSamples, mentions } from "@/db/schema";
-import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 
 import type { LabelSampleStratum, MatchEvaluation } from "../types";
@@ -13,12 +12,13 @@ const STRATA: LabelSampleStratum[] = ["relevant", "rejected", "unmatched"];
  * Precision and recall of Match on one random sample (D13). Only labels of
  * sampled items count. Recall weights each stratum's labeled share by its
  * population, since strata are sampled at different rates.
+ * Returns null when no sample id is given and the project has no match sample.
  */
 export async function evaluateMatch(params: {
   projectId: string;
   /** Latest sample when omitted. */
   sampleId?: string;
-}): Promise<MatchEvaluation> {
+}): Promise<MatchEvaluation | null> {
   let sampleId = params.sampleId;
   if (!sampleId) {
     const [latest] = await db
@@ -27,7 +27,7 @@ export async function evaluateMatch(params: {
       .where(and(eq(labelSamples.projectId, params.projectId), eq(labelSamples.kind, "match")))
       .orderBy(desc(labelSamples.createdAt))
       .limit(1);
-    if (!latest) throw new NotFoundError("label sample for project", params.projectId);
+    if (!latest) return null;
     sampleId = latest.id;
   }
 

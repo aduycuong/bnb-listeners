@@ -8,11 +8,12 @@
 // image. Afterwards it sweeps chunks left behind by a superseded strategy.
 //
 // Example:
-//   npx tsx scripts/rebuild-chunks.ts --dry-run
-//   npx tsx scripts/rebuild-chunks.ts --yes
-//   npx tsx scripts/rebuild-chunks.ts --rescore --yes
+//   npm run chunks:rebuild -- -- --dry-run
+//   npm run chunks:rebuild -- -- --yes
+//   npm run chunks:rebuild -- -- --rescore --yes
 
 import "dotenv/config";
+import { scriptArgv } from "./script-argv";
 
 // Bulk rebuilds emit one LangSmith trace per LLM/embedding call and quickly
 // exhaust the monthly trace quota (429 "Monthly unique traces usage limit
@@ -54,11 +55,11 @@ const optionsSchema = z
 type Options = z.infer<typeof optionsSchema>;
 
 function parseArgs(): Options {
-  const args = process.argv.slice(2);
+  const args = scriptArgv();
 
   if (args.includes("--help") || args.includes("-h")) {
     console.log(`
-Usage: npx tsx scripts/rebuild-chunks.ts [options]
+Usage: npm run chunks:rebuild -- -- [options]
 
 Deletes every existing chunk and rebuilds it from scored document parts.
 Without --rescore only documents that already have an eligible part are
@@ -72,9 +73,9 @@ Options:
   --help      Show this help
 
 Examples:
-  npx tsx scripts/rebuild-chunks.ts --dry-run
-  npx tsx scripts/rebuild-chunks.ts --yes
-  npx tsx scripts/rebuild-chunks.ts --rescore --yes
+  npm run chunks:rebuild -- -- --dry-run
+  npm run chunks:rebuild -- -- --yes
+  npm run chunks:rebuild -- -- --rescore --yes
 `);
     process.exit(0);
   }

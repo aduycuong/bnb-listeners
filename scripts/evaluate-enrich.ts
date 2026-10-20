@@ -2,11 +2,12 @@
 // of real mentions (D13/D14). Label the sample on the Mentions page first.
 //
 // Example:
-//   npm run eval:enrich -- --project <id>
-//   npm run eval:enrich -- --project <id> --sample <sampleId>
+//   npm run eval:enrich -- -- --project <id>
+//   npm run eval:enrich -- -- --project <id> --sample <sampleId>
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { evaluateEnrich } from "@/lib/mentions/services/evaluate-enrich";
@@ -24,7 +25,7 @@ function parseArgs() {
     .description("Sentiment accuracy and aspect F1 on a labeled enrich sample.")
     .requiredOption("--project <id>", "Project id")
     .option("--sample <id>", "Sample id (default: latest enrich sample)");
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 
@@ -35,6 +36,10 @@ function percent(value: number | null) {
 async function main() {
   const options = parseArgs();
   const result = await evaluateEnrich({ projectId: options.project, sampleId: options.sample });
+  if (!result) {
+    console.log(`[${SCRIPT}] No enrich label sample for this project.`);
+    return;
+  }
 
   console.log(`[${SCRIPT}] ${result.sampleName}`, { labeled: result.labeled });
   console.log(`[${SCRIPT}] Sentiment accuracy`, percent(result.sentimentAccuracy));

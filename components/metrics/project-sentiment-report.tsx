@@ -4,6 +4,11 @@ import { useState } from "react";
 
 import { AspectChart, EmotionChart, NssChart } from "@/components/projects/demo/demo-charts";
 import { DemoGrid, DemoPanel } from "@/components/projects/demo/demo-ui";
+import {
+  ProjectPageBanner,
+  projectReportPageClassName,
+  type ProjectPageBannerProps,
+} from "@/components/projects/project-page-banner";
 import { METRICS_CONFIG } from "@/lib/metrics/config";
 import { AQUA_PAGE_META, formatCount } from "@/lib/projects/aqua-demo";
 
@@ -14,9 +19,11 @@ import { useSentimentMetrics, type MetricsApiScope } from "./use-metrics-api";
 export function ProjectSentimentReport({
   scope,
   projectName,
+  banner,
 }: {
   scope: MetricsApiScope;
   projectName: string;
+  banner: ProjectPageBannerProps;
 }) {
   const [days, setDays] = useState<number>(METRICS_CONFIG.reportPeriodDays[0]);
   const { data, error, isPending, isFetching } = useSentimentMetrics(scope, days);
@@ -26,7 +33,7 @@ export function ProjectSentimentReport({
   const loading = isPending ? "Đang tải…" : null;
 
   return (
-    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-5 md:px-7">
+    <div className={projectReportPageClassName}>
       <MetricsPageHeader
         title={AQUA_PAGE_META.sentiment.title}
         subtitle={`${projectName} · cảm xúc của các đề cập có liên quan`}
@@ -34,6 +41,7 @@ export function ProjectSentimentReport({
         onDaysChange={setDays}
         loading={isFetching && !isPending}
       />
+      <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
       <DemoGrid>

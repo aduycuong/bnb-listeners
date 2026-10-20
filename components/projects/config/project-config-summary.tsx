@@ -100,7 +100,6 @@ export function ProjectConfigSummary({
     ["Kiểu case", caseLabel],
     ["Tên project", values.name || "—"],
     ["Mô tả", values.description || "—"],
-    ["Chế độ", values.mode === "sandbox" ? "Sandbox" : "Live"],
     ["Thông tin của case", describeCaseConfig(values)],
     ...roles.map((role): [string, React.ReactNode] => {
       const entities = (values.entities ?? []).filter((entity) => entity.role === role.role);

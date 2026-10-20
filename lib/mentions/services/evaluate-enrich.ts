@@ -8,7 +8,6 @@ import {
   mentions,
   projectAspects,
 } from "@/db/schema";
-import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { SENTIMENTS } from "@/lib/enrichment/config";
 
@@ -28,11 +27,12 @@ function f1(precision: number | null, recall: number | null) {
  * Enrich against the labels of one `enrich` sample (D13/D14): sentiment
  * accuracy with a confusion matrix, and aspect precision/recall/F1 (micro and
  * per aspect). Only items labeled relevant and enriched count.
+ * Returns null when no sample id is given and the project has no enrich sample.
  */
 export async function evaluateEnrich(params: {
   projectId: string;
   sampleId?: string;
-}): Promise<EnrichEvaluation> {
+}): Promise<EnrichEvaluation | null> {
   let sampleId = params.sampleId;
   if (!sampleId) {
     const [latest] = await db
@@ -41,7 +41,7 @@ export async function evaluateEnrich(params: {
       .where(and(eq(labelSamples.projectId, params.projectId), eq(labelSamples.kind, "enrich")))
       .orderBy(desc(labelSamples.createdAt))
       .limit(1);
-    if (!latest) throw new NotFoundError("enrich label sample for project", params.projectId);
+    if (!latest) return null;
     sampleId = latest.id;
   }
   const sample = await getLabelSampleSummary({ projectId: params.projectId, sampleId });

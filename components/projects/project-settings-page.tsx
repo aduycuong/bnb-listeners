@@ -31,12 +31,10 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { ProjectConfigEditor } from "@/components/projects/config/project-config-editor";
-import { AquaProjectSettings } from "@/components/projects/demo/demo-settings";
 import {
   projectsQueryKey,
   useProjectRouteContext,
 } from "@/hooks/use-project-route-context";
-import { getProjectNavHref } from "@/lib/dashboard/nav-items";
 import { updateProjectSchema } from "@/lib/projects/schema";
 import type { ProjectListItem } from "@/lib/projects/types";
 import { projectFetch } from "@/lib/projects/utils/project-fetch";
@@ -65,8 +63,10 @@ export function ProjectSettingsPage({
   workspaceIndexParam,
   projectIndexParam,
 }: ProjectSettingsPageProps) {
-  const { workspace, project, workspaceIndex, projectIndex } =
-    useProjectRouteContext(workspaceIndexParam, projectIndexParam);
+  const { workspace, project } = useProjectRouteContext(
+    workspaceIndexParam,
+    projectIndexParam,
+  );
   const queryClient = useQueryClient();
   const { t } = useT("dashboard");
   const [editing, setEditing] = useState(false);
@@ -130,23 +130,13 @@ export function ProjectSettingsPage({
 
   return (
     <>
-      {project.isDemo ? (
-        <AquaProjectSettings
-          projectName={project.name}
-          projectDescription={project.description}
-          projectCase={project.case}
-          settingsHref={getProjectNavHref(workspaceIndex, projectIndex, "settings")}
-          onEdit={() => setEditing(true)}
-        />
-      ) : (
-        <ProjectConfigEditor
-          workspaceId={workspace.id}
-          project={project}
-          caseLabel={t(`cases.${project.case}`)}
-          canEdit={canEdit}
-          onEditInfo={() => setEditing(true)}
-        />
-      )}
+      <ProjectConfigEditor
+        workspaceId={workspace.id}
+        project={project}
+        caseLabel={t(`cases.${project.case}`)}
+        canEdit={canEdit}
+        onEditInfo={() => setEditing(true)}
+      />
       <Dialog open={editing} onOpenChange={setEditing}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <form

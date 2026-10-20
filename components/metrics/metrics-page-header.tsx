@@ -1,5 +1,6 @@
 "use client";
 
+import { CalendarIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { MentionFilterSelect } from "@/components/mentions/mention-filter-select";
@@ -22,10 +23,12 @@ export function MetricsPageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="font-heading text-xl font-bold tracking-tight">{title}</h1>
-        <p className="mt-0.5 text-[13px] text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="font-heading text-[22px] leading-none font-bold tracking-[-0.015em]">
+          {title}
+        </h1>
+        <p className="mt-1 text-[12.5px] text-muted-foreground">
           {subtitle}
           {loading ? " · đang tải…" : ""}
         </p>
@@ -33,6 +36,7 @@ export function MetricsPageHeader({
       <div className="flex flex-wrap items-center gap-2">
         <MentionFilterSelect
           label="Khoảng thời gian"
+          icon={<CalendarIcon />}
           value={String(days)}
           options={METRICS_CONFIG.reportPeriodDays.map((value) => ({
             value: String(value),

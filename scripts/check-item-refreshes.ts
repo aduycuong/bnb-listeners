@@ -7,10 +7,11 @@
 // Example:
 //   npx tsx scripts/check-item-refreshes.ts
 //   npx tsx scripts/check-item-refreshes.ts --source-id <uuid> --limit 50 --yes
-//   npm run refresh:check -- --yes
+//   npm run refresh:check -- -- --yes
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { dispatchDueRefreshes } from "@/lib/connectors/services/dispatch-due-refreshes";
@@ -31,7 +32,7 @@ function parseArgs() {
     .option("--limit <n>", "Max due checkpoints to handle", "500")
     .option("--yes", "Write schedules and start the Bright Data runs", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

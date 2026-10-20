@@ -19,17 +19,20 @@ export function MatchEvaluationCard({
   scope: MentionsApiScope;
   labelHref: string;
 }) {
-  const { data, error, isLoading } = useMatchEvaluation(scope);
+  const match = useMatchEvaluation(scope);
   const enrich = useEnrichEvaluation(scope);
+  const isLoading = match.isLoading || enrich.isLoading;
+  const error = match.error ?? enrich.error;
 
   return (
     <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border px-4 py-3">
       {isLoading ? <p className="text-sm text-muted-foreground">Đang tải kết quả đo…</p> : null}
-      {error ? (
+      {!isLoading && !error && !match.data && !enrich.data ? (
         <p className="text-sm text-muted-foreground">
           Chưa có mẫu gán nhãn. Tạo một mẫu ngẫu nhiên để đo độ chính xác của Match.
         </p>
       ) : null}
+      {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
       {enrich.data ? (
         <div className="flex w-full flex-wrap items-center gap-x-6 gap-y-1 text-sm">
           <span>
@@ -39,20 +42,20 @@ export function MatchEvaluationCard({
           <span>Khía cạnh F1 {formatPercent(enrich.data.aspect.f1)}</span>
         </div>
       ) : null}
-      {data ? (
+      {match.data ? (
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
           <span>
-            <b>{data.sampleName}</b>: {data.labeled}/
-            {data.strata.reduce((total, stratum) => total + stratum.sampled, 0)} đã gán nhãn
+            <b>{match.data.sampleName}</b>: {match.data.labeled}/
+            {match.data.strata.reduce((total, stratum) => total + stratum.sampled, 0)} đã gán nhãn
           </span>
-          <span>Precision {formatPercent(data.precision)}</span>
-          <span>Recall {formatPercent(data.recall)}</span>
-          {data.precisionByMatchType.map((row) => (
+          <span>Precision {formatPercent(match.data.precision)}</span>
+          <span>Recall {formatPercent(match.data.recall)}</span>
+          {match.data.precisionByMatchType.map((row) => (
             <span key={row.matchType} className="text-muted-foreground">
               {row.matchType === "direct" ? "Nhắc tên" : "Ngữ cảnh"}: {formatPercent(row.precision)} (n={row.labeled})
             </span>
           ))}
-          {!data.current ? (
+          {!match.data.current ? (
             <span className="text-xs text-destructive">
               Cấu hình đã đổi sau khi lấy mẫu, nên tạo mẫu mới.
             </span>

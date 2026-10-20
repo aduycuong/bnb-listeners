@@ -22,10 +22,6 @@ export const projectCaseSchema = z.enum(PROJECT_CASES);
 
 export const availableProjectCaseSchema = z.enum(AVAILABLE_PROJECT_CASES);
 
-export const PROJECT_MODES = ["live", "sandbox"] as const;
-
-export type ProjectMode = (typeof PROJECT_MODES)[number];
-
 const termListSchema = z
   .array(z.string().trim().min(1).max(80))
   .max(30)
@@ -88,7 +84,6 @@ export const projectConfigSchema = z
     case: availableProjectCaseSchema,
     /** Case definition version; new projects use the latest, upgrades raise it. */
     caseVersion: z.number().int().positive(),
-    mode: z.enum(PROJECT_MODES).default("live"),
     caseConfig: z.record(z.string(), z.unknown()).default({}),
     entities: z.array(projectEntityInputSchema).max(60),
     aspects: z

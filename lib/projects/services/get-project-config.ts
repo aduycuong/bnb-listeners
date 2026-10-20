@@ -74,7 +74,6 @@ export async function getProjectConfig(
     projectId: project.id,
     case: projectCase,
     caseVersion: project.caseVersion,
-    mode: project.mode === "sandbox" ? "sandbox" : "live",
     configVersion: project.configVersion,
     caseConfig: project.caseConfig,
     entities: entities.map((entity) => {

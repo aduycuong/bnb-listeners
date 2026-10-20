@@ -188,7 +188,7 @@ Tenant container for members, data sources, documents, and projects.
 
 Scoring prompts (`score_text_part`, `score_media_part`, `score_comment_stances`) are built from `data_collection_scope`. Term prompts (`classify_terms`, `propose_term`) also use that scope plus the project's `term_language` and `term_criteria`.
 
-A default workspace is created for each user on first sign-in. Creating a workspace seeds five demo listening projects (`is_demo = true`: developer reputation, project, area market, broker monitoring, crisis).
+A default workspace is created for each user on first sign-in. A new workspace has no projects until one is created.
 
 ---
 
@@ -207,11 +207,9 @@ Social listening scope inside a workspace: one brand, campaign, or similar liste
 | term_criteria | text | NO | `''` | Multiline rules for new term creation in this project |
 | case | text | NO | `project` | Real estate case id (`docs/decisions.md` D10): `brand`, `project`, `ir`, `launch`, `broker`, `lead`, `rival`, `market`, `policy`, `kol`, `crisis`, `residents`. Only `project`, `market`, `brand` have a real config yet |
 | case_version | integer | NO | `1` | Case definition version (`CASE_VERSIONS` in `lib/projects/case-templates.ts`); raised only when the user saves an upgraded config |
-| mode | text | NO | `live` | `live` (only `origin = connector` sources) or `sandbox` (synthetic sources allowed) |
 | timezone | text | NO | `Asia/Ho_Chi_Minh` | Timezone for buckets and reports |
 | config_version | integer | NO | `1` | Bumped on every config change |
 | case_config | jsonb | NO | `{}` | Case-specific fields, validated by the case's zod schema in `lib/projects/case-templates.ts` |
-| is_demo | boolean | NO | `false` | Demo projects render the sample dashboard |
 | match_signature | text | YES | — | Hash of query ids + versions and sources at the last full Match |
 | matched_at | timestamptz | YES | — | Last full Match |
 | notification_config | jsonb | NO | `{}` | `{ channels, recipients, reportSchedule }`: default alert delivery and AI report schedule |
@@ -243,7 +241,8 @@ Brand, project, competitor or area a project listens for.
 | aliases | jsonb | NO | `[]` | Other names (string[]) |
 | color | text | YES | — | Chart color |
 | sort_order | integer | NO | `0` | Display order |
-| created_at / updated_at | timestamptz | NO | `now()` | |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
 **Indexes:** `project_entities_project_id_idx` on `project_id`
 
@@ -263,7 +262,8 @@ Lexical rule that makes a content item a mention. One generated query per entity
 | proximity | integer | YES | — | Max words between include and with terms; null = anywhere |
 | version | integer | NO | `1` | Bumped when terms change; triggers re-matching |
 | enabled | boolean | NO | `true` | |
-| created_at / updated_at | timestamptz | NO | `now()` | |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
 **Indexes:** `project_queries_project_id_idx`, `project_queries_entity_id_idx`
 
@@ -279,7 +279,8 @@ Aspects a project measures sentiment on, initialized from the case template.
 | name | text | NO | — | Display name |
 | description | text | NO | `''` | Guidance for the Enrich prompt |
 | sort_order | integer | NO | `0` | Display order |
-| created_at / updated_at | timestamptz | NO | `now()` | |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
 **Indexes:** `project_aspects_project_key_idx` — UNIQUE on `(project_id, key)`
 
@@ -305,7 +306,12 @@ A content item that matched a project (docs/decisions.md D11). Tier 2 rejections
 | project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
 | content_item_id | uuid | NO | — | FK → `content_items.id` ON DELETE CASCADE |
 | root_item_id | uuid | YES | — | Root post of the thread |
-| kind, platform, source_id, author_id, published_at, origin | — | — | — | Copied from the item for filtering |
+| kind | text | NO | — | Copied from the item for filtering (`post` \| `comment` \| `reply` \| `article` \| `video` \| `listing`) |
+| platform | text | NO | — | Copied from the item for filtering |
+| source_id | uuid | YES | — | Copied from the item for filtering |
+| author_id | uuid | YES | — | Copied from the item for filtering |
+| published_at | timestamptz | YES | — | Copied from the item for filtering |
+| origin | text | NO | — | Copied from the item for filtering (`connector` \| `synthetic` \| `legacy_import`) |
 | matched_query_ids | jsonb | NO | `[]` | Queries that matched |
 | matched_entity_ids | jsonb | NO | `[]` | Entities the item is about |
 | matched_terms | jsonb | NO | `[]` | Terms found in the text |
@@ -326,7 +332,8 @@ A content item that matched a project (docs/decisions.md D11). Tier 2 rejections
 | enriched_at | timestamptz | YES | — | |
 | topic_hint | text | YES | — | Short phrase from Enrich naming what the mention is about (docs/decisions.md D15) |
 | topic_status | text | NO | `pending` | `pending` (to embed or assign), `assigned`, `unassigned` (waiting for a new topic), `none` (no hint) |
-| created_at / updated_at | timestamptz | NO | `now()` | |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
 **Indexes:** `mentions_project_item_idx` UNIQUE `(project_id, content_item_id)`; `mentions_project_published_idx`; `mentions_project_root_idx`; `mentions_content_item_id_idx`; `mentions_project_topic_status_idx` `(project_id, topic_status)`
 
@@ -427,7 +434,8 @@ Topic of a project: mention `topic_hint`s grouped and named by the LLM (docs/dec
 | merged_into_id | uuid | YES | — | FK → `topics.id` ON DELETE SET NULL |
 | centroid | vector(1536) | YES | — | Mean embedding of the topic's relevant mentions |
 | mention_count | integer | NO | `0` | Relevant mentions, refreshed after each run |
-| created_at / updated_at | timestamptz | NO | `now()` | |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
 **Indexes:** `topics_project_status_idx` `(project_id, status)`
 
@@ -492,7 +500,8 @@ Alert rule of a project; `kind` comes from the catalog in `lib/projects/alert-te
 | channels | jsonb | YES | — | Overrides `projects.notification_config.channels`; null = project default |
 | enabled | boolean | NO | `true` | |
 | sort_order | integer | NO | `0` | Display order |
-| created_at / updated_at | timestamptz | NO | `now()` | |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
 **Indexes:** `alert_rules_project_id_idx` on `project_id`
 
@@ -1228,7 +1237,8 @@ New pipeline tables (see `docs/data-model.md`). Shared across workspaces — no 
 | origin | text | NO | `connector` | Data origin |
 | metadata | jsonb | NO | `{}` | Platform extras |
 | last_collected_at | timestamptz | YES | — | Last successful collect run |
-| created_at / updated_at | timestamptz | NO | `now()` | |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
 **Indexes:** unique `(platform, external_id)`; btree `origin`.
 
@@ -1247,7 +1257,8 @@ New pipeline tables (see `docs/data-model.md`). Shared across workspaces — no 
 | persona_id | uuid | YES | — | FK → `personas.id` ON DELETE SET NULL; synthetic authors only |
 | origin | text | NO | `connector` | |
 | metadata | jsonb | NO | `{}` | |
-| created_at / updated_at | timestamptz | NO | `now()` | |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
 **Indexes:** unique `(platform, external_id)`; `persona_id`.
 
@@ -1268,8 +1279,9 @@ One connector run, driven by the `collect-source` Upstash Workflow.
 | item_count | integer | YES | — | Items in the raw payload |
 | stats | jsonb | YES | — | Normalize counts `{ inserted, updated, skipped }` plus connector stats (post runs: `lateArrivals`, `maxLatenessMinutes`, `schedulesCreated`, `postsToCollect`, `activityTier`, `postsPerDay`; refresh runs: `checked`, `postsToCollect`, `commentRunsPlanned`; comment runs: `expectedMaxRecords`, `posts[] { postExternalId, numComments, collected, replies }`) |
 | error | text | YES | — | Failure message |
-| started_at / finished_at | timestamptz | YES | — | |
-| created_at | timestamptz | NO | `now()` | |
+| started_at | timestamptz | YES | — | Run start time |
+| finished_at | timestamptz | YES | — | Run end time |
+| created_at | timestamptz | NO | `now()` | Row creation time |
 
 **Indexes:** `(source_id, created_at DESC)`; `status`; `external_job_id`.
 
@@ -1295,12 +1307,16 @@ Posts, comments and replies in one table.
 | published_at | timestamptz | YES | — | |
 | first_seen_at | timestamptz | NO | `now()` | |
 | last_collected_at | timestamptz | NO | `now()` | |
-| like_count / comment_count / share_count / view_count | integer | NO | `0` | Latest engagement |
+| like_count | integer | NO | `0` | Latest likes / hearts / favorites |
+| comment_count | integer | NO | `0` | Latest comments / replies |
+| share_count | integer | NO | `0` | Latest shares / retweets / reposts |
+| view_count | integer | NO | `0` | Latest views / plays / impressions |
 | reactions | jsonb | YES | — | Reaction breakdown `{ like, love, haha, … }` |
 | origin | text | NO | `connector` | |
 | collect_run_id | uuid | YES | — | FK → `collect_runs.id` ON DELETE SET NULL (last run that wrote the row) |
 | metadata | jsonb | NO | `{}` | Platform extras; `legacy_import` keeps the old document/comment id here |
-| created_at / updated_at | timestamptz | NO | `now()` | |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
 **Indexes:** unique `(platform, external_id)`; `(source_id, published_at DESC)`; `published_at DESC`; `parent_id`; `root_id`; `author_id`; `collect_run_id`; `origin`.
 
@@ -1312,7 +1328,10 @@ Posts, comments and replies in one table.
 | content_item_id | uuid | NO | — | FK → `content_items.id` ON DELETE CASCADE |
 | collect_run_id | uuid | YES | — | FK → `collect_runs.id` ON DELETE SET NULL |
 | captured_at | timestamptz | NO | `now()` | |
-| like_count / comment_count / share_count / view_count | integer | NO | `0` | |
+| like_count | integer | NO | `0` | Likes at `captured_at` |
+| comment_count | integer | NO | `0` | Comments at `captured_at` |
+| share_count | integer | NO | `0` | Shares at `captured_at` |
+| view_count | integer | NO | `0` | Views at `captured_at` |
 | reactions | jsonb | YES | — | |
 
 **Indexes:** `(content_item_id, captured_at DESC)`; unique `(content_item_id, collect_run_id)` so a re-run normalize step does not duplicate snapshots.
@@ -1328,7 +1347,8 @@ Next comment-refresh checkpoint per post (checkpoints are config, e.g. +6h / +24
 | checkpoint_hours | integer | NO | — | Checkpoint being waited for, in hours after `published_at` |
 | comments_collected_count | integer | YES | — | `num_comments` when comments were last collected; null = never collected |
 | comments_collected_at | timestamptz | YES | — | When comments were last collected |
-| created_at / updated_at | timestamptz | NO | `now()` | |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
 **Indexes:** `next_refresh_at`.
 
@@ -1349,7 +1369,8 @@ A reusable kind of person or organization that the synthetic connector writes as
 | version | integer | NO | `1` | |
 | source | text | NO | `manual` | `template` \| `manual` \| `llm_generated` |
 | review_status | text | NO | `draft` | `draft` \| `approved` |
-| created_at / updated_at | timestamptz | NO | `now()` | |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
 **Indexes:** unique `template_key` (nulls allowed many times).
 
@@ -1363,7 +1384,8 @@ A set of personas with weights that stands for one community.
 | template_key | text | YES | — | Stable key of a seeded template panel |
 | name | text | NO | — | |
 | description | text | NO | `''` | |
-| created_at / updated_at | timestamptz | NO | `now()` | |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
 **Indexes:** unique `template_key`.
 

@@ -2,9 +2,8 @@
 // Read-only. Writes to .local/exports/legacy-<timestamp>/ (git-ignored) by default.
 //
 // Example:
-//   npx tsx scripts/export-legacy-documents.ts
-//   npx tsx scripts/export-legacy-documents.ts --out-dir .local/exports/before-freeze
 //   npm run legacy:export
+//   npm run legacy:export -- -- --out-dir .local/exports/before-freeze
 
 import "dotenv/config";
 import { createWriteStream } from "node:fs";
@@ -14,6 +13,7 @@ import { once } from "node:events";
 import { asc, gt } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { comments, dataSources, documents } from "@/db/schema";
@@ -34,7 +34,7 @@ function parseArgs(): Options {
     .description("Export legacy documents, comments and data sources to JSONL.")
     .option("--out-dir <dir>", "Output directory (default: .local/exports/legacy-<timestamp>)");
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

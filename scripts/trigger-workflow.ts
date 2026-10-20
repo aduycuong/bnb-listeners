@@ -5,10 +5,11 @@
 // Example:
 //   npx tsx scripts/trigger-workflow.ts --name ping
 //   npx tsx scripts/trigger-workflow.ts --name ping --body '{"message":"hello"}'
-//   npm run workflow:trigger -- --name ping
+//   npm run workflow:trigger -- -- --name ping
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { WORKFLOW_NAMES } from "@/lib/workflows/constants";
@@ -42,7 +43,7 @@ function parseArgs(): Options {
     .requiredOption("--name <name>", `Workflow name (${WORKFLOW_NAMES.join(", ")})`)
     .option("--body <json>", "JSON payload for the run");
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

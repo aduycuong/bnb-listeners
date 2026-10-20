@@ -1,0 +1,52 @@
+{
+  "description": "The Emerald 68 (Lê Phong, Đại lộ Bình Dương) over 28 days so the Topics report has a previous period: price and sales-license talk early, a construction-delay surge, and a new worry about the developer's track record in the last 14 days.",
+  "panel": "Group review bất động sản",
+  "source": "Match eval The Emerald 68 giả",
+  "seed": 20261020,
+  "commentsPerPost": [2, 10],
+  "segments": [
+    {
+      "brief": "Người mua hỏi giá căn hộ The Emerald 68 (Ngọc Lục Bảo 68, Đại lộ Bình Dương), chiết khấu và chính sách thanh toán 20% đến khi nhận nhà, vay BIDV",
+      "posts": 18,
+      "fromDays": 28,
+      "toDays": 14
+    },
+    {
+      "brief": "Người mua hỏi pháp lý The Emerald 68: giấy phép xây dựng và văn bản đủ điều kiện bán nhà hình thành trong tương lai của chủ đầu tư Lê Phong",
+      "posts": 10,
+      "fromDays": 28,
+      "toDays": 14
+    },
+    {
+      "brief": "Người mua so sánh vị trí The Emerald 68 ở mặt tiền Đại lộ Bình Dương và đường Vĩnh Phú 16, view sông Sài Gòn có bị che không",
+      "posts": 6,
+      "fromDays": 26,
+      "toDays": 14
+    },
+    {
+      "brief": "Người mua The Emerald 68 lo tiến độ xây dựng chậm, bàn giao bị lùi so với mốc quý 4/2026 mà bên bán đang hứa, hỏi Coteccons thi công tới tầng nào",
+      "posts": 18,
+      "fromDays": 12,
+      "toDays": 0,
+      "distractors": ["Sân golf Emerald cuối tuần đông người đặt chỗ, caddie phục vụ tốt"]
+    },
+    {
+      "brief": "Người mua hỏi giá và suất chiết khấu The Emerald 68 còn không",
+      "posts": 8,
+      "fromDays": 14,
+      "toDays": 0
+    },
+    {
+      "brief": "Người mua hỏi tiện ích The Emerald 68 (hồ bơi vô cực, phố thương mại) có hoàn thiện cùng lúc bàn giao không, đơn vị quản lý Anabuki đã ký chưa",
+      "posts": 8,
+      "fromDays": 14,
+      "toDays": 0
+    },
+    {
+      "brief": "Người mua lo chủ đầu tư Tập đoàn Lê Phong ít dự án đã bàn giao, hỏi Coteccons có đứng ra bảo lãnh tiến độ The Emerald 68 không",
+      "posts": 10,
+      "fromDays": 5,
+      "toDays": 0
+    }
+  ]
+}

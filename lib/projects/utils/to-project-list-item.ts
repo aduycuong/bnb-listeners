@@ -12,8 +12,6 @@ export function toProjectListItem(row: Project): ProjectListItem {
     description: row.description,
     case: parseProjectCase(row.listeningCase),
     caseVersion: row.caseVersion,
-    mode: row.mode === "sandbox" ? "sandbox" : "live",
-    isDemo: row.isDemo,
     configVersion: row.configVersion,
     autoCreateTerms: row.autoCreateTerms,
     termLanguage: parseTermLanguage(row.termLanguage),

@@ -15,6 +15,7 @@ description: Develop TypeScript scripts and CLIs for this repo, including argume
 ## CLI arguments
 
 - Use `commander` for new script argument parsing and help output.
+- Parse with `commandArgv()` from `scripts/script-argv.ts` (`scriptArgv()` for manual parsers). PowerShell's `npm.ps1` consumes one `--`, so examples must use `npm run <script> -- -- --flag`. The helper drops the extra `--` that cmd and bash forward.
 - Keep examples in a short header comment at the top of each script.
 - Use explicit option names such as `--user-id`, `--email`, `--dry-run`, and `--yes`; avoid ambiguous short flags except for common help behavior.
 - Use `.requiredOption()` for truly required inputs and `.option()` with defaults for optional behavior.
@@ -51,10 +52,11 @@ description: Develop TypeScript scripts and CLIs for this repo, including argume
 
 ```ts
 // Example:
-//   npx tsx scripts/example-task.ts --email user@example.com --dry-run
+//   npm run example-task -- -- --email user@example.com --dry-run
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 const optionsSchema = z
@@ -77,7 +79,7 @@ function parseArgs(): Options {
     .option("--dry-run", "Preview changes without writing", false)
     .option("--yes", "Apply changes", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

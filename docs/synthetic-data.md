@@ -83,4 +83,4 @@ Giới hạn cần đo: `fetchRecords` chạy trong một bước workflow, nên
 - **Chế độ replay**: phát dần theo thời gian, để test cảnh báo (giai đoạn 6).
 - **Dự báo phản ứng**: dự đoán phân bố phản ứng theo panel và stimulus, chạy nhiều lượt, hiệu chỉnh theo tần suất lịch sử, so với baseline không persona, backtest trên sự kiện thật. Chỉ làm khi có dữ liệu thật từ nhiều nguồn để đối chiếu.
 - **Persona phức tạp hơn**: khai thác từ dữ liệu thật (gom cụm tác giả và comment), mẫu giọng văn gắn theo persona, thuộc tính hành vi (giờ hoạt động, độ trễ phản ứng, mức ảnh hưởng).
-- **Cô lập dữ liệu giả theo project** (`mode = sandbox`), nếu cần.
+- **Cô lập dữ liệu giả theo project**, nếu cần. Không còn cột `projects.mode`.

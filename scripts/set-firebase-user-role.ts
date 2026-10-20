@@ -1,9 +1,10 @@
 // Example:
 //   npx tsx scripts/set-firebase-user-role.ts <firebaseUid>
 //   npx tsx scripts/set-firebase-user-role.ts <firebaseUid> admin
-//   npm run firebase:set-user-role -- <firebaseUid> admin
+//   npm run firebase:set-user-role -- -- <firebaseUid> admin
 
 import "dotenv/config";
+import { scriptArgv } from "./script-argv";
 import { getAdminAuth } from "@/lib/firebase/admin";
 
 type Args = {
@@ -14,11 +15,11 @@ type Args = {
 function printUsageAndExit(code: number): never {
   const msg = [
     "Usage:",
-    "  npx tsx scripts/set-firebase-user-role.ts <firebaseUid> [role]",
+    "  npm run firebase:set-user-role -- -- <firebaseUid> [role]",
     "",
     "Examples:",
-    "  npx tsx scripts/set-firebase-user-role.ts abc123",
-    "  npx tsx scripts/set-firebase-user-role.ts abc123 admin",
+    "  npm run firebase:set-user-role -- -- abc123",
+    "  npm run firebase:set-user-role -- -- abc123 admin",
     "",
     "Notes:",
     "  - Default role is admin when omitted.",
@@ -47,7 +48,7 @@ function parseArgs(argv: string[]): Args {
 }
 
 async function main() {
-  const { uid, role } = parseArgs(process.argv.slice(2));
+  const { uid, role } = parseArgs(scriptArgv());
   const adminAuth = getAdminAuth();
 
   if (!adminAuth) {

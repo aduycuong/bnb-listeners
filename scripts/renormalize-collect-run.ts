@@ -8,10 +8,11 @@
 //
 // Example:
 //   npx tsx scripts/renormalize-collect-run.ts --run-id <uuid>
-//   npm run collect:renormalize -- --run-id <uuid> --yes
+//   npm run collect:renormalize -- -- --run-id <uuid> --yes
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { renormalizeCollectRun } from "@/lib/connectors/services/renormalize-collect-run";
@@ -32,7 +33,7 @@ function parseArgs() {
     .option("--skip-follow-ups", "Do not start follow-up runs", false)
     .option("--yes", "Write to the raw store and start follow-ups", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

@@ -7,12 +7,13 @@
 // model or `buildTermEmbeddingText`.
 //
 // Example:
-//   npx tsx scripts/embed-terms.ts --dry-run
-//   npx tsx scripts/embed-terms.ts --yes
-//   npx tsx scripts/embed-terms.ts --all --yes
-//   npx tsx scripts/embed-terms.ts --workspace-id <uuid> --yes
+//   npm run terms:embed -- -- --dry-run
+//   npm run terms:embed -- -- --yes
+//   npm run terms:embed -- -- --all --yes
+//   npm run terms:embed -- -- --workspace-id <uuid> --yes
 
 import "dotenv/config";
+import { scriptArgv } from "./script-argv";
 
 // Bulk embedding emits one LangSmith trace per request; disable tracing for
 // this process only so the monthly trace quota is not consumed.
@@ -49,11 +50,11 @@ const optionsSchema = z
 type Options = z.infer<typeof optionsSchema>;
 
 function parseArgs(): Options {
-  const args = process.argv.slice(2);
+  const args = scriptArgv();
 
   if (args.includes("--help") || args.includes("-h")) {
     console.log(`
-Usage: npx tsx scripts/embed-terms.ts [options]
+Usage: npm run terms:embed -- -- [options]
 
 Embeds term name + description into terms.embedding. By default only terms
 without an embedding are processed.
@@ -66,9 +67,9 @@ Options:
   --help                 Show this help
 
 Examples:
-  npx tsx scripts/embed-terms.ts --dry-run
-  npx tsx scripts/embed-terms.ts --yes
-  npx tsx scripts/embed-terms.ts --all --yes
+  npm run terms:embed -- -- --dry-run
+  npm run terms:embed -- -- --yes
+  npm run terms:embed -- -- --all --yes
 `);
     process.exit(0);
   }

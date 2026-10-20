@@ -7,7 +7,7 @@ Các quyết định đã chốt cho bản xây dựng lại. Ghi thêm khi có 
 - Không xóa code cũ cho đến giai đoạn 8. Tắt mọi data source và system schedule trong DB, đồng thời xóa schedule tương ứng trên QStash.
 - Các job cào comment đã xếp lịch sẽ tự bỏ qua khi data source bị tắt (`scrape-facebook-document-comments`).
 - Công cụ:
-  - `npm run legacy:freeze -- --dry-run | --yes`
+  - `npm run legacy:freeze -- -- --dry-run | --yes`
   - Danh sách đã tắt được lưu ở `.local/exports/frozen-*.json`. Muốn mở lại thì bật `enabled` rồi chạy `scripts/sync-system-schedules.ts`.
 - Dữ liệu cũ đã được export ra `.local/exports/legacy-*/` (JSONL) bằng `npm run legacy:export`.
 - **Lý do:** script chuyển dữ liệu cũ vẫn cần đọc bảng cũ; UI demo vẫn đang dùng; tránh phải gỡ code nhiều chỗ cùng lúc.
@@ -94,7 +94,7 @@ Dựa trên các thử nghiệm Bright Data ngày 2026-10-12 và 2026-10-13 (`np
 
 **Công cụ**
 - `npm run refresh:check`: gửi các mốc lấy lại đến hạn bằng tay.
-- `npm run collect:renormalize -- --run-id <uuid>`: ghi lại payload đã lưu trên R2 vào kho thô (sau khi sửa parser) mà không tạo job Bright Data mới.
+- `npm run collect:renormalize -- -- --run-id <uuid>`: ghi lại payload đã lưu trên R2 vào kho thô (sau khi sửa parser) mà không tạo job Bright Data mới.
 
 ## D8 — Giai đoạn 2: persona → connector ảo → kho thô (2026-10-13)
 

@@ -3,10 +3,11 @@
 //
 // Example:
 //   npm run synthetic:seed-personas
-//   npm run synthetic:seed-personas -- --yes
+//   npm run synthetic:seed-personas -- -- --yes
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { seedPersonaTemplates } from "@/lib/personas/services/seed-persona-templates";
@@ -29,7 +30,7 @@ function parseArgs(): Options {
     .description("Seed template personas and panels for synthetic data.")
     .option("--yes", "Write to the database (default is a preview)", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

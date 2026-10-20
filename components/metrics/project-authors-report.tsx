@@ -5,6 +5,11 @@ import { useState } from "react";
 
 import { DonutChart } from "@/components/projects/demo/demo-charts";
 import { DemoGrid, DemoPanel, DemoTable, SentimentPill } from "@/components/projects/demo/demo-ui";
+import {
+  ProjectPageBanner,
+  projectReportPageClassName,
+  type ProjectPageBannerProps,
+} from "@/components/projects/project-page-banner";
 import type { Sentiment } from "@/lib/enrichment/config";
 import { AUTHOR_TIERS, METRICS_CONFIG } from "@/lib/metrics/config";
 import {
@@ -34,10 +39,12 @@ export function ProjectAuthorsReport({
   scope,
   projectName,
   mentionsHref,
+  banner,
 }: {
   scope: MetricsApiScope;
   projectName: string;
   mentionsHref: string;
+  banner: ProjectPageBannerProps;
 }) {
   const [days, setDays] = useState<number>(METRICS_CONFIG.reportPeriodDays[0]);
   const { data, error, isPending, isFetching } = useAuthorMetrics(scope, days);
@@ -45,7 +52,7 @@ export function ProjectAuthorsReport({
   const empty = isPending ? "Đang tải…" : `Chưa có đề cập trong ${days} ngày gần nhất.`;
 
   return (
-    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-5 md:px-7">
+    <div className={projectReportPageClassName}>
       <MetricsPageHeader
         title={AQUA_PAGE_META.authors.title}
         subtitle={`${projectName} · tác giả của các đề cập có liên quan`}
@@ -53,6 +60,7 @@ export function ProjectAuthorsReport({
         onDaysChange={setDays}
         loading={isFetching && !isPending}
       />
+      <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
       <DemoGrid>

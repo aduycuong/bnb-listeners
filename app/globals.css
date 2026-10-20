@@ -51,11 +51,12 @@
   --tile-mint: #d5f7ef;
   --tile-sun: #fff1cc;
   --tile-coral: #ffe3e3;
-  --tile-violet: #ece9ff;
+  --tile-violet: #e4dcff;
   --tile-blue-foreground: #0b4a80;
   --tile-mint-foreground: #06614f;
   --tile-sun-foreground: #7a5300;
   --tile-coral-foreground: #9b1c1c;
+  --tile-violet-foreground: #3d348b;
 }
 
 body {
@@ -150,11 +151,12 @@ body {
   --tile-mint: rgba(0, 201, 167, 0.16);
   --tile-sun: rgba(255, 201, 60, 0.16);
   --tile-coral: rgba(255, 107, 107, 0.16);
-  --tile-violet: rgba(139, 124, 246, 0.18);
+  --tile-violet: rgba(139, 124, 246, 0.34);
   --tile-blue-foreground: #8fd0ff;
   --tile-mint-foreground: #6ee8cf;
   --tile-sun-foreground: #ffd873;
   --tile-coral-foreground: #ffaaaa;
+  --tile-violet-foreground: #e4dcff;
 }
 
 @layer base {

@@ -7,6 +7,7 @@
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { executeSystemScheduleJob } from "@/lib/system-schedules/services/execute-system-schedule-job";
@@ -44,7 +45,7 @@ function parseArgs(): Options {
     .option("--dry-run", "Show what would run without executing anything.", false)
     .option("--yes", "Execute the dataSource.", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

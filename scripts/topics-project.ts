@@ -4,11 +4,12 @@
 //
 // Example:
 //   npx tsx scripts/topics-project.ts --project <id> --dry-run
-//   npm run topics:project -- --project <id> --yes
-//   npm run topics:project -- --project <id> --reset --yes
+//   npm run topics:project -- -- --project <id> --yes
+//   npm run topics:project -- -- --project <id> --reset --yes
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { and, count, desc, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 
@@ -42,7 +43,7 @@ function parseArgs() {
     .option("--reset", "Delete the project's topics first", false)
     .option("--dry-run", "Show the current state", false)
     .option("--yes", "Call the models and write results", false);
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

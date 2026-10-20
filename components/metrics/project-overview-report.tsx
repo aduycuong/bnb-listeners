@@ -5,6 +5,11 @@ import { useState } from "react";
 
 import { DonutChart, TrendChart } from "@/components/projects/demo/demo-charts";
 import { DemoBars, DemoGrid, DemoKpis, DemoPanel } from "@/components/projects/demo/demo-ui";
+import {
+  ProjectPageBanner,
+  projectReportPageClassName,
+  type ProjectPageBannerProps,
+} from "@/components/projects/project-page-banner";
 import { METRICS_CONFIG } from "@/lib/metrics/config";
 import { growthPercent } from "@/lib/metrics/formulas";
 import type { MetricsValue, OverviewMetricsResult } from "@/lib/metrics/types";
@@ -109,10 +114,12 @@ function buildKpis(data: OverviewMetricsResult): AquaKpi[] {
 export function ProjectOverviewReport({
   scope,
   projectName,
+  banner,
   mentionsHref,
 }: {
   scope: MetricsApiScope;
   projectName: string;
+  banner: ProjectPageBannerProps;
   mentionsHref: string;
 }) {
   const [days, setDays] = useState<number>(METRICS_CONFIG.reportPeriodDays[0]);
@@ -123,7 +130,7 @@ export function ProjectOverviewReport({
     : 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-5 md:px-7">
+    <div className={projectReportPageClassName}>
       <MetricsPageHeader
         title={AQUA_PAGE_META.overview.title}
         subtitle={`${projectName} · số liệu từ các đề cập có liên quan`}
@@ -131,6 +138,7 @@ export function ProjectOverviewReport({
         onDaysChange={setDays}
         loading={isFetching && !isPending}
       />
+      <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
       {data ? <DemoKpis kpis={buildKpis(data)} compareLabel={`vs ${days} ngày trước`} /> : null}
 

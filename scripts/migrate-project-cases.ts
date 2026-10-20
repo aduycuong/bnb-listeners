@@ -1,19 +1,18 @@
 // Move projects from the generic listening cases to the real estate case ids
-// (docs/decisions.md D10) and flag the seeded demo projects with `is_demo`.
-// Run after the D10 schema migration.
+// (docs/decisions.md D10). Run after the D10 schema migration.
 //
 // Example:
 //   npx tsx scripts/migrate-project-cases.ts --dry-run
-//   npm run projects:migrate-cases -- --yes
+//   npm run projects:migrate-cases -- -- --yes
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { projects } from "@/db/schema";
 import { db } from "@/lib/db";
-import { DEMO_PROJECTS } from "@/lib/projects/demo-projects";
 import {
   LEGACY_PROJECT_CASES,
   PROJECT_CASES,
@@ -36,34 +35,31 @@ type Options = z.infer<typeof optionsSchema>;
 function parseArgs(): Options {
   const program = new Command()
     .name(SCRIPT)
-    .description("Map legacy project cases to real estate case ids and flag demo projects.")
+    .description("Map legacy project cases to real estate case ids.")
     .option("--dry-run", "Preview changes without writing", false)
     .option("--yes", "Apply changes", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 
 async function main() {
   const options = parseArgs();
   const apply = options.yes;
-  const demoNames = new Set(DEMO_PROJECTS.map((project) => project.name));
   const rows = await db
     .select({
       id: projects.id,
       name: projects.name,
       listeningCase: projects.listeningCase,
-      isDemo: projects.isDemo,
     })
     .from(projects);
 
   const changes = rows
     .map((row) => {
       const nextCase = parseProjectCase(row.listeningCase);
-      const nextIsDemo = row.isDemo || demoNames.has(row.name);
-      return { ...row, nextCase, nextIsDemo };
+      return { ...row, nextCase };
     })
-    .filter((row) => row.nextCase !== row.listeningCase || row.nextIsDemo !== row.isDemo);
+    .filter((row) => row.nextCase !== row.listeningCase);
 
   console.log(`[${SCRIPT}] Starting`, {
     mode: apply ? "apply" : "dry-run",
@@ -77,8 +73,8 @@ async function main() {
       !(row.listeningCase in LEGACY_PROJECT_CASES);
     console.log(
       `[${SCRIPT}] ${row.name}: ${row.listeningCase} → ${row.nextCase}${
-        row.nextIsDemo !== row.isDemo ? " · is_demo" : ""
-      }${unknown ? " (unknown case, defaulted)" : ""}`,
+        unknown ? " (unknown case, defaulted)" : ""
+      }`,
     );
   }
 
@@ -90,7 +86,7 @@ async function main() {
   for (const row of changes) {
     await db
       .update(projects)
-      .set({ listeningCase: row.nextCase, isDemo: row.nextIsDemo })
+      .set({ listeningCase: row.nextCase })
       .where(eq(projects.id, row.id));
   }
 

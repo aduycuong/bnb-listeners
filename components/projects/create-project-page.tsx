@@ -6,13 +6,7 @@ import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import {
-  Controller,
-  useForm,
-  useWatch,
-  type FieldErrors,
-  type FieldPath,
-} from "react-hook-form";
+import { useForm, useWatch, type FieldErrors, type FieldPath } from "react-hook-form";
 
 import { FormFieldText } from "@/components/forms/form-field-text";
 import { FormFieldTextarea } from "@/components/forms/form-field-textarea";
@@ -25,15 +19,6 @@ import { ProjectEntitiesFields } from "@/components/projects/config/project-enti
 import { ProjectMatchPreview } from "@/components/projects/config/project-match-preview";
 import { ProjectSourcesFields } from "@/components/projects/config/project-sources-fields";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/components/ui/toast";
 import { fetchProjects, projectsQueryKey } from "@/hooks/use-project-route-context";
 import { useWorkspaceRouteContext } from "@/hooks/use-workspace-route-context";
@@ -69,7 +54,7 @@ const STEPS = [
 ] as const;
 
 const STEP_FIELDS: Record<number, FieldPath<FormValues>[]> = {
-  1: ["name", "description", "mode"],
+  1: ["name", "description"],
   2: ["sourceIds"],
   3: ["entities", "caseConfig"],
   4: ["aspects"],
@@ -79,7 +64,6 @@ const STEP_FIELDS: Record<number, FieldPath<FormValues>[]> = {
 const STEP_OF_FIELD: Record<string, number> = {
   name: 1,
   description: 1,
-  mode: 1,
   sourceIds: 2,
   entities: 3,
   caseConfig: 3,
@@ -281,39 +265,6 @@ export function CreateProjectPage({
                   name="description"
                   label="Mô tả"
                   placeholder="Mục tiêu, ai sẽ dùng dashboard này…"
-                />
-                <Controller
-                  control={form.control}
-                  name="mode"
-                  render={({ field }) => (
-                    <FieldSet>
-                      <FieldLegend variant="label">Chế độ</FieldLegend>
-                      <RadioGroup value={field.value} onValueChange={field.onChange}>
-                        {[
-                          {
-                            value: "live",
-                            label: "Live",
-                            description: "Chỉ dùng nguồn thật. Số liệu dùng được cho khách hàng.",
-                          },
-                          {
-                            value: "sandbox",
-                            label: "Sandbox",
-                            description: "Dùng được cả nguồn dữ liệu giả, để thử cấu hình và đo Match.",
-                          },
-                        ].map((option) => (
-                          <Field key={option.value} orientation="horizontal">
-                            <RadioGroupItem value={option.value} id={`project-mode-${option.value}`} />
-                            <FieldContent>
-                              <FieldLabel htmlFor={`project-mode-${option.value}`}>
-                                {option.label}
-                              </FieldLabel>
-                              <FieldDescription>{option.description}</FieldDescription>
-                            </FieldContent>
-                          </Field>
-                        ))}
-                      </RadioGroup>
-                    </FieldSet>
-                  )}
                 />
               </div>
             </StepBody>

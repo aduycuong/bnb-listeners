@@ -7,10 +7,11 @@
 // Example:
 //   npx tsx scripts/collect-facebook-source.ts --url https://www.facebook.com/groups/reviewbatdongsanaz --dry-run
 //   npx tsx scripts/collect-facebook-source.ts --url https://www.facebook.com/groups/reviewbatdongsanaz --max-records 50 --yes
-//   npm run collect:facebook -- --url https://www.facebook.com/somepage --since 2026-10-01T00:00:00Z --yes
+//   npm run collect:facebook -- -- --url https://www.facebook.com/somepage --since 2026-10-01T00:00:00Z --yes
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { parseFacebookSourceUrl } from "@/lib/connectors/facebook/utils/parse-facebook-source-url";
@@ -45,7 +46,7 @@ function parseArgs(): Options {
     .option("--dry-run", "Show what would run without writing", false)
     .option("--yes", "Register the source and start the run", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import {
   Select,
   SelectContent,
@@ -14,15 +16,18 @@ export function MentionFilterSelect({
   value,
   options,
   onChange,
+  icon,
 }: {
   label: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
+  icon?: ReactNode;
 }) {
   return (
     <Select items={options} value={value} onValueChange={(next) => onChange(String(next ?? ""))}>
       <SelectTrigger size="sm" className="min-w-36" aria-label={label}>
+        {icon}
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

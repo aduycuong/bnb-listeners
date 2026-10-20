@@ -1,0 +1,52 @@
+{
+  "description": "The Habitat Bình Dương (VSIP, Đại lộ Hữu Nghị) over 28 days so the Topics report has a previous period: rents and management fees in the lived-in phases early, a phase-3 handover delay, construction nuisance for older residents, and a new fee hike in the last few days.",
+  "panel": "Group review bất động sản",
+  "source": "Match eval The Habitat giả",
+  "seed": 20261022,
+  "commentsPerPost": [2, 10],
+  "segments": [
+    {
+      "brief": "Người thuê hỏi giá cho thuê căn hộ The Habitat Bình Dương giai đoạn 1 và 2, gần VSIP 1 trên Đại lộ Hữu Nghị",
+      "posts": 14,
+      "fromDays": 28,
+      "toDays": 14
+    },
+    {
+      "brief": "Cư dân The Habitat Bình Dương giai đoạn 1 hỏi mức phí quản lý và cách ban quản trị đang vận hành",
+      "posts": 10,
+      "fromDays": 28,
+      "toDays": 14
+    },
+    {
+      "brief": "Cư dân The Habitat Bình Dương bàn về tiện ích hồ bơi, trường mầm non và công viên nội khu",
+      "posts": 6,
+      "fromDays": 26,
+      "toDays": 14
+    },
+    {
+      "brief": "Người mua giai đoạn 3 The Habitat Bình Dương bức xúc vì bàn giao chậm so với cam kết, vừa đóng tiền theo tiến độ vừa phải thuê nhà",
+      "posts": 18,
+      "fromDays": 12,
+      "toDays": 0,
+      "distractors": ["Habitat for Humanity kêu gọi quyên góp xây nhà cho người nghèo miền Trung"]
+    },
+    {
+      "brief": "Cư dân giai đoạn 1 và 2 The Habitat Bình Dương phản ánh bụi, tiếng ồn và bãi xe bị chiếm do thi công giai đoạn 3",
+      "posts": 12,
+      "fromDays": 14,
+      "toDays": 0
+    },
+    {
+      "brief": "Người thuê hỏi giá cho thuê căn hộ The Habitat Bình Dương giai đoạn 1 gần khu công nghiệp VSIP",
+      "posts": 6,
+      "fromDays": 14,
+      "toDays": 0
+    },
+    {
+      "brief": "Cư dân The Habitat Bình Dương phản đối phí quản lý tăng trong lúc giai đoạn 3 chưa bàn giao, ban quản trị chưa giải thích",
+      "posts": 10,
+      "fromDays": 5,
+      "toDays": 0
+    }
+  ]
+}

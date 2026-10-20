@@ -1,6 +1,6 @@
 "use client";
 
-import { SettingsIcon } from "lucide-react";
+import { CalendarIcon, SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -8,7 +8,11 @@ import { MentionFilterSelect } from "@/components/mentions/mention-filter-select
 import { GrowthChart } from "@/components/projects/demo/demo-charts";
 import { KeywordCloud } from "@/components/projects/demo/demo-keyword-cloud";
 import { DemoGrid, DemoPanel, DemoTable } from "@/components/projects/demo/demo-ui";
-import { ProjectSectionPage } from "@/components/projects/project-section-page";
+import {
+  ProjectPageBanner,
+  projectReportPageClassName,
+  type ProjectPageBannerProps,
+} from "@/components/projects/project-page-banner";
 import { Button } from "@/components/ui/button";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
@@ -19,7 +23,7 @@ import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-ran
 
 import { useTopicReport, type TopicsApiScope } from "./use-topics-api";
 
-/** Topics report of real projects, laid out as the approved demo; demo projects keep the sample page. */
+/** Topics report for a project. */
 export function ProjectTopicsReportPage({
   workspaceIndexParam,
   projectIndexParam,
@@ -34,16 +38,6 @@ export function ProjectTopicsReportPage({
 
   if (!workspace || !project) return null;
 
-  if (project.isDemo) {
-    return (
-      <ProjectSectionPage
-        workspaceIndexParam={workspaceIndexParam}
-        projectIndexParam={projectIndexParam}
-        section="topics"
-      />
-    );
-  }
-
   const topicsHref = getProjectNavHref(workspaceIndex, projectIndex, "topics");
   return (
     <TopicsReport
@@ -53,6 +47,12 @@ export function ProjectTopicsReportPage({
         hasMinWorkspacePermission(workspace.permission, "edit") ? `${topicsHref}/manage` : null
       }
       mentionsHref={getProjectNavHref(workspaceIndex, projectIndex, "mentions")}
+      banner={{
+        name: project.name,
+        description: project.description,
+        projectCase: project.case,
+        settingsHref: getProjectNavHref(workspaceIndex, projectIndex, "settings"),
+      }}
     />
   );
 }
@@ -77,11 +77,13 @@ function TopicsReport({
   projectName,
   manageHref,
   mentionsHref,
+  banner,
 }: {
   scope: TopicsApiScope;
   projectName: string;
   manageHref: string | null;
   mentionsHref: string;
+  banner: ProjectPageBannerProps;
 }) {
   const [days, setDays] = useState<number>(TOPIC_CONFIG.reportPeriodDays[0]);
   const { data, error, isPending, isFetching } = useTopicReport(scope, days);
@@ -99,13 +101,13 @@ function TopicsReport({
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-5 md:px-7">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-xl font-bold tracking-tight">
+    <div className={projectReportPageClassName}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-heading text-[22px] leading-none font-bold tracking-[-0.015em]">
             {AQUA_PAGE_META.topics.title}
           </h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
+          <p className="mt-1 text-[12.5px] text-muted-foreground">
             {projectName} · chủ đề gom tự động từ các mention có liên quan
             {isFetching && !isPending ? " · đang tải…" : ""}
           </p>
@@ -113,6 +115,7 @@ function TopicsReport({
         <div className="flex flex-wrap items-center gap-2">
           <MentionFilterSelect
             label="Khoảng thời gian"
+            icon={<CalendarIcon />}
             value={String(days)}
             options={TOPIC_CONFIG.reportPeriodDays.map((value) => ({
               value: String(value),
@@ -133,6 +136,7 @@ function TopicsReport({
           ) : null}
         </div>
       </div>
+      <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
       <DemoGrid>

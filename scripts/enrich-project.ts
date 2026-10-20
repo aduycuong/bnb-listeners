@@ -3,10 +3,11 @@
 //
 // Example:
 //   npx tsx scripts/enrich-project.ts --project <id> --dry-run
-//   npm run enrich:project -- --project <id> --limit 3 --yes
+//   npm run enrich:project -- -- --project <id> --limit 3 --yes
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { ENRICH_CONFIG } from "@/lib/enrichment/config";
@@ -35,7 +36,7 @@ function parseArgs() {
     .option("--limit <n>", "Enrich at most this many threads")
     .option("--dry-run", "Show what would be enriched", false)
     .option("--yes", "Call the model and write results", false);
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

@@ -1,0 +1,52 @@
+{
+  "description": "The Rivana (Đạt Phước, Đại lộ Bình Dương) over 28 days so the Topics report has a previous period: resale prices and management fees early, a pink-book stall after the tax-debt rumor, and a new elevator complaint in the last 14 days.",
+  "panel": "Group review bất động sản",
+  "source": "Match eval The Rivana giả",
+  "seed": 20261019,
+  "commentsPerPost": [2, 10],
+  "segments": [
+    {
+      "brief": "Người mua hỏi giá bán lại căn hộ The Rivana (Đại lộ Bình Dương, Thuận An), so sánh căn đã có sổ hồng và căn chưa sang tên",
+      "posts": 16,
+      "fromDays": 28,
+      "toDays": 14
+    },
+    {
+      "brief": "Cư dân The Rivana hỏi mức phí quản lý và việc thành lập ban quản trị sau khi chủ đầu tư Đạt Phước bàn giao",
+      "posts": 10,
+      "fromDays": 28,
+      "toDays": 14
+    },
+    {
+      "brief": "Người mua hỏi tiến độ cấp sổ hồng các căn The Rivana còn lại sau đợt trao sổ tháng 10/2024",
+      "posts": 8,
+      "fromDays": 26,
+      "toDays": 14
+    },
+    {
+      "brief": "Cư dân The Rivana lo các căn chưa sang tên bị đình trệ vì chủ đầu tư Đạt Phước nợ thuế, đòi lịch cấp sổ hồng cụ thể",
+      "posts": 20,
+      "fromDays": 12,
+      "toDays": 0,
+      "distractors": ["Khách sạn Rivana ở Phú Quốc view biển đẹp, kỳ nghỉ vừa rồi rất ổn"]
+    },
+    {
+      "brief": "Người mua hỏi giá bán lại căn hộ The Rivana, căn chưa có sổ có bị giảm giá không",
+      "posts": 8,
+      "fromDays": 14,
+      "toDays": 0
+    },
+    {
+      "brief": "Cư dân The Rivana bàn về phí quản lý và chất lượng ban quản lý vận hành",
+      "posts": 8,
+      "fromDays": 14,
+      "toDays": 0
+    },
+    {
+      "brief": "Cư dân The Rivana phản ánh thang máy hay hỏng, chờ lâu vào giờ cao điểm, ban quản lý sửa chậm",
+      "posts": 8,
+      "fromDays": 5,
+      "toDays": 0
+    }
+  ]
+}

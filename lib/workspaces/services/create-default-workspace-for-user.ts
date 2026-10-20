@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 
 import { workspaceMembers, workspaces } from "@/db/schema";
 import { db } from "@/lib/db";
-import { createDefaultProject } from "@/lib/projects/services/create-default-project";
 
 import { buildDefaultWorkspaceName } from "../utils/build-default-workspace-name";
 import { resolveUniqueWorkspaceSlug } from "../utils/resolve-unique-workspace-slug";
@@ -46,10 +45,6 @@ export async function createDefaultWorkspaceForUser(params: {
     userId: params.userId,
     permission: "owner",
     grantedBy: params.userId,
-  });
-
-  await createDefaultProject({
-    workspaceId: workspace.id,
   });
 
   return { id: workspace.id, created: true };

@@ -8,7 +8,6 @@ import type {
   CreateProjectWithConfigBody,
   ProjectAlertsInput,
   ProjectConfigBody,
-  ProjectMode,
   createProjectSchema,
   updateProjectSchema,
 } from "./schema";
@@ -20,8 +19,6 @@ export type ProjectListItem = {
   description: string | null;
   case: ProjectCase;
   caseVersion: number;
-  mode: ProjectMode;
-  isDemo: boolean;
   configVersion: number;
   autoCreateTerms: boolean;
   termLanguage: TermLanguage;
@@ -91,7 +88,6 @@ export type ProjectConfigDetail = {
   projectId: string;
   case: ProjectCase;
   caseVersion: number;
-  mode: ProjectMode;
   configVersion: number;
   caseConfig: Record<string, unknown>;
   entities: ProjectEntityDetail[];

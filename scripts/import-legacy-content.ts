@@ -7,11 +7,12 @@
 // Example:
 //   npx tsx scripts/import-legacy-content.ts --dry-run
 //   npx tsx scripts/import-legacy-content.ts --yes
-//   npm run legacy:import -- --yes --batch-size 100
+//   npm run legacy:import -- -- --yes --batch-size 100
 
 import "dotenv/config";
 import { and, eq, ilike, count } from "drizzle-orm";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { comments, documents } from "@/db/schema";
@@ -48,7 +49,7 @@ function parseArgs(): Options {
     .option("--dry-run", "Count what would be imported without writing", false)
     .option("--yes", "Import into the raw store", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

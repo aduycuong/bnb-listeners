@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Loader2Icon } from "lucide-react";
 import { useEffect } from "react";
-import { Controller, useWatch, type UseFormReturn } from "react-hook-form";
+import { Controller, type UseFormReturn } from "react-hook-form";
 
 import { Badge } from "@/components/ui/badge";
 import { FieldError } from "@/components/ui/field";
@@ -11,7 +11,7 @@ import type {
   CreateProjectWithConfigBody,
   CreateProjectWithConfigInput,
 } from "@/lib/projects/schema";
-import type { ListSelectableSourcesResult, SelectableSource } from "@/lib/projects/types";
+import type { ListSelectableSourcesResult } from "@/lib/projects/types";
 import { cn } from "@/lib/utils";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
@@ -34,11 +34,7 @@ export function useSelectableSources(workspaceId: string) {
   });
 }
 
-function canSelect(source: SelectableSource, mode: string | undefined) {
-  return mode === "sandbox" || source.origin === "connector";
-}
-
-/** Followed sources; live projects can only pick real (`connector`) sources. */
+/** Followed sources. Connector and synthetic sources are both selectable. */
 export function ProjectSourcesFields({
   form,
   workspaceId,
@@ -47,19 +43,16 @@ export function ProjectSourcesFields({
   workspaceId: string;
 }) {
   const { data, isLoading, error } = useSelectableSources(workspaceId);
-  const mode = useWatch({ control: form.control, name: "mode" });
 
   useEffect(() => {
     if (!data) return;
+    const known = new Set(data.items.map((item) => item.id));
     const selected = form.getValues("sourceIds");
-    const allowed = selected.filter((id) => {
-      const source = data.items.find((item) => item.id === id);
-      return source ? canSelect(source, mode) : false;
-    });
+    const allowed = selected.filter((id) => known.has(id));
     if (allowed.length !== selected.length) {
       form.setValue("sourceIds", allowed, { shouldDirty: true });
     }
-  }, [data, form, mode]);
+  }, [data, form]);
 
   if (isLoading) {
     return (
@@ -89,21 +82,18 @@ export function ProjectSourcesFields({
             ) : null}
             {data.items.map((source) => {
               const checked = values.includes(source.id);
-              const enabled = canSelect(source, mode);
               return (
                 <label
                   key={source.id}
                   className={cn(
-                    "flex gap-3 rounded-2xl border px-3 py-2.5",
+                    "flex cursor-pointer gap-3 rounded-2xl border px-3 py-2.5",
                     checked ? "border-primary bg-primary/5" : "border-border",
-                    enabled ? "cursor-pointer" : "cursor-not-allowed opacity-55",
                   )}
                 >
                   <input
                     type="checkbox"
                     className="mt-1 accent-primary"
                     checked={checked}
-                    disabled={!enabled}
                     onChange={() =>
                       field.onChange(
                         checked
@@ -127,7 +117,6 @@ export function ProjectSourcesFields({
                       {source.memberCount
                         ? ` · ${source.memberCount.toLocaleString("vi-VN")} thành viên`
                         : ""}
-                      {!enabled ? " · chỉ dùng cho project sandbox" : ""}
                     </small>
                   </span>
                 </label>

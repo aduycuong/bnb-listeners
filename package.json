@@ -19,7 +19,6 @@
     "chunks:rebuild": "tsx scripts/rebuild-chunks.ts",
     "terms:embed": "tsx scripts/embed-terms.ts",
     "db:seed-system-schedules": "tsx scripts/seed-system-schedules.ts",
-    "db:seed-demo-projects": "tsx scripts/seed-demo-projects.ts",
     "projects:migrate-cases": "tsx scripts/migrate-project-cases.ts",
     "match:project": "tsx scripts/match-project.ts",
     "eval:match": "tsx scripts/evaluate-match.ts",

@@ -32,7 +32,7 @@ export async function createProjectWithConfig(
 
   const name = params.name.trim();
   await assertUniqueProjectName(params.workspaceId, name);
-  await assertSourcesSelectable({ sourceIds: params.sourceIds, mode: params.mode });
+  await assertSourcesSelectable({ sourceIds: params.sourceIds });
   await assertConfigIdsUnused({
     entityIds: params.entities.map((entity) => entity.id),
     aspectIds: params.aspects.map((aspect) => aspect.id),
@@ -63,7 +63,6 @@ export async function createProjectWithConfig(
         description: params.description?.trim() || null,
         listeningCase: params.case,
         caseVersion: params.caseVersion,
-        mode: params.mode,
         caseConfig: template.configSchema.parse(params.caseConfig),
         notificationConfig: {
           channels: params.alerts.channels,

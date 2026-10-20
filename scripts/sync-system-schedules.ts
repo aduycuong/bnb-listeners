@@ -10,6 +10,7 @@
 import "dotenv/config";
 import { asc } from "drizzle-orm";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { systemSchedules } from "@/db/schema";
@@ -54,7 +55,7 @@ function parseArgs(): Options {
     )
     .option("--yes", "Apply changes to QStash", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 
@@ -136,7 +137,7 @@ async function main() {
 
   if (rows.length === 0) {
     console.error(
-      `[${SCRIPT}] No system_schedules rows found. Run: npm run db:seed-system-schedules -- --yes`,
+      `[${SCRIPT}] No system_schedules rows found. Run: npm run db:seed-system-schedules -- -- --yes`,
     );
     process.exit(1);
   }

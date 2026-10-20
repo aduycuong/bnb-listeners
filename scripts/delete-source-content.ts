@@ -4,11 +4,12 @@
 // shows counts by kind and origin first, and --origin limits the delete.
 //
 // Example:
-//   npm run source:delete-content -- --source <uuid>
-//   npm run source:delete-content -- --source <uuid> --origin synthetic --yes
+//   npm run source:delete-content -- -- --source <uuid>
+//   npm run source:delete-content -- -- --source <uuid> --origin synthetic --yes
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { deleteSourceContentItems } from "@/lib/raw-store/services/delete-source-content-items";
@@ -35,7 +36,7 @@ function parseArgs(): Options {
     )
     .option("--yes", "Delete (default is a preview of the counts)", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

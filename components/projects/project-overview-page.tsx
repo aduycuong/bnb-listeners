@@ -1,7 +1,6 @@
 "use client";
 
 import { ProjectOverviewReport } from "@/components/metrics/project-overview-report";
-import { AquaDemoDashboard } from "@/components/projects/demo/demo-dashboard";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
 
@@ -23,22 +22,17 @@ export function ProjectOverviewPage({
     return null;
   }
 
-  if (!project.isDemo) {
-    return (
-      <ProjectOverviewReport
-        scope={{ workspaceId: workspace.id, projectId: project.id }}
-        projectName={project.name}
-        mentionsHref={getProjectNavHref(workspaceIndex, projectIndex, "mentions")}
-      />
-    );
-  }
-
   return (
-    <AquaDemoDashboard
+    <ProjectOverviewReport
+      scope={{ workspaceId: workspace.id, projectId: project.id }}
       projectName={project.name}
-      projectDescription={project.description}
-      projectCase={project.case}
-      settingsHref={getProjectNavHref(workspaceIndex, projectIndex, "settings")}
+      banner={{
+        name: project.name,
+        description: project.description,
+        projectCase: project.case,
+        settingsHref: getProjectNavHref(workspaceIndex, projectIndex, "settings"),
+      }}
+      mentionsHref={getProjectNavHref(workspaceIndex, projectIndex, "mentions")}
     />
   );
 }

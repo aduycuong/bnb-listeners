@@ -4,10 +4,11 @@
 //
 // Example:
 //   npx tsx scripts/generate-synthetic-data.ts --panel real-estate-review-group --source "Review BĐS giả" --brief "Chủ đầu tư dự án X thông báo lùi bàn giao 6 tháng" --posts 10
-//   npm run synthetic:generate -- --panel real-estate-review-group --source "Review BĐS giả" --brief "..." --posts 10 --wait --yes
+//   npm run synthetic:generate -- -- --panel real-estate-review-group --source "Review BĐS giả" --brief "..." --posts 10 --wait --yes
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { inArray } from "drizzle-orm";
 import { z } from "zod";
 
@@ -74,7 +75,7 @@ function parseArgs(): Options {
     .option("--dry-run", "Show what would run without writing", false)
     .option("--yes", "Register the source and start the runs", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

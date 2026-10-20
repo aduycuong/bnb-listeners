@@ -64,7 +64,7 @@ export async function updateProjectConfig(
     throw new InvalidInputError("Không đổi được kiểu case của project đã tạo.");
   }
 
-  await assertSourcesSelectable({ sourceIds: params.sourceIds, mode: params.mode });
+  await assertSourcesSelectable({ sourceIds: params.sourceIds });
 
   // Ids not in the current config are new items created in the form.
   const currentEntityIds = new Set(current.entities.map((entity) => entity.id));
@@ -86,10 +86,7 @@ export async function updateProjectConfig(
   const caseConfig = template.configSchema.parse(params.caseConfig);
   const projectId = current.projectId;
   const writes: BatchItem<"pg">[] = [];
-  let changed =
-    upgraded ||
-    current.mode !== params.mode ||
-    stableJson(current.caseConfig) !== stableJson(caseConfig);
+  let changed = upgraded || stableJson(current.caseConfig) !== stableJson(caseConfig);
 
   // Entities and their queries.
   const currentEntities = new Map(current.entities.map((entity) => [entity.id, entity]));
@@ -317,7 +314,6 @@ export async function updateProjectConfig(
     db
       .update(projects)
       .set({
-        mode: params.mode,
         caseVersion: params.caseVersion,
         caseConfig,
         notificationConfig: {

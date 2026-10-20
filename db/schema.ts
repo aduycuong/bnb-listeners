@@ -114,8 +114,6 @@ export const projects = pgTable(
     listeningCase: text("case").notNull().default("project"),
     /** Version of the case definition the project runs on; the user decides when to upgrade. */
     caseVersion: integer("case_version").notNull().default(1),
-    /** live | sandbox; live projects only follow `origin = connector` sources. */
-    mode: text("mode").notNull().default("live"),
     timezone: text("timezone").notNull().default("Asia/Ho_Chi_Minh"),
     /** Bumped on every config change (entities, queries, aspects, sources, case config). */
     configVersion: integer("config_version").notNull().default(1),
@@ -124,8 +122,6 @@ export const projects = pgTable(
       .$type<Record<string, unknown>>()
       .notNull()
       .default({}),
-    /** Demo projects render the sample dashboard instead of real data. */
-    isDemo: boolean("is_demo").notNull().default(false),
     /** Hash of query ids + versions and sources at the last full match; null = never matched. */
     matchSignature: text("match_signature"),
     matchedAt: timestamp("matched_at", { withTimezone: true }),

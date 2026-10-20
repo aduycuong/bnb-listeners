@@ -5,7 +5,6 @@ import { ExternalLinkIcon, MessagesSquareIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { ProjectSectionPage } from "@/components/projects/project-section-page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTopicsList } from "@/components/topics/use-topics-api";
@@ -36,7 +35,7 @@ import { useMentionsList, useSetItemLabel, type MentionsApiScope } from "./use-m
 
 const ALL = "all";
 
-/** Real projects get the Mentions list; demo projects keep the sample page. */
+/** Mentions list for a project. */
 export function ProjectMentionsPage({
   workspaceIndexParam,
   projectIndexParam,
@@ -50,16 +49,6 @@ export function ProjectMentionsPage({
   );
 
   if (!workspace || !project) return null;
-
-  if (project.isDemo) {
-    return (
-      <ProjectSectionPage
-        workspaceIndexParam={workspaceIndexParam}
-        projectIndexParam={projectIndexParam}
-        section="mentions"
-      />
-    );
-  }
 
   return (
     <MentionsList

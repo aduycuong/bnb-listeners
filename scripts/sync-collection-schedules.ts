@@ -8,11 +8,12 @@
 //
 // Example:
 //   npx tsx scripts/sync-collection-schedules.ts
-//   npm run schedules:sync -- --yes
-//   npm run schedules:sync -- --remove --yes
+//   npm run schedules:sync -- -- --yes
+//   npm run schedules:sync -- -- --remove --yes
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { COLLECT_CONFIG } from "@/lib/connectors/config";
@@ -36,7 +37,7 @@ function parseArgs() {
     .option("--remove", "Delete the schedule (stops automatic collection)", false)
     .option("--yes", "Apply the change to QStash", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

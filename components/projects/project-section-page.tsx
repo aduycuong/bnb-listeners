@@ -3,8 +3,8 @@
 import { ProjectAuthorsReport } from "@/components/metrics/project-authors-report";
 import { ProjectChannelsReport } from "@/components/metrics/project-channels-report";
 import { ProjectSentimentReport } from "@/components/metrics/project-sentiment-report";
-import { AquaDemoDashboard } from "@/components/projects/demo/demo-dashboard";
 import { ProjectPendingDashboard } from "@/components/projects/project-pending-dashboard";
+import type { ProjectPageBannerProps } from "@/components/projects/project-page-banner";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import {
   getProjectNavHref,
@@ -31,39 +31,41 @@ export function ProjectSectionPage({
     return null;
   }
 
-  if (!project.isDemo) {
-    const scope = { workspaceId: workspace.id, projectId: project.id };
-    const mentionsHref = getProjectNavHref(workspaceIndex, projectIndex, "mentions");
-    if (section === "sentiment") {
-      return <ProjectSentimentReport scope={scope} projectName={project.name} />;
-    }
-    if (section === "channels") {
-      return (
-        <ProjectChannelsReport scope={scope} projectName={project.name} mentionsHref={mentionsHref} />
-      );
-    }
-    if (section === "authors") {
-      return (
-        <ProjectAuthorsReport scope={scope} projectName={project.name} mentionsHref={mentionsHref} />
-      );
-    }
+  const scope = { workspaceId: workspace.id, projectId: project.id };
+  const mentionsHref = getProjectNavHref(workspaceIndex, projectIndex, "mentions");
+  const banner: ProjectPageBannerProps = {
+    name: project.name,
+    description: project.description,
+    projectCase: project.case,
+    settingsHref: getProjectNavHref(workspaceIndex, projectIndex, "settings"),
+  };
+  if (section === "sentiment") {
+    return <ProjectSentimentReport scope={scope} projectName={project.name} banner={banner} />;
   }
-
-  if (!project.isDemo) {
+  if (section === "channels") {
     return (
-      <ProjectPendingDashboard
-        project={project}
-        settingsHref={getProjectNavHref(workspaceIndex, projectIndex, "settings")}
+      <ProjectChannelsReport
+        scope={scope}
+        projectName={project.name}
+        mentionsHref={mentionsHref}
+        banner={banner}
+      />
+    );
+  }
+  if (section === "authors") {
+    return (
+      <ProjectAuthorsReport
+        scope={scope}
+        projectName={project.name}
+        mentionsHref={mentionsHref}
+        banner={banner}
       />
     );
   }
 
   return (
-    <AquaDemoDashboard
-      projectName={project.name}
-      projectDescription={project.description}
-      projectCase={project.case}
-      section={section}
+    <ProjectPendingDashboard
+      project={project}
       settingsHref={getProjectNavHref(workspaceIndex, projectIndex, "settings")}
     />
   );

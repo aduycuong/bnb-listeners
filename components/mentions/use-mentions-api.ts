@@ -121,7 +121,7 @@ export function useMatchEvaluation(scope: MentionsApiScope, sampleId?: string) {
   return useQuery({
     queryKey: [...mentionsQueryKey(scope.projectId), "evaluation", sampleId ?? "latest"],
     queryFn: () =>
-      fetchJson<MatchEvaluation>(
+      fetchJson<MatchEvaluation | null>(
         scope,
         `/api/mentions/evaluation${sampleId ? `?sampleId=${sampleId}` : ""}`,
       ),
@@ -133,7 +133,7 @@ export function useEnrichEvaluation(scope: MentionsApiScope, sampleId?: string) 
   return useQuery({
     queryKey: [...mentionsQueryKey(scope.projectId), "enrich-evaluation", sampleId ?? "latest"],
     queryFn: () =>
-      fetchJson<EnrichEvaluation>(
+      fetchJson<EnrichEvaluation | null>(
         scope,
         `/api/mentions/enrich-evaluation${sampleId ? `?sampleId=${sampleId}` : ""}`,
       ),

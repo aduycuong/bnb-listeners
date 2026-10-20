@@ -2,11 +2,12 @@
 // Label the sample on the project's Mentions page first.
 //
 // Example:
-//   npm run eval:match -- --project <id>
-//   npm run eval:match -- --project <id> --sample <sampleId>
+//   npm run eval:match -- -- --project <id>
+//   npm run eval:match -- -- --project <id> --sample <sampleId>
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { evaluateMatch } from "@/lib/mentions/services/evaluate-match";
@@ -24,7 +25,7 @@ function parseArgs() {
     .description("Precision/recall of Match on a labeled random sample.")
     .requiredOption("--project <id>", "Project id")
     .option("--sample <id>", "Sample id (default: latest)");
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 
@@ -35,6 +36,10 @@ function percent(value: number | null) {
 async function main() {
   const options = parseArgs();
   const result = await evaluateMatch({ projectId: options.project, sampleId: options.sample });
+  if (!result) {
+    console.log(`[${SCRIPT}] No match label sample for this project.`);
+    return;
+  }
 
   console.log(`[${SCRIPT}] ${result.sampleName}`, {
     labeled: result.labeled,

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { collectRuns, projects, projectSources } from "@/db/schema";
 import { db } from "@/lib/db";
@@ -19,7 +19,7 @@ export async function matchCollectRun(params: {
     .select({ id: projects.id })
     .from(projectSources)
     .innerJoin(projects, eq(projects.id, projectSources.projectId))
-    .where(and(eq(projectSources.sourceId, run.sourceId), eq(projects.isDemo, false)));
+    .where(eq(projectSources.sourceId, run.sourceId));
 
   for (const project of followers) {
     await triggerWorkflow({

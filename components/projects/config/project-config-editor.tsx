@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUpCircleIcon, Loader2Icon, PencilIcon } from "lucide-react";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 
 import { ProjectAlertsFields } from "@/components/projects/config/project-alerts-fields";
 import { ProjectAspectsFields } from "@/components/projects/config/project-aspects-fields";
@@ -14,13 +14,6 @@ import { ProjectMatchPreview } from "@/components/projects/config/project-match-
 import { ProjectSourcesFields } from "@/components/projects/config/project-sources-fields";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@/components/ui/field";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/components/ui/toast";
 import { projectsQueryKey } from "@/hooks/use-project-route-context";
 import { caseUpgradesAfter } from "@/lib/projects/case-templates";
@@ -195,7 +188,6 @@ function ProjectConfigForm({
     const body = {
       case: values.case,
       caseVersion: values.caseVersion,
-      mode: values.mode,
       caseConfig: values.caseConfig,
       entities: values.entities,
       aspects: values.aspects,
@@ -236,34 +228,6 @@ function ProjectConfigForm({
       )}
     >
       <fieldset disabled={!canEdit || form.formState.isSubmitting} className="contents">
-        <Section title="Chế độ">
-          <Controller
-            control={form.control}
-            name="mode"
-            render={({ field }) => (
-              <RadioGroup value={field.value} onValueChange={field.onChange}>
-                {[
-                  { value: "live", label: "Live", description: "Chỉ dùng nguồn thật." },
-                  {
-                    value: "sandbox",
-                    label: "Sandbox",
-                    description: "Dùng được cả nguồn dữ liệu giả.",
-                  },
-                ].map((option) => (
-                  <Field key={option.value} orientation="horizontal">
-                    <RadioGroupItem value={option.value} id={`config-mode-${option.value}`} />
-                    <FieldContent>
-                      <FieldLabel htmlFor={`config-mode-${option.value}`}>
-                        {option.label}
-                      </FieldLabel>
-                      <FieldDescription>{option.description}</FieldDescription>
-                    </FieldContent>
-                  </Field>
-                ))}
-              </RadioGroup>
-            )}
-          />
-        </Section>
         <Section
           title="Đối tượng theo dõi"
           description="Sửa tên, tên gọi khác hoặc điều kiện khớp sẽ tăng phiên bản truy vấn và so khớp lại."

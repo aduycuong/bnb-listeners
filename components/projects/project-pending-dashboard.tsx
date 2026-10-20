@@ -24,7 +24,7 @@ export function ProjectPendingDashboard({
           {PROJECT_CASE_ICONS[project.case]} {project.name}
         </h1>
         <p className="text-[13px] text-muted-foreground">
-          {t(`cases.${project.case}`)} · {project.mode === "sandbox" ? "Sandbox" : "Live"}
+          {t(`cases.${project.case}`)}
         </p>
       </div>
       <section className="flex flex-col gap-3 rounded-[22px] border-[1.5px] border-border bg-card px-4 py-5 md:px-5">

@@ -3,13 +3,14 @@
 // Example:
 //   npx tsx scripts/test-local-qwen.ts --image ./photo.jpg
 //   npx tsx scripts/test-local-qwen.ts --image https://example.com/photo.jpg --prompt "What is in this image?"
-//   npm run test:local-qwen -- --image ./photo.jpg
-//   npm run test:local-qwen -- --image "https://bnb-listeners-media.boxx.vn/documents/457622e0-6416-4ece-abd8-45150b7f5391/322074fc-7930-4f3b-9a75-8cd9187270be/1.jpg" --prompt "Tóm tắt ảnh này."
+//   npm run test:local-qwen -- -- --image ./photo.jpg
+//   npm run test:local-qwen -- -- --image "https://bnb-listeners-media.boxx.vn/documents/457622e0-6416-4ece-abd8-45150b7f5391/322074fc-7930-4f3b-9a75-8cd9187270be/1.jpg" --prompt "Tóm tắt ảnh này."
 
 import "dotenv/config";
 import { readFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { getChatModelDefinition } from "@/lib/langchain";
@@ -44,7 +45,7 @@ function parseArgs(): Options {
     )
     .option("--prompt <text>", "User text prompt", DEFAULT_PROMPT);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

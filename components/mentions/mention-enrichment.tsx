@@ -63,8 +63,14 @@ export function MentionEnrichment({
   const byKey = new Map([...aspectNames.values()].map((aspect) => [aspect.key, aspect.name]));
   const aspects =
     mention.labelAspectKeys !== null
-      ? mention.labelAspectKeys.map((key) => byKey.get(key) ?? key)
-      : mention.aspects.map((aspect) => aspectNames.get(aspect.aspectId)?.name ?? "?");
+      ? mention.labelAspectKeys.map((key) => ({
+          key,
+          name: byKey.get(key) ?? key,
+        }))
+      : mention.aspects.map((aspect) => ({
+          key: aspect.aspectId,
+          name: aspectNames.get(aspect.aspectId)?.name ?? "?",
+        }));
 
   return (
     <div className="flex flex-col gap-1">
@@ -78,9 +84,9 @@ export function MentionEnrichment({
         {mention.emotion ? (
           <Badge variant="outline">{EMOTION_LABELS[mention.emotion as Emotion] ?? mention.emotion}</Badge>
         ) : null}
-        {aspects.map((name) => (
-          <Badge key={name} variant="secondary">
-            {name}
+        {aspects.map((aspect) => (
+          <Badge key={aspect.key} variant="secondary">
+            {aspect.name}
           </Badge>
         ))}
         {mention.topic ? <Badge variant="outline"># {mention.topic.name}</Badge> : null}

@@ -1,11 +1,12 @@
 // Seed the dim_dates calendar dimension table.
 //
 // Example:
-//   npx tsx scripts/seed-dim-dates.ts --dry-run
-//   npx tsx scripts/seed-dim-dates.ts --yes
-//   npx tsx scripts/seed-dim-dates.ts --start-year 2020 --end-year 2040 --yes
+//   npm run db:seed-dim-dates -- -- --dry-run
+//   npm run db:seed-dim-dates -- -- --yes
+//   npm run db:seed-dim-dates -- -- --start-year 2020 --end-year 2040 --yes
 
 import "dotenv/config";
+import { scriptArgv } from "./script-argv";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 
@@ -39,11 +40,11 @@ const optionsSchema = z
 type Options = z.infer<typeof optionsSchema>;
 
 function parseArgs(): Options {
-  const args = process.argv.slice(2);
+  const args = scriptArgv();
 
   if (args.includes("--help") || args.includes("-h")) {
     console.log(`
-Usage: npx tsx scripts/seed-dim-dates.ts [options]
+Usage: npm run db:seed-dim-dates -- -- [options]
 
 Options:
   --start-year <year>   First year to seed (default: ${DEFAULT_START_YEAR})
@@ -53,9 +54,9 @@ Options:
   --help                Show this help
 
 Examples:
-  npx tsx scripts/seed-dim-dates.ts --dry-run
-  npx tsx scripts/seed-dim-dates.ts --yes
-  npx tsx scripts/seed-dim-dates.ts --start-year 2020 --end-year 2040 --yes
+  npm run db:seed-dim-dates -- -- --dry-run
+  npm run db:seed-dim-dates -- -- --yes
+  npm run db:seed-dim-dates -- -- --start-year 2020 --end-year 2040 --yes
 `);
     process.exit(0);
   }

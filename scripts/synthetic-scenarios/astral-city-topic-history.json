@@ -1,0 +1,52 @@
+{
+  "description": "Astral City (tên mới La Pura, Phát Đạt, QL13) over 28 days so the Topics report has a previous period: rename confusion and Zenia pricing early, a topping-out rush plus old-booking disputes, and a new amenities doubt before the December 2026 handover.",
+  "panel": "Group review bất động sản",
+  "source": "Match eval Astral City giả",
+  "seed": 20261021,
+  "commentsPerPost": [2, 10],
+  "segments": [
+    {
+      "brief": "Người mua hỏi Astral City có phải La Pura không, vì sao đổi tên, dự án mặt tiền QL13 Thuận An từng treo nhiều năm nay được Phát Đạt tái khởi động",
+      "posts": 14,
+      "fromDays": 28,
+      "toDays": 14
+    },
+    {
+      "brief": "Người mua hỏi giá phân khu Zenia của La Pura (tên cũ Astral City) và chính sách thanh toán 10% đến khi nhận nhà",
+      "posts": 16,
+      "fromDays": 28,
+      "toDays": 14
+    },
+    {
+      "brief": "Người mua hỏi pháp lý La Pura: chủ đầu tư Địa ốc Sài Gòn KL và vai trò nhà phát triển của Phát Đạt",
+      "posts": 8,
+      "fromDays": 26,
+      "toDays": 14
+    },
+    {
+      "brief": "Người mua bàn về lễ cất nóc tháp Zenia của La Pura (Astral City), hỏi hoàn thiện và bàn giao tháng 12/2026 có kịp không",
+      "posts": 16,
+      "fromDays": 12,
+      "toDays": 0,
+      "distractors": ["Nước hoa La Pura mùi hoa nhài dễ chịu, shop còn hàng"]
+    },
+    {
+      "brief": "Khách giữ chỗ Astral City từ trước khi đổi tên La Pura hỏi suất cũ có được giữ giá và giữ căn sau khi mở bán lại phân khu Zenia",
+      "posts": 14,
+      "fromDays": 14,
+      "toDays": 0
+    },
+    {
+      "brief": "Người mua hỏi giá bán lại suất phân khu Zenia La Pura (Astral City) còn chênh không",
+      "posts": 6,
+      "fromDays": 14,
+      "toDays": 0
+    },
+    {
+      "brief": "Người mua nghi ngờ hơn 100 tiện ích dưỡng lành của La Pura có làm xong khi bàn giao riêng phân khu Zenia",
+      "posts": 8,
+      "fromDays": 5,
+      "toDays": 0
+    }
+  ]
+}

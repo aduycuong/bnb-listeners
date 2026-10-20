@@ -5,14 +5,15 @@
 //
 // Re-running adds the threads again; clean up with `npm run source:delete-content`.
 //
-// Example:
-//   npm run synthetic:seed-history -- --scenario scripts/synthetic-scenarios/lavita-topic-history.json --dry-run
-//   npm run synthetic:seed-history -- --scenario scripts/synthetic-scenarios/lavita-topic-history.json --yes
+// Example (the extra `--` is required in PowerShell: npm.ps1 consumes the first one):
+//   npm run synthetic:seed-history -- -- --scenario scripts/synthetic-scenarios/lavita-topic-history.json --dry-run
+//   npm run synthetic:seed-history -- -- --scenario scripts/synthetic-scenarios/lavita-topic-history.json --yes
 
 import "dotenv/config";
 import { readFile } from "node:fs/promises";
 
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { SYNTHETIC_CONFIG } from "@/lib/personas/config";
@@ -66,7 +67,7 @@ function parseArgs() {
     .requiredOption("--scenario <path>", "Scenario JSON (see scripts/synthetic-scenarios/)")
     .option("--dry-run", "Show the segments without writing", false)
     .option("--yes", "Register the source and start the runs", false);
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

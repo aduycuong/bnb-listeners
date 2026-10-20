@@ -47,9 +47,6 @@ export function LabelSamplePage({
   if (!workspace || !project) return null;
 
   const mentionsHref = getProjectNavHref(workspaceIndex, projectIndex, "mentions");
-  if (project.isDemo) {
-    return <p className="px-7 py-5 text-sm text-muted-foreground">Project demo không gán nhãn được.</p>;
-  }
 
   return (
     <LabelSampleWorkspace

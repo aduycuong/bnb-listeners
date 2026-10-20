@@ -3,10 +3,11 @@
 //
 // Example:
 //   npx tsx scripts/match-project.ts --project <id> --dry-run
-//   npm run match:project -- --project <id> --yes
+//   npm run match:project -- -- --project <id> --yes
 
 import "dotenv/config";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { MATCH_CONFIG } from "@/lib/matching/config";
@@ -39,7 +40,7 @@ function parseArgs(): Options {
     .option("--dry-run", "Print the tier 1 plan without writing", false)
     .option("--yes", "Run tier 1 + tier 2 and write mentions", false);
 
-  program.parse();
+  program.parse(commandArgv());
   return optionsSchema.parse(program.opts());
 }
 

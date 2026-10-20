@@ -34,14 +34,15 @@
 // Example:
 //   npx tsx scripts/probe-bright-data-facebook.ts post-params --url https://www.facebook.com/groups/reviewbatdongsanaz --yes
 //   npx tsx scripts/probe-bright-data-facebook.ts post-comments --post-url <url> --post-url <url> --compare --yes
-//   npm run probe:bright-data -- post-comments --post-url <url> --yes
-//   npm run probe:bright-data -- post-dates --url <group> --start 2026-10-09 --end 2026-10-10 --yes
+//   npm run probe:bright-data -- -- post-comments --post-url <url> --yes
+//   npm run probe:bright-data -- -- post-dates --url <group> --start 2026-10-09 --end 2026-10-10 --yes
 
 import "dotenv/config";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { Command } from "commander";
+import { commandArgv } from "./script-argv";
 import { z } from "zod";
 
 import { getBrightDataApiToken } from "@/lib/bright-data/utils/get-bright-data-api-token";
@@ -1013,7 +1014,7 @@ async function main() {
     .option("--yes", "Trigger the Bright Data job (costs records)", false)
     .action(commentLimit);
 
-  await program.parseAsync();
+  await program.parseAsync(commandArgv());
 }
 
 main().catch((error) => {
