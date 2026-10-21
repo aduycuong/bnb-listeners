@@ -1,27 +1,18 @@
 import { createHash } from "node:crypto";
 
-import { ENRICH_CONFIG } from "../config";
-import type { EnrichAspect, EnrichEntity } from "../types";
-
-/** Changes when anything the Enrich prompt depends on changes (D14). */
-export function computeEnrichSignature(params: {
-  caseLabel: string;
-  caseVersion: number;
-  aspects: EnrichAspect[];
-  entities: EnrichEntity[];
-  extractionKeys: string[];
+/**
+ * Signature of one enricher for one project (D18): its version, the model
+ * and the project config it depends on. A mention whose stored signature
+ * differs runs that enricher again, and only that one.
+ */
+export function computeEnricherSignature(params: {
+  key: string;
+  version: number;
+  model: string | null;
+  input: unknown;
 }): string {
-  const payload = {
-    prompt: ENRICH_CONFIG.promptVersion,
-    model: ENRICH_CONFIG.model,
-    case: `${params.caseLabel}@${params.caseVersion}`,
-    aspects: params.aspects
-      .map((aspect) => `${aspect.id}|${aspect.key}|${aspect.name}|${aspect.description}`)
-      .sort(),
-    entities: params.entities
-      .map((entity) => `${entity.id}|${entity.name}|${entity.role}|${[...entity.aliases].sort().join(",")}`)
-      .sort(),
-    extractions: [...params.extractionKeys].sort(),
-  };
-  return createHash("sha256").update(JSON.stringify(payload)).digest("hex").slice(0, 32);
+  return createHash("sha256")
+    .update(JSON.stringify([params.key, params.version, params.model, params.input]))
+    .digest("hex")
+    .slice(0, 32);
 }

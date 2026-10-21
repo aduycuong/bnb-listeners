@@ -57,7 +57,6 @@ export async function setItemLabel(params: SetItemLabelParams): Promise<SetItemL
         .update(mentions)
         .set({
           isRelevant: sql`coalesce(${mentions.autoIsRelevant}, false)`,
-          sentiment: sql`${mentions.autoSentiment}`,
           userCorrected: false,
           updatedAt: new Date(),
         })
@@ -110,9 +109,6 @@ export async function setItemLabel(params: SetItemLabelParams): Promise<SetItemL
       .update(mentions)
       .set({
         isRelevant: params.isRelevant,
-        ...(params.sentiment !== undefined && {
-          sentiment: params.sentiment ?? sql`${mentions.autoSentiment}`,
-        }),
         userCorrected: true,
         updatedAt: new Date(),
       })
@@ -137,7 +133,6 @@ export async function setItemLabel(params: SetItemLabelParams): Promise<SetItemL
       matchTier: "user",
       isRelevant: true,
       autoIsRelevant: null,
-      sentiment: params.sentiment ?? null,
       matchSignature: project?.matchSignature ?? "",
       userCorrected: true,
     });

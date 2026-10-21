@@ -4,15 +4,15 @@ import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { createChatModel } from "@/lib/langchain";
 
-import { TOPIC_CONFIG } from "../config";
-import type { MergeSimilarTopicsResult } from "../types";
+import { getTopicStage, TOPIC_CONFIG } from "../config";
+import type { MergeSimilarTopicsResult, TopicRunParams } from "../types";
 import {
   buildTopicMergePrompt,
   topicMergeSchema,
   type TopicMergeCandidate,
   type TopicMergeResponse,
 } from "../utils/build-topic-merge-request";
-import { uuidArraySql } from "../utils/topic-sql";
+import { hintTextSql, uuidArraySql } from "../utils/topic-sql";
 import { mergeSameNameTopics } from "./merge-same-name-topics";
 import { mergeTopics } from "./merge-topics";
 
@@ -23,17 +23,17 @@ const HINTS_PER_TOPIC = 8;
  * of active topics with close centroids are the same topic, and merges the
  * smaller topic of each such pair into the larger.
  */
-export async function mergeSimilarTopics(params: {
-  projectId: string;
-}): Promise<MergeSimilarTopicsResult> {
+export async function mergeSimilarTopics(params: TopicRunParams): Promise<MergeSimilarTopicsResult> {
+  const spec = getTopicStage(params.kind);
   const result: MergeSimilarTopicsResult = { checked: 0, merged: [], llmCalls: 0 };
-  result.merged.push(...(await mergeSameNameTopics({ projectId: params.projectId })));
+  result.merged.push(...(await mergeSameNameTopics(params)));
 
   const { rows: pairs } = await db.execute<{ a: string; b: string }>(sql`
     select a.id as a, b.id as b
     from topics a
     join topics b on b.project_id = a.project_id and a.id < b.id
     where a.project_id = ${params.projectId}::uuid
+      and a.kind = ${spec.kind} and b.kind = ${spec.kind}
       and a.status = 'active' and b.status = 'active'
       and a.centroid is not null and b.centroid is not null
       and (a.centroid <=> b.centroid) <= ${1 - TOPIC_CONFIG.mergeSimilarity}
@@ -50,12 +50,14 @@ export async function mergeSimilarTopics(params: {
     `),
     db.execute<{ topic_id: string; hint: string }>(sql`
       select topic_id, hint from (
-        select mt.topic_id, m.topic_hint as hint,
-          row_number() over (partition by mt.topic_id order by count(*) desc, m.topic_hint) as rank
+        select mt.topic_id, ${hintTextSql(spec)} as hint,
+          row_number() over (partition by mt.topic_id order by count(*) desc, ${hintTextSql(spec)}) as rank
         from mention_topics mt
+        join mention_extractions x on x.mention_id = mt.mention_id and x.schema_key = ${spec.extractionKey}
         join mentions m on m.id = mt.mention_id
-        where mt.topic_id = any(${uuidArraySql(topicIds)}) and m.is_relevant and m.topic_hint is not null
-        group by mt.topic_id, m.topic_hint
+        where mt.topic_id = any(${uuidArraySql(topicIds)})
+          and mt.kind = ${spec.kind} and m.is_relevant and ${hintTextSql(spec)} is not null
+        group by mt.topic_id, ${hintTextSql(spec)}
       ) ranked
       where rank <= ${HINTS_PER_TOPIC}
     `),
@@ -69,6 +71,7 @@ export async function mergeSimilarTopics(params: {
 
   const prompt = buildTopicMergePrompt({
     pairs: pairs.map((pair) => [candidate(pair.a), candidate(pair.b)]),
+    kind: spec.kind,
   });
   const model = createChatModel(TOPIC_CONFIG.model, { temperature: 0 }).withStructuredOutput(
     topicMergeSchema,

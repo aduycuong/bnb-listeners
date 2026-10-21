@@ -2,6 +2,11 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { EMOTIONS, type Emotion } from "@/lib/enrichment/config";
+import {
+  effectiveSentimentJoins,
+  effectiveSentimentSql,
+  emotionSql,
+} from "@/lib/enrichment/utils/effective-sentiment-sql";
 
 import { netSentimentScore, sharePercent } from "../formulas";
 import type { MetricsReportParams, SentimentMetricsResult } from "../types";
@@ -22,8 +27,9 @@ export async function getSentimentMetrics(
   const window = await loadReportWindow(params.projectId, params.days);
   const start = sql`${window.start.toISOString()}::timestamptz`;
   const periodMentions = sql`
-    select m.id, m.content_item_id, m.sentiment, m.emotion
+    select m.id, m.content_item_id, ${effectiveSentimentSql} as sentiment, ${emotionSql} as emotion
     from mentions m
+    ${effectiveSentimentJoins}
     where m.project_id = ${params.projectId}::uuid and m.is_relevant and m.published_at >= ${start}
   `;
 
@@ -47,7 +53,7 @@ export async function getSentimentMetrics(
         union all
         select pm.id, ma.aspect_id, coalesce(ma.sentiment, pm.sentiment)
         from pm
-        join mention_aspects ma on ma.mention_id = pm.id and ma.source = 'auto'
+        join mention_aspects ma on ma.mention_id = pm.id
         where not exists (
           select 1 from item_labels il
           where il.content_item_id = pm.content_item_id

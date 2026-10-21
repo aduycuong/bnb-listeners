@@ -1,6 +1,10 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
+import {
+  effectiveSentimentJoins,
+  effectiveSentimentSql,
+} from "@/lib/enrichment/utils/effective-sentiment-sql";
 
 import type { TopicStatus } from "../config";
 import type { ListTopicsParams, ListTopicsResult } from "../types";
@@ -29,27 +33,31 @@ export async function listTopics(params: ListTopicsParams): Promise<ListTopicsRe
   const [{ rows }, { rows: [counts] }] = await Promise.all([
     db.execute<TopicRow>(sql`
       select t.id, t.name, t.description, t.aspect_id, t.status, t.mention_count, t.created_at,
-        (count(m.id) filter (where m.sentiment = 'positive'))::int as positive,
-        (count(m.id) filter (where m.sentiment = 'neutral'))::int as neutral,
-        (count(m.id) filter (where m.sentiment = 'negative'))::int as negative,
+        (count(m.id) filter (where ${effectiveSentimentSql} = 'positive'))::int as positive,
+        (count(m.id) filter (where ${effectiveSentimentSql} = 'neutral'))::int as neutral,
+        (count(m.id) filter (where ${effectiveSentimentSql} = 'negative'))::int as negative,
         (count(m.id) filter (where m.published_at >= now() - interval '7 days'))::int as last_7_days,
         (count(m.id) filter (
           where m.published_at >= now() - interval '14 days' and m.published_at < now() - interval '7 days'
         ))::int as previous_7_days
       from topics t
-      left join mention_topics mt on mt.topic_id = t.id
+      left join mention_topics mt on mt.topic_id = t.id and mt.kind = 'topic'
       left join mentions m on m.id = mt.mention_id and m.is_relevant
+      ${effectiveSentimentJoins}
       where t.project_id = ${params.projectId}::uuid
+        and t.kind = 'topic'
         and t.status in (${sql.join(statuses.map((status) => sql`${status}`), sql`, `)})
       group by t.id
       order by t.mention_count desc, t.name
     `),
     db.execute<{ waiting: number; pending: number }>(sql`
       select
-        (count(*) filter (where enrich_status = 'done' and topic_status = 'unassigned'))::int as waiting,
-        (count(*) filter (where enrich_status <> 'done' or topic_status = 'pending'))::int as pending
-      from mentions
-      where project_id = ${params.projectId}::uuid and is_relevant
+        (count(*) filter (where me.status = 'waiting'))::int as waiting,
+        (count(*) filter (where me.status = 'pending'))::int as pending
+      from mention_enrichments me
+      join mentions m on m.id = me.mention_id
+      where m.project_id = ${params.projectId}::uuid and m.is_relevant
+        and me.enricher_key = 'topic_assign'
     `),
   ]);
 
@@ -57,12 +65,14 @@ export async function listTopics(params: ListTopicsParams): Promise<ListTopicsRe
   const { rows: hintRows } = ids.length
     ? await db.execute<{ topic_id: string; hint: string }>(sql`
         select topic_id, hint from (
-          select mt.topic_id, m.topic_hint as hint,
-            row_number() over (partition by mt.topic_id order by count(*) desc, m.topic_hint) as rank
+          select mt.topic_id, x.data->>'text' as hint,
+            row_number() over (partition by mt.topic_id order by count(*) desc, x.data->>'text') as rank
           from mention_topics mt
+          join mention_extractions x on x.mention_id = mt.mention_id and x.schema_key = 'topic_hint'
           join mentions m on m.id = mt.mention_id
-          where mt.topic_id = any(${uuidArraySql(ids)}) and m.is_relevant and m.topic_hint is not null
-          group by mt.topic_id, m.topic_hint
+          where mt.topic_id = any(${uuidArraySql(ids)})
+            and mt.kind = 'topic' and m.is_relevant and x.data->>'text' is not null
+          group by mt.topic_id, x.data->>'text'
         ) ranked
         where rank <= ${SAMPLE_HINTS}
         order by topic_id, rank

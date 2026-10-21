@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+import {
+  CORE_ENRICHERS,
+  describeEnrichers,
+  ENRICHER_KEYS,
+  type EnricherKey,
+  isReadyEnricher,
+} from "@/lib/enrichment/registry";
+
 import type { AlertRuleSeed } from "./alert-templates";
 import type { AvailableProjectCase } from "./project-cases";
 
@@ -94,57 +102,15 @@ export type CaseUpgradeValues = {
   aspects: { id: string; key?: string; name: string; description?: string }[];
 };
 
-export const PRICE_UNITS = ["trieu_m2", "ty_can", "trieu_thang", "khac"] as const;
-export const PRICE_KINDS = ["rao_ban", "cho_thue", "gia_cdt", "khac"] as const;
-
-const priceQuoteSchema = z.object({
-  amount: z
-    .number()
-    .describe('Số tiền theo đơn vị ở `unit`, chỉ phần số. Dấu phẩy trong tiếng Việt là dấu thập phân: "2,4 tỷ" là 2.4, "46tr/m2" là 46'),
-  unit: z.enum(PRICE_UNITS).describe("triệu/m², tỷ/căn, triệu/tháng (giá thuê) hoặc khác"),
-  kind: z.enum(PRICE_KINDS).describe("Giá rao bán lại, giá cho thuê, giá chủ đầu tư công bố, hoặc khác"),
-  quote: z.string().describe("Đoạn văn bản nhắc tới giá, giữ nguyên"),
-});
-
-/** A field Enrich extracts for one case; stored in `mention_extractions` (D14). */
-export type CaseExtraction = {
-  key: string;
-  label: string;
-  /** Instruction for the Enrich prompt. */
-  description: string;
-  /** True: zero or more per mention. False: at most one. */
-  many: boolean;
-  schema: z.ZodObject<z.ZodRawShape>;
-  /** Field filled with one of the project's aspect keys (or `other`), so it groups like aspects. */
-  aspectField?: string;
-};
-
-const PRICE_QUOTE: CaseExtraction = {
-  key: "price_quote",
-  label: "Giá được nhắc",
-  description: "Mỗi mức giá cụ thể được nhắc tới (rao bán, cho thuê, giá chủ đầu tư). Bỏ qua nếu không có con số.",
-  many: true,
-  schema: priceQuoteSchema,
-};
-
-const BUYER_QUESTION: CaseExtraction = {
-  key: "buyer_question",
-  label: "Câu hỏi của người mua",
-  description: "Khi mục là câu hỏi của người đang cân nhắc mua hoặc thuê: chủ đề và câu hỏi.",
-  many: false,
-  schema: z.object({
-    topic: z.string().describe("Khía cạnh của câu hỏi"),
-    question: z.string().describe("Câu hỏi, viết gọn"),
-  }),
-  aspectField: "topic",
-};
-
-const AREA_PRICE_QUOTE: CaseExtraction = {
-  ...PRICE_QUOTE,
-  description: "Mỗi mức giá cụ thể được nhắc tới, kèm khu vực của mức giá đó nếu xác định được.",
-  schema: priceQuoteSchema.extend({
-    area: z.string().nullable().describe("Tên khu vực của mức giá, null nếu không rõ"),
-  }),
+/**
+ * Enrichers a case runs on top of `CORE_ENRICHERS` (D18). `case` ones are
+ * enabled for every project of the case; `optional` ones can be turned on per
+ * project. Keys with `status: planned` in the registry are shown as coming
+ * soon and never scheduled.
+ */
+export type CaseEnrichers = {
+  case: EnricherKey[];
+  optional: EnricherKey[];
 };
 
 export type CaseTemplate = {
@@ -156,8 +122,8 @@ export type CaseTemplate = {
   defaultConfig: Record<string, unknown>;
   /** Rules a new project of this version starts with. */
   alertSeeds: AlertRuleSeed[];
-  /** Case-specific fields Enrich extracts. */
-  extractions: CaseExtraction[];
+  /** Enrichers of this case beyond the core ones. */
+  enrichers: CaseEnrichers;
   /**
    * How a project moves here from the previous version. `notes` are shown in
    * the upgrade banner; `migrate` prefills the new form, which the user then
@@ -208,7 +174,10 @@ export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
     ],
     configSchema: projectCaseConfigSchema,
     defaultConfig: { segment: "Căn hộ", stage: "Đang mở bán" },
-    extractions: [PRICE_QUOTE, BUYER_QUESTION],
+    enrichers: {
+      case: ["price_quote", "buyer_question", "question_assign"],
+      optional: ["buyer_intent", "concern"],
+    },
     alertSeeds: [
       { kind: "negative_share", scope: { type: "aspect_key", key: "legal" } },
       { kind: "negative_share", scope: { type: "aspect_key", key: "progress" } },
@@ -240,7 +209,7 @@ export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
     ],
     configSchema: marketCaseConfigSchema,
     defaultConfig: { segments: ["Căn hộ"], period: "week" },
-    extractions: [AREA_PRICE_QUOTE],
+    enrichers: { case: ["price_quote"], optional: ["buyer_question", "question_assign"] },
     alertSeeds: [
       { kind: "volume_growth", scope: { type: "each_role", role: "area" } },
       {
@@ -293,7 +262,7 @@ export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
     ],
     configSchema: brandCaseConfigSchema,
     defaultConfig: { period: "month" },
-    extractions: [],
+    enrichers: { case: [], optional: ["stance", "violation"] },
     alertSeeds: [
       { kind: "negative_share", scope: { type: "first_of_role", role: "primary" }, threshold: 20 },
       {
@@ -325,6 +294,26 @@ export function getCaseTemplate(
   return (
     versions.find((item) => item.version === version) ?? versions[versions.length - 1]
   );
+}
+
+/**
+ * Enrichers a project of this case runs by default: core ones plus the case's
+ * own, in registry order. Planned ones are left out.
+ */
+export function defaultCaseEnrichers(template: CaseTemplate): EnricherKey[] {
+  const keys = new Set<EnricherKey>([...CORE_ENRICHERS, ...template.enrichers.case]);
+  return ENRICHER_KEYS.filter((key) => keys.has(key) && isReadyEnricher(key));
+}
+
+/** Every enricher a case can run, with its origin and status, for settings and docs. */
+export function describeCaseEnrichment(template: CaseTemplate) {
+  const origin = (key: EnricherKey): "core" | "case" | "optional" =>
+    CORE_ENRICHERS.includes(key) ? "core" : template.enrichers.case.includes(key) ? "case" : "optional";
+  return describeEnrichers([
+    ...CORE_ENRICHERS,
+    ...template.enrichers.case,
+    ...template.enrichers.optional,
+  ]).map((entry) => ({ ...entry, origin: origin(entry.key) }));
 }
 
 /** Versions after `from`, in order, for the upgrade banner and migration chain. */

@@ -1,6 +1,10 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
+import {
+  effectiveSentimentJoins,
+  effectiveSentimentSql,
+} from "@/lib/enrichment/utils/effective-sentiment-sql";
 
 import { TOPIC_CONFIG } from "../config";
 import type { TopicReportParams, TopicReportResult } from "../types";
@@ -25,7 +29,7 @@ function percent(part: number, total: number) {
  * mentions published in the period, growth against the `days` before, and
  * positive/negative shares of the period. Topics without mentions in either
  * period are left out. Reads `mention_topics` directly until L4 metrics exist.
- * Keywords of the cloud are counted the same way from `mention_keywords` (D16).
+ * Keywords of the cloud are counted the same way from `mention_terms` (D16/D18).
  */
 export async function getTopicReport(params: TopicReportParams): Promise<TopicReportResult> {
   const { days } = params;
@@ -34,26 +38,29 @@ export async function getTopicReport(params: TopicReportParams): Promise<TopicRe
     db.execute<ReportRow>(sql`
       select t.id, t.name,
         (count(m.id) filter (where ${current}))::int as mentions,
-        (count(m.id) filter (where ${current} and m.sentiment = 'positive'))::int as positive,
-        (count(m.id) filter (where ${current} and m.sentiment = 'negative'))::int as negative,
+        (count(m.id) filter (where ${current} and ${effectiveSentimentSql} = 'positive'))::int as positive,
+        (count(m.id) filter (where ${current} and ${effectiveSentimentSql} = 'negative'))::int as negative,
         (count(m.id) filter (where not (${current})))::int as previous
       from topics t
-      join mention_topics mt on mt.topic_id = t.id
+      join mention_topics mt on mt.topic_id = t.id and mt.kind = 'topic'
       join mentions m on m.id = mt.mention_id and m.is_relevant
         and m.published_at >= now() - make_interval(days => ${days * 2})
-      where t.project_id = ${params.projectId}::uuid and t.status = 'active'
+      ${effectiveSentimentJoins}
+      where t.project_id = ${params.projectId}::uuid and t.kind = 'topic' and t.status = 'active'
       group by t.id
       order by mentions desc, previous desc, t.name
     `),
     db.execute<KeywordRow>(sql`
-      select mk.keyword, mode() within group (order by mk.text) as text,
+      select mt.term as keyword, mode() within group (order by mt.text) as text,
         count(*)::int as mentions,
-        (count(*) filter (where m.sentiment = 'negative'))::int as negative
-      from mention_keywords mk
-      join mentions m on m.id = mk.mention_id
-      where m.project_id = ${params.projectId}::uuid and m.is_relevant and ${current}
-      group by mk.keyword
-      order by mentions desc, mk.keyword
+        (count(*) filter (where ${effectiveSentimentSql} = 'negative'))::int as negative
+      from mention_terms mt
+      join mentions m on m.id = mt.mention_id
+      ${effectiveSentimentJoins}
+      where m.project_id = ${params.projectId}::uuid and m.is_relevant
+        and mt.kind = 'keyword' and ${current}
+      group by mt.term
+      order by mentions desc, mt.term
       limit ${TOPIC_CONFIG.reportKeywords}
     `),
   ]);

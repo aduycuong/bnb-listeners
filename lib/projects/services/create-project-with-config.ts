@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import {
   alertRules,
   projectAspects,
+  projectEnrichers,
   projectEntities,
   projectQueries,
   projects,
@@ -12,7 +13,7 @@ import { CreateFailedError, InvalidInputError } from "@/lib/common/service-error
 import { db } from "@/lib/db";
 import { syncProjectMatch } from "@/lib/matching/services/sync-project-match";
 
-import { getCaseTemplate, latestCaseVersion } from "../case-templates";
+import { defaultCaseEnrichers, getCaseTemplate, latestCaseVersion } from "../case-templates";
 import type { CreateProjectResult, CreateProjectWithConfigParams } from "../types";
 import { toAlertRuleRow } from "../utils/to-alert-rule-rows";
 import { toAspectKey } from "../utils/to-aspect-key";
@@ -118,6 +119,13 @@ export async function createProjectWithConfig(
           ),
         ]
       : []),
+    db.insert(projectEnrichers).values(
+      defaultCaseEnrichers(template).map((enricherKey) => ({
+        projectId,
+        enricherKey,
+        enabled: true,
+      })),
+    ),
   ]);
 
   const project = created[0];

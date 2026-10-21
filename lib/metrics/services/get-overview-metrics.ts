@@ -1,6 +1,10 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
+import {
+  effectiveSentimentJoins,
+  effectiveSentimentSql,
+} from "@/lib/enrichment/utils/effective-sentiment-sql";
 
 import { METRICS_CONFIG } from "../config";
 import {
@@ -47,10 +51,10 @@ export async function getOverviewMetrics(
           count(*)::int as mentions,
           coalesce(sum(${engagementSql(sql`ci`)}), 0)::int as engagement,
           count(distinct m.author_id)::int as authors,
-          (count(*) filter (where m.sentiment = 'positive'))::int as positive,
-          (count(*) filter (where m.sentiment = 'neutral'))::int as neutral,
-          (count(*) filter (where m.sentiment = 'negative'))::int as negative,
-          (count(*) filter (where m.sentiment is null))::int as unknown,
+          (count(*) filter (where ${effectiveSentimentSql} = 'positive'))::int as positive,
+          (count(*) filter (where ${effectiveSentimentSql} = 'neutral'))::int as neutral,
+          (count(*) filter (where ${effectiveSentimentSql} = 'negative'))::int as negative,
+          (count(*) filter (where ${effectiveSentimentSql} is null))::int as unknown,
           (count(*) filter (where exists (
             select 1 from mention_entities me join project_entities pe on pe.id = me.entity_id
             where me.mention_id = m.id and pe.role = 'primary'
@@ -61,6 +65,7 @@ export async function getOverviewMetrics(
           )))::int as sov_tracked
         from mentions m
         join content_items ci on ci.id = m.content_item_id
+        ${effectiveSentimentJoins}
         where ${scope} and m.published_at >= ${previousStart}
         group by 1
       `),
@@ -77,9 +82,9 @@ export async function getOverviewMetrics(
       db.execute<{ id: string; name: string; mentions: number }>(sql`
         select t.id, t.name, count(*)::int as mentions
         from topics t
-        join mention_topics mt on mt.topic_id = t.id
+        join mention_topics mt on mt.topic_id = t.id and mt.kind = 'topic'
         join mentions m on m.id = mt.mention_id
-        where t.project_id = ${params.projectId}::uuid and t.status = 'active'
+        where t.project_id = ${params.projectId}::uuid and t.kind = 'topic' and t.status = 'active'
           and ${scope} and ${inPeriod}
         group by t.id
         order by mentions desc, t.name

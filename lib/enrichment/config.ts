@@ -29,25 +29,30 @@ export const EMOTION_LABELS: Record<Emotion, string> = {
   that_vong: "Thất vọng",
 };
 
-/** Enrich settings (docs/decisions.md D14). */
+/**
+ * Enrich settings (docs/decisions.md D14, D18). Each enricher's version lives
+ * in `registry.ts`; bump it there to rerun that enricher alone.
+ */
 export const ENRICH_CONFIG = {
   model: "gpt-4.1-mini" satisfies ChatModelId,
-  /** Bump when the prompt or output shape changes; mentions are enriched again. */
-  promptVersion: 7,
   /** Mentions per model call; longer threads are split. */
   mentionsPerCall: 20,
   /** Threads enriched per workflow step. */
   threadsPerStep: 8,
+  /** Mentions indexed per `terms_index` step. */
+  termsPerStep: 500,
   maxPostChars: 1500,
   maxItemChars: 700,
   /** Longest `topic_hint` kept (D15). */
   maxTopicHintChars: 80,
-  /** Keywords kept per mention, and the longest one (D16). */
+  /** Terms the model may name per mention; keywords kept per mention after the index; longest term. */
+  maxTermsPerMention: 6,
   maxKeywords: 3,
   maxKeywordChars: 40,
   /**
-   * Normalized keywords too generic for the cloud, dropped even when the model
-   * returns them; aspect names of the project are dropped too (D16).
+   * Normalized keywords too generic for the cloud, dropped by the `terms_index`
+   * stage even when the model returns them; aspect names of the project are
+   * dropped too (D16).
    */
   genericKeywords: [
     "giá", "giá cả", "giá bán", "giá nhà", "giá căn hộ", "giá dự án",

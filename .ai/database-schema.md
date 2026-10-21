@@ -322,20 +322,10 @@ A content item that matched a project (docs/decisions.md D11). Tier 2 rejections
 | match_reason | text | YES | — | Tier 2 reason |
 | match_signature | text | NO | — | Project signature when written; stale rows are removed after a full match |
 | user_corrected | boolean | NO | `false` | Hand-corrected relevance survives re-matching |
-| sentiment | text | YES | — | Effective sentiment (label or Enrich): `positive`, `neutral`, `negative` |
-| auto_sentiment | text | YES | — | Enrich's sentiment, kept for evaluation |
-| sentiment_score | real | YES | — | -1 … 1 from Enrich |
-| emotion | text | YES | — | One of six emotions (`hai_long`, `tin_tuong`, `bat_ngo`, `lo_lang`, `tuc_gian`, `that_vong`) |
-| enrich_status | text | NO | `pending` | `pending`, `done`, `skipped` (not relevant), `failed` |
-| enrich_signature | text | YES | — | Enrich signature at enrich time (docs/decisions.md D14) |
-| enriched_content_hash | text | YES | — | Item content hash at enrich time |
-| enriched_at | timestamptz | YES | — | |
-| topic_hint | text | YES | — | Short phrase from Enrich naming what the mention is about (docs/decisions.md D15) |
-| topic_status | text | NO | `pending` | `pending` (to embed or assign), `assigned`, `unassigned` (waiting for a new topic), `none` (no hint) |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
-**Indexes:** `mentions_project_item_idx` UNIQUE `(project_id, content_item_id)`; `mentions_project_published_idx`; `mentions_project_root_idx`; `mentions_content_item_id_idx`; `mentions_project_topic_status_idx` `(project_id, topic_status)`
+**Indexes:** `mentions_project_item_idx` UNIQUE `(project_id, content_item_id)`; `mentions_project_published_idx`; `mentions_project_root_idx`; `mentions_content_item_id_idx`
 
 ### `item_labels`
 
@@ -381,6 +371,50 @@ Stratified random sample of a project's items to label.
 
 **Keys:** primary key `(sample_id, content_item_id)`; `label_sample_items_sample_position_idx`
 
+### `project_enrichers`
+
+Enrichers a project runs; seeded from the case template (docs/decisions.md D18).
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| enricher_key | text | NO | — | Key of `ENRICHER_REGISTRY` |
+| enabled | boolean | NO | `true` | |
+| config | jsonb | NO | `{}` | Settings of this enricher for this project |
+| created_at | timestamptz | NO | `now()` | |
+| updated_at | timestamptz | NO | `now()` | |
+
+**Keys:** primary key `(project_id, enricher_key)`
+
+### `mention_enrichments`
+
+State of one enricher for one mention.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| mention_id | uuid | NO | — | FK → `mentions.id` ON DELETE CASCADE |
+| enricher_key | text | NO | — | |
+| status | text | NO | — | `pending`, `done`, `failed`, `waiting` |
+| signature | text | YES | — | Enricher signature when it ran |
+| content_hash | text | YES | — | Item content hash when it ran |
+| model | text | YES | — | Model used; null for code stages |
+| error | text | YES | — | |
+| enriched_at | timestamptz | YES | — | |
+| updated_at | timestamptz | NO | `now()` | |
+
+**Keys:** primary key `(mention_id, enricher_key)`; `mention_enrichments_key_status_idx`
+
+### `mention_sentiments`
+
+Enrich's sentiment of a mention. Effective sentiment is the label when there is one.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| mention_id | uuid | NO | — | Primary key; FK → `mentions.id` ON DELETE CASCADE |
+| sentiment | text | NO | — | `positive`, `neutral`, `negative` |
+| sentiment_score | real | NO | — | -1 … 1 |
+| emotion | text | YES | — | One of six emotions |
+
 ### `mention_entities`
 
 Sentiment toward each tracked entity a mention talks about (Enrich).
@@ -401,79 +435,102 @@ Aspects of a mention from Enrich. Labeled aspects live in `item_labels.aspect_ke
 | ------ | ---- | -------- | ------- | ----------- |
 | mention_id | uuid | NO | — | FK → `mentions.id` ON DELETE CASCADE |
 | aspect_id | uuid | NO | — | FK → `project_aspects.id` ON DELETE CASCADE |
-| source | text | NO | — | `auto` |
 | sentiment | text | YES | — | Sentiment toward this aspect |
 
-**Keys:** primary key `(mention_id, aspect_id, source)`; `mention_aspects_aspect_id_idx`
+**Keys:** primary key `(mention_id, aspect_id)`; `mention_aspects_aspect_id_idx`
 
 ### `mention_extractions`
 
-Case-specific fields from Enrich (`price_quote`, `buyer_question`, …).
+Raw per-mention LLM output that is not a configured FK: case fields and stage inputs (`topic_hint`, `terms`).
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | mention_id | uuid | NO | — | FK → `mentions.id` ON DELETE CASCADE |
-| schema_key | text | NO | — | Extraction key from the case version |
-| data | jsonb | NO | — | Validated by the extraction's zod schema |
+| schema_key | text | NO | — | Enricher key |
+| data | jsonb | NO | — | Validated by the enricher's zod schema |
 
 **Indexes:** `mention_extractions_mention_id_idx`, `mention_extractions_schema_key_idx`
 
+### `mention_terms`
+
+Indexed terms after the `terms_index` stage (`kind`: `keyword`, `place`, `brand`, `org`).
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| mention_id | uuid | NO | — | FK → `mentions.id` ON DELETE CASCADE |
+| kind | text | NO | — | |
+| term | text | NO | — | Normalized, mapped through the dictionary |
+| text | text | NO | — | As the model wrote it |
+
+**Keys:** primary key `(mention_id, kind, term)`; `mention_terms_kind_term_idx`
+
+### `term_dictionary`
+
+Synonyms and hidden terms for `terms_index`.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| scope_type | text | NO | — | `workspace` or `project` |
+| scope_id | uuid | NO | — | |
+| kind | text | NO | — | Same kinds as `mention_terms` |
+| canonical | text | NO | — | Normalized canonical term |
+| aliases | jsonb | NO | `[]` | Normalized variants |
+| hidden | boolean | NO | `false` | Dropped from the index |
+| created_at | timestamptz | NO | `now()` | |
+| updated_at | timestamptz | NO | `now()` | |
+
+**Indexes:** `term_dictionary_scope_kind_canonical_idx` UNIQUE
+
 ### `topics`
 
-Topic of a project: mention `topic_hint`s grouped and named by the LLM (docs/decisions.md D15).
+A group of mentions of a project (`kind`: `topic`, `buyer_question`, later `argument`).
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| kind | text | NO | `topic` | |
 | name | text | NO | — | Topic name (LLM, editable) |
 | description | text | NO | `''` | One sentence (LLM, editable) |
 | aspect_id | uuid | YES | — | FK → `project_aspects.id` ON DELETE SET NULL; dominant aspect when created |
 | status | text | NO | `active` | `active`, `hidden` (still receives mentions), `merged` |
 | merged_into_id | uuid | YES | — | FK → `topics.id` ON DELETE SET NULL |
-| centroid | vector(1536) | YES | — | Mean embedding of the topic's relevant mentions |
+| centroid | vector(1536) | YES | — | Mean embedding of the group's relevant mentions |
 | mention_count | integer | NO | `0` | Relevant mentions, refreshed after each run |
+| attributes | jsonb | NO | `{}` | Kind-specific fields |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
-**Indexes:** `topics_project_status_idx` `(project_id, status)`
+**Indexes:** `topics_project_kind_status_idx`; `topics_id_kind_idx` UNIQUE `(id, kind)`
 
 ### `mention_topics`
 
+The group of a mention, at most one per `kind`.
+
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
-| mention_id | uuid | NO | — | Primary key; FK → `mentions.id` ON DELETE CASCADE (one topic per mention) |
-| topic_id | uuid | NO | — | FK → `topics.id` ON DELETE CASCADE |
+| mention_id | uuid | NO | — | FK → `mentions.id` ON DELETE CASCADE |
+| kind | text | NO | `topic` | Repeats `topics.kind` |
+| topic_id | uuid | NO | — | |
 | confidence | real | NO | — | 1 when assigned by the LLM |
 | created_at | timestamptz | NO | `now()` | |
 
-**Indexes:** `mention_topics_topic_id_idx`
+**Keys:** primary key `(mention_id, kind)`; `mention_topics_topic_id_idx`; FK `(topic_id, kind)` → `topics (id, kind)` ON DELETE CASCADE
 
 ### `mention_embeddings`
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | mention_id | uuid | NO | — | FK → `mentions.id` ON DELETE CASCADE |
-| kind | text | NO | — | `topic_hint` |
+| kind | text | NO | — | `topic_hint` or `buyer_question` |
 | model | text | NO | — | e.g. `text-embedding-3-small` |
 | text_hash | text | NO | — | Hash of the embedded text |
 | embedding | vector(1536) | NO | — | |
 | created_at | timestamptz | NO | `now()` | |
 
 **Keys:** primary key `(mention_id, kind)`
-
-### `mention_keywords`
-
-Keywords Enrich extracts from a mention (D16).
-
-| Column | Type | Nullable | Default | Description |
-| ------ | ---- | -------- | ------- | ----------- |
-| mention_id | uuid | NO | — | FK → `mentions.id` ON DELETE CASCADE |
-| keyword | text | NO | — | Normalized: lowercase, NFC, single spaces; diacritics kept |
-| text | text | NO | — | As the model wrote it |
-
-**Keys:** primary key `(mention_id, keyword)`; `mention_keywords_keyword_idx`
 
 ### `match_judgments`
 

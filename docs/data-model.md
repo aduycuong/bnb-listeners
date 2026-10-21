@@ -10,8 +10,8 @@ Mô hình dữ liệu nhiều lớp cho hệ thống social listening. Tài li�
 L0  Raw archive      R2: payload gốc từ connector (thật và ảo)
 L1  Raw store        sources · authors · content_items · engagement_snapshots
                      (+ personas · persona_panels · persona_panel_members cho dữ liệu giả)
-L2  Project config   projects · project_entities · project_queries · project_aspects · project_sources
-L3  Analysis         mentions · mention_entities · mention_aspects · mention_topics · mention_keywords · mention_extractions · topics
+L2  Project config   projects · project_entities · project_queries · project_aspects · project_sources · project_enrichers
+L3  Analysis         mentions · mention_enrichments · mention_sentiments · mention_entities · mention_aspects · mention_extractions · mention_terms · term_dictionary · topics · mention_topics · mention_embeddings
 L4  Aggregates       metrics_hourly · metrics_daily · (topic/aspect/author daily)
 L5  Outputs          alert_rules · alerts · insights · reports
 ```
@@ -111,11 +111,9 @@ Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` 
 - `project_id`, `content_item_id`, `root_item_id`, `kind`
 - Copy từ L1 để lọc nhanh: `platform`, `source_id`, `author_id`, `published_at`, `origin`
 - So khớp: `matched_query_ids[]`, `matched_entity_ids[]`, `matched_terms[]`, `match_type` (`direct` | `context` | `manual`), `match_tier` (`lexical` | `llm` | `user`), `is_relevant` (giá trị cuối cùng: theo nhãn nếu có; ứng viên bị LLM loại vẫn được lưu với `false`), `auto_is_relevant` (quyết định của Match), `match_reason`, `match_signature`
-- Enrich ([D14](decisions.md#d14--giai-đoạn-4b-enrich-2026-10-14)): `sentiment` (theo nhãn nếu có), `auto_sentiment` (của AI), `sentiment_score`, `emotion`, `enrich_status` (`pending` | `done` | `skipped` | `failed`), `enrich_signature`, `enriched_content_hash`, `enriched_at`
-- Làm giàu: `sentiment` (`positive` | `neutral` | `negative`), `sentiment_score`, `emotion`, `enrich_status`, `enrich_version`
-- Chỉ số: `reach_estimate`, `engagement_total`
 - `user_corrected`: nhãn đã được người dùng sửa tay
 - Unique: `(project_id, content_item_id)`. Partition theo tháng của `published_at`.
+- Không chứa kết quả Enrich: cảm xúc, trạng thái làm giàu, gợi ý topic nằm ở các bảng riêng ([D18](decisions.md#d18--tách-enrich-theo-từng-loại-2026-10-21)).
 
 **`item_labels`**: nhãn tay của một item trong một project (`is_relevant`, `sentiment`, `aspect_keys`: null = chưa gán, [] = không có aspect), `sample_id` nếu gán trong đợt mẫu, `labeled_by`. Tách khỏi kết quả của hệ thống để đo ([D13](decisions.md#d13--nhãn-tay-và-đo-trên-mẫu-thật-2026-10-14)).
 
@@ -123,23 +121,27 @@ Chi tiết và cách dùng: [synthetic-data.md](synthetic-data.md). `scenarios` 
 
 **`match_judgments`**: cache quyết định của tầng 2 theo nội dung item, bài gốc và bộ từ khóa của entity; dùng chung giữa các project.
 
+**`project_enrichers`**: enricher nào một project chạy (`enricher_key`, `enabled`, `config`). Seed từ case template; bật thêm được khi mở rộng report ([D18](decisions.md#d18--tách-enrich-theo-từng-loại-2026-10-21)).
+
+**`mention_enrichments`**: trạng thái từng enricher trên một mention (`enricher_key`, `status` `pending` | `done` | `failed` | `waiting`, `signature`, `content_hash`, `model`). Chữ ký riêng từng loại nên bump một enricher không chạy lại các loại khác.
+
+**`mention_sentiments`**: kết quả AI (`sentiment`, `sentiment_score`, `emotion`). Sentiment hiệu lực = nhãn tay nếu có, không thì hàng này.
+
 **`mention_entities`**: `mention_id`, `entity_id`, `sentiment`. Dùng cho SoV và so sánh đối thủ.
 
-**`mention_aspects`**: `mention_id`, `aspect_id`, `source` (`auto`), `sentiment`. Chỉ chứa kết quả AI; aspect gán tay ở `item_labels.aspect_keys` được ưu tiên.
+**`mention_aspects`**: `mention_id`, `aspect_id`, `sentiment`. Chỉ chứa kết quả AI; aspect gán tay ở `item_labels.aspect_keys` được ưu tiên.
 
-**`mention_topics`**: `mention_id` (khóa chính: một mention thuộc tối đa một topic), `topic_id`, `confidence` (1 khi LLM gán). Xem [D15](decisions.md#d15--giai-đoạn-4c-topic-2026-10-15).
+**`mention_extractions`**: lớp thô per-mention (`schema_key` + `data` jsonb): trường riêng theo case (`price_quote`, `buyer_question`, …) và đầu vào stage (`topic_hint`, `terms`).
 
-**`mention_keywords`**: `mention_id`, `keyword` (chuẩn hóa: chữ thường, NFC, giữ dấu), `text` (cách model viết). Enrich trích 0–3 từ khóa mỗi mention, không lấy tên đối tượng của project; đám mây từ khóa đếm thẳng từ bảng này. Xem [D16](decisions.md#d16--từ-khóa-2026-10-15).
+**`mention_terms`**: từ ngữ đã chuẩn hóa sau stage `terms_index` (`kind` `keyword` | `place` | `brand` | `org`, `term`, `text`). Đám mây từ khóa đọc `kind = keyword`.
 
-**`mention_extractions`**: các trường riêng theo case.
-- `mention_id`, `schema_key` (ví dụ `price_quote`, `violation`, `buyer_question`, `location`), `data` (jsonb, validate bằng zod)
+**`term_dictionary`**: đồng nghĩa và ẩn term (`scope_type` `workspace` | `project`, `kind`, `canonical`, `aliases[]`, `hidden`).
 
-**`topics`**: chủ đề theo project, LLM gom `mentions.topic_hint` thành topic và đặt tên (D15).
-- `project_id`, `name`, `description`, `aspect_id` (nullable), `status` (`active` | `hidden` | `merged`), `merged_into_id`, `centroid` (vector), `mention_count`
+**`topics`**: nhóm mention theo `kind` (`topic` | `buyer_question` | sau này `argument`). LLM gom `topic_hint` thành topic và `buyer_question.question` thành nhóm FAQ, rồi đặt tên (D15). `attributes` jsonb cho trường riêng từng kind.
 
-**`mention_embeddings`**: `mention_id`, `kind` (`topic_hint`), `model`, `text_hash`, `embedding`. Khóa chính `(mention_id, kind)`. Dùng để tìm topic nên gộp và sau này cho hỏi đáp AI.
+**`mention_topics`**: khóa `(mention_id, kind)` — một mention thuộc tối đa một nhóm mỗi kind. `kind` trùng `topics.kind` (FK ghép).
 
-Trên `mentions`: `topic_hint` (từ Enrich), `topic_status` (`pending` | `assigned` | `unassigned` | `none`).
+**`mention_embeddings`**: `mention_id`, `kind` (`topic_hint` | `buyer_question`), `model`, `text_hash`, `embedding`. Khóa chính `(mention_id, kind)`.
 
 ## L4 — Aggregates
 

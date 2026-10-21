@@ -6,6 +6,7 @@ import type {
   AuthorMetricsResult,
   ChannelMetricsResult,
   OverviewMetricsResult,
+  ProjectCaseMetricsResult,
   SentimentMetricsResult,
 } from "@/lib/metrics/types";
 import { projectFetch } from "@/lib/projects/utils/project-fetch";
@@ -49,6 +50,15 @@ export function useAuthorMetrics(scope: MetricsApiScope, days: number) {
   return useQuery({
     queryKey: [...metricsQueryKey(scope.projectId), "authors", days],
     queryFn: () => fetchJson<AuthorMetricsResult>(scope, `/api/metrics/authors?days=${days}`),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useProjectCaseMetrics(scope: MetricsApiScope, days: number) {
+  return useQuery({
+    queryKey: [...metricsQueryKey(scope.projectId), "project-case", days],
+    queryFn: () =>
+      fetchJson<ProjectCaseMetricsResult>(scope, `/api/metrics/project-case?days=${days}`),
     placeholderData: keepPreviousData,
   });
 }

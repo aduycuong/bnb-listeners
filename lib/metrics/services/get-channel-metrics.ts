@@ -1,6 +1,10 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
+import {
+  effectiveSentimentJoins,
+  effectiveSentimentSql,
+} from "@/lib/enrichment/utils/effective-sentiment-sql";
 
 import { METRICS_CONFIG } from "../config";
 import type { ChannelMetricsResult, MetricsReportParams } from "../types";
@@ -42,11 +46,12 @@ export async function getChannelMetrics(
   const [{ rows: channelRows }, { rows: heatRows }, { rows: sourceRows }] = await Promise.all([
     db.execute<ChannelRow>(sql`
       select m.platform, s.source_type, count(*)::int as mentions,
-        (count(*) filter (where m.sentiment = 'positive'))::int as positive,
-        (count(*) filter (where m.sentiment = 'neutral'))::int as neutral,
-        (count(*) filter (where m.sentiment = 'negative'))::int as negative
+        (count(*) filter (where ${effectiveSentimentSql} = 'positive'))::int as positive,
+        (count(*) filter (where ${effectiveSentimentSql} = 'neutral'))::int as neutral,
+        (count(*) filter (where ${effectiveSentimentSql} = 'negative'))::int as negative
       from mentions m
       left join sources s on s.id = m.source_id
+      ${effectiveSentimentJoins}
       where ${scope}
       group by m.platform, s.source_type
     `),

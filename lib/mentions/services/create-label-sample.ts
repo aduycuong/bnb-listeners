@@ -4,6 +4,7 @@ import {
   contentItems,
   labelSampleItems,
   labelSamples,
+  mentionEnrichments,
   mentions,
   projects,
   projectSources,
@@ -31,13 +32,15 @@ async function createEnrichSample(params: CreateLabelSampleParams, matchSignatur
   const enriched = and(
     eq(mentions.projectId, params.projectId),
     eq(mentions.isRelevant, true),
-    eq(mentions.enrichStatus, "done"),
+    eq(mentionEnrichments.enricherKey, "sentiment"),
+    eq(mentionEnrichments.status, "done"),
   );
   const [[total], rows, [{ n: existing } = { n: 0 }]] = await Promise.all([
-    db.select({ n: count() }).from(mentions).where(enriched),
+    db.select({ n: count() }).from(mentions).innerJoin(mentionEnrichments, eq(mentionEnrichments.mentionId, mentions.id)).where(enriched),
     db
       .select({ id: mentions.contentItemId })
       .from(mentions)
+      .innerJoin(mentionEnrichments, eq(mentionEnrichments.mentionId, mentions.id))
       .where(enriched)
       .orderBy(sql`random()`)
       .limit(params.mentions),

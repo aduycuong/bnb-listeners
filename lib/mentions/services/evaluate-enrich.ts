@@ -5,6 +5,8 @@ import {
   labelSampleItems,
   labelSamples,
   mentionAspects,
+  mentionEnrichments,
+  mentionSentiments,
   mentions,
   projectAspects,
 } from "@/db/schema";
@@ -51,7 +53,7 @@ export async function evaluateEnrich(params: {
       mentionId: mentions.id,
       labelSentiment: itemLabels.sentiment,
       labelAspectKeys: itemLabels.aspectKeys,
-      autoSentiment: mentions.autoSentiment,
+      autoSentiment: mentionSentiments.sentiment,
     })
     .from(labelSampleItems)
     .innerJoin(
@@ -68,11 +70,19 @@ export async function evaluateEnrich(params: {
         eq(mentions.projectId, params.projectId),
       ),
     )
+    .innerJoin(mentionSentiments, eq(mentionSentiments.mentionId, mentions.id))
+    .innerJoin(
+      mentionEnrichments,
+      and(
+        eq(mentionEnrichments.mentionId, mentions.id),
+        eq(mentionEnrichments.enricherKey, "sentiment"),
+        eq(mentionEnrichments.status, "done"),
+      ),
+    )
     .where(
       and(
         eq(labelSampleItems.sampleId, sampleId),
         eq(itemLabels.isRelevant, true),
-        eq(mentions.enrichStatus, "done"),
       ),
     );
 
@@ -85,12 +95,7 @@ export async function evaluateEnrich(params: {
     ? await db
         .select({ mentionId: mentionAspects.mentionId, aspectId: mentionAspects.aspectId })
         .from(mentionAspects)
-        .where(
-          and(
-            inArray(mentionAspects.mentionId, rows.map((row) => row.mentionId)),
-            eq(mentionAspects.source, "auto"),
-          ),
-        )
+        .where(inArray(mentionAspects.mentionId, rows.map((row) => row.mentionId)))
     : [];
 
   const confusion: Record<string, Record<string, number>> = Object.fromEntries(

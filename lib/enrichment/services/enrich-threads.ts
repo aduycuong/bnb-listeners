@@ -1,267 +1,204 @@
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import { and, eq, inArray, ne, or, sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 
-import {
-  contentItems,
-  itemLabels,
-  mentionAspects,
-  mentionEntities,
-  mentionExtractions,
-  mentionKeywords,
-  mentions,
-  mentionTopics,
-} from "@/db/schema";
+import { contentItems, mentionEnrichments } from "@/db/schema";
+import { uuidArraySql } from "@/lib/common/uuid-array-sql";
 import { db } from "@/lib/db";
 import { createChatModel } from "@/lib/langchain";
 
 import { ENRICH_CONFIG } from "../config";
-import type { EnrichItem, EnrichThreadsResult, ProjectEnrichContext } from "../types";
+import { getLlmEnricher } from "../enrichers/llm-enrichers";
+import type { EnricherKey } from "../registry";
+import type {
+  EnrichItem,
+  EnrichRunOptions,
+  EnrichThreadsResult,
+  ProjectEnrichContext,
+  ProjectEnricherState,
+} from "../types";
 import {
   buildEnrichPrompt,
   buildEnrichSchema,
   type EnrichResponse,
+  flattenItemResult,
 } from "../utils/build-enrich-request";
-import { normalizeKeyword } from "../utils/normalize-keyword";
+import { pendingPairsSql, selectLlmEnrichers } from "../utils/pending-enrichments-sql";
 import { loadEnrichContext } from "./load-enrich-context";
-
-type ItemResult = EnrichResponse["items"][number];
 
 async function callModel(
   ctx: ProjectEnrichContext,
+  keys: EnricherKey[],
   rootText: string,
   items: EnrichItem[],
-): Promise<Map<string, ItemResult>> {
+): Promise<Map<string, Record<string, unknown>>> {
+  const enrichers = keys.map(getLlmEnricher);
   const model = createChatModel(ENRICH_CONFIG.model, { temperature: 0 }).withStructuredOutput(
-    buildEnrichSchema(ctx),
+    buildEnrichSchema(ctx, enrichers),
   );
-  const prompt = buildEnrichPrompt({ ctx, rootText, items });
+  const prompt = buildEnrichPrompt({ ctx, enrichers, rootText, items });
   const response = (await model.invoke([
     new SystemMessage(prompt.system),
     new HumanMessage(prompt.user),
   ])) as EnrichResponse;
 
-  const results = new Map<string, ItemResult>();
+  const results = new Map<string, Record<string, unknown>>();
   for (const entry of response.items) {
     const item = items[entry.index];
-    if (item) results.set(item.mentionId, entry);
+    if (item) results.set(item.mentionId, flattenItemResult(entry));
   }
   return results;
 }
 
-/**
- * Up to `maxKeywords` distinct keywords, normalized (D16). Keywords naming a tracked
- * entity are dropped: the cloud is about what people discuss, not who. Generic words
- * and aspect names ("Giá & thanh toán" → "giá", "thanh toán") are dropped as well, and
- * so are amounts and sizes, which start with a digit ("3 tỷ", "50m2").
- */
-function pickKeywords(ctx: ProjectEnrichContext, keywords: string[]) {
-  const entityNames = ctx.entities
-    .flatMap((entity) => [entity.name, ...entity.aliases])
-    .map((name) => ` ${normalizeKeyword(name)} `)
-    .filter((name) => name.trim());
-  const generic = new Set<string>([
-    ...ENRICH_CONFIG.genericKeywords,
-    ...ctx.aspects.flatMap((aspect) =>
-      [aspect.name, ...aspect.name.split(/[&,/]| và /)].map(normalizeKeyword),
-    ),
-  ]);
-  const byKeyword = new Map<string, string>();
-  for (const raw of keywords) {
-    const text = raw.replace(/\s+/g, " ").trim();
-    const keyword = normalizeKeyword(text);
-    if (!keyword || keyword.length > ENRICH_CONFIG.maxKeywordChars || byKeyword.has(keyword)) continue;
-    if (generic.has(keyword) || /^\d/.test(keyword)) continue;
-    const padded = ` ${keyword} `;
-    if (entityNames.some((name) => padded.includes(name) || name.includes(padded))) continue;
-    byKeyword.set(keyword, text);
-    if (byKeyword.size >= ENRICH_CONFIG.maxKeywords) break;
-  }
-  return [...byKeyword.entries()].map(([keyword, text]) => ({ keyword, text }));
-}
-
-/** Rows that replace a mention's Enrich output. Labels stay authoritative for `sentiment`. */
+/** Rows that replace one mention's output for the keys it needed, plus its state. */
 function toWrites(
   ctx: ProjectEnrichContext,
+  signatures: Map<EnricherKey, string>,
   item: EnrichItem,
-  result: ItemResult,
-  labeledSentiment: string | null,
+  result: Record<string, unknown>,
 ): BatchItem<"pg">[] {
-  const aspectIds = new Map(ctx.aspects.map((aspect) => [aspect.key, aspect.id]));
-  const entityIds = new Map(ctx.entities.map((entity) => [entity.ref, entity.id]));
-  const aspects = [
-    ...new Map(
-      (result.aspects ?? [])
-        .filter((aspect) => aspectIds.has(aspect.key))
-        .map((aspect) => [aspect.key, aspect]),
-    ).values(),
-  ];
-  const entities = [
-    ...new Map(
-      (result.entities ?? [])
-        .filter((entity) => entityIds.has(entity.entity))
-        .map((entity) => [entity.entity, entity]),
-    ).values(),
-  ];
-  const extractions = ctx.extractions.flatMap((extraction) => {
-    const value = result.extractions?.[extraction.key];
-    const values = extraction.many ? (Array.isArray(value) ? value : []) : value ? [value] : [];
-    return values.map((data) => ({
-      mentionId: item.mentionId,
-      schemaKey: extraction.key,
-      data: data as Record<string, unknown>,
-    }));
-  });
-
-  const keywords = pickKeywords(ctx, result.keywords ?? []);
-  const topicHint =
-    result.topicHint?.replace(/\s+/g, " ").trim().slice(0, ENRICH_CONFIG.maxTopicHintChars) || null;
-
-  const writes: BatchItem<"pg">[] = [
+  const writes = item.keys.flatMap((key) => getLlmEnricher(key).writes(ctx, item, result));
+  writes.push(
     db
-      .update(mentions)
-      .set({
-        topicHint,
-        // A hint that disappears leaves its topic; one that appears waits for the topic stage,
-        // which also notices a changed hint by its embedding hash (D15).
-        topicStatus: topicHint
-          ? sql`case when ${mentions.topicStatus} = 'none' then 'pending' else ${mentions.topicStatus} end`
-          : "none",
-        autoSentiment: result.sentiment,
-        sentiment: labeledSentiment ?? result.sentiment,
-        sentimentScore: Math.max(-1, Math.min(1, result.sentimentScore)),
-        emotion: result.emotion,
-        enrichStatus: "done",
-        enrichSignature: ctx.signature,
-        enrichedContentHash: item.contentHash,
-        enrichedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(mentions.id, item.mentionId)),
-    db.delete(mentionEntities).where(eq(mentionEntities.mentionId, item.mentionId)),
-    db
-      .delete(mentionAspects)
-      .where(and(eq(mentionAspects.mentionId, item.mentionId), eq(mentionAspects.source, "auto"))),
-    db.delete(mentionExtractions).where(eq(mentionExtractions.mentionId, item.mentionId)),
-    db.delete(mentionKeywords).where(eq(mentionKeywords.mentionId, item.mentionId)),
-  ];
-  if (!topicHint) writes.push(db.delete(mentionTopics).where(eq(mentionTopics.mentionId, item.mentionId)));
-  if (entities.length > 0) {
-    writes.push(
-      db.insert(mentionEntities).values(
-        entities.map((entity) => ({
+      .insert(mentionEnrichments)
+      .values(
+        item.keys.map((key) => ({
           mentionId: item.mentionId,
-          entityId: entityIds.get(entity.entity)!,
-          sentiment: entity.sentiment,
+          enricherKey: key,
+          status: "done",
+          signature: signatures.get(key) ?? null,
+          contentHash: item.contentHash,
+          model: ENRICH_CONFIG.model,
+          error: null,
+          enrichedAt: new Date(),
         })),
-      ),
-    );
-  }
-  if (aspects.length > 0) {
-    writes.push(
-      db.insert(mentionAspects).values(
-        aspects.map((aspect) => ({
-          mentionId: item.mentionId,
-          aspectId: aspectIds.get(aspect.key)!,
-          source: "auto",
-          sentiment: aspect.sentiment,
-        })),
-      ),
-    );
-  }
-  if (extractions.length > 0) writes.push(db.insert(mentionExtractions).values(extractions));
-  if (keywords.length > 0) {
-    writes.push(
-      db.insert(mentionKeywords).values(keywords.map((keyword) => ({ mentionId: item.mentionId, ...keyword }))),
-    );
-  }
+      )
+      .onConflictDoUpdate({
+        target: [mentionEnrichments.mentionId, mentionEnrichments.enricherKey],
+        set: {
+          status: sql`excluded.status`,
+          signature: sql`excluded.signature`,
+          contentHash: sql`excluded.content_hash`,
+          model: sql`excluded.model`,
+          error: null,
+          enrichedAt: sql`excluded.enriched_at`,
+          updatedAt: sql`now()`,
+        },
+      }),
+  );
   return writes;
 }
 
+function failedWrite(items: EnrichItem[], error: string): BatchItem<"pg"> {
+  return db
+    .insert(mentionEnrichments)
+    .values(
+      items.flatMap((item) =>
+        item.keys.map((key) => ({
+          mentionId: item.mentionId,
+          enricherKey: key,
+          status: "failed",
+          error: error.slice(0, 500),
+        })),
+      ),
+    )
+    .onConflictDoUpdate({
+      target: [mentionEnrichments.mentionId, mentionEnrichments.enricherKey],
+      set: { status: "failed", error: sql`excluded.error`, updatedAt: sql`now()` },
+    });
+}
+
+type PendingRow = {
+  mention_id: string;
+  content_item_id: string;
+  root_id: string;
+  kind: string;
+  text: string;
+  content_hash: string;
+  published_at: string | null;
+  key: string;
+};
+
 /**
- * Enrich for some threads of a project (D14): one model call per thread for
- * up to `mentionsPerCall` relevant mentions, with the root post as context.
+ * Enrich for some threads of a project (D14/D18): one model call per thread
+ * for up to `mentionsPerCall` relevant mentions, with the root post as
+ * context. The call asks for the union of the enrichers the mentions need;
+ * each mention keeps only the outputs of the keys it was pending for.
  */
-export async function enrichThreads(params: {
-  projectId: string;
-  rootIds: string[];
-}): Promise<EnrichThreadsResult> {
+export async function enrichThreads(
+  params: { projectId: string; rootIds: string[] } & EnrichRunOptions,
+): Promise<EnrichThreadsResult> {
   const result: EnrichThreadsResult = { enriched: 0, failed: 0, llmCalls: 0 };
   if (params.rootIds.length === 0) return result;
 
   const ctx = await loadEnrichContext({ projectId: params.projectId });
-  const [roots, rows] = await Promise.all([
+  const enrichers: ProjectEnricherState[] = selectLlmEnrichers(ctx, params);
+  if (enrichers.length === 0) return result;
+  const signatures = new Map(enrichers.map((enricher) => [enricher.key, enricher.signature]));
+
+  const [roots, { rows }] = await Promise.all([
     db
       .select({ id: contentItems.id, text: contentItems.text })
       .from(contentItems)
       .where(inArray(contentItems.id, params.rootIds)),
-    db
-      .select({
-        mentionId: mentions.id,
-        contentItemId: mentions.contentItemId,
-        rootId: mentions.rootItemId,
-        kind: contentItems.kind,
-        text: contentItems.text,
-        contentHash: contentItems.contentHash,
-        publishedAt: contentItems.publishedAt,
-        labeledSentiment: itemLabels.sentiment,
-      })
-      .from(mentions)
-      .innerJoin(contentItems, eq(contentItems.id, mentions.contentItemId))
-      .leftJoin(
-        itemLabels,
-        and(
-          eq(itemLabels.projectId, mentions.projectId),
-          eq(itemLabels.contentItemId, mentions.contentItemId),
-        ),
-      )
-      .where(
-        and(
-          eq(mentions.projectId, params.projectId),
-          eq(mentions.isRelevant, true),
-          inArray(mentions.rootItemId, params.rootIds),
-          or(
-            ne(mentions.enrichStatus, "done"),
-            sql`${mentions.enrichSignature} is distinct from ${ctx.signature}`,
-            sql`${mentions.enrichedContentHash} is distinct from ${contentItems.contentHash}`,
-          ),
-        ),
-      ),
+    db.execute<PendingRow>(
+      pendingPairsSql({
+        projectId: params.projectId,
+        enrichers,
+        force: params.force,
+        select: sql`m.id as mention_id, m.content_item_id, coalesce(m.root_item_id, m.content_item_id) as root_id,
+          ci.kind, ci.text, ci.content_hash, ci.published_at, k.key`,
+        extraWhere: sql`coalesce(m.root_item_id, m.content_item_id) = any(${uuidArraySql(params.rootIds)})`,
+      }),
+    ),
   ]);
   const rootText = new Map(roots.map((root) => [root.id, root.text]));
 
+  const items = new Map<string, EnrichItem & { rootId: string }>();
+  for (const row of rows) {
+    const item = items.get(row.mention_id) ?? {
+      mentionId: row.mention_id,
+      contentItemId: row.content_item_id,
+      rootId: row.root_id,
+      kind: row.kind,
+      text: row.text,
+      contentHash: row.content_hash,
+      publishedAt: row.published_at ? new Date(row.published_at) : null,
+      keys: [],
+    };
+    item.keys.push(row.key as EnricherKey);
+    items.set(row.mention_id, item);
+  }
+
   for (const rootId of params.rootIds) {
-    const thread = rows
-      .filter((row) => row.rootId === rootId)
-      .sort((a, b) => Number(b.kind === "post") - Number(a.kind === "post") || (a.publishedAt?.getTime() ?? 0) - (b.publishedAt?.getTime() ?? 0));
+    const thread = [...items.values()]
+      .filter((item) => item.rootId === rootId)
+      .sort(
+        (a, b) =>
+          Number(b.kind === "post") - Number(a.kind === "post") ||
+          (a.publishedAt?.getTime() ?? 0) - (b.publishedAt?.getTime() ?? 0),
+      );
 
     for (let offset = 0; offset < thread.length; offset += ENRICH_CONFIG.mentionsPerCall) {
       const batch = thread.slice(offset, offset + ENRICH_CONFIG.mentionsPerCall);
+      const keys = enrichers.map((e) => e.key).filter((key) => batch.some((item) => item.keys.includes(key)));
       try {
-        const answers = await callModel(ctx, rootText.get(rootId) ?? "", batch);
+        const answers = await callModel(ctx, keys, rootText.get(rootId) ?? "", batch);
         result.llmCalls += 1;
         const writes = batch.flatMap((item) => {
           const answer = answers.get(item.mentionId);
-          return answer ? toWrites(ctx, item, answer, item.labeledSentiment) : [];
+          return answer ? toWrites(ctx, signatures, item, answer) : [];
         });
         const missing = batch.filter((item) => !answers.has(item.mentionId));
-        if (missing.length > 0) {
-          writes.push(
-            db
-              .update(mentions)
-              .set({ enrichStatus: "failed", updatedAt: new Date() })
-              .where(inArray(mentions.id, missing.map((item) => item.mentionId))),
-          );
-        }
+        if (missing.length > 0) writes.push(failedWrite(missing, "missing from model output"));
         if (writes.length > 0) await db.batch(writes as [BatchItem<"pg">, ...BatchItem<"pg">[]]);
         result.enriched += batch.length - missing.length;
         result.failed += missing.length;
       } catch (error) {
         console.error("[enrichment] thread failed", { rootId, error });
-        await db
-          .update(mentions)
-          .set({ enrichStatus: "failed", updatedAt: new Date() })
-          .where(inArray(mentions.id, batch.map((item) => item.mentionId)));
+        await db.batch([
+          failedWrite(batch, error instanceof Error ? error.message : String(error)),
+        ]);
         result.failed += batch.length;
       }
     }

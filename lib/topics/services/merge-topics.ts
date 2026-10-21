@@ -4,7 +4,7 @@ import { mentionTopics, topics } from "@/db/schema";
 import { InvalidInputError, NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 
-import type { TopicStatus } from "../config";
+import { isTopicStageKind, type TopicStatus } from "../config";
 import type { MergeTopicsParams, TopicSummary } from "../types";
 import { refreshTopicStats } from "./refresh-topic-stats";
 
@@ -14,7 +14,7 @@ export async function mergeTopics(params: MergeTopicsParams): Promise<TopicSumma
     throw new InvalidInputError("A topic cannot be merged into itself.");
   }
   const rows = await db
-    .select({ id: topics.id, name: topics.name, status: topics.status })
+    .select({ id: topics.id, name: topics.name, status: topics.status, kind: topics.kind })
     .from(topics)
     .where(
       and(
@@ -29,6 +29,9 @@ export async function mergeTopics(params: MergeTopicsParams): Promise<TopicSumma
   if (source.status === "merged" || target.status === "merged") {
     throw new InvalidInputError("Merged topics cannot be merged again.");
   }
+  if (source.kind !== target.kind) {
+    throw new InvalidInputError("Topics of different kinds cannot be merged.");
+  }
 
   await db.batch([
     db.update(mentionTopics).set({ topicId: target.id }).where(eq(mentionTopics.topicId, source.id)),
@@ -41,7 +44,8 @@ export async function mergeTopics(params: MergeTopicsParams): Promise<TopicSumma
       .set({ status: "merged", mergedIntoId: target.id, mentionCount: 0, updatedAt: new Date() })
       .where(eq(topics.id, source.id)),
   ]);
-  await refreshTopicStats({ projectId: params.projectId, topicIds: [target.id] });
+  const kind = isTopicStageKind(target.kind) ? target.kind : undefined;
+  await refreshTopicStats({ projectId: params.projectId, kind, topicIds: [target.id] });
 
   return { id: target.id, name: target.name, status: target.status as TopicStatus };
 }

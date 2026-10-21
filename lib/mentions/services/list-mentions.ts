@@ -6,8 +6,10 @@ import {
   contentItems,
   itemLabels,
   mentionAspects,
+  mentionEnrichments,
   mentionExtractions,
   mentions,
+  mentionSentiments,
   mentionTopics,
   projectAspects,
   sources,
@@ -34,10 +36,17 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
   if (params.entityId) {
     filters.push(sql`${mentions.matchedEntityIds} @> ${JSON.stringify([params.entityId])}::jsonb`);
   }
-  if (params.topicId) filters.push(eq(mentionTopics.topicId, params.topicId));
+  if (params.topicId) {
+    filters.push(sql`exists (
+      select 1 from mention_topics mt
+      where mt.mention_id = ${mentions.id} and mt.topic_id = ${params.topicId}
+    )`);
+  }
   if (params.sourceId) filters.push(eq(mentions.sourceId, params.sourceId));
   if (params.authorId) filters.push(eq(mentions.authorId, params.authorId));
-  if (params.sentiment !== "all") filters.push(eq(mentions.sentiment, params.sentiment));
+  if (params.sentiment !== "all") {
+    filters.push(sql`coalesce(${itemLabels.sentiment}, ${mentionSentiments.sentiment}) = ${params.sentiment}`);
+  }
   if (params.aspectId) {
     // Effective aspects: the label's keys when labeled, else Enrich's rows (D14).
     filters.push(sql`(
@@ -46,7 +55,7 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
       ))
       or (${itemLabels.aspectKeys} is null and exists (
         select 1 from ${mentionAspects} ma
-        where ma.mention_id = ${mentions.id} and ma.aspect_id = ${params.aspectId} and ma.source = 'auto'
+        where ma.mention_id = ${mentions.id} and ma.aspect_id = ${params.aspectId}
       ))
     )`);
   }
@@ -76,10 +85,10 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
       autoIsRelevant: mentions.autoIsRelevant,
       userCorrected: mentions.userCorrected,
       label: itemLabels.isRelevant,
-      sentiment: mentions.sentiment,
-      autoSentiment: mentions.autoSentiment,
-      emotion: mentions.emotion,
-      enrichStatus: mentions.enrichStatus,
+      sentiment: sql<string | null>`coalesce(${itemLabels.sentiment}, ${mentionSentiments.sentiment})`,
+      autoSentiment: mentionSentiments.sentiment,
+      emotion: mentionSentiments.emotion,
+      enrichStatus: sql<string>`coalesce(${mentionEnrichments.status}, 'pending')`,
       labelSentiment: itemLabels.sentiment,
       labelAspectKeys: itemLabels.aspectKeys,
       topicId: topics.id,
@@ -97,7 +106,20 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
         eq(itemLabels.contentItemId, mentions.contentItemId),
       ),
     )
-    .leftJoin(mentionTopics, eq(mentionTopics.mentionId, mentions.id))
+    .leftJoin(mentionSentiments, eq(mentionSentiments.mentionId, mentions.id))
+    .leftJoin(
+      mentionEnrichments,
+      and(eq(mentionEnrichments.mentionId, mentions.id), eq(mentionEnrichments.enricherKey, "sentiment")),
+    )
+    .leftJoin(
+      mentionTopics,
+      and(
+        eq(mentionTopics.mentionId, mentions.id),
+        params.topicId
+          ? eq(mentionTopics.topicId, params.topicId)
+          : eq(mentionTopics.kind, "topic"),
+      ),
+    )
     .leftJoin(topics, eq(topics.id, mentionTopics.topicId));
 
   const [rows, [totals]] = await Promise.all([
@@ -117,7 +139,7 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
           eq(itemLabels.contentItemId, mentions.contentItemId),
         ),
       )
-      .leftJoin(mentionTopics, eq(mentionTopics.mentionId, mentions.id))
+      .leftJoin(mentionSentiments, eq(mentionSentiments.mentionId, mentions.id))
       .where(where),
   ]);
 
@@ -142,7 +164,7 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
         ...row,
         topic: topicId && topicName ? { id: topicId, name: topicName } : null,
         aspects: aspectRows
-          .filter((aspect) => aspect.mentionId === row.id && aspect.source === "auto")
+          .filter((aspect) => aspect.mentionId === row.id)
           .map((aspect) => ({ aspectId: aspect.aspectId, sentiment: aspect.sentiment })),
         extractions: extractionRows
           .filter((extraction) => extraction.mentionId === row.id)

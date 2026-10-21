@@ -3,7 +3,8 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { topics } from "@/db/schema";
 import { db } from "@/lib/db";
 
-import type { MergeSimilarTopicsResult } from "../types";
+import { getTopicStage } from "../config";
+import type { MergeSimilarTopicsResult, TopicRunParams } from "../types";
 import { normalizeTopicName } from "../utils/normalize-topic-name";
 import { mergeTopics } from "./merge-topics";
 
@@ -12,13 +13,16 @@ import { mergeTopics } from "./merge-topics";
  * into the largest of them, without asking the model. Topics without mentions
  * have no centroid, so the similarity check never pairs them.
  */
-export async function mergeSameNameTopics(params: {
-  projectId: string;
-}): Promise<MergeSimilarTopicsResult["merged"]> {
+export async function mergeSameNameTopics(
+  params: TopicRunParams,
+): Promise<MergeSimilarTopicsResult["merged"]> {
+  const spec = getTopicStage(params.kind);
   const rows = await db
     .select({ id: topics.id, name: topics.name })
     .from(topics)
-    .where(and(eq(topics.projectId, params.projectId), eq(topics.status, "active")))
+    .where(
+      and(eq(topics.projectId, params.projectId), eq(topics.kind, spec.kind), eq(topics.status, "active")),
+    )
     .orderBy(desc(topics.mentionCount), asc(topics.createdAt));
 
   const targetByName = new Map<string, string>();

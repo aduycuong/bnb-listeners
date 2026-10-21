@@ -505,18 +505,21 @@ export function HealthLineChart() {
   );
 }
 
-export function PriceTrendChart() {
-  const months = ["T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10"];
-  const series = [
-    { key: "La Pura", color: "#0091FF", values: [44.8, 45.3, 45.9, 46.4, 47, 47.6, 48.1, 48.6] },
-    { key: "TB trục QL13", color: "#FFC93C", values: [44, 44.2, 44.5, 44.9, 45.2, 45.5, 45.8, 46] },
-    { key: "TB Thuận An", color: "#00C9A7", values: [38.6, 38.9, 39.2, 39.6, 40, 40.3, 40.7, 41] },
-    { key: "Giá khởi điểm", color: "var(--muted-foreground)", values: [46, 46, 46, 46, 46, 46, 46, 46] },
-  ];
-  const data = months.map((month, index) => ({
-    month,
+export function PriceTrendChart({
+  days,
+  series,
+}: {
+  days: string[];
+  series: { key: string; color: string; dashed?: boolean; dotted?: boolean; values: (number | null)[] }[];
+}) {
+  const data = days.map((day, index) => ({
+    day,
     ...Object.fromEntries(series.map((item) => [item.key, item.values[index]])),
   }));
+  const numbers = series.flatMap((item) => item.values.filter((value): value is number => value != null));
+  const min = numbers.length ? Math.min(...numbers) : 0;
+  const max = numbers.length ? Math.max(...numbers) : 1;
+  const pad = Math.max((max - min) * 0.08, 1);
   const config = Object.fromEntries(
     series.map((item) => [item.key, { label: item.key, color: item.color }]),
   ) satisfies ChartConfig;
@@ -525,8 +528,8 @@ export function PriceTrendChart() {
     <ChartBox height={260} config={config}>
       <LineChart data={data}>
         <CartesianGrid vertical={false} stroke="var(--border)" />
-        <XAxis dataKey="month" tickLine={false} axisLine={false} />
-        <YAxis domain={[36, 52]} tickLine={false} axisLine={false} width={32} />
+        <XAxis dataKey="day" tickLine={false} axisLine={false} />
+        <YAxis domain={[Math.floor(min - pad), Math.ceil(max + pad)]} tickLine={false} axisLine={false} width={32} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend verticalAlign="top" align="right" iconType="circle" />
         {series.map((item) => (
@@ -536,8 +539,9 @@ export function PriceTrendChart() {
             dataKey={item.key}
             stroke={item.color}
             strokeWidth={2}
-            strokeDasharray={item.key === "Giá khởi điểm" ? "6 6" : undefined}
-            dot={item.key === "La Pura" ? { r: 3 } : false}
+            strokeDasharray={item.dashed ? "6 6" : undefined}
+            connectNulls={false}
+            dot={item.dotted ? { r: 3 } : false}
           />
         ))}
       </LineChart>
@@ -545,14 +549,17 @@ export function PriceTrendChart() {
   );
 }
 
-export function PriceBucketChart() {
-  const data = [
-    { name: "< 42", value: 18, fill: "#FF6B6B" },
-    { name: "42–46", value: 64, fill: "#5CC8FF" },
-    { name: "46–50", value: 186, fill: "#0091FF" },
-    { name: "50–54", value: 92, fill: "#0091FF" },
-    { name: "> 54", value: 22, fill: "#5CC8FF" },
-  ];
+const BUCKET_COLORS = ["#FF6B6B", "#5CC8FF", "#0091FF", "#0091FF", "#5CC8FF"];
+
+export function PriceBucketChart({
+  buckets,
+}: {
+  buckets: { name: string; value: number }[];
+}) {
+  const data = buckets.map((bucket, index) => ({
+    ...bucket,
+    fill: BUCKET_COLORS[index] ?? "#0091FF",
+  }));
 
   return (
     <ChartBox height={260} config={{ value: { label: "Số tin", color: "var(--primary)" } }}>
@@ -648,12 +655,14 @@ export function VelocityChart({
   );
 }
 
-export function RadarAttributeChart() {
-  const series = [
-    { key: "La Pura", color: "#0091FF", values: [30, 40, 48, 77, 76, 24, 30, 12] },
-    { key: "TB cùng phân khúc", color: "#FFC93C", values: [26, 22, 30, 60, 58, 30, 28, 8] },
-  ];
-  const data = AQUA_ASPECTS.map((label, index) => ({
+export function RadarAttributeChart({
+  labels,
+  series,
+}: {
+  labels: string[];
+  series: { key: string; color: string; values: number[] }[];
+}) {
+  const data = labels.map((label, index) => ({
     label,
     ...Object.fromEntries(series.map((item) => [item.key, item.values[index]])),
   }));

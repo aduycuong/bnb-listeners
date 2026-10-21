@@ -2,6 +2,10 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import type { Sentiment } from "@/lib/enrichment/config";
+import {
+  effectiveSentimentJoins,
+  effectiveSentimentSql,
+} from "@/lib/enrichment/utils/effective-sentiment-sql";
 
 import { AUTHOR_TIERS, METRICS_CONFIG, type AuthorTier } from "../config";
 import { authorTier } from "../formulas";
@@ -34,10 +38,12 @@ export async function getAuthorMetrics(params: MetricsReportParams): Promise<Aut
       a.follower_count, a.author_type,
       count(*)::int as mentions,
       coalesce(sum(${engagementSql(sql`ci`)}), 0)::int as engagement,
-      mode() within group (order by m.sentiment) filter (where m.sentiment is not null) as sentiment
+      mode() within group (order by ${effectiveSentimentSql})
+        filter (where ${effectiveSentimentSql} is not null) as sentiment
     from mentions m
     join authors a on a.id = m.author_id
     join content_items ci on ci.id = m.content_item_id
+    ${effectiveSentimentJoins}
     where m.project_id = ${params.projectId}::uuid and m.is_relevant
       and m.published_at >= ${window.start.toISOString()}::timestamptz
     group by a.id

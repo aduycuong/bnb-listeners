@@ -91,3 +91,42 @@ export type AuthorMetricsResult = {
   /** Authors of the period without a follower count (counted as regular users). */
   withoutFollowers: number;
 };
+
+/** One day of the price trend; null when that day has no kept quote. */
+export type ProjectCasePricePoint = {
+  date: string;
+  primary: number | null;
+  competitor: number | null;
+  /** Developer's `priceRef`, million VND/m², when configured. */
+  priceRef: number | null;
+};
+
+export type ProjectCaseMetricsResult = {
+  days: number;
+  timezone: string;
+  primaryName: string;
+  hasCompetitors: boolean;
+  price: {
+    /** Daily median of kept resale quotes, million VND/m². */
+    daily: ProjectCasePricePoint[];
+    median: MetricsValue<number | null>;
+    priceRef: number | null;
+    buckets: { label: string; count: number }[];
+    /** Resale quotes of the period before dedup and outlier filters. */
+    quotes: number;
+    used: number;
+    droppedMultiEntity: number;
+    droppedOutlier: number;
+  };
+  questions: {
+    /** Relevant `buyer_question` extractions in the period. */
+    total: number;
+    items: { id: string; name: string; mentions: number }[];
+  };
+  aspects: {
+    id: string;
+    name: string;
+    primary: number | null;
+    competitor: number | null;
+  }[];
+};

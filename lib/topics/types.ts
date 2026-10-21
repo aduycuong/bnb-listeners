@@ -1,9 +1,11 @@
 import type { z } from "zod";
 
-import type { TopicStatus } from "./config";
+import type { TopicStageKind, TopicStatus } from "./config";
 import type { listTopicsQuerySchema, updateTopicBodySchema } from "./schema";
 
-export type TopicProjectWorkflowPayload = { projectId: string };
+export type TopicProjectWorkflowPayload = { projectId: string; kind?: TopicStageKind };
+
+export type TopicRunParams = { projectId: string; kind?: TopicStageKind };
 
 export type EmbedTopicHintsResult = {
   embedded: number;

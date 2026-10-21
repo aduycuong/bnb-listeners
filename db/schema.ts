@@ -18,6 +18,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  foreignKey,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable(
@@ -1616,24 +1617,6 @@ export const mentions = pgTable(
     matchReason: text("match_reason"),
     matchSignature: text("match_signature").notNull(),
     userCorrected: boolean("user_corrected").notNull().default(false),
-    /** Effective sentiment: the label when there is one, else Enrich's. positive | neutral | negative */
-    sentiment: text("sentiment"),
-    /** Enrich's own sentiment, kept for evaluation (D13). */
-    autoSentiment: text("auto_sentiment"),
-    /** -1 (very negative) to 1 (very positive), from Enrich. */
-    sentimentScore: real("sentiment_score"),
-    emotion: text("emotion"),
-    /** pending | done | skipped (not relevant) | failed */
-    enrichStatus: text("enrich_status").notNull().default("pending"),
-    /** Hash of aspects, entities, case version and prompt version at enrich time (D14). */
-    enrichSignature: text("enrich_signature"),
-    /** Item content hash at enrich time; a changed text is enriched again. */
-    enrichedContentHash: text("enriched_content_hash"),
-    enrichedAt: timestamp("enriched_at", { withTimezone: true }),
-    /** Short phrase from Enrich naming what the mention is about; clustered into topics (D15). */
-    topicHint: text("topic_hint"),
-    /** pending (to embed or assign) | assigned | unassigned (waiting for a new topic) | none (no hint) */
-    topicStatus: text("topic_status").notNull().default("pending"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1647,7 +1630,6 @@ export const mentions = pgTable(
     index("mentions_project_published_idx").on(table.projectId, table.publishedAt),
     index("mentions_project_root_idx").on(table.projectId, table.rootItemId),
     index("mentions_content_item_id_idx").on(table.contentItemId),
-    index("mentions_project_topic_status_idx").on(table.projectId, table.topicStatus),
   ],
 );
 
@@ -1752,6 +1734,92 @@ export const labelSampleItems = pgTable(
 export type LabelSampleItem = typeof labelSampleItems.$inferSelect;
 export type NewLabelSampleItem = typeof labelSampleItems.$inferInsert;
 
+// ---------------------------------------------------------------------------
+// L3 — Enrich. One row of `mention_enrichments` per mention and enricher key
+// tracks when each output was produced; the outputs live in their own tables.
+// Keys come from `lib/enrichment/registry.ts` (docs/decisions.md D18).
+// ---------------------------------------------------------------------------
+
+/** Enrichers a project runs; seeded from the case template, toggled per project (D18). */
+export const projectEnrichers = pgTable(
+  "project_enrichers",
+  {
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** Key of `ENRICHER_REGISTRY`. */
+    enricherKey: text("enricher_key").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    /** Settings of this enricher for this project, part of its signature. */
+    config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [primaryKey({ columns: [table.projectId, table.enricherKey] })],
+);
+
+export type ProjectEnricher = typeof projectEnrichers.$inferSelect;
+export type NewProjectEnricher = typeof projectEnrichers.$inferInsert;
+
+/**
+ * State of one enricher for one mention. A mention is enriched again for a key
+ * when it has no row, the row failed, or `signature` / `content_hash` differ
+ * from the current ones. Mentions that are not relevant have no rows.
+ */
+export const mentionEnrichments = pgTable(
+  "mention_enrichments",
+  {
+    mentionId: uuid("mention_id")
+      .notNull()
+      .references(() => mentions.id, { onDelete: "cascade" }),
+    enricherKey: text("enricher_key").notNull(),
+    /** pending (stage input ready) | done | failed | waiting (offered to a stage, not placed yet) */
+    status: text("status").notNull(),
+    /** Signature of the enricher when it ran: version, model and the project config it depends on. */
+    signature: text("signature"),
+    /** Item content hash when it ran; a changed text runs again. */
+    contentHash: text("content_hash"),
+    /** Model used; null for code stages. */
+    model: text("model"),
+    error: text("error"),
+    enrichedAt: timestamp("enriched_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    primaryKey({ columns: [table.mentionId, table.enricherKey] }),
+    index("mention_enrichments_key_status_idx").on(table.enricherKey, table.status),
+  ],
+);
+
+export type MentionEnrichment = typeof mentionEnrichments.$inferSelect;
+export type NewMentionEnrichment = typeof mentionEnrichments.$inferInsert;
+
+/**
+ * Enrich's sentiment of a mention. The effective sentiment is the label when
+ * there is one (`item_labels.sentiment`), else this row (D13/D14).
+ */
+export const mentionSentiments = pgTable("mention_sentiments", {
+  mentionId: uuid("mention_id")
+    .primaryKey()
+    .references(() => mentions.id, { onDelete: "cascade" }),
+  /** positive | neutral | negative */
+  sentiment: text("sentiment").notNull(),
+  /** -1 (very negative) to 1 (very positive). */
+  sentimentScore: real("sentiment_score").notNull(),
+  emotion: text("emotion"),
+});
+
+export type MentionSentiment = typeof mentionSentiments.$inferSelect;
+export type NewMentionSentiment = typeof mentionSentiments.$inferInsert;
+
 /** Sentiment toward each entity a mention talks about (SoV, competitor comparison). */
 export const mentionEntities = pgTable(
   "mention_entities",
@@ -1774,7 +1842,7 @@ export type MentionEntity = typeof mentionEntities.$inferSelect;
 export type NewMentionEntity = typeof mentionEntities.$inferInsert;
 
 /**
- * Aspects of a mention from Enrich (`source = auto`). Labeled aspects live in
+ * Aspects of a mention from Enrich. Labeled aspects live in
  * `item_labels.aspect_keys` and take precedence when not null (D14).
  */
 export const mentionAspects = pgTable(
@@ -1786,12 +1854,10 @@ export const mentionAspects = pgTable(
     aspectId: uuid("aspect_id")
       .notNull()
       .references(() => projectAspects.id, { onDelete: "cascade" }),
-    /** auto | user */
-    source: text("source").notNull(),
     sentiment: text("sentiment"),
   },
   (table) => [
-    primaryKey({ columns: [table.mentionId, table.aspectId, table.source] }),
+    primaryKey({ columns: [table.mentionId, table.aspectId] }),
     index("mention_aspects_aspect_id_idx").on(table.aspectId),
   ],
 );
@@ -1799,7 +1865,12 @@ export const mentionAspects = pgTable(
 export type MentionAspect = typeof mentionAspects.$inferSelect;
 export type NewMentionAspect = typeof mentionAspects.$inferInsert;
 
-/** Case-specific fields Enrich extracts, e.g. `price_quote`, `buyer_question` (D14). */
+/**
+ * Raw per-mention output of the LLM enrichers that is not a reference to a
+ * configured row: case extractions (`price_quote`, `buyer_question`, …) and
+ * the inputs of code stages (`topic_hint`, `terms`). `schema_key` is the
+ * enricher key; `data` is validated by the enricher's zod schema (D14/D18).
+ */
 export const mentionExtractions = pgTable(
   "mention_extractions",
   {
@@ -1819,27 +1890,50 @@ export const mentionExtractions = pgTable(
 export type MentionExtraction = typeof mentionExtractions.$inferSelect;
 export type NewMentionExtraction = typeof mentionExtractions.$inferInsert;
 
-/** A topic of a project: mention `topic_hint`s grouped and named by the LLM (D15). */
-export const topics = pgTable(
-  "topics",
+/**
+ * Terms a mention names, indexed by the `terms_index` stage from the raw
+ * `terms` extraction after normalization, filtering and the dictionary (D16/D18).
+ * `kind`: keyword | place | brand | org.
+ */
+export const mentionTerms = pgTable(
+  "mention_terms",
+  {
+    mentionId: uuid("mention_id")
+      .notNull()
+      .references(() => mentions.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    /** Normalized (NFC, lowercase, single spaces; diacritics kept), mapped through the dictionary. */
+    term: text("term").notNull(),
+    /** As the model wrote it, shown in the cloud. */
+    text: text("text").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.mentionId, table.kind, table.term] }),
+    index("mention_terms_kind_term_idx").on(table.kind, table.term),
+  ],
+);
+
+export type MentionTerm = typeof mentionTerms.$inferSelect;
+export type NewMentionTerm = typeof mentionTerms.$inferInsert;
+
+/**
+ * Synonyms and hidden terms for the `terms_index` stage. `scope_type = project`
+ * rows belong to one project; `workspace` rows (e.g. place names) are shared.
+ */
+export const termDictionary = pgTable(
+  "term_dictionary",
   {
     id: uuid("id").primaryKey().defaultRandom().notNull(),
-    projectId: uuid("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    description: text("description").notNull().default(""),
-    /** Aspect most of the topic's mentions discuss when it was created; null if none dominates. */
-    aspectId: uuid("aspect_id").references(() => projectAspects.id, { onDelete: "set null" }),
-    /** active | hidden (still receives mentions) | merged */
-    status: text("status").notNull().default("active"),
-    mergedIntoId: uuid("merged_into_id").references((): AnyPgColumn => topics.id, {
-      onDelete: "set null",
-    }),
-    /** Mean embedding of the topic's relevant mentions; close topics are checked for a merge. */
-    centroid: pgVector1536("centroid"),
-    /** Relevant mentions in the topic, refreshed after each run. */
-    mentionCount: integer("mention_count").notNull().default(0),
+    /** workspace | project */
+    scopeType: text("scope_type").notNull(),
+    scopeId: uuid("scope_id").notNull(),
+    kind: text("kind").notNull(),
+    /** Normalized canonical term that the aliases map to. */
+    canonical: text("canonical").notNull(),
+    /** Normalized variants mapped to `canonical`. */
+    aliases: jsonb("aliases").$type<string[]>().notNull().default([]),
+    /** Hidden terms are dropped from the index. */
+    hidden: boolean("hidden").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1848,42 +1942,105 @@ export const topics = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
-  (table) => [index("topics_project_status_idx").on(table.projectId, table.status)],
+  (table) => [
+    uniqueIndex("term_dictionary_scope_kind_canonical_idx").on(
+      table.scopeType,
+      table.scopeId,
+      table.kind,
+      table.canonical,
+    ),
+  ],
+);
+
+export type TermDictionaryEntry = typeof termDictionary.$inferSelect;
+export type NewTermDictionaryEntry = typeof termDictionary.$inferInsert;
+
+/**
+ * A group of mentions of a project, named by the LLM (D15/D18). `kind` says
+ * what is grouped: `topic` (from `topic_hint`), `buyer_question` (from the
+ * extraction), later `argument`.
+ */
+export const topics = pgTable(
+  "topics",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** topic | buyer_question | argument */
+    kind: text("kind").notNull().default("topic"),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    /** Aspect most of the group's mentions discuss when it was created; null if none dominates. */
+    aspectId: uuid("aspect_id").references(() => projectAspects.id, { onDelete: "set null" }),
+    /** active | hidden (still receives mentions) | merged */
+    status: text("status").notNull().default("active"),
+    mergedIntoId: uuid("merged_into_id").references((): AnyPgColumn => topics.id, {
+      onDelete: "set null",
+    }),
+    /** Mean embedding of the group's relevant mentions; close groups are checked for a merge. */
+    centroid: pgVector1536("centroid"),
+    /** Relevant mentions in the group, refreshed after each run. */
+    mentionCount: integer("mention_count").notNull().default(0),
+    /** Kind-specific fields, e.g. `{ answered, answerUrl }` for buyer questions. */
+    attributes: jsonb("attributes").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("topics_project_kind_status_idx").on(table.projectId, table.kind, table.status),
+    uniqueIndex("topics_id_kind_idx").on(table.id, table.kind),
+  ],
 );
 
 export type Topic = typeof topics.$inferSelect;
 export type NewTopic = typeof topics.$inferInsert;
 
-/** The topic of a mention; at most one per mention (D15). */
+/**
+ * The group of a mention, at most one per `kind` (D15/D18). `kind` repeats
+ * `topics.kind` so the key can hold that rule; the stage keeps them equal.
+ */
 export const mentionTopics = pgTable(
   "mention_topics",
   {
     mentionId: uuid("mention_id")
-      .primaryKey()
-      .references(() => mentions.id, { onDelete: "cascade" }),
-    topicId: uuid("topic_id")
       .notNull()
-      .references(() => topics.id, { onDelete: "cascade" }),
+      .references(() => mentions.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("topic"),
+    topicId: uuid("topic_id").notNull(),
     /** 1 when assigned by the LLM. */
     confidence: real("confidence").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("mention_topics_topic_id_idx").on(table.topicId)],
+  (table) => [
+    primaryKey({ columns: [table.mentionId, table.kind] }),
+    index("mention_topics_topic_id_idx").on(table.topicId),
+    foreignKey({
+      columns: [table.topicId, table.kind],
+      foreignColumns: [topics.id, topics.kind],
+      name: "mention_topics_topic_kind_fk",
+    }).onDelete("cascade"),
+  ],
 );
 
 export type MentionTopic = typeof mentionTopics.$inferSelect;
 export type NewMentionTopic = typeof mentionTopics.$inferInsert;
 
-/** Embeddings of mention text, one per kind; `topic_hint` for topic merges (D15). */
+/** Embeddings of mention text, one per kind; `topic_hint` and `buyer_question` for grouping (D15). */
 export const mentionEmbeddings = pgTable(
   "mention_embeddings",
   {
     mentionId: uuid("mention_id")
       .notNull()
       .references(() => mentions.id, { onDelete: "cascade" }),
-    /** topic_hint */
+    /** topic_hint | buyer_question */
     kind: text("kind").notNull(),
     model: text("model").notNull(),
     /** Hash of the embedded text; a changed text is embedded again. */
@@ -1899,23 +2056,3 @@ export const mentionEmbeddings = pgTable(
 export type MentionEmbedding = typeof mentionEmbeddings.$inferSelect;
 export type NewMentionEmbedding = typeof mentionEmbeddings.$inferInsert;
 
-/** Keywords Enrich extracts from a mention, for the keyword cloud (D16). */
-export const mentionKeywords = pgTable(
-  "mention_keywords",
-  {
-    mentionId: uuid("mention_id")
-      .notNull()
-      .references(() => mentions.id, { onDelete: "cascade" }),
-    /** Normalized: lowercase, NFC, single spaces; diacritics kept. */
-    keyword: text("keyword").notNull(),
-    /** As the model wrote it, shown in the cloud. */
-    text: text("text").notNull(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.mentionId, table.keyword] }),
-    index("mention_keywords_keyword_idx").on(table.keyword),
-  ],
-);
-
-export type MentionKeyword = typeof mentionKeywords.$inferSelect;
-export type NewMentionKeyword = typeof mentionKeywords.$inferInsert;

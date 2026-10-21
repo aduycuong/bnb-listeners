@@ -8,6 +8,8 @@ export const METRICS_CONFIG = {
   /** Rows of the "Kênh thảo luận" (by source) and "Chủ đề nổi bật" panels. */
   topSources: 6,
   topTopics: 6,
+  /** FAQ groups on the project-case page. */
+  topBuyerQuestions: 8,
   /** Rows of the sources table on the Channels page and of the authors table. */
   channelSources: 10,
   topAuthors: 20,
