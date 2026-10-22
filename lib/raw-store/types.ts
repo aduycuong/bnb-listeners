@@ -120,6 +120,21 @@ export type DeleteSourceContentItemsResult = {
   deleted: number;
 };
 
+export type DeleteContentItemsParams = {
+  ids: string[];
+};
+
+export type DeleteContentItemsResult = {
+  /** Distinct ids the caller asked to delete. */
+  requested: number;
+  /** How many of those ids still existed. */
+  requestedFound: number;
+  /** Rows removed, including comments and replies under the requested ids. */
+  deleted: number;
+  /** Removed rows the caller did not list: the thread under the selection. */
+  descendants: number;
+};
+
 export type GetSourceLatestPublishedAtParams = {
   sourceId: string;
   kind?: ContentItemKind;

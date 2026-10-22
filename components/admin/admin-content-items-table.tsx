@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { ExternalLinkIcon } from "lucide-react";
 
@@ -16,14 +19,36 @@ import { formatDateTime, formatNumber } from "./admin-format";
 export function AdminContentItemsTable({
   rows,
   showSource = true,
+  selection,
 }: {
   rows: AdminContentItemRow[];
   showSource?: boolean;
+  selection?: {
+    selectedIds: ReadonlySet<string>;
+    onToggle: (id: string, selected: boolean) => void;
+    onTogglePage: (selected: boolean) => void;
+  };
 }) {
+  const selectedOnPage = selection
+    ? rows.filter((item) => selection.selectedIds.has(item.id)).length
+    : 0;
+  const allSelected = rows.length > 0 && selectedOnPage === rows.length;
+  const columnCount = 7 + (showSource ? 1 : 0) + (selection ? 1 : 0);
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
+          {selection ? (
+            <TableHead className="w-8">
+              <SelectCheckbox
+                checked={allSelected}
+                indeterminate={selectedOnPage > 0 && !allSelected}
+                label="Select all on this page"
+                onChange={selection.onTogglePage}
+              />
+            </TableHead>
+          ) : null}
           <TableHead>Published</TableHead>
           <TableHead>Kind</TableHead>
           {showSource ? <TableHead>Source</TableHead> : null}
@@ -37,13 +62,22 @@ export function AdminContentItemsTable({
       <TableBody>
         {rows.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={8} className="text-muted-foreground">
+            <TableCell colSpan={columnCount} className="text-muted-foreground">
               No items.
             </TableCell>
           </TableRow>
         ) : (
           rows.map((item) => (
             <TableRow key={item.id} className="align-top">
+              {selection ? (
+                <TableCell>
+                  <SelectCheckbox
+                    checked={selection.selectedIds.has(item.id)}
+                    label={`Select item published ${formatDateTime(item.publishedAt)}`}
+                    onChange={(selected) => selection.onToggle(item.id, selected)}
+                  />
+                </TableCell>
+              ) : null}
               <TableCell className="text-xs whitespace-nowrap">
                 <Link href={`/admin/content-items/${item.id}`} className="hover:underline">
                   {formatDateTime(item.publishedAt)}
@@ -88,5 +122,35 @@ export function AdminContentItemsTable({
         )}
       </TableBody>
     </Table>
+  );
+}
+
+function SelectCheckbox({
+  checked,
+  indeterminate = false,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      aria-label={label}
+      className="size-4 accent-primary"
+      onClick={(event) => event.stopPropagation()}
+      onChange={(event) => onChange(event.target.checked)}
+    />
   );
 }

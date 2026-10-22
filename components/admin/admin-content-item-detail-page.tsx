@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -13,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import type { AdminContentItemDetail } from "@/lib/admin-console/types";
 
+import { AdminDeleteContentItemsDialog } from "./admin-delete-content-items-dialog";
 import { formatDateTime, formatNumber, formatRelative } from "./admin-format";
 import { AdminJsonBlock } from "./admin-json-block";
 import { AdminKeyValues } from "./admin-key-values";
@@ -22,6 +26,8 @@ import { AdminSection } from "./admin-section";
 import { fetchAdminJson } from "./fetch-admin-json";
 
 export function AdminContentItemDetailPage({ id }: { id: string }) {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
   const { data, isPending, error } = useQuery({
     queryKey: adminQueryKeys.contentItem(id),
     queryFn: () => fetchAdminJson<AdminContentItemDetail>(`/api/admin/content-items/${id}`),
@@ -33,7 +39,14 @@ export function AdminContentItemDetailPage({ id }: { id: string }) {
 
   return (
     <>
-      <AdminSection title={`${item.kind} · ${formatDateTime(item.publishedAt)}`}>
+      <AdminSection
+        title={`${item.kind} · ${formatDateTime(item.publishedAt)}`}
+        actions={
+          <Button variant="destructive" size="sm" onClick={() => setConfirming(true)}>
+            Delete
+          </Button>
+        }
+      >
         <p className="rounded-md border border-border p-3 text-sm whitespace-pre-wrap">
           {item.text || <span className="text-muted-foreground">(no text)</span>}
         </p>
@@ -212,6 +225,13 @@ export function AdminContentItemDetailPage({ id }: { id: string }) {
       <AdminSection title="Metadata">
         <AdminJsonBlock value={item.metadata} />
       </AdminSection>
+
+      <AdminDeleteContentItemsDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        ids={[id]}
+        onDeleted={() => router.push("/admin/content-items")}
+      />
     </>
   );
 }
