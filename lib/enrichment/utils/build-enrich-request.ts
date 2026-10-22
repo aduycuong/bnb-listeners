@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { safeSlice } from "@/lib/common/safe-slice";
+
 import { ENRICH_CONFIG } from "../config";
 import { ENRICHER_REGISTRY, type EnricherKey, type EnricherSpec } from "../registry";
 import type { EnrichItem, LlmEnricher, ProjectEnrichContext } from "../types";
@@ -12,7 +14,7 @@ const KIND_LABELS: Record<string, string> = {
 
 function clip(text: string, max: number) {
   const value = text.replace(/\s+/g, " ").trim();
-  return value.length > max ? `${value.slice(0, max)}…` : value;
+  return value.length > max ? `${safeSlice(value, max)}…` : value;
 }
 
 /** Keys that run as extractions are grouped under one `extractions` object in the output. */

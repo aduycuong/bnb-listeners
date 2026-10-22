@@ -2,6 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import { contentItems } from "@/db/schema";
 import { mapWithConcurrency } from "@/lib/common/map-with-concurrency";
+import { safeSlice } from "@/lib/common/safe-slice";
 import { db } from "@/lib/db";
 import { putObjectToR2 } from "@/lib/r2/services/put-object-to-r2";
 
@@ -124,7 +125,7 @@ export async function attachTiktokTranscripts(
       return;
     }
 
-    const text = vttToText(vtt).slice(0, config.maxChars);
+    const text = safeSlice(vttToText(vtt), config.maxChars);
     if (!text) {
       result.missing++;
       return;

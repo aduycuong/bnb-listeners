@@ -1,3 +1,5 @@
+import { safeSlice } from "@/lib/common/safe-slice";
+
 import { MATCH_CONFIG } from "../config";
 import type { MatchEntity, MatchItem } from "../types";
 
@@ -9,7 +11,7 @@ const KIND_LABELS: Record<string, string> = {
 
 function clip(text: string, max: number) {
   const value = text.replace(/\s+/g, " ").trim();
-  return value.length > max ? `${value.slice(0, max)}…` : value;
+  return value.length > max ? `${safeSlice(value, max)}…` : value;
 }
 
 /** Tier 2 prompt: is each item about the entity, given the thread's root post? */
