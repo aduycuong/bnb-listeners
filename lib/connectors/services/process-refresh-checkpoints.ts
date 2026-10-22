@@ -24,6 +24,8 @@ type ProcessRefreshCheckpointsParams = {
 export type RefreshDecision = {
   contentItemId: string;
   sourceId: string | null;
+  platform: string;
+  externalId: string;
   url: string | null;
   checkpointHours: number;
   numComments: number;
@@ -41,7 +43,7 @@ type PlannedDecision = {
 
 type ProcessRefreshCheckpointsResult = {
   decisions: RefreshDecision[];
-  /** `facebook-comments` runs, grouped by source. */
+  /** Comment runs of the platform's connector, grouped by source. */
   followUps: FollowUpRun[];
 };
 
@@ -62,6 +64,8 @@ export async function processRefreshCheckpoints(
       checkpointHours: itemRefreshSchedules.checkpointHours,
       collectedCount: itemRefreshSchedules.commentsCollectedCount,
       sourceId: contentItems.sourceId,
+      platform: contentItems.platform,
+      externalId: contentItems.externalId,
       url: contentItems.url,
       numComments: contentItems.commentCount,
       publishedAt: contentItems.publishedAt,
@@ -78,6 +82,8 @@ export async function processRefreshCheckpoints(
     const decision: RefreshDecision = {
       contentItemId: row.contentItemId,
       sourceId: row.sourceId,
+      platform: row.platform,
+      externalId: row.externalId,
       url: row.url,
       checkpointHours: row.checkpointHours,
       numComments: row.numComments,
@@ -104,7 +110,14 @@ export async function processRefreshCheckpoints(
     followUps: planCommentRuns(
       decisions.flatMap((decision) =>
         decision.collect && decision.url
-          ? [{ sourceId: decision.sourceId, url: decision.url }]
+          ? [
+              {
+                sourceId: decision.sourceId,
+                platform: decision.platform,
+                externalId: decision.externalId,
+                url: decision.url,
+              },
+            ]
           : [],
       ),
     ),

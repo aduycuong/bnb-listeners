@@ -20,7 +20,8 @@ export async function finishCollectRun(
 
   await db
     .update(collectRuns)
-    .set({ status: "success", stats: params.stats, finishedAt })
+    // Keep what the fetch step recorded (e.g. TikHub request counts).
+    .set({ status: "success", stats: { ...run.stats, ...params.stats }, finishedAt })
     .where(eq(collectRuns.id, run.id));
 
   if (run.sourceId) {

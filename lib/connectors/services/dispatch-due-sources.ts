@@ -1,10 +1,12 @@
-import { and, eq, inArray, isNotNull, max, ne } from "drizzle-orm";
+import { and, eq, inArray, max, ne } from "drizzle-orm";
 
 import { collectRuns, sources } from "@/db/schema";
 import { db } from "@/lib/db";
 
 import { COLLECT_CONFIG } from "../config";
-import type { ActivityTier } from "../constants";
+import { type ActivityTier, POST_CONNECTOR_KEYS } from "../constants";
+import { getPostConnectorKey } from "../utils/get-post-connector-key";
+import { getSourceIntervalHours } from "../utils/get-source-interval-hours";
 import { collectSource } from "./collect-source";
 import type { SourceBudget } from "./get-source-budgets";
 
@@ -29,11 +31,13 @@ export type DueSourceDecision = {
 };
 
 /**
- * Starts post runs for sources whose tier interval has passed since their
- * last post run. Only sources collected at least once are scheduled (the
- * first run is started by hand with `npm run collect:facebook`); `paused`
- * sources are skipped. A source with a run still pending or running, or
- * with no budget left, waits. The post run is capped by the remaining budget.
+ * Starts post runs for sources whose interval has passed since their last
+ * post run: the tier interval of a Facebook group or TikTok channel, or the
+ * fixed interval of a TikTok keyword search. Only sources collected at least
+ * once are scheduled (the first run is started by hand with
+ * `npm run collect:facebook` or `npm run collect:tiktok`); `paused` sources
+ * are skipped. A source with a run still pending or running, or with no
+ * budget left, waits. The post run is capped by the remaining budget.
  */
 export async function dispatchDueSources(
   params: DispatchDueSourcesParams,
@@ -41,25 +45,37 @@ export async function dispatchDueSources(
   const now = params.now ?? new Date();
   const budgets = new Map(params.budgets.map((budget) => [budget.sourceId, budget]));
 
-  const candidates = await db
+  const rows = await db
     .select({
       id: sources.id,
+      platform: sources.platform,
+      sourceType: sources.sourceType,
+      url: sources.url,
       activityTier: sources.activityTier,
       lastRunAt: max(collectRuns.createdAt),
     })
     .from(sources)
     .innerJoin(
       collectRuns,
-      and(eq(collectRuns.sourceId, sources.id), eq(collectRuns.connector, "facebook-posts")),
-    )
-    .where(
       and(
-        eq(sources.platform, "facebook"),
-        isNotNull(sources.url),
-        ne(sources.activityTier, "paused"),
+        eq(collectRuns.sourceId, sources.id),
+        inArray(collectRuns.connector, [...POST_CONNECTOR_KEYS]),
       ),
     )
-    .groupBy(sources.id, sources.activityTier);
+    .where(ne(sources.activityTier, "paused"))
+    .groupBy(
+      sources.id,
+      sources.platform,
+      sources.sourceType,
+      sources.url,
+      sources.activityTier,
+    );
+
+  // A keyword search has no URL; every other source needs one to be read.
+  const candidates = rows.filter((source) => {
+    const connector = getPostConnectorKey(source);
+    return connector !== null && (connector === "tiktok-search" || source.url !== null);
+  });
 
   if (candidates.length === 0) return [];
 
@@ -68,7 +84,7 @@ export async function dispatchDueSources(
     .from(collectRuns)
     .where(
       and(
-        eq(collectRuns.connector, "facebook-posts"),
+        inArray(collectRuns.connector, [...POST_CONNECTOR_KEYS]),
         inArray(collectRuns.status, ["pending", "running"]),
         inArray(
           collectRuns.sourceId,
@@ -82,7 +98,7 @@ export async function dispatchDueSources(
 
   for (const source of candidates) {
     const tier = source.activityTier as Exclude<ActivityTier, "paused">;
-    const intervalHours = COLLECT_CONFIG.tiers.intervalHours[tier];
+    const intervalHours = getSourceIntervalHours(source)!;
     const budget = budgets.get(source.id);
     const base = {
       sourceId: source.id,

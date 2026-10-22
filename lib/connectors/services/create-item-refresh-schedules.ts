@@ -19,7 +19,7 @@ type CreateItemRefreshSchedulesParams = {
 type CreateItemRefreshSchedulesResult = {
   schedulesCreated: number;
   postsToCollect: number;
-  /** `facebook-comments` runs for posts that pass the rules right away. */
+  /** Comment runs for posts that pass the rules right away. */
   followUps: FollowUpRun[];
 };
 
@@ -40,6 +40,8 @@ export async function createItemRefreshSchedules(
     .select({
       id: contentItems.id,
       sourceId: contentItems.sourceId,
+      platform: contentItems.platform,
+      externalId: contentItems.externalId,
       url: contentItems.url,
       commentCount: contentItems.commentCount,
       publishedAt: contentItems.publishedAt,
@@ -93,7 +95,16 @@ export async function createItemRefreshSchedules(
       : [];
 
   const toCollect = planned.flatMap(({ post, collect }) =>
-    collect && post.url ? [{ sourceId: post.sourceId, url: post.url }] : [],
+    collect && post.url
+      ? [
+          {
+            sourceId: post.sourceId,
+            platform: post.platform,
+            externalId: post.externalId,
+            url: post.url,
+          },
+        ]
+      : [],
   );
 
   return {

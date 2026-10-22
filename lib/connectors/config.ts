@@ -60,4 +60,40 @@ export const COLLECT_CONFIG = {
     /** QStash schedule interval of the `schedule-collections` workflow. */
     intervalMinutes: 15,
   },
+
+  /**
+   * TikTok through TikHub, from the probes of 2026-10-21/22. TikHub bills per
+   * request; the caps below bound the requests of one run. Posts, post-refresh
+   * and comment run caps reuse `posts` and `commentRefresh` above where the
+   * Facebook values apply.
+   */
+  tiktok: {
+    /** A run that has not finished fetching by then fails (a workflow step has a time limit). */
+    runBudgetMs: 45_000,
+    pageSize: 20,
+    channel: {
+      /** Safety cap on pages per channel scan, about 15 videos each. */
+      maxPagesPerRun: 10,
+    },
+    search: {
+      region: "VN",
+      /** `publish_time` in days; the smallest window TikHub offers. */
+      publishTimeDays: 1,
+      /**
+       * Every run fetches this many pages whatever they return: an empty page
+       * in the middle of a search is followed by non-empty ones.
+       */
+      pagesPerRun: 4,
+      /** Hours between runs of a search source; each run is a different sample of the window. */
+      intervalHours: 6,
+    },
+    refresh: {
+      /** Videos per `tiktok-post-refresh` run (one TikHub request per 20). */
+      postsPerRun: 100,
+    },
+    comments: {
+      /** Videos per `tiktok-comments` run; a video with replies needs dozens of requests. */
+      videosPerRun: 5,
+    },
+  },
 } as const;

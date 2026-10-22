@@ -34,7 +34,9 @@ export function toTiktokAwemeContentItem(
         }
       : null,
     hashtags: (post.text_extra ?? []).map((extra) => extra.hashtag_name),
-    durationSeconds: post.video?.duration ?? null,
+    // The App payload counts the duration in milliseconds, the Web one in seconds.
+    durationSeconds:
+      post.video?.duration != null ? Math.round(post.video.duration / 1000) : null,
     music: post.music
       ? {
           title: post.music.title ?? null,
