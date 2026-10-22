@@ -23,6 +23,10 @@ export const tiktokPostsParamsSchema = z.object({
   secUid: z.string().min(1).optional(),
   /** Videos published at or after this instant are collected. */
   since: z.iso.datetime({ offset: true }),
+  /** Backfill only: the scan starts at this instant and newer videos are left out. */
+  until: z.iso.datetime({ offset: true }).optional(),
+  /** Marks a run that fills a gap instead of following the schedule. */
+  backfill: z.boolean().optional(),
   /** Newest stored post before the run; used to count late arrivals. */
   newestKnownAt: z.iso.datetime({ offset: true }).optional(),
   /** Hard cap on collected videos. */
@@ -54,7 +58,10 @@ export const tiktokPostsConnector: DirectConnector<TiktokPostsParams> = {
     const scan = await scanTiktokChannel({
       secUid,
       since: new Date(params.since),
-      maxPages: COLLECT_CONFIG.tiktok.channel.maxPagesPerRun,
+      until: params.until ? new Date(params.until) : undefined,
+      maxPages: params.backfill
+        ? COLLECT_CONFIG.tiktok.channel.maxPagesPerBackfillRun
+        : COLLECT_CONFIG.tiktok.channel.maxPagesPerRun,
       maxRecords: params.maxRecords,
       pageSize: COLLECT_CONFIG.tiktok.pageSize,
       deadlineAt,

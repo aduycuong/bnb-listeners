@@ -124,3 +124,10 @@ export type GetSourceLatestPublishedAtParams = {
   sourceId: string;
   kind?: ContentItemKind;
 };
+
+export type CountSourceItemsInRangeParams = {
+  sourceId: string;
+  kind?: ContentItemKind;
+  from: Date;
+  to: Date;
+};

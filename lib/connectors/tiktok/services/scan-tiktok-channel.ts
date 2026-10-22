@@ -6,6 +6,11 @@ type ScanTiktokChannelParams = {
   secUid: string;
   /** Only videos published at or after this instant are kept. */
   since: Date;
+  /**
+   * Backfill: the scan starts at this instant (the cursor is a publish time in
+   * ms) and videos published after it are dropped.
+   */
+  until?: Date;
   maxPages: number;
   maxRecords: number;
   pageSize?: number;
@@ -41,10 +46,12 @@ export async function scanTiktokChannel(
 ): Promise<ScanTiktokChannelResult> {
   const fetchPage = params.fetchPage ?? fetchTiktokUserPostsPage;
   const sinceMs = params.since.getTime();
+  const untilMs = params.until?.getTime();
   const records: Record<string, unknown>[] = [];
   const seen = new Set<string>();
 
-  let cursor: string | null = null;
+  const startCursor = untilMs === undefined ? null : String(untilMs);
+  let cursor: string | null = startCursor;
   let requests = 0;
 
   for (let page = 0; page < params.maxPages; page++) {
@@ -63,6 +70,7 @@ export async function scanTiktokChannel(
 
       const publishedAtMs = readPublishedAtMs(item);
       if (publishedAtMs !== null && publishedAtMs < sinceMs) continue;
+      if (publishedAtMs !== null && untilMs !== undefined && publishedAtMs > untilMs) continue;
 
       if (records.length >= params.maxRecords) {
         return { records, requests, stoppedBy: "maxRecords", truncated: true };

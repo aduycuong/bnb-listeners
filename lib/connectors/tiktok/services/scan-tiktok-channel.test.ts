@@ -186,6 +186,24 @@ describe("scanTiktokChannel", () => {
     await assert.rejects(scanTiktokChannel({ ...base, fetchPage }), /boom/);
   });
 
+  test("a backfill starts at `until` and drops videos newer than it", async () => {
+    const until = new Date((BASE - 5 * 3600) * 1000);
+    const { fetchPage, calls } = createFetchPage([
+      // "pin" is pinned on top and newer than `until`; "b" sits exactly on it.
+      { items: [video("pin", 1), video("b", 5), video("c", 10)], cursor: "100", hasMore: true },
+      { items: [video("d", 30)], cursor: "200", hasMore: true },
+    ]);
+
+    const result = await scanTiktokChannel({ ...base, until, fetchPage });
+
+    assert.deepEqual(
+      result.records.map((record) => record.id),
+      ["b", "c"],
+    );
+    assert.equal(calls[0].cursor, String(until.getTime()));
+    assert.equal(result.stoppedBy, "reachedSince");
+  });
+
   test("asks for the page size it was given", async () => {
     const { fetchPage, calls } = createFetchPage([{ items: [], cursor: null, hasMore: false }]);
 

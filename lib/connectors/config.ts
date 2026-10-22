@@ -74,6 +74,10 @@ export const COLLECT_CONFIG = {
     channel: {
       /** Safety cap on pages per channel scan, about 15 videos each. */
       maxPagesPerRun: 10,
+      /** Pages per backfill run (a window of `backfillDaysPerRun` days); still bound by `runBudgetMs`. */
+      maxPagesPerBackfillRun: 20,
+      /** Days of one backfill run; the CLI splits a longer range into several runs. */
+      backfillDaysPerRun: 2,
     },
     search: {
       region: "VN",

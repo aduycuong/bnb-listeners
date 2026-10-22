@@ -34,6 +34,7 @@
     "workflow:dev": "npx @upstash/qstash-cli@2.37.18 dev",
     "collect:facebook": "tsx scripts/collect-facebook-source.ts",
     "collect:tiktok": "tsx scripts/collect-tiktok-source.ts",
+    "backfill": "tsx scripts/backfill-source.ts",
     "legacy:import": "tsx scripts/import-legacy-content.ts",
     "probe:bright-data": "tsx scripts/probe-bright-data-facebook.ts",
     "refresh:check": "tsx scripts/check-item-refreshes.ts",

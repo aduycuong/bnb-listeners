@@ -29,6 +29,10 @@ export const facebookPostsParamsSchema = z.object({
    * job stops there on its own, so no `num_of_posts` is sent.
    */
   since: z.iso.datetime({ offset: true }),
+  /** Backfill only: posts published after this instant are left out (`end_date`). */
+  until: z.iso.datetime({ offset: true }).optional(),
+  /** Marks a run that fills a gap instead of following the schedule. */
+  backfill: z.boolean().optional(),
   /** Newest stored post before the run; used to count late arrivals. */
   newestKnownAt: z.iso.datetime({ offset: true }).optional(),
   /** Hard cap on delivered records (`limit_multiple_results`). */
@@ -59,7 +63,7 @@ export const facebookPostsConnector: JobConnector<FacebookPostsParams> = {
           posts_to_not_include: [],
           // ISO datetimes filter to the second (probe of 2026-10-12).
           start_date: new Date(params.since).toISOString(),
-          end_date: "",
+          end_date: params.until ? new Date(params.until).toISOString() : "",
         },
       ],
     });

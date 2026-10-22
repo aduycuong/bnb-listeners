@@ -16,6 +16,8 @@ type PostRunSource = {
 type BuildPostRunParamsOptions = {
   /** Start of the window (ISO); ignored by search sources, which look back a fixed window. */
   since?: string;
+  /** Backfill: end of the window (ISO); the run also carries `backfill: true`. */
+  until?: string;
   /** Newest stored post before the run (ISO), to count late arrivals. */
   newestKnownAt?: string;
   /** Hard cap on delivered records. */
@@ -65,6 +67,7 @@ export function buildPostRunParams(
     params: {
       url: source.url,
       since: options.since,
+      ...(options.until && { until: options.until, backfill: true }),
       ...(connector === "tiktok-posts" && typeof secUid === "string" && { secUid }),
       ...(options.newestKnownAt && { newestKnownAt: options.newestKnownAt }),
       ...(options.maxRecords !== undefined && { maxRecords: options.maxRecords }),

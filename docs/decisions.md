@@ -382,3 +382,14 @@ Chọn nhà cung cấp và cách thu thập TikTok sau các thử nghiệm ngày
 - Ngân sách theo request, tự nâng tác giả thành nguồn kênh, nguồn hashtag, tải media về R2.
 
 **Lý do:** Bright Data không có cách lấy "bài mới theo từ khóa" ngoài dataset Search URL Fast (hoạt động nhưng trả nhiều dòng lặp: 33 dòng chỉ có 5 bài khác nhau ở một lần chạy 6 giờ, và dataset bình luận có `collect_replies` mất khoảng 12 phút cho 5 bình luận). TikHub nhanh hơn (mỗi request 0,4 đến 4,5 giây so với 1 đến 20 phút), cho kênh và bình luận hành vi xác định, và cho ta quyền kiểm soát số bình luận và reply. Điểm yếu cần chấp nhận là tìm từ khóa chỉ là một mẫu theo cửa sổ 24 giờ, không phải danh sách đầy đủ; vì thế kênh vẫn là cách bảo đảm độ phủ và từ khóa là cách phát hiện.
+
+## D20 — Lấp gap bằng backfill theo khoảng thời gian (2026-10-22)
+
+Run thường chỉ nhìn về phía trước từ bài mới nhất (D7), nên phần trước đó không bao giờ được xem lại: source thêm trễ, hoặc dừng (pause, scheduler tắt) lâu hơn giới hạn một run. Lệnh `npm run backfill -- -- --source <id|url> --from <ngày> [--to <ngày>] [--max-records N] [--window-days N] [--yes]` lấp khoảng đó.
+
+- Chỉ Facebook và kênh TikTok. Tìm từ khóa TikTok không có cửa sổ quá khứ nên không backfill được.
+- `--to` mặc định là bài cũ nhất trong kho + 2 giờ chồng lấn, nên với source thêm trễ chỉ cần `--from`. Mặc định là dry-run (in khoảng, số run và số bài đã có trong khoảng); cần `--yes` để chạy.
+- Mỗi cửa sổ là một `collect_runs` qua workflow `collect-source`, params có `until` và `backfill: true`. Không đụng `since` của lịch thường, không đo late arrival. Bài đã có bị bỏ qua nên chạy lại không trùng. Bài cũ vẫn qua hook `after-post-scan` (luật comment/làm mới áp như bình thường; bài đã qua mốc +72 giờ không có lịch lấy comment).
+- Facebook: một run cho cả khoảng (`start_date`, `end_date`; job Bright Data không có hạn thời gian).
+- TikTok: chia cửa sổ `backfillDaysPerRun` (2 ngày), mỗi run tối đa `maxPagesPerBackfillRun` (20 trang) vì một bước workflow bị chặn `runBudgetMs`. Quét bắt đầu với `cursor = until` (cursor là giờ đăng tính ms) rồi đi lùi tới `since`, bỏ video mới hơn `until`. Run bị cắt ghi `stoppedBy: maxPages` vào stats; khi đó chạy lại phần còn thiếu với `--window-days` nhỏ hơn.
+- **Chưa kiểm chứng:** TikHub `web/fetch_user_post` có nhận `cursor` tùy ý (đặt bằng `until`) hay không, và Bright Data có lọc đúng `end_date` dạng ISO datetime như `start_date`. Cần một lần chạy thật với khoảng ngắn.

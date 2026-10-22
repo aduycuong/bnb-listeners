@@ -100,6 +100,36 @@ export type CreateCollectRunResult = {
   workflowRunId: string;
 };
 
+export type BackfillSourceParams = {
+  /** Source id or its exact URL. */
+  source: string;
+  /** Start of the gap (ISO). */
+  from: string;
+  /** End of the gap (ISO); defaults to the oldest stored post plus the overlap. */
+  to?: string;
+  maxRecords?: number;
+  /** Days of one TikTok run; Facebook always runs the whole range at once. */
+  windowDays?: number;
+};
+
+export type BackfillPlan = {
+  sourceId: string;
+  platform: string;
+  url: string | null;
+  connector: "facebook-posts" | "tiktok-posts";
+  from: Date;
+  to: Date;
+  /** True when `to` came from the oldest stored post, not from the caller. */
+  toFromStoredPosts: boolean;
+  windows: { since: Date; until: Date }[];
+  /** Posts already stored inside `[from, to]`; they are skipped, not updated. */
+  existingPosts: number;
+};
+
+export type BackfillSourceResult = BackfillPlan & {
+  runs: (CreateCollectRunResult & { since: string; until: string })[];
+};
+
 export type CollectSourceWorkflowPayload = {
   collectRunId: string;
 };
