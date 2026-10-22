@@ -1,17 +1,9 @@
 import { z } from "zod";
 
-/**
- * Bright Data field types drift (`group_members` arrives as 518299.99999999994,
- * `num_likes_type` is an array in one dataset and an object in another). Only
- * the ids a row cannot do without are strict; any other field that does not
- * match becomes null instead of dropping the whole row.
- */
-function optional<T extends z.ZodType>(schema: T) {
-  return schema.nullish().catch(null);
-}
+import { count, optional } from "../utils/lenient-schema";
 
-/** Counts can arrive as floats; they are rounded. */
-const count = optional(z.number().transform(Math.round));
+// Bright Data drift examples: `group_members` arrives as 518299.99999999994,
+// `num_likes_type` is an array in one dataset and an object in another.
 
 /** A highlighted comment embedded in a post scraped by URL; it has no comment id. */
 const brightDataFacebookTopCommentSchema = z.object({
