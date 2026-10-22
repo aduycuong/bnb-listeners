@@ -43,10 +43,10 @@ Dữ liệu giả và thật được phép trộn lẫn; chưa có quy tắc c�
 Dùng chung, không gắn với workspace hay project. Dữ liệu `synthetic` phân biệt qua `origin`.
 
 **`sources`**: nơi phát ra nội dung (page, group, kênh, trang báo, diễn đàn).
-- `platform` (`facebook`, `tiktok`, `youtube`, `news`, `forum`, `classifieds`, …), `source_type` (`page`, `group`, `channel`, `site`, …)
-- `external_id`, `url`, `name`, `follower_count`, `member_count`
+- `platform` (`facebook`, `tiktok`, `youtube`, `news`, `forum`, `classifieds`, …), `source_type` (`page`, `group`, `channel`, `search`, `site`, …). `search` là một lượt tìm từ khóa coi như nguồn (hiện chỉ có TikTok, xem [D19](decisions.md#d19--tiktok-qua-tikhub-2026-10-22)).
+- `external_id`, `url`, `name`, `follower_count`, `member_count`. TikTok: kênh dùng id số của tài khoản; nguồn `search` dùng `<REGION>:<từ khóa>` và không có `url`.
 - `activity_tier` (`hot`, `normal`, `low`, `paused`): dùng để quyết định tần suất quét; `activity_tier_locked` để ghim tier bằng tay
-- `monthly_record_limit`: số bản ghi Bright Data tối đa mỗi tháng (null = không giới hạn)
+- `monthly_record_limit`: số bản ghi giao về tối đa mỗi tháng (null = không giới hạn). Bright Data tính tiền theo bản ghi; TikHub tính theo request nên với TikTok giá trị này chưa phản ánh chi phí (D19)
 - `origin`
 - Unique: `(platform, external_id)`
 
@@ -76,7 +76,7 @@ Dùng chung, không gắn với workspace hay project. Dữ liệu `synthetic` p
 - Dòng bị xóa khi bài qua mốc cuối cùng.
 
 **`collect_runs`**: mỗi lần chạy của một connector.
-- `connector`, `params`, `status`, `r2_key`, `item_count`, `error`
+- `connector`, `params`, `status`, `r2_key`, `item_count`, `stats`, `error`. Với TikTok, `stats` có `requests` (số request TikHub của run).
 
 **`personas`**, **`persona_panels`**, **`persona_panel_members`** (chỉ dùng cho dữ liệu giả):
 - `personas`: `name`, `kind` (`individual`, `organization`), `description`, `tone`, `concerns[]`, `attributes` (jsonb), `version`, `source` (`template`, `manual`, `llm_generated`), `review_status`

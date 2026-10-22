@@ -330,3 +330,55 @@ Từ khóa là các cụm từ ngắn mà mention nói tới ("sổ hồng", "ph
 - Dữ liệu Enrich cũ được xóa, không chuyển. Chạy lại Enrich sau migrate.
 
 **Lý do:** một chữ ký chung làm đổi luật từ khóa (D16 v5–v7) phải Enrich lại sentiment và extraction; demo La Pura cần thêm extraction theo case mà không đụng các loại đã đúng.
+
+## D19 — TikTok qua TikHub (2026-10-22)
+
+Chọn nhà cung cấp và cách thu thập TikTok sau các thử nghiệm ngày 2026-10-21 và 2026-10-22 (`scripts/probe-bright-data-tiktok.ts`, `scripts/probe-tikhub-tiktok.ts`, kết quả ở `.local/experiments/`). Tiêu chí: lấy được **bài mới theo thời gian** như Facebook, cho kênh lẫn từ khóa. Các con số điều chỉnh được nằm ở `COLLECT_CONFIG.tiktok` (`lib/connectors/config.ts`).
+
+**Quyết định**
+- Dùng **TikHub** cho kênh, tìm từ khóa, bình luận, reply và làm mới video. Không dùng dataset TikTok của Bright Data (các script probe được giữ để đo lại). Khóa API: `TIKHUB_API_KEY`.
+- TikHub trả kết quả ngay trong response, không có job hay webhook, nên bốn connector là `DirectConnector`, đi cùng workflow `collect-source` (payload vẫn lưu lên R2 và parse lại được bằng `collect:renormalize`):
+
+| Connector | Việc | Endpoint TikHub |
+|---|---|---|
+| `tiktok-posts` | bài mới của một kênh | `web/fetch_user_profile` (một lần) + `web/fetch_user_post` |
+| `tiktok-search` | bài mới theo từ khóa | `app/v3/fetch_video_search_result` |
+| `tiktok-post-refresh` | làm mới số liệu tại các mốc | `app/v3/fetch_multi_video` |
+| `tiktok-comments` | bình luận và reply | `app/v3/fetch_video_comments`, `fetch_video_comment_replies` |
+
+**Nguồn (`sources`)**
+- Kênh: `platform = tiktok`, `source_type = channel`, `external_id` = id số của tài khoản (không đổi khi đổi username); `metadata.uniqueId` và `metadata.secUid`. Đăng ký bằng `npm run collect:tiktok -- -- --url https://www.tiktok.com/@name --yes` (một request lấy `secUid` và số người theo dõi).
+- Tìm từ khóa: `source_type = search`, `external_id = <REGION>:<từ khóa>` (`VN:vinhomes`; từ khóa cắt khoảng trắng, NFC, chữ thường, **giữ dấu** vì tìm kiếm phân biệt "phí" và "phi"), `url = null`. Project theo dõi một từ khóa bằng cách chọn nguồn này.
+
+**Quét kênh (`tiktok-posts`)** giống `facebook-posts` (D7): `since` = bài mới nhất − 2 giờ (nguồn mới: 24 giờ), bài đã có bị bỏ qua, sau run tạo lịch làm mới và tính lại tier.
+- Phân trang mới nhất trước (`cursor` là giờ đăng, tính mili-giây, của bài cuối trang) và dừng sau trang có bài cuối cũ hơn `since`. Xét bài cuối trang, không xét bài bất kỳ: bài ghim cũ ở đầu trang 1 không được làm dừng sớm. Bài cuối trang trước lặp lại ở đầu trang sau nên gộp theo id.
+- TikHub không có `start_date`, nên phía ta tự dừng; mỗi trang chỉ khoảng 15 bài dù yêu cầu 20, nên dùng `hasMore`, không dùng "trang đủ số bài" làm tín hiệu còn trang sau.
+
+**Tìm từ khóa (`tiktok-search`)**
+- `publish_time = 1` (24 giờ qua) và `region = VN`. TikHub chỉ có cửa sổ từ 1 ngày trở lên và chỉ sắp theo độ liên quan hoặc lượt thích, **không có "mới nhất"**. Với `publish_time = 1`, cả 33 video của một lần thử đều đăng trong 24 giờ.
+- Mỗi lần gọi trả một **mẫu** khác nhau (ba lần liên tiếp: 33, 39 và 10 video khác nhau, trùng nhau từ 1 đến 11 video), và trang rỗng giữa chừng không có nghĩa hết (trang 3 vẫn trả 20 video sau trang 2 rỗng). Vì vậy mỗi run lấy **đủ số trang cố định** (mặc định 4), không dừng sớm, gộp theo id; độ phủ nhờ chạy nhiều lần. Lịch cố định **6 giờ**, không theo tier (không có "bài mỗi ngày" để đo). Bài đã có bị bỏ qua.
+- Bài tìm thấy thuộc **nguồn search**, không thuộc kênh của tác giả; Match chỉ quét nguồn của project (D11). Khi sau này nâng tác giả thành nguồn kênh, bài đã có vẫn thuộc nguồn search (bị bỏ qua khi quét kênh), nên v1 **không tự nâng kênh**.
+- Đo trên cùng từ khóa và cửa sổ 24 giờ (`vinhomes`): Bright Data Search URL Fast (có `start_date`, chính xác tới giờ) cho 14 bài khác nhau, 100% chứa từ khóa; TikHub gộp mọi lần tìm trong ngày cho 94 bài, 63% chứa từ khóa, và chứa 12/14 bài của Bright Data. Ước lượng bắt-thả lại thô khoảng 110 bài khớp trong 24 giờ, nên ba lần tìm TikHub phủ khoảng 60%. Độ phủ thật chưa biết.
+
+**Bình luận và làm mới**
+- Luật mốc +6, +24, +72 giờ và luật lấy bình luận (D7) áp dụng cho TikTok, chọn connector theo `content_items.platform`: Facebook đọc lại bằng URL, TikTok bằng id video (`planRefreshRuns`, `planCommentRuns`).
+- Bình luận gốc trước, rồi reply của từng bình luận gốc trong phần giới hạn còn lại: **150 dòng mỗi video, tính cả reply** (D9). Reply gồm cả trả lời một reply khác (`reply_to_reply_id`, cha là reply đó, nếu không thì cha là bình luận gốc). Thứ tự bình luận không chọn được, nên video nóng có thể thiếu bình luận mới (như Facebook). Mỗi run tối đa 5 video vì một video có reply cần hàng chục request.
+- `user.uid` của bình luận là id số ổn định, nên không gặp vấn đề `pfbid` của Facebook (D9).
+- Bình luận không có chữ (sticker) bị bỏ.
+
+**Ghi vào kho thô**
+- Video là `kind = post`; không lưu `media` (liên kết CDN có chữ ký và hết hạn). Tác giả theo id số. Thông tin riêng TikTok (hashtag, nhạc, thời lượng, số lượt lưu, cờ ghim) ở `metadata`.
+- Thời lượng: payload kiểu App tính bằng **mili-giây**, kiểu Web bằng giây; mapper đổi về giây.
+
+**Lỗi, thời gian và chi phí**
+- Quét kênh và tìm từ khóa **hỏng cả run nếu một request lỗi**, không lưu một phần: quét mới nhất trước, lưu các trang đầu rồi mất các trang sau thì `since` của run kế tiếp (từ bài mới nhất đã lưu) bỏ qua vĩnh viễn phần cũ hơn. Bình luận có thể lưu một phần (không ảnh hưởng `since`), video chưa xong ghi vào `collect_runs.stats`.
+- `fetchRecords` chạy trong một bước workflow, nên mỗi lần gọi có hạn chót (`runBudgetMs`, 45 giây); quá hạn thì lỗi `ERR_TIKTOK_RUN_TIMEOUT`. Bước `start` không gọi TikHub lần hai khi workflow retry (payload đã lưu).
+- Lỗi `402` (hết số dư) và `401` không retry; `429` và `5xx` retry có backoff (tối đa 3 lần).
+- TikHub tính tiền **theo request** (khoảng $0,001 đến $0,01; giá riêng từng endpoint TikTok chưa xác nhận). Số request mỗi run ghi ở `collect_runs.stats.requests`. `sources.monthly_record_limit` vẫn đếm số bản ghi giao về (D7), **chưa có ngân sách theo request**.
+
+**Chưa làm hoặc chưa đo**
+- Chạy workflow `collect-source` end to end với DB, QStash và tunnel cho TikTok: mới kiểm chứng `fetchRecords` và `normalize` trên TikHub thật.
+- Kích thước lô tối đa của `fetch_multi_video` (đặt 20, mới thử 2) và giới hạn thời gian thực của một bước workflow.
+- Ngân sách theo request, tự nâng tác giả thành nguồn kênh, nguồn hashtag, tải media về R2.
+
+**Lý do:** Bright Data không có cách lấy "bài mới theo từ khóa" ngoài dataset Search URL Fast (hoạt động nhưng trả nhiều dòng lặp: 33 dòng chỉ có 5 bài khác nhau ở một lần chạy 6 giờ, và dataset bình luận có `collect_replies` mất khoảng 12 phút cho 5 bình luận). TikHub nhanh hơn (mỗi request 0,4 đến 4,5 giây so với 1 đến 20 phút), cho kênh và bình luận hành vi xác định, và cho ta quyền kiểm soát số bình luận và reply. Điểm yếu cần chấp nhận là tìm từ khóa chỉ là một mẫu theo cửa sổ 24 giờ, không phải danh sách đầy đủ; vì thế kênh vẫn là cách bảo đảm độ phủ và từ khóa là cách phát hiện.

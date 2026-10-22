@@ -1282,8 +1282,8 @@ New pipeline tables (see `docs/data-model.md`). Shared across workspaces — no 
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | platform | text | NO | — | `facebook` \| `tiktok` \| `youtube` \| `news` \| `forum` \| `classifieds` … |
-| source_type | text | NO | — | `page` \| `group` \| `channel` \| `site` … |
-| external_id | text | NO | — | Platform id (Facebook group id / page handle) |
+| source_type | text | NO | — | `page` \| `group` \| `channel` \| `search` \| `site` … (`search`: a TikTok keyword search treated as a source) |
+| external_id | text | NO | — | Platform id (Facebook group id / page handle; TikTok channel: numeric account id; TikTok search: `<REGION>:<keyword>`) |
 | url | text | YES | — | Canonical URL |
 | name | text | YES | — | Display name |
 | follower_count | integer | YES | — | Page followers |
@@ -1326,7 +1326,7 @@ One connector run, driven by the `collect-source` Upstash Workflow.
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
-| connector | text | NO | — | `facebook-posts` \| `facebook-post-refresh` \| `facebook-comments` … |
+| connector | text | NO | — | `facebook-posts` \| `facebook-post-refresh` \| `facebook-comments` \| `tiktok-posts` \| `tiktok-search` \| `tiktok-post-refresh` \| `tiktok-comments` \| `synthetic-threads` |
 | source_id | uuid | YES | — | FK → `sources.id` ON DELETE SET NULL |
 | params | jsonb | NO | `{}` | Connector input (`since`, limits, post URL…) |
 | status | text | NO | `pending` | `pending` \| `running` \| `success` \| `failed` |
@@ -1334,7 +1334,7 @@ One connector run, driven by the `collect-source` Upstash Workflow.
 | external_job_id | text | YES | — | Provider job id (Bright Data snapshot id) |
 | payload_key | text | YES | — | Object key of the raw payload in payload storage (R2 today) |
 | item_count | integer | YES | — | Items in the raw payload |
-| stats | jsonb | YES | — | Normalize counts `{ inserted, updated, skipped }` plus connector stats (post runs: `lateArrivals`, `maxLatenessMinutes`, `schedulesCreated`, `postsToCollect`, `activityTier`, `postsPerDay`; refresh runs: `checked`, `postsToCollect`, `commentRunsPlanned`; comment runs: `expectedMaxRecords`, `posts[] { postExternalId, numComments, collected, replies }`) |
+| stats | jsonb | YES | — | Normalize counts `{ inserted, updated, skipped }` plus connector stats (post runs: `lateArrivals`, `maxLatenessMinutes`, `schedulesCreated`, `postsToCollect`, `activityTier`, `postsPerDay`; refresh runs: `checked`, `postsToCollect`, `commentRunsPlanned`; comment runs: `expectedMaxRecords`, `posts[] { postExternalId, numComments, collected, replies }`; TikTok runs also `requests`, and per kind `stoppedBy` / `truncated` (channel scan), `pageSizes` / `duplicates` (search), `requested` / `returned` (refresh), `videos[] { videoId, comments, replies, complete }` / `incompleteVideos` (comments)) |
 | error | text | YES | — | Failure message |
 | started_at | timestamptz | YES | — | Run start time |
 | finished_at | timestamptz | YES | — | Run end time |

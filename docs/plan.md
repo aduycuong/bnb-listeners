@@ -247,7 +247,13 @@ Xem [D17](decisions.md#d17--giai-đoạn-5b-số-liệu-dashboard-2026-10-15).
 
 ## Giai đoạn 7 — Mở rộng nguồn
 
-- [ ] TikTok, YouTube (có tìm theo từ khóa)
+- [x] TikTok qua TikHub: kênh, tìm từ khóa, bình luận, reply, làm mới video (xem [D19](decisions.md#d19--tiktok-qua-tikhub-2026-10-22)); `npm run collect:tiktok`
+  - [ ] Chạy workflow `collect-source` end to end cho TikTok (DB, QStash, tunnel) và đối chiếu số bài với trang TikTok
+  - [ ] Đo kích thước lô tối đa của `fetch_multi_video` và giới hạn thời gian một bước workflow
+  - [ ] Ngân sách theo request (hiện `monthly_record_limit` đếm bản ghi)
+  - [ ] Sau 1–2 tuần chạy lịch: độ phủ của nguồn tìm từ khóa (số bài mới mỗi run, `stats.requests`), chỉnh `pagesPerRun` và `intervalHours`
+  - [ ] Nâng tác giả xuất hiện nhiều ở nguồn tìm kiếm thành nguồn kênh (xử lý bài đã thuộc nguồn search)
+- [ ] YouTube (có tìm theo từ khóa)
 - [ ] Báo điện tử (RSS/Exa)
 - [ ] Diễn đàn, trang rao vặt
 - [ ] Gợi ý nguồn Facebook mới
