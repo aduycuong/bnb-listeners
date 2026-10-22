@@ -23,7 +23,7 @@ thật / ảo                project                         cảnh báo, báo c
 
 | Lớp | Việc chính |
 |---|---|
-| Collect | Connector thật (Bright Data, RSS/Exa, crawler) lưu payload gốc vào R2. Connector ảo ghi thẳng vào kho thô. |
+| Collect | Connector thật (Bright Data cho Facebook, TikHub cho TikTok, RSS/Exa, crawler) lưu payload gốc vào R2. Connector ảo ghi thẳng vào kho thô. |
 | Normalize | Chuyển payload về `sources`, `authors`, `content_items` và `engagement_snapshots`. |
 | Match | Áp truy vấn của project lên kho thô (lọc từ vựng tiếng Việt, sau đó LLM xử lý các ca mơ hồ) để tạo `mentions`. |
 | Enrich | Gắn cho mỗi mention: sentiment, emotion, aspect, entity, topic và các trường riêng theo case. |
