@@ -12,9 +12,16 @@ import { toTiktokAwemeContentItem } from "./utils/to-tiktok-aweme-content-item";
 export const tiktokSearchParamsSchema = z.object({
   keyword: z.string().trim().min(1),
   region: z.string().trim().length(2).default(COLLECT_CONFIG.tiktok.search.region),
-  /** Publish-time window in days; TikHub offers 1, 7, 30, 90 and 180. */
+  /** Publish-time window in days; TikHub offers 1, 7, 30, 90 and 180, and 0 for no window. */
   publishTimeDays: z
-    .union([z.literal(1), z.literal(7), z.literal(30), z.literal(90), z.literal(180)])
+    .union([
+      z.literal(0),
+      z.literal(1),
+      z.literal(7),
+      z.literal(30),
+      z.literal(90),
+      z.literal(180),
+    ])
     .default(COLLECT_CONFIG.tiktok.search.publishTimeDays),
   pages: z.int().min(1).max(10).default(COLLECT_CONFIG.tiktok.search.pagesPerRun),
   /** Hard cap on collected videos. */
@@ -58,14 +65,23 @@ export const tiktokSearchConnector: DirectConnector<TiktokSearchParams> = {
     };
   },
 
-  normalize(records): NormalizeResult {
+  normalize(records, params): NormalizeResult {
     const items: NormalizedContentItem[] = [];
+    const region = params.region.toUpperCase();
     let skipped = 0;
 
     for (const record of records) {
       const parsed = tiktokAwemeSchema.safeParse(record);
 
       if (!parsed.success) {
+        skipped++;
+        continue;
+      }
+
+      // `region` only biases TikHub's ranking: a quiet keyword gets filled up
+      // with videos from other countries. A video without a region is kept.
+      const videoRegion = parsed.data.region?.toUpperCase();
+      if (videoRegion && videoRegion !== region) {
         skipped++;
         continue;
       }

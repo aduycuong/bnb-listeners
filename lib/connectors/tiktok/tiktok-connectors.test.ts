@@ -131,6 +131,26 @@ describe("tiktok-search", () => {
     });
   });
 
+  test("params accept no window (0) for a one-off search", () => {
+    assert.equal(search.paramsSchema.parse({ keyword: "x", publishTimeDays: 0 }).publishTimeDays, 0);
+  });
+
+  test("normalize keeps only videos of the search region", () => {
+    const params = search.paramsSchema.parse({ keyword: "vinhomes", region: "vn" });
+    const video = (id: string, region?: string) => ({ ...aweme, aweme_id: id, region });
+
+    const result = search.normalize(
+      [video("1", "VN"), video("2", "US"), video("3", "BR"), video("4")],
+      params,
+    );
+
+    assert.deepEqual(
+      result.items.map((item) => item.externalId),
+      ["1", "4"],
+    );
+    assert.equal(result.skipped, 2);
+  });
+
   test("params reject a window TikHub does not offer and an empty keyword", () => {
     assert.equal(search.paramsSchema.safeParse({ keyword: "x", publishTimeDays: 2 }).success, false);
     assert.equal(search.paramsSchema.safeParse({ keyword: "   " }).success, false);

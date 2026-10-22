@@ -5,8 +5,8 @@ import { assertWithinRunBudget } from "../utils/assert-within-run-budget";
 type ScanTiktokSearchParams = {
   keyword: string;
   region: string;
-  /** Days: the publish-time window of the search. */
-  publishTimeDays: 1 | 7 | 30 | 90 | 180;
+  /** Days: the publish-time window of the search; 0 is no window. */
+  publishTimeDays: 0 | 1 | 7 | 30 | 90 | 180;
   /** Pages to fetch whatever they return. */
   pages: number;
   pageSize: number;
