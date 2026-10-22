@@ -6,6 +6,7 @@ import { contentItems, mentionEnrichments } from "@/db/schema";
 import { uuidArraySql } from "@/lib/common/uuid-array-sql";
 import { db } from "@/lib/db";
 import { createChatModel } from "@/lib/langchain";
+import { getTranscriptText } from "@/lib/raw-store/utils/get-transcript-text";
 
 import { ENRICH_CONFIG } from "../config";
 import { getLlmEnricher } from "../enrichers/llm-enrichers";
@@ -29,14 +30,20 @@ import { loadEnrichContext } from "./load-enrich-context";
 async function callModel(
   ctx: ProjectEnrichContext,
   keys: EnricherKey[],
-  rootText: string,
+  root: { text: string; transcript: string },
   items: EnrichItem[],
 ): Promise<Map<string, Record<string, unknown>>> {
   const enrichers = keys.map(getLlmEnricher);
   const model = createChatModel(ENRICH_CONFIG.model, { temperature: 0 }).withStructuredOutput(
     buildEnrichSchema(ctx, enrichers),
   );
-  const prompt = buildEnrichPrompt({ ctx, enrichers, rootText, items });
+  const prompt = buildEnrichPrompt({
+    ctx,
+    enrichers,
+    rootText: root.text,
+    rootTranscript: root.transcript,
+    items,
+  });
   const response = (await model.invoke([
     new SystemMessage(prompt.system),
     new HumanMessage(prompt.user),
@@ -138,7 +145,7 @@ export async function enrichThreads(
 
   const [roots, { rows }] = await Promise.all([
     db
-      .select({ id: contentItems.id, text: contentItems.text })
+      .select({ id: contentItems.id, text: contentItems.text, media: contentItems.media })
       .from(contentItems)
       .where(inArray(contentItems.id, params.rootIds)),
     db.execute<PendingRow>(
@@ -152,7 +159,9 @@ export async function enrichThreads(
       }),
     ),
   ]);
-  const rootText = new Map(roots.map((root) => [root.id, root.text]));
+  const rootContent = new Map(
+    roots.map((root) => [root.id, { text: root.text, transcript: getTranscriptText(root.media) }]),
+  );
 
   const items = new Map<string, EnrichItem & { rootId: string }>();
   for (const row of rows) {
@@ -183,7 +192,12 @@ export async function enrichThreads(
       const batch = thread.slice(offset, offset + ENRICH_CONFIG.mentionsPerCall);
       const keys = enrichers.map((e) => e.key).filter((key) => batch.some((item) => item.keys.includes(key)));
       try {
-        const answers = await callModel(ctx, keys, rootText.get(rootId) ?? "", batch);
+        const answers = await callModel(
+          ctx,
+          keys,
+          rootContent.get(rootId) ?? { text: "", transcript: "" },
+          batch,
+        );
         result.llmCalls += 1;
         const writes = batch.flatMap((item) => {
           const answer = answers.get(item.mentionId);

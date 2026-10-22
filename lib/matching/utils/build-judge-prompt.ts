@@ -35,6 +35,9 @@ export function buildJudgePrompt(params: {
     entity.exclude.length ? `Không tính khi nói về: ${entity.exclude.join(", ")}` : "",
     "",
     `Bài gốc: ${clip(params.root.text, MATCH_CONFIG.maxPostChars) || "(không có chữ)"}`,
+    params.root.transcript
+      ? `Lời nói trong video của bài gốc (nhận dạng giọng nói tự động, tên riêng có thể bị viết sai theo cách đọc): ${clip(params.root.transcript, MATCH_CONFIG.maxTranscriptChars)}`
+      : "",
     "",
     "Các mục cần phân loại:",
     ...params.items.map(

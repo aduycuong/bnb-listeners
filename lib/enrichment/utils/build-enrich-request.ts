@@ -60,6 +60,8 @@ export function buildEnrichPrompt(params: {
   ctx: ProjectEnrichContext;
   enrichers: LlmEnricher[];
   rootText: string;
+  /** What is said in the root video; part of the root post, not context only. */
+  rootTranscript?: string;
   items: EnrichItem[];
 }): { system: string; user: string } {
   const { ctx, enrichers } = params;
@@ -95,6 +97,9 @@ export function buildEnrichPrompt(params: {
       ? `Trường riêng:\n${extractions.flatMap((enricher) => enricher.promptLines(ctx)).join("\n")}`
       : "",
     `Bài gốc: ${clip(params.rootText, ENRICH_CONFIG.maxPostChars) || "(không có chữ)"}`,
+    params.rootTranscript
+      ? `Lời nói trong video của bài gốc, là nội dung của bài gốc (nhận dạng giọng nói tự động, tên riêng có thể bị viết sai theo cách đọc): ${clip(params.rootTranscript, ENRICH_CONFIG.maxTranscriptChars)}`
+      : "",
     "Các mục:",
     ...params.items.map(
       (item, index) =>

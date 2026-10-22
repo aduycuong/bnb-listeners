@@ -6,6 +6,7 @@ import { COLLECT_CONFIG } from "../config";
 import { createItemRefreshSchedules } from "../services/create-item-refresh-schedules";
 import type { DirectConnector, NormalizeResult } from "../types";
 import { tiktokAwemeSchema } from "./schema";
+import { attachTiktokTranscripts } from "./services/attach-tiktok-transcripts";
 import { scanTiktokSearch } from "./services/scan-tiktok-search";
 import { toTiktokAwemeContentItem } from "./utils/to-tiktok-aweme-content-item";
 
@@ -45,6 +46,7 @@ export const tiktokSearchConnector: DirectConnector<TiktokSearchParams> = {
   onExisting: "skip",
 
   async fetchRecords(params) {
+    const deadlineAt = Date.now() + COLLECT_CONFIG.tiktok.runBudgetMs;
     const scan = await scanTiktokSearch({
       keyword: params.keyword,
       region: params.region,
@@ -52,8 +54,9 @@ export const tiktokSearchConnector: DirectConnector<TiktokSearchParams> = {
       pages: params.pages,
       pageSize: COLLECT_CONFIG.tiktok.pageSize,
       maxRecords: params.maxRecords,
-      deadlineAt: Date.now() + COLLECT_CONFIG.tiktok.runBudgetMs,
+      deadlineAt,
     });
+    const transcripts = await attachTiktokTranscripts({ records: scan.records, deadlineAt });
 
     return {
       records: scan.records,
@@ -61,6 +64,7 @@ export const tiktokSearchConnector: DirectConnector<TiktokSearchParams> = {
         requests: scan.requests,
         pageSizes: scan.pageSizes,
         duplicates: scan.duplicates,
+        transcripts,
       },
     };
   },

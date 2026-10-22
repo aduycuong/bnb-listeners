@@ -1260,10 +1260,23 @@ export const collectRuns = pgTable(
 export type CollectRun = typeof collectRuns.$inferSelect;
 export type NewCollectRun = typeof collectRuns.$inferInsert;
 
-export type ContentItemMedia = {
-  type: "image" | "video";
-  url: string;
-};
+export type ContentItemMedia =
+  | {
+      type: "image" | "video";
+      url: string;
+    }
+  | {
+      /**
+       * What is said in a video. Match and Enrich read `text` with the item's
+       * own text; `url` is the archived subtitle file (null when archiving failed).
+       */
+      type: "transcript";
+      url: string | null;
+      text: string;
+      language: string | null;
+      /** `asr`: speech recognition by the platform; `creator`: written by the author. */
+      source: "asr" | "creator";
+    };
 
 /** Posts, comments and replies in one table; `parent_id` / `root_id` form the thread. */
 export const contentItems = pgTable(
@@ -1291,7 +1304,7 @@ export const contentItems = pgTable(
     text: text("text").notNull().default(""),
     media: jsonb("media").$type<ContentItemMedia[]>().notNull().default([]),
     language: text("language"),
-    /** Hash of the normalized text; unchanged text keeps downstream analysis cached. */
+    /** Hash of the normalized text and transcript; unchanged content keeps downstream analysis cached. */
     contentHash: text("content_hash").notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     firstSeenAt: timestamp("first_seen_at", { withTimezone: true })

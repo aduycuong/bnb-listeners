@@ -43,6 +43,8 @@ export const ENRICH_CONFIG = {
   termsPerStep: 500,
   maxPostChars: 1500,
   maxItemChars: 700,
+  /** Video transcripts average about 1,800 characters (probe of 2026-10-22). */
+  maxTranscriptChars: 4000,
   /** Longest `topic_hint` kept (D15). */
   maxTopicHintChars: 80,
   /** Terms the model may name per mention; keywords kept per mention after the index; longest term. */

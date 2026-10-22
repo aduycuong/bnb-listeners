@@ -50,5 +50,6 @@ export function toTiktokWebPostContentItem(
     language: post.textLanguage ?? null,
     isAd: post.isAd ?? null,
     isPinned: false,
+    transcript: post.transcript ?? null,
   });
 }

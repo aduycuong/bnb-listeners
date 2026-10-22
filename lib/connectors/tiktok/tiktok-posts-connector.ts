@@ -7,6 +7,7 @@ import { COLLECT_CONFIG } from "../config";
 import { afterPostScan } from "../services/after-post-scan";
 import type { DirectConnector, NormalizeResult, SourceDetails } from "../types";
 import { type TiktokWebPost, tiktokWebPostSchema } from "./schema";
+import { attachTiktokTranscripts } from "./services/attach-tiktok-transcripts";
 import { scanTiktokChannel } from "./services/scan-tiktok-channel";
 import { parseTiktokSourceUrl } from "./utils/parse-tiktok-source-url";
 import { toTiktokChannelSourceDetails } from "./utils/to-tiktok-channel-source-details";
@@ -66,6 +67,7 @@ export const tiktokPostsConnector: DirectConnector<TiktokPostsParams> = {
       pageSize: COLLECT_CONFIG.tiktok.pageSize,
       deadlineAt,
     });
+    const transcripts = await attachTiktokTranscripts({ records: scan.records, deadlineAt });
 
     return {
       records: scan.records,
@@ -73,6 +75,7 @@ export const tiktokPostsConnector: DirectConnector<TiktokPostsParams> = {
         requests: scan.requests + (resolved ? 1 : 0),
         stoppedBy: scan.stoppedBy,
         truncated: scan.truncated,
+        transcripts,
       },
     };
   },
