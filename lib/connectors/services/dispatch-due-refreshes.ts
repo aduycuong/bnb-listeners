@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 
 import { COLLECT_CONFIG } from "../config";
 import type { FollowUpRun } from "../types";
-import { chunk } from "../utils/chunk";
+import { planRefreshRuns } from "../utils/plan-refresh-runs";
 import { createCollectRun } from "./create-collect-run";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -34,21 +34,23 @@ type DispatchDueRefreshesResult = {
 };
 
 /**
- * Hands due comment-refresh checkpoints to `facebook-post-refresh` runs (one
- * per source and chunk). Each run re-reads its posts, then decides which get
- * their comments collected. Dispatched checkpoints are pushed back by
- * `leaseHours` so the next call does not send them again.
+ * Hands due comment-refresh checkpoints to post-refresh runs of the post's
+ * platform (one per platform, source and chunk). Each run re-reads its posts,
+ * then decides which get their comments collected. Dispatched checkpoints are
+ * pushed back by `leaseHours` so the next call does not send them again.
  */
 export async function dispatchDueRefreshes(
   params: DispatchDueRefreshesParams = {},
 ): Promise<DispatchDueRefreshesResult> {
   const now = params.now ?? new Date();
-  const { postsPerRun, leaseHours } = COLLECT_CONFIG.commentRefresh;
+  const { leaseHours } = COLLECT_CONFIG.commentRefresh;
 
   const due = await db
     .select({
       contentItemId: itemRefreshSchedules.contentItemId,
       sourceId: contentItems.sourceId,
+      platform: contentItems.platform,
+      externalId: contentItems.externalId,
       url: contentItems.url,
     })
     .from(itemRefreshSchedules)
@@ -66,19 +68,8 @@ export async function dispatchDueRefreshes(
     .orderBy(asc(itemRefreshSchedules.nextRefreshAt))
     .limit(params.limit ?? 500);
 
-  const bySource = new Map<string | null, typeof due>();
-  for (const row of due) {
-    bySource.set(row.sourceId, [...(bySource.get(row.sourceId) ?? []), row]);
-  }
-
-  const runs: FollowUpRun[] = [...bySource].flatMap(([sourceId, rows]) =>
-    chunk(rows, postsPerRun).map((posts) => ({
-      connector: "facebook-post-refresh" as const,
-      sourceId,
-      params: {
-        posts: posts.map((row) => ({ contentItemId: row.contentItemId, url: row.url! })),
-      },
-    })),
+  const runs: FollowUpRun[] = planRefreshRuns(
+    due.map((row) => ({ ...row, url: row.url! })),
   );
 
   const summarize = (run: FollowUpRun): PlannedRefreshRun => ({

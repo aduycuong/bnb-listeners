@@ -3,8 +3,13 @@ import { and, count, desc, eq, gte, inArray } from "drizzle-orm";
 import { collectRuns, contentItems, type Source } from "@/db/schema";
 import { db } from "@/lib/db";
 import { COLLECT_CONFIG } from "@/lib/connectors/config";
-import type { ActivityTier, CollectRunStatus } from "@/lib/connectors/constants";
+import {
+  type ActivityTier,
+  type CollectRunStatus,
+  POST_CONNECTOR_KEYS,
+} from "@/lib/connectors/constants";
 import { getSourcesMonthlyUsage } from "@/lib/connectors/services/get-sources-monthly-usage";
+import { getSourceIntervalHours } from "@/lib/connectors/utils/get-source-interval-hours";
 
 import type { AdminSourceRow } from "../types";
 import { toIso } from "./to-iso";
@@ -18,7 +23,7 @@ export async function buildAdminSourceRows(rows: Source[]): Promise<AdminSourceR
 
   const now = new Date();
   const ids = rows.map((row) => row.id);
-  const { windowDays, intervalHours } = COLLECT_CONFIG.tiers;
+  const { windowDays } = COLLECT_CONFIG.tiers;
   const windowStart = new Date(now.getTime() - windowDays * DAY_MS);
 
   const [kindCounts, recentPosts, usage, lastPostRuns] = await Promise.all([
@@ -47,7 +52,12 @@ export async function buildAdminSourceRows(rows: Source[]): Promise<AdminSourceR
         createdAt: collectRuns.createdAt,
       })
       .from(collectRuns)
-      .where(and(inArray(collectRuns.sourceId, ids), eq(collectRuns.connector, "facebook-posts")))
+      .where(
+        and(
+          inArray(collectRuns.sourceId, ids),
+          inArray(collectRuns.connector, [...POST_CONNECTOR_KEYS]),
+        ),
+      )
       .orderBy(collectRuns.sourceId, desc(collectRuns.createdAt)),
   ]);
 
@@ -64,9 +74,10 @@ export async function buildAdminSourceRows(rows: Source[]): Promise<AdminSourceR
   return rows.map((row) => {
     const tier = row.activityTier as ActivityTier;
     const lastRun = lastRuns.get(row.id);
+    const intervalHours = getSourceIntervalHours(row);
     const nextPostRunAt =
-      lastRun && tier !== "paused"
-        ? new Date(lastRun.createdAt.getTime() + intervalHours[tier] * HOUR_MS)
+      lastRun && intervalHours !== null
+        ? new Date(lastRun.createdAt.getTime() + intervalHours * HOUR_MS)
         : null;
 
     return {

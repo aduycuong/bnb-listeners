@@ -3,9 +3,7 @@ import { z } from "zod";
 import type { NormalizedContentItem } from "@/lib/raw-store/types";
 
 import { COLLECT_CONFIG } from "../config";
-import { createItemRefreshSchedules } from "../services/create-item-refresh-schedules";
-import { measureLateArrivals } from "../services/measure-late-arrivals";
-import { recomputeSourceActivityTier } from "../services/recompute-source-activity-tier";
+import { afterPostScan } from "../services/after-post-scan";
 import type { JobConnector, NormalizeResult } from "../types";
 import { brightDataJobMethods } from "../utils/bright-data-job-methods";
 import { isBrightDataErrorRecord } from "../utils/is-bright-data-error-record";
@@ -103,19 +101,7 @@ export const facebookPostsConnector: JobConnector<FacebookPostsParams> = {
     };
   },
 
-  async afterNormalize(context, params) {
-    const [lateArrivals, schedules] = await Promise.all([
-      measureLateArrivals({
-        collectRunId: context.collectRunId,
-        newestKnownAt: params.newestKnownAt,
-      }),
-      createItemRefreshSchedules({ collectRunId: context.collectRunId }),
-    ]);
-    const tier = context.sourceId
-      ? await recomputeSourceActivityTier({ sourceId: context.sourceId })
-      : null;
-
-    const { followUps, ...scheduleStats } = schedules;
-    return { stats: { ...lateArrivals, ...scheduleStats, ...tier }, followUps };
+  afterNormalize(context, params) {
+    return afterPostScan(context, { newestKnownAt: params.newestKnownAt });
   },
 };

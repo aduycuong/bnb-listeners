@@ -3,11 +3,12 @@ import { eq } from "drizzle-orm";
 import { sources } from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
-import { APIError } from "@/lib/exposers/api-error";
 import { getSourceLatestPublishedAt } from "@/lib/raw-store/services/get-source-latest-published-at";
 
 import { COLLECT_CONFIG } from "../config";
 import type { CreateCollectRunResult } from "../types";
+import { buildPostRunParams } from "../utils/build-post-run-params";
+import { getPostConnectorKey } from "../utils/get-post-connector-key";
 import { createCollectRun } from "./create-collect-run";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -21,15 +22,24 @@ type CollectSourceParams = {
 };
 
 /**
- * Starts an incremental collection of a source. `since` comes from the newest
- * post already in the raw store (legacy imports included), minus a short
- * overlap, so each run only asks the provider for new posts.
+ * Starts an incremental collection of a source with the connector of its
+ * platform. `since` comes from the newest post already in the raw store
+ * (legacy imports included), minus a short overlap, so each run only asks the
+ * provider for new posts. A TikTok keyword search has no `since`: it reads a
+ * fixed publish-time window and `since` comes back null.
  */
 export async function collectSource(
   params: CollectSourceParams,
-): Promise<CreateCollectRunResult & { since: string }> {
+): Promise<CreateCollectRunResult & { since: string | null }> {
   const [source] = await db
-    .select({ id: sources.id, platform: sources.platform, url: sources.url })
+    .select({
+      id: sources.id,
+      platform: sources.platform,
+      sourceType: sources.sourceType,
+      externalId: sources.externalId,
+      url: sources.url,
+      metadata: sources.metadata,
+    })
     .from(sources)
     .where(eq(sources.id, params.sourceId))
     .limit(1);
@@ -38,33 +48,28 @@ export async function collectSource(
     throw new NotFoundError("source", params.sourceId);
   }
 
-  if (source.platform !== "facebook" || !source.url) {
-    throw new APIError(
-      "ERR_SOURCE_NOT_COLLECTABLE",
-      `No connector for ${source.platform} source ${source.id}.`,
-      400,
-    );
-  }
+  const connector = getPostConnectorKey(source);
+  const usesWindow = connector !== "tiktok-search";
 
-  const latest = await getSourceLatestPublishedAt({
-    sourceId: source.id,
-    kind: "post",
-  });
-  const since = params.since ?? resolveSince(latest);
+  const latest = usesWindow
+    ? await getSourceLatestPublishedAt({ sourceId: source.id, kind: "post" })
+    : null;
+  const since = usesWindow ? (params.since ?? resolveSince(latest)) : null;
 
-  const run = await createCollectRun({
-    connector: "facebook-posts",
-    sourceId: source.id,
-    params: {
-      url: source.url,
-      since,
-      // Late arrivals only mean something for an incremental run.
-      ...(!params.since && latest && { newestKnownAt: latest.toISOString() }),
-      ...(params.maxRecords !== undefined && { maxRecords: params.maxRecords }),
-    },
+  const run = buildPostRunParams(source, {
+    since: since ?? undefined,
+    // Late arrivals only mean something for an incremental run.
+    newestKnownAt: !params.since && latest ? latest.toISOString() : undefined,
+    maxRecords: params.maxRecords,
   });
 
-  return { ...run, since };
+  const created = await createCollectRun({
+    connector: run.connector,
+    sourceId: source.id,
+    params: run.params,
+  });
+
+  return { ...created, since };
 }
 
 function resolveSince(latest: Date | null): string {

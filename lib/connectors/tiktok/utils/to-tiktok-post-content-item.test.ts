@@ -54,7 +54,8 @@ const aweme = {
     collect_count: 5,
     download_count: 0,
   },
-  video: { duration: 31 },
+  // Milliseconds, as the App payload has it.
+  video: { duration: 31400 },
   text_extra: [{ hashtag_name: "vinhomes" }, { hashtag_name: "vinhomes" }],
   music: { title: "nhạc nền", author: "Another User", is_original: true },
 };

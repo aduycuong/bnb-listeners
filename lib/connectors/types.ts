@@ -67,10 +67,20 @@ export type JobConnector<TParams> = ConnectorBase<TParams> & {
   startJob(params: TParams, context: ConnectorContext): Promise<string>;
 };
 
+/** What a direct fetch hands back: the records, and numbers worth keeping on the run. */
+export type DirectFetchResult = {
+  records: unknown[];
+  /** Written to `collect_runs.stats` when the fetch ends and merged into the final stats. */
+  stats?: Record<string, unknown>;
+};
+
 /** Collection returns records directly (synthetic and simple HTTP connectors). */
 export type DirectConnector<TParams> = ConnectorBase<TParams> & {
   mode: "direct";
-  fetchRecords(params: TParams, context: ConnectorContext): Promise<unknown[]>;
+  fetchRecords(
+    params: TParams,
+    context: ConnectorContext,
+  ): Promise<unknown[] | DirectFetchResult>;
 };
 
 export type Connector<TParams = Record<string, unknown>> =

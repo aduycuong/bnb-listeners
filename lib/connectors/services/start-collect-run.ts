@@ -27,6 +27,12 @@ export async function startCollectRun(
     return { state: "job-started", externalJobId: run.externalJobId };
   }
 
+  // Nor fetch a direct connector's records again (TikHub bills each request):
+  // the payload is stored before this step returns.
+  if (run.payloadKey && run.itemCount !== null) {
+    return { state: "stored", payloadKey: run.payloadKey, itemCount: run.itemCount };
+  }
+
   const connector = getConnector(run.connector);
   const connectorParams = connector.paramsSchema.parse(run.params);
   const context = { collectRunId: run.id, sourceId: run.sourceId };
@@ -37,11 +43,23 @@ export async function startCollectRun(
     .where(eq(collectRuns.id, run.id));
 
   if (connector.mode === "direct") {
-    const records = await connector.fetchRecords(connectorParams, context);
+    const fetched = await connector.fetchRecords(connectorParams, context);
+    const { records, stats } = Array.isArray(fetched)
+      ? { records: fetched, stats: undefined }
+      : fetched;
+
     const stored = await storeRawPayload({
       collectRunId: run.id,
       body: JSON.stringify(records),
     });
+
+    if (stats) {
+      await db
+        .update(collectRuns)
+        .set({ stats })
+        .where(eq(collectRuns.id, run.id));
+    }
+
     return { state: "stored", ...stored };
   }
 
