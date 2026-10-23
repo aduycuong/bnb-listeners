@@ -61,7 +61,7 @@ Dùng chung, không gắn với workspace hay project. Dữ liệu `synthetic` p
 - `kind` (`post`, `comment`, `reply`, `article`, `video`, `listing`)
 - `parent_id`, `root_id`: cây hội thoại
 - `platform`, `source_id`, `author_id`, `external_id`, `url`
-- `text`, `media` (jsonb: ảnh, video, và transcript của video `{ type: "transcript", url, text, language, source }`, xem [D21](decisions.md#d21--transcript-video-tiktok-2026-10-22)), `language`, `content_hash` (hash của text cùng transcript)
+- `text`, `media` (jsonb: ảnh, video, và transcript của video `{ type: "transcript", url, text, language, source, rawText?, correction? }`, xem [D21](decisions.md#d21--transcript-video-tiktok-2026-10-22) và [D22](decisions.md#d22--sửa-transcript-bằng-llm-theo-tên-đối-tượng-2026-10-22)), `language`, `content_hash` (hash của text cùng transcript)
 - `published_at`, `first_seen_at`, `last_collected_at`
 - Engagement mới nhất: `like_count`, `comment_count`, `share_count`, `view_count`, `reactions` (jsonb)
 - `origin`, `collect_run_id`, `metadata` (với dữ liệu giả: `personaId`, `panelId`, `brief`, ý định cảm xúc và aspect)

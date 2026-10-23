@@ -254,7 +254,8 @@ Xem [D17](decisions.md#d17--giai-đoạn-5b-số-liệu-dashboard-2026-10-15).
   - [ ] Sau 1–2 tuần chạy lịch: độ phủ của nguồn tìm từ khóa (số bài mới mỗi run, `stats.requests`), chỉnh `pagesPerRun` và `intervalHours`
   - [ ] Nâng tác giả xuất hiện nhiều ở nguồn tìm kiếm thành nguồn kênh (xử lý bài đã thuộc nguồn search)
 - [x] Transcript video TikTok từ phụ đề tự tạo, dùng cho Match và Enrich (xem [D21](decisions.md#d21--transcript-video-tiktok-2026-10-22)); `npm run backfill:tiktok-transcripts`
-  - [ ] Khớp tên bị nhận dạng giọng nói viết sai (alias theo cách đọc hoặc so khớp mờ)
+  - [x] Sửa tên bị nhận dạng giọng nói viết sai bằng LLM theo tên và alias đối tượng (xem [D22](decisions.md#d22--sửa-transcript-bằng-llm-theo-tên-đối-tượng-2026-10-22)); `npm run transcripts:correct`
+  - [ ] Tự sửa lại transcript khi project đổi đối tượng hay alias
   - [ ] Video không có phụ đề: nghe audio bằng mô hình cho video đã khớp hoặc nhiều tương tác
   - [ ] Hiển thị transcript ở màn hình gán nhãn và danh sách mention
 - [ ] YouTube (có tìm theo từ khóa)

@@ -416,6 +416,26 @@ Nội dung chính của video TikTok nằm trong lời nói, còn `text` chỉ l
 - Video lưu trước khi có transcript: `npm run backfill:tiktok-transcripts -- -- [--source-id <id>] --yes` đọc lại payload trên R2 (link phụ đề còn hạn khoảng 30 ngày), chỉ đổi `media` và `content_hash`; sau đó chạy match và enrich của project.
 
 **Chưa làm**
-- Khớp tên bị ASR viết sai: thêm alias theo cách đọc cho đối tượng, hoặc so khớp mờ trên transcript.
+- Khớp tên bị ASR viết sai: xem D22.
 - Video không có phụ đề (khoảng một nửa): nghe audio bằng mô hình (Gemini), chỉ cho video đã khớp hoặc nhiều tương tác.
 - Hiển thị transcript ở màn hình gán nhãn và danh sách mention (hiện chỉ có ở trang admin của content item).
+
+## D22 — Sửa transcript bằng LLM theo tên đối tượng (2026-10-22)
+
+ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên dự án. Một lớp LLM sửa các tên bị nghe sai, dựa trên danh sách tên của các project theo dõi nguồn.
+
+**Đo ngày 2026-10-22** (`scripts/probe-transcript-correction.ts`, 74 video của project TT Genesis / Trellia Vista, kết quả ở `.local/experiments/`)
+- Cách đầu (model viết lại cả transcript) chèn tên sai: "treleco" (Trellia Cove, phân khu khác) và "the Park Vista" (dự án khác) thành "Trellia Vista", "Australia" thành "TT Genesis"; model còn sửa tên ngoài danh sách và đổi lời gốc. Cả 5 video có tên trong transcript mà không có trong caption đều là chèn sai.
+- Cách giữ lại: model **chỉ trả danh sách thay thế** (cụm nghe sai → tên), code áp vào bản gốc. Thay thế chỉ được áp khi cụm có trong bản ghi, tên đích nằm trong danh sách tên/alias, và hai cách viết đọc gần nhau: `nameSimilarity` (bỏ dấu, hoa thường, khoảng trắng; khoảng cách chỉnh sửa) ≥ **0,6**. Mọi thay thế sai đo được có điểm ≤ 0,58.
+- So 6 model với cùng bộ lọc (video có transcript khớp tên, trước khi sửa: 36/74): gpt-4.1-mini 52, gpt-4.1 55, gemini-3.6-flash 57, gpt-5.5 58, claude-sonnet-4-6 58, deepseek-v4-flash 58. Sonnet, DeepSeek và gpt-4.1-mini tự đề xuất thay thế sai (Trellia Cove, "the Park Vista"), bộ lọc chặn được; gpt-5.5 và gemini-3.6-flash thì không.
+
+**Quyết định**
+- Model **gemini-3.6-flash**, ngưỡng 0,6 (`TRANSCRIPT_CORRECTION_CONFIG`, `lib/transcripts`). Chỉ sửa transcript tiếng Việt.
+- Danh sách tên của một nguồn = tên và alias của mọi đối tượng thuộc các project theo dõi nguồn đó. Nguồn chưa có project nào theo dõi thì không sửa.
+- Kết quả lưu trong phần tử transcript của `media`: `text` là bản đã sửa, `rawText` là bản ASR (chỉ khi khác), `correction: { model, signature, replacements, correctedAt }`. `signature` gồm phiên bản prompt, model, ngưỡng và danh sách tên; luôn sửa lại từ bản ASR. `content_hash` đổi theo bản đã sửa nên Match và Enrich chạy lại.
+- Workflow `collect-source`: khi run thêm item mới, bước `correct-transcripts-{offset}` sửa transcript chưa sửa của run (8 item mỗi bước) **trước bước match**. Lỗi gọi model chỉ để lại bản ASR, đếm vào `collect_runs.stats.transcriptCorrection`.
+- Video đã có, hoặc khi project đổi đối tượng hay alias: `npm run transcripts:correct -- -- --project <id> --yes` (bỏ qua bản đã sửa với cùng danh sách tên), rồi chạy match và enrich.
+
+**Chưa làm**
+- Tự sửa lại khi project đổi đối tượng hay alias (hiện chạy script bằng tay).
+- Tên địa danh và thương hiệu hay gặp (Mizuki Park, Nam Long) chưa có trong danh sách; cần nơi lưu trong cấu hình project.

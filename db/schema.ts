@@ -1272,11 +1272,24 @@ export type ContentItemMedia =
        */
       type: "transcript";
       url: string | null;
+      /** Corrected text when `correction` is set, else as recognized. */
       text: string;
       language: string | null;
       /** `asr`: speech recognition by the platform; `creator`: written by the author. */
       source: "asr" | "creator";
+      /** The text as recognized, kept once a correction changed `text`. */
+      rawText?: string;
+      /** Last LLM correction of misheard names; absent until one ran. */
+      correction?: TranscriptCorrection;
     };
+
+export type TranscriptCorrection = {
+  model: string;
+  /** Hash of prompt version, model, threshold and glossary; a new glossary makes it stale. */
+  signature: string;
+  replacements: { from: string; to: string }[];
+  correctedAt: string;
+};
 
 /** Posts, comments and replies in one table; `parent_id` / `root_id` form the thread. */
 export const contentItems = pgTable(
