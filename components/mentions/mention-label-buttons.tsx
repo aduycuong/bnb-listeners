@@ -28,7 +28,7 @@ export function MentionLabelButtons({
         onClick={() => onChange(true)}
       >
         <CheckIcon />
-        Đúng
+        Có liên quan
       </Button>
       <Button
         type="button"
@@ -39,7 +39,7 @@ export function MentionLabelButtons({
         onClick={() => onChange(false)}
       >
         <XIcon />
-        Sai
+        Không liên quan
       </Button>
       {label !== null ? (
         <Button
@@ -47,7 +47,7 @@ export function MentionLabelButtons({
           size={compact ? "icon-xs" : "icon"}
           variant="ghost"
           disabled={disabled}
-          aria-label="Bỏ nhãn"
+          aria-label="Bỏ nhãn, dùng kết quả tự động"
           className={cn(compact && "size-6")}
           onClick={() => onChange(null)}
         >

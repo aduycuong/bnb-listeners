@@ -9,6 +9,7 @@ Tài liệu cho bản xây dựng lại theo hướng **social listening**.
 | [synthetic-data.md](synthetic-data.md) | Connector ảo, kịch bản dữ liệu giả, test độ nhạy |
 | [plan.md](plan.md) | Kế hoạch triển khai theo giai đoạn |
 | [decisions.md](decisions.md) | Các quyết định đã chốt |
+| [report-gaps.md](report-gaps.md) | Reach, phân loại KOL, mix kênh, mốc trên biểu đồ — chưa chốt hướng |
 | [deprecated/](deprecated/) | Tài liệu hệ thống cũ, chỉ để tham khảo |
 
 Các tài liệu này mô tả hướng đi ở mức đủ để bắt đầu. Chi tiết sẽ được bổ sung khi làm tới từng phần.

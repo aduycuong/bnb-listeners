@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, ilike, inArray, lt, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import {
@@ -16,6 +16,7 @@ import {
   topics,
 } from "@/db/schema";
 import { db } from "@/lib/db";
+import { loadReportWindow } from "@/lib/metrics/utils/load-report-window";
 
 import { MENTION_PAGE_SIZE } from "../schema";
 import type { ListMentionsParams, ListMentionsResult, MentionListItem } from "../types";
@@ -42,6 +43,12 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
       where mt.mention_id = ${mentions.id} and mt.topic_id = ${params.topicId}
     )`);
   }
+  if (params.schemaKey !== "all") {
+    filters.push(sql`exists (
+      select 1 from ${mentionExtractions} x
+      where x.mention_id = ${mentions.id} and x.schema_key = ${params.schemaKey}
+    )`);
+  }
   if (params.sourceId) filters.push(eq(mentions.sourceId, params.sourceId));
   if (params.authorId) filters.push(eq(mentions.authorId, params.authorId));
   if (params.sentiment !== "all") {
@@ -59,9 +66,29 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
       ))
     )`);
   }
+  if (params.days) {
+    const window = await loadReportWindow(params.projectId, params.days);
+    filters.push(gte(mentions.publishedAt, window.start));
+  }
   if (params.from) filters.push(gte(mentions.publishedAt, new Date(params.from)));
   if (params.to) filters.push(lt(mentions.publishedAt, new Date(Date.parse(params.to) + DAY_MS)));
-  if (params.q) filters.push(ilike(contentItems.text, `%${params.q}%`));
+  if (params.q) {
+    const pattern = `%${params.q}%`;
+    filters.push(
+      or(
+        ilike(contentItems.text, pattern),
+        sql`exists (
+          select 1 from ${authors} a
+          where a.id = ${mentions.authorId} and a.name ilike ${pattern}
+        )`,
+        sql`exists (
+          select 1 from ${mentionTopics} mt
+          inner join ${topics} t on t.id = mt.topic_id
+          where mt.mention_id = ${mentions.id} and t.name ilike ${pattern}
+        )`,
+      ),
+    );
+  }
   const where = and(...filters);
 
   const base = db

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useT } from "next-i18next/client";
 import { useState } from "react";
 
 import { DonutChart, TrendChart } from "@/components/projects/demo/demo-charts";
@@ -12,7 +13,12 @@ import {
 } from "@/components/projects/project-page-banner";
 import { METRICS_CONFIG } from "@/lib/metrics/config";
 import { growthPercent } from "@/lib/metrics/formulas";
-import type { MetricsValue, OverviewMetricsResult } from "@/lib/metrics/types";
+import type {
+  MetricsValue,
+  OverviewMetricsResult,
+  ProjectCaseMetricsResult,
+} from "@/lib/metrics/types";
+import type { ProjectCase } from "@/lib/projects/project-cases";
 import {
   AQUA_PAGE_META,
   formatCount,
@@ -22,7 +28,9 @@ import {
 } from "@/lib/projects/aqua-demo";
 
 import { formatDayLabel, MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
-import { useOverviewMetrics, type MetricsApiScope } from "./use-metrics-api";
+import { OverviewAiSummary } from "./overview-ai-summary";
+import { ProjectPricePanels } from "./project-price-panels";
+import { useOverviewMetrics, useProjectCaseMetrics, type MetricsApiScope } from "./use-metrics-api";
 
 const GLOSSARY = [
   ["Lượt đề cập (Mentions)", "Số bài đăng, bình luận và trả lời có liên quan tới đối tượng đang theo dõi."],
@@ -31,6 +39,9 @@ const GLOSSARY = [
   ["Chỉ số cảm xúc ròng (NSS)", "(Tích cực − Tiêu cực) / Số đề cập đã phân loại cảm xúc × 100, từ −100 đến +100."],
   ["Share of Voice (SOV)", "Tỷ lệ đề cập nhắc tới đối tượng chính trên đề cập nhắc tới đối tượng chính hoặc đối thủ. Chỉ có khi project có đối thủ."],
   ["Kỳ so sánh", "Các thay đổi so với cùng số ngày liền trước, tính theo ngày đăng và múi giờ của project."],
+  ["Giá rao (tr/m²)", "Trung vị giá rao bán lại của dự án đang theo dõi, triệu đồng/m². AI trích từ tin rao; đã lọc tin trùng và tin lệch bất thường."],
+  ["Câu hỏi của người mua", "Số câu hỏi AI trích từ mention của người đang cân nhắc mua hoặc thuê."],
+  ["Dùng chung / Riêng case", "Nhãn ở góc mỗi khung cho biết khung đó có trong mọi case hay chỉ có ở case đang chọn."],
 ];
 
 function decimal(value: number | string) {
@@ -87,7 +98,6 @@ function buildKpis(data: OverviewMetricsResult): AquaKpi[] {
       signed: true,
     }),
   ];
-  // Always six tiles as in the demo, so every KPI keeps its colour.
   kpis.push(
     data.shareOfVoice
       ? pointKpi("Share of Voice", data.shareOfVoice, "Tỷ lệ đề cập của đối tượng chính so với đối thủ", {
@@ -110,20 +120,92 @@ function buildKpis(data: OverviewMetricsResult): AquaKpi[] {
   return kpis;
 }
 
+const PRICE_TIP =
+  "Trung vị giá rao bán lại của dự án đang theo dõi, triệu đồng/m². Đã lọc tin trùng và tin lệch.";
+const QUESTION_TIP = "Câu hỏi AI trích từ người đang cân nhắc mua hoặc thuê";
+
+/** Two case tiles. Shown while the case query is in flight so the row does not jump. */
+function waitingKpi(label: string, tip: string, pending: boolean): AquaKpi {
+  return {
+    label,
+    value: "—",
+    delta: pending ? "Đang tải" : "Chưa tải được",
+    good: true,
+    tip,
+  };
+}
+
+/** Resale-price median of the tracked project, as a percent change like the other count tiles. */
+function priceKpi(median: MetricsValue<number | null>): AquaKpi {
+  const growth =
+    median.current === null || median.previous === null
+      ? null
+      : growthPercent(median.current, median.previous);
+  return {
+    label: "Giá rao bán lại",
+    value: median.current === null ? "—" : `${decimal(median.current)} tr/m²`,
+    delta:
+      median.current === null
+        ? "Chưa có giá rao"
+        : growth === null
+          ? "Chưa có kỳ trước"
+          : `${decimal(formatSigned(growth))}%`,
+    good: growth === null || growth >= 0,
+    tip: PRICE_TIP,
+  };
+}
+
+/**
+ * Six tiles of the project-tracking demo: mentions, engagement (in place of reach),
+ * resale price, NSS, buyer questions, negative share. Author count and share of
+ * voice stay off this row.
+ */
+function projectOverviewKpis(
+  data: OverviewMetricsResult,
+  caseData: ProjectCaseMetricsResult | undefined,
+  pending: boolean,
+): AquaKpi[] {
+  const price = caseData
+    ? priceKpi(caseData.price.median)
+    : waitingKpi("Giá rao bán lại", PRICE_TIP, pending);
+  const questions = caseData
+    ? countKpi("Câu hỏi của người mua", caseData.questions.total, QUESTION_TIP)
+    : waitingKpi("Câu hỏi của người mua", QUESTION_TIP, pending);
+  return [
+    countKpi("Lượt đề cập", data.mentions, "Bài đăng, bình luận, trả lời có liên quan"),
+    countKpi("Tương tác", data.engagement, "Tổng lượt thích, bình luận, chia sẻ", formatShort),
+    price,
+    pointKpi("Chỉ số cảm xúc (NSS)", data.nss, "(Tích cực − Tiêu cực) / Tổng đề cập đã phân loại × 100", {
+      signed: true,
+    }),
+    questions,
+    pointKpi("Tỷ lệ tiêu cực", data.negativeShare, "Phần trăm đề cập tiêu cực trên tổng đề cập đã phân loại", {
+      suffix: "%",
+      higherIsBetter: false,
+    }),
+  ];
+}
+
 /** Overview page of real projects, laid out as the approved demo (phase 5b). */
 export function ProjectOverviewReport({
   scope,
   projectName,
+  projectCase,
   banner,
   mentionsHref,
+  caseHref,
 }: {
   scope: MetricsApiScope;
   projectName: string;
+  projectCase: ProjectCase;
   banner: ProjectPageBannerProps;
   mentionsHref: string;
+  caseHref: string;
 }) {
+  const { t } = useT("dashboard");
   const [days, setDays] = useState<number>(METRICS_CONFIG.reportPeriodDays[0]);
   const { data, error, isPending, isFetching } = useOverviewMetrics(scope, days);
+  const caseMetrics = useProjectCaseMetrics(scope, days, projectCase === "project");
   const hasMentions = (data?.mentions.current ?? 0) > 0;
   const sentimentTotal = data
     ? data.sentiment.positive + data.sentiment.neutral + data.sentiment.negative
@@ -136,11 +218,21 @@ export function ProjectOverviewReport({
         subtitle={`${projectName} · số liệu từ các đề cập có liên quan`}
         days={days}
         onDaysChange={setDays}
-        loading={isFetching && !isPending}
+        loading={(isFetching && !isPending) || (caseMetrics.isFetching && !caseMetrics.isPending)}
       />
       <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
-      {data ? <DemoKpis kpis={buildKpis(data)} compareLabel={`vs ${days} ngày trước`} /> : null}
+      {caseMetrics.error ? <p className="text-sm text-destructive">{caseMetrics.error.message}</p> : null}
+      {data ? (
+        <DemoKpis
+          kpis={
+            projectCase === "project"
+              ? projectOverviewKpis(data, caseMetrics.data, caseMetrics.isPending)
+              : buildKpis(data)
+          }
+          compareLabel={`vs ${days} ngày trước`}
+        />
+      ) : null}
 
       <DemoGrid>
         <DemoPanel
@@ -167,6 +259,7 @@ export function ProjectOverviewReport({
             <MetricsEmpty>{isPending ? "Đang tải…" : `Chưa có đề cập trong ${days} ngày gần nhất.`}</MetricsEmpty>
           )}
         </DemoPanel>
+        <OverviewAiSummary projectCase={projectCase} />
         <DemoPanel title="Phân bổ cảm xúc" span="s4" scope="common">
           {data && sentimentTotal > 0 ? (
             <>
@@ -201,7 +294,7 @@ export function ProjectOverviewReport({
         </DemoPanel>
         <DemoPanel
           title="Kênh thảo luận"
-          span="s6"
+          span="s4"
           scope="common"
           note="Theo nguồn (group, page) có nhiều đề cập nhất trong kỳ"
         >
@@ -219,7 +312,7 @@ export function ProjectOverviewReport({
         </DemoPanel>
         <DemoPanel
           title="Chủ đề nổi bật"
-          span="s6"
+          span="s4"
           scope="common"
           note="Chủ đề có nhiều đề cập nhất trong kỳ. Bấm để xem đề cập."
         >
@@ -248,6 +341,15 @@ export function ProjectOverviewReport({
             <MetricsEmpty>{isPending ? "Đang tải…" : "Chưa có chủ đề có đề cập trong kỳ."}</MetricsEmpty>
           )}
         </DemoPanel>
+        {projectCase === "project" ? (
+          <ProjectPricePanels
+            data={caseMetrics.data}
+            isPending={caseMetrics.isPending}
+            days={days}
+            caseLabel={t("cases.project")}
+            detail={{ href: caseHref, label: t("caseNav.project") }}
+          />
+        ) : null}
       </DemoGrid>
       <details className="rounded-[22px] border-[1.5px] border-border bg-card px-[18px] py-3.5">
         <summary className="cursor-pointer text-sm font-semibold">Định nghĩa các chỉ số</summary>

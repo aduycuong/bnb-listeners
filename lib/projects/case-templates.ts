@@ -305,6 +305,15 @@ export function defaultCaseEnrichers(template: CaseTemplate): EnricherKey[] {
   return ENRICHER_KEYS.filter((key) => keys.has(key) && isReadyEnricher(key));
 }
 
+/** Extraction schemas this case can store, for the mentions filter. */
+export function caseExtractionSchemas(template: CaseTemplate) {
+  return describeCaseEnrichment(template).flatMap((entry) =>
+    entry.writes === "mention_extractions" && entry.status === "ready"
+      ? [{ key: entry.key, label: entry.label }]
+      : [],
+  );
+}
+
 /** Every enricher a case can run, with its origin and status, for settings and docs. */
 export function describeCaseEnrichment(template: CaseTemplate) {
   const origin = (key: EnricherKey): "core" | "case" | "optional" =>

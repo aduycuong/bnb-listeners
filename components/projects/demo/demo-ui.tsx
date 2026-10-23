@@ -112,7 +112,7 @@ export function DemoPanel({
   span: DemoSpan;
   scope: "common" | "case";
   scopeLabel?: string;
-  note?: string;
+  note?: ReactNode;
   invert?: boolean;
   children: ReactNode;
   className?: string;
@@ -163,7 +163,7 @@ export function DemoBars({
       {rows.map((row) => (
         <div
           key={row.label}
-          className="grid grid-cols-[minmax(90px,140px)_1fr_64px] items-center gap-2.5 text-[13px]"
+          className="grid grid-cols-[minmax(0,42%)_minmax(0,1fr)_auto] items-center gap-2.5 text-[13px]"
         >
           <span className="truncate">{row.label}</span>
           <div className="h-[9px] overflow-hidden rounded-full bg-muted">

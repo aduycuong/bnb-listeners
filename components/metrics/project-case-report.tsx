@@ -4,11 +4,7 @@ import Link from "next/link";
 import { useT } from "next-i18next/client";
 import { useState } from "react";
 
-import {
-  PriceBucketChart,
-  PriceTrendChart,
-  RadarAttributeChart,
-} from "@/components/projects/demo/demo-charts";
+import { RadarAttributeChart } from "@/components/projects/demo/demo-charts";
 import { DemoGrid, DemoPanel } from "@/components/projects/demo/demo-ui";
 import {
   ProjectPageBanner,
@@ -18,12 +14,9 @@ import {
 import { METRICS_CONFIG } from "@/lib/metrics/config";
 import { formatCount } from "@/lib/projects/aqua-demo";
 
-import { formatDayLabel, MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
+import { MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
+import { ProjectPricePanels } from "./project-price-panels";
 import { useProjectCaseMetrics, type MetricsApiScope } from "./use-metrics-api";
-
-function decimal(value: number) {
-  return String(value).replace(".", ",");
-}
 
 /** Case page of a `project` listening case, laid out as the approved demo. */
 export function ProjectCaseReport({
@@ -42,36 +35,6 @@ export function ProjectCaseReport({
   const { data, error, isPending, isFetching } = useProjectCaseMetrics(scope, days);
   const loading = isPending ? "Đang tải…" : null;
   const caseLabel = t("cases.project");
-  const priceSeries = data
-    ? [
-        {
-          key: data.primaryName,
-          color: "#0091FF",
-          dotted: true,
-          values: data.price.daily.map((day) => day.primary),
-        },
-        ...(data.hasCompetitors
-          ? [
-              {
-                key: "TB đối thủ",
-                color: "#FFC93C",
-                values: data.price.daily.map((day) => day.competitor),
-              },
-            ]
-          : []),
-        ...(data.price.priceRef != null
-          ? [
-              {
-                key: "Giá khởi điểm CĐT",
-                color: "var(--muted-foreground)",
-                dashed: true,
-                values: data.price.daily.map(() => data.price.priceRef),
-              },
-            ]
-          : []),
-      ]
-    : [];
-  const hasPriceLine = data?.price.daily.some((day) => day.primary != null || day.competitor != null) ?? false;
   const radarAspects = data?.aspects.filter((aspect) => aspect.primary != null || aspect.competitor != null) ?? [];
   const radarSeries = data
     ? [
@@ -92,23 +55,6 @@ export function ProjectCaseReport({
       ]
     : [];
 
-  const medianNote = data
-    ? [
-        data.price.median.current != null
-          ? `Trung vị kỳ này ${decimal(data.price.median.current)} tr/m²`
-          : null,
-        data.price.median.previous != null
-          ? `kỳ trước ${decimal(data.price.median.previous)}`
-          : "chưa có kỳ trước",
-        data.price.priceRef != null ? `giá khởi điểm ${decimal(data.price.priceRef)}` : null,
-        data.price.droppedMultiEntity || data.price.droppedOutlier
-          ? `đã bỏ ${formatCount(data.price.droppedMultiEntity + data.price.droppedOutlier)} tin (nhiều đối tượng hoặc lệch mạnh)`
-          : null,
-      ]
-        .filter(Boolean)
-        .join(" · ")
-    : undefined;
-
   return (
     <div className={projectReportPageClassName}>
       <MetricsPageHeader
@@ -122,49 +68,12 @@ export function ProjectCaseReport({
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
       <DemoGrid>
-        <DemoPanel
-          title="Giá rao bán lại theo ngày"
-          span="s8"
-          scope="case"
-          scopeLabel={caseLabel}
-          note={
-            medianNote ||
-            "Triệu đồng/m², AI trích xuất từ tin rao, đã lọc trùng và tin bất thường"
-          }
-        >
-          {data && hasPriceLine ? (
-            <PriceTrendChart
-              days={data.price.daily.map((day) => formatDayLabel(day.date))}
-              series={priceSeries}
-            />
-          ) : (
-            <MetricsEmpty>
-              {loading ?? `Chưa có giá rao bán (triệu/m²) gán được cho một đối tượng trong ${days} ngày gần nhất.`}
-            </MetricsEmpty>
-          )}
-        </DemoPanel>
-        <DemoPanel
-          title="Phân bố giá rao"
-          span="s4"
-          scope="case"
-          scopeLabel={caseLabel}
-          note={
-            data?.price.used
-              ? `${formatCount(data.price.used)} tin rao trong ${days} ngày`
-              : undefined
-          }
-        >
-          {data?.price.buckets.length ? (
-            <PriceBucketChart
-              buckets={data.price.buckets.map((bucket) => ({
-                name: bucket.label,
-                value: bucket.count,
-              }))}
-            />
-          ) : (
-            <MetricsEmpty>{loading ?? "Chưa có tin rao để vẽ phân bố."}</MetricsEmpty>
-          )}
-        </DemoPanel>
+        <ProjectPricePanels
+          data={data}
+          isPending={isPending}
+          days={days}
+          caseLabel={caseLabel}
+        />
         <DemoPanel
           title="Câu hỏi thường gặp của người mua"
           span="s6"
@@ -172,8 +81,8 @@ export function ProjectCaseReport({
           scopeLabel={caseLabel}
           note={
             data
-              ? data.questions.total
-                ? `AI gom nhóm từ ${formatCount(data.questions.total)} câu hỏi`
+              ? data.questions.total.current
+                ? `AI gom nhóm từ ${formatCount(data.questions.total.current)} câu hỏi`
                 : "Chưa có câu hỏi người mua trong kỳ"
               : undefined
           }

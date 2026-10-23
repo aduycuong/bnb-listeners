@@ -1,4 +1,4 @@
-import { ProjectMentionsPage } from "@/components/mentions/project-mentions-page";
+import { ProjectMentionsReportPage } from "@/components/mentions/project-mentions-report";
 
 type PageProps = {
   params: Promise<{ workspaceIndex: string; projectIndex: string }>;
@@ -7,6 +7,9 @@ type PageProps = {
 export default async function ProjectMentionsRoute({ params }: PageProps) {
   const { workspaceIndex, projectIndex } = await params;
   return (
-    <ProjectMentionsPage workspaceIndexParam={workspaceIndex} projectIndexParam={projectIndex} />
+    <ProjectMentionsReportPage
+      workspaceIndexParam={workspaceIndex}
+      projectIndexParam={projectIndex}
+    />
   );
 }
