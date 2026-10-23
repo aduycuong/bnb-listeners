@@ -1,6 +1,7 @@
 "use client";
 
 import { ProjectAuthorsReport } from "@/components/metrics/project-authors-report";
+import { ProjectAlertsPage } from "@/components/alerts/project-alerts-page";
 import { ProjectCaseReport } from "@/components/metrics/project-case-report";
 import { ProjectChannelsReport } from "@/components/metrics/project-channels-report";
 import { ProjectSentimentReport } from "@/components/metrics/project-sentiment-report";
@@ -70,6 +71,16 @@ export function ProjectSectionPage({
         projectName={project.name}
         mentionsHref={mentionsHref}
         banner={banner}
+      />
+    );
+  }
+  if (section === "alerts") {
+    return (
+      <ProjectAlertsPage
+        scope={scope}
+        projectName={project.name}
+        banner={banner}
+        settingsHref={getProjectNavHref(workspaceIndex, projectIndex, "settings")}
       />
     );
   }

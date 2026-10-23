@@ -89,8 +89,8 @@ export function ProjectAlertsFields({
   return (
     <div className="flex flex-col gap-5">
       <p className="rounded-xl bg-muted px-3 py-2 text-[13px]">
-        Cảnh báo và báo cáo được lưu ngay, bắt đầu chạy khi hệ thống có dữ liệu phân tích. Email
-        được hỗ trợ trước, các kênh khác sau.
+        Cảnh báo được kiểm tra mỗi giờ. Chỉ email được gửi; Zalo, SMS và Slack có thể lưu nhưng
+        chưa gửi. Báo cáo AI định kỳ chưa chạy.
       </p>
 
       <div className="flex flex-col gap-3">
@@ -141,11 +141,14 @@ export function ProjectAlertsFields({
                 <div className="flex flex-wrap gap-2">
                   {NOTIFICATION_CHANNELS.map((channel) => {
                     const checked = values.includes(channel);
+                    const later = channel !== "email";
+                    const locked = later && !checked;
                     return (
                       <label
                         key={channel}
                         className={cn(
-                          "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[13px]",
+                          "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[13px]",
+                          locked ? "cursor-not-allowed opacity-60" : "cursor-pointer",
                           checked ? "border-primary bg-primary/10" : "border-border",
                         )}
                       >
@@ -153,13 +156,15 @@ export function ProjectAlertsFields({
                           type="checkbox"
                           className="accent-primary"
                           checked={checked}
-                          onChange={() =>
+                          disabled={locked}
+                          onChange={() => {
+                            if (locked) return;
                             field.onChange(
                               checked
                                 ? values.filter((item) => item !== channel)
                                 : [...values, channel],
-                            )
-                          }
+                            );
+                          }}
                         />
                         {NOTIFICATION_CHANNEL_LABELS[channel]}
                         {channel !== "email" ? <Badge variant="outline">sau</Badge> : null}

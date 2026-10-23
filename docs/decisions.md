@@ -310,7 +310,7 @@ Từ khóa là các cụm từ ngắn mà mention nói tới ("sổ hồng", "ph
 ## D17 — Giai đoạn 5b: số liệu dashboard (2026-10-15)
 
 **Quyết định**
-- Chưa làm `metrics_hourly` / `metrics_daily`. Overview và Sentiment đọc thẳng từ L3 (`mentions`) như Topics 5a: project lớn nhất có khoảng 700 mention, hai service chạy dưới 1 giây. Truy vấn nằm trong `lib/metrics/` sau API `/api/metrics/overview` và `/api/metrics/sentiment`, nên chuyển sang L4 không đổi giao diện. `metrics_hourly` chỉ cần cho cảnh báo nên làm ở giai đoạn 6.
+- Chưa làm `metrics_hourly` / `metrics_daily`. Overview và Sentiment đọc thẳng từ L3 (`mentions`) như Topics 5a: project lớn nhất có khoảng 700 mention, hai service chạy dưới 1 giây. Truy vấn nằm trong `lib/metrics/` sau API `/api/metrics/overview` và `/api/metrics/sentiment`, nên chuyển sang L4 không đổi giao diện. Cảnh báo (D23) cũng đọc thẳng L3, nên chưa cần `metrics_hourly`.
 - Bỏ Reach trên project thật, thay bằng **Tương tác** (like + comment + share của chính item; với comment, comment là số trả lời) và **Tác giả** (số tác giả khác nhau). Nguồn Facebook gần như không có lượt xem, chỉ có số thành viên group, nên chưa có cơ sở ước tính reach.
 - Công thức dùng chung ở `lib/metrics/formulas.ts` (NSS, tỉ lệ, tăng trưởng, SoV) và `lib/metrics/utils/engagement-sql.ts`. NSS và tỉ lệ tiêu cực tính trên mention đã có sentiment; mention chưa Enrich vẫn tính vào số đề cập.
 - SoV = mention nhắc đối tượng `primary` / mention nhắc `primary` hoặc `competitor` (`mention_entities`). Project không có đối thủ thì ô SoV hiện "—".
@@ -440,3 +440,16 @@ ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên
 **Chưa làm**
 - Tự sửa lại khi project đổi đối tượng hay alias (hiện chạy script bằng tay).
 - Tên địa danh và thương hiệu hay gặp (Mizuki Park, Nam Long) chưa có trong danh sách; cần nơi lưu trong cấu hình project.
+
+## D23 — Cảnh báo qua email (2026-10-23)
+
+**Quyết định**
+- Đánh giá `alert_rules` đang bật mỗi giờ (`5 * * * *`, `Asia/Ho_Chi_Minh`), đọc thẳng L3: mention liên quan, cảm xúc hiệu lực, extraction. Không làm `metrics_hourly`. Lượng vẫn nhỏ như D17.
+- Cửa sổ `1h` / `24h` / `7d` là khoảng trượt tính từ lúc chạy, so với khoảng liền trước cùng độ dài. Một quy tắc chỉ ghi một lần mỗi giờ, mỗi ngày theo timezone của project, hoặc mỗi khối 7 ngày. Bài lan rộng (`mentions.kind = post`, đăng trong 7 ngày, tương tác = like + comment + share) ghi một lần cho mỗi bài.
+- Bỏ qua rule tăng trưởng khi kỳ trước bằng 0 (không có % tăng) hoặc khi số mention dưới `minMentions`. Tỷ lệ tiêu cực dùng số mention đã phân loại làm mức tối thiểu. Từ khóa tìm bằng `strpos` trên `content_items.text`. Giá lệch so `case_config.priceRef` với giá rao `trieu_m2` / `rao_ban` gán đúng một đối tượng primary.
+- Chỉ gửi email, qua Resend (`RESEND_API_KEY`, `ALERT_EMAIL_FROM`) tới `notification_config.recipients`. `alert_rules.channels` ghi đè kênh của project; Zalo, SMS, Slack không gửi. Thiếu người nhận hoặc thiếu cấu hình vẫn ghi `alerts` với `status = email_failed`. Lỗi gửi không tự gửi lại; lần chạy sau chỉ gửi nếu bản ghi còn `open` (gửi bị đứt giữa chừng).
+- Trang Cảnh báo đọc các lần đã ghi và các rule đang bật. Chạy tay: `npm run alerts:evaluate`.
+
+**Chưa làm**
+- Zalo, SMS, Slack, báo cáo AI định kỳ, insight, replay để test cảnh báo.
+- `metrics_hourly` và phát hiện bất thường ngoài ngưỡng đã cấu hình.

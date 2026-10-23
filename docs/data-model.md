@@ -159,8 +159,8 @@ Các công thức (tương tác, NSS, SoV, mức độ khủng hoảng; reach kh
 
 ## L5 — Outputs
 
-- **`alert_rules`**: `project_id`, `kind` (loại rule trong danh mục, một loại có thể lặp lại), `params` (`scope`, `threshold`, `window`, `minMentions`, `keywords`, validate theo loại), `channels` (null = dùng `projects.notification_config`), `enabled`, `sort_order`. Đã lưu từ giai đoạn 3, đánh giá từ giai đoạn 6.
-- **`alerts`**: `rule_id`, `triggered_at`, `payload`, `status`, `mention_ids[]`
+- **`alert_rules`**: `project_id`, `kind` (loại rule trong danh mục, một loại có thể lặp lại), `params` (`scope`, `threshold`, `window`, `minMentions`, `keywords`, validate theo loại), `channels` (null = dùng `projects.notification_config`), `enabled`, `sort_order`. Đánh giá mỗi giờ (D23).
+- **`alerts`**: một lần quy tắc kích hoạt. `project_id`, `rule_id` (xóa rule thì xóa cảnh báo), `kind`, `level` (`high` | `med` | `low`), `title`, `body`, `status` (`open` chỉ ghi nhận, `emailed`, `email_failed`), `payload`, `mention_ids`, `dedupe_key`, `bucket`, `window_start`, `triggered_at`, `emailed_at`, `email_error`. Chỉ gửi email.
 - **`insights`**: tóm tắt và nhận định do AI sinh. Luôn kèm `mention_ids[]` để trích dẫn, kèm `period` và `model`.
 - **`reports`**: báo cáo định kỳ (`period`, `content`, `status`)
 

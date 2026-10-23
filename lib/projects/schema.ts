@@ -64,7 +64,7 @@ export const projectAlertRuleInputSchema = z.object({
   keywords: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
 });
 
-/** Alert rules and delivery; stored now, evaluated from phase 6. */
+/** Alert rules and delivery. Evaluated hourly; only email is sent. */
 export const projectAlertsInputSchema = z.object({
   rules: z
     .array(projectAlertRuleInputSchema)

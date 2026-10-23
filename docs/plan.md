@@ -237,11 +237,11 @@ Xem [D17](decisions.md#d17--giai-đoạn-5b-số-liệu-dashboard-2026-10-15).
 
 ## Giai đoạn 6 — Cảnh báo, insight, báo cáo
 
+- [x] Đánh giá `alert_rules` mỗi giờ trên L3 (ngưỡng, tăng trưởng, bài lan rộng, từ khóa, giá, câu hỏi). Chưa `metrics_hourly`, chưa phát hiện bất thường ngoài các ngưỡng đã cấu hình
 - [ ] `engagement_snapshots` định kỳ cho bài đang nóng
-- [ ] Đánh giá `alert_rules` đã cấu hình từ giai đoạn 3 (ngưỡng, tăng trưởng) và phát hiện bất thường trên `metrics_hourly`
 - [ ] Connector ảo chế độ replay để test cảnh báo
 - [ ] Insight và báo cáo AI có trích dẫn mention
-- [ ] Gửi thông báo (email trước, các kênh khác sau)
+- [x] Gửi cảnh báo qua email (Resend). Zalo, SMS, Slack chưa gửi
 
 **Kết quả:** đo được độ trễ phát hiện trên scenario khủng hoảng.
 

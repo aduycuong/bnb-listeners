@@ -1564,7 +1564,8 @@ export type ProjectSource = typeof projectSources.$inferSelect;
 export type NewProjectSource = typeof projectSources.$inferInsert;
 
 // ---------------------------------------------------------------------------
-// L5 — Outputs. Rules are configured now; evaluation starts in phase 6.
+// L5 — Outputs. Rules are configured in the project wizard. The hourly
+// evaluator in `lib/alerts` writes `alerts` and sends email only.
 // ---------------------------------------------------------------------------
 
 /** One alert rule of a project; `kind` comes from `lib/projects/alert-templates.ts`. */
@@ -1599,6 +1600,50 @@ export const alertRules = pgTable(
 
 export type AlertRule = typeof alertRules.$inferSelect;
 export type NewAlertRule = typeof alertRules.$inferInsert;
+
+/** One firing of an alert rule. The same rule and scope fire at most once per bucket. */
+export const alerts = pgTable(
+  "alerts",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    ruleId: uuid("rule_id")
+      .notNull()
+      .references(() => alertRules.id, { onDelete: "cascade" }),
+    /** Same catalog as `alert_rules.kind`, copied so a fired row stays readable. */
+    kind: text("kind").notNull(),
+    /** high | med | low */
+    level: text("level").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    /** open = recorded without email; emailed; email_failed */
+    status: text("status").notNull().default("open"),
+    payload: jsonb("payload")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    mentionIds: jsonb("mention_ids").$type<string[]>().notNull().default([]),
+    /** project, an entity or aspect id, or those plus a content item for a viral post. */
+    dedupeKey: text("dedupe_key").notNull(),
+    /** Hour, day or 7-day bucket, or `once` for a viral post. */
+    bucket: text("bucket").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    triggeredAt: timestamp("triggered_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    emailedAt: timestamp("emailed_at", { withTimezone: true }),
+    emailError: text("email_error"),
+  },
+  (table) => [
+    uniqueIndex("alerts_rule_bucket_uidx").on(table.ruleId, table.dedupeKey, table.bucket),
+    index("alerts_project_triggered_idx").on(table.projectId, table.triggeredAt),
+  ],
+);
+
+export type Alert = typeof alerts.$inferSelect;
+export type NewAlert = typeof alerts.$inferInsert;
 
 // ---------------------------------------------------------------------------
 // L3 — Analysis. See docs/data-model.md and docs/decisions.md D11.

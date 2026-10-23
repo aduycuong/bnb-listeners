@@ -1,3 +1,4 @@
+import { EVALUATE_ALERTS_JOB_NAME } from "@/lib/alerts/config";
 import {
   BULK_DRAIN_JOB_NAME,
   RECOMPUTE_JOB_NAME,
@@ -34,6 +35,12 @@ export const DEFAULT_SYSTEM_SCHEDULES = [
     cronConfig: { cron: "*/15 * * * *", timezone: "UTC" },
     description:
       "Drain bulk-stale term digest rows (taxonomy restructures) every 15 min.",
+  },
+  {
+    scheduleId: "system-evaluate-alerts",
+    jobName: EVALUATE_ALERTS_JOB_NAME,
+    cronConfig: { cron: "5 * * * *", timezone: "Asia/Ho_Chi_Minh" },
+    description: "Evaluate alert rules and send email every hour.",
   },
 ] as const;
 

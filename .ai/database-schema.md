@@ -546,7 +546,7 @@ Tier 2 cache shared by projects.
 
 ### `alert_rules`
 
-Alert rule of a project; `kind` comes from the catalog in `lib/projects/alert-templates.ts` and may repeat. Configured from phase 3; evaluated from phase 6.
+Alert rule of a project; `kind` comes from the catalog in `lib/projects/alert-templates.ts` and may repeat. Configured from phase 3; evaluated hourly by `lib/alerts` (email only, D23).
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -561,6 +561,33 @@ Alert rule of a project; `kind` comes from the catalog in `lib/projects/alert-te
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 
 **Indexes:** `alert_rules_project_id_idx` on `project_id`
+
+---
+
+### `alerts`
+
+One firing of an alert rule. The same rule and scope are recorded at most once per bucket.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | `gen_random_uuid()` | Primary key |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| rule_id | uuid | NO | — | FK → `alert_rules.id` ON DELETE CASCADE |
+| kind | text | NO | — | Copied from the rule |
+| level | text | NO | — | `high`, `med` or `low` |
+| title | text | NO | — | Short label shown on the Alerts page |
+| body | text | NO | — | What happened, including the threshold |
+| status | text | NO | `open` | `open` (recorded, email not requested), `emailed`, `email_failed` |
+| payload | jsonb | NO | `{}` | Numbers behind the firing (counts, growth, price, keywords) |
+| mention_ids | jsonb | NO | `[]` | Up to 8 mention ids |
+| dedupe_key | text | NO | — | `project`, an entity or aspect id, or that plus a content item id for a viral post |
+| bucket | text | NO | — | Hour, calendar day, 7-day epoch bucket, or `once` |
+| window_start | timestamptz | NO | — | Start of the measured window |
+| triggered_at | timestamptz | NO | `now()` | When the evaluator recorded the row |
+| emailed_at | timestamptz | YES | — | When email was accepted by Resend |
+| email_error | text | YES | — | Why email was not sent |
+
+**Indexes:** unique `alerts_rule_bucket_uidx` on `(rule_id, dedupe_key, bucket)`; `alerts_project_triggered_idx` on `(project_id, triggered_at)`
 
 ---
 

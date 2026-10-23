@@ -1,7 +1,7 @@
 import type { EntityRole } from "./case-templates";
 import type { AvailableProjectCase } from "./project-cases";
 
-/** Kinds of alert rule a project can add. Evaluated from phase 6 (docs/plan.md). */
+/** Kinds of alert rule a project can add. Evaluated hourly by `lib/alerts`; only email is sent. */
 export const ALERT_RULE_KINDS = [
   "volume_growth",
   "negative_share",

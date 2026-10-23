@@ -1,3 +1,5 @@
+import { EVALUATE_ALERTS_JOB_NAME } from "@/lib/alerts/config";
+import { evaluateAlerts } from "@/lib/alerts/services/evaluate-alerts";
 import { processDocument } from "@/lib/documents/services/process-document";
 import { scoreDocumentComments } from "@/lib/comments/services/score-document-comments";
 import { SCORE_DOCUMENT_COMMENTS_JOB_NAME } from "@/lib/comments/config";
@@ -99,4 +101,18 @@ export const qstashJobHandlers: Record<string, QstashJobHandler> = {
    * presentation (ECharts charts). Payload: { runId: string }
    */
   [GENERATE_RESEARCH_HTML_QSTASH_JOB_NAME]: handleGenerateResearchHtmlJob,
+
+  /**
+   * Hourly. Evaluates enabled alert rules and sends email.
+   * No payload required.
+   */
+  [EVALUATE_ALERTS_JOB_NAME]: async () => {
+    const result = await evaluateAlerts({ dryRun: false });
+    return {
+      projects: result.projects,
+      created: result.created,
+      emailed: result.emailed,
+      emailFailed: result.emailFailed,
+    };
+  },
 };

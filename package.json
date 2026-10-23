@@ -24,6 +24,7 @@
     "eval:match": "tsx scripts/evaluate-match.ts",
     "enrich:project": "tsx scripts/enrich-project.ts",
     "eval:enrich": "tsx scripts/evaluate-enrich.ts",
+    "alerts:evaluate": "tsx scripts/evaluate-alerts.ts",
     "topics:project": "tsx scripts/topics-project.ts",
     "firebase:set-user-role": "tsx scripts/set-firebase-user-role.ts",
     "test": "tsx --test \"lib/**/*.test.ts\"",
