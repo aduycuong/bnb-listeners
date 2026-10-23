@@ -435,6 +435,7 @@ ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên
 - Kết quả lưu trong phần tử transcript của `media`: `text` là bản đã sửa, `rawText` là bản ASR (chỉ khi khác), `correction: { model, signature, replacements, correctedAt }`. `signature` gồm phiên bản prompt, model, ngưỡng và danh sách tên; luôn sửa lại từ bản ASR. `content_hash` đổi theo bản đã sửa nên Match và Enrich chạy lại.
 - Workflow `collect-source`: khi run thêm item mới, bước `correct-transcripts-{offset}` sửa transcript chưa sửa của run (8 item mỗi bước) **trước bước match**. Lỗi gọi model chỉ để lại bản ASR, đếm vào `collect_runs.stats.transcriptCorrection`.
 - Video đã có, hoặc khi project đổi đối tượng hay alias: `npm run transcripts:correct -- -- --project <id> --yes` (bỏ qua bản đã sửa với cùng danh sách tên), rồi chạy match và enrich.
+- Test thủ công với model thật (không ghi DB): `npm run test:transcript-correction -- -- --cases` chạy 8 ca lấy từ video thật (tên nghe sai phải được sửa; Trellia Cove, "the Park Vista", "Australia" và tên ngoài danh sách phải giữ nguyên). Chạy lại khi đổi prompt, model hoặc ngưỡng. `--text`/`--file` thử một đoạn bất kỳ, `--video-id` sửa lại một video đã lưu và so với bản sửa đang có.
 
 **Chưa làm**
 - Tự sửa lại khi project đổi đối tượng hay alias (hiện chạy script bằng tay).
