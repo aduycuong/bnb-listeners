@@ -29,13 +29,34 @@ function collect(matches: ReturnType<typeof matchQuery>[]): EntityHit | null {
   };
 }
 
-export function lexicalHit(item: MatchItem, queries: CompiledQuery[]): LexicalHit {
-  const tokens = tokenizeText(item.text);
+export function lexicalHit(text: string, queries: CompiledQuery[]): LexicalHit {
+  const tokens = tokenizeText(text);
   const matches = queries.map((query) => matchQuery(tokens, query));
   return {
     certain: collect(matches.filter((match) => match && !match.needsConfirmation)),
     uncertain: collect(matches.filter((match) => match?.needsConfirmation)),
   };
+}
+
+function mergeHits(a: EntityHit | null, b: EntityHit | null): EntityHit | null {
+  if (!a || !b) return a ?? b;
+  return {
+    entityIds: [...new Set([...a.entityIds, ...b.entityIds])],
+    queryIds: [...new Set([...a.queryIds, ...b.queryIds])],
+    terms: [...new Set([...a.terms, ...b.terms])],
+  };
+}
+
+/**
+ * The item's text first, then its transcript. A hit only in the transcript
+ * always goes to tier 2: speech recognition misspells names, and a video can
+ * name an entity in passing.
+ */
+export function itemLexicalHit(item: MatchItem, queries: CompiledQuery[]): LexicalHit {
+  const written = lexicalHit(item.text, queries);
+  if (written.certain || written.uncertain || !item.transcript) return written;
+  const spoken = lexicalHit(item.transcript, queries);
+  return { certain: null, uncertain: mergeHits(spoken.certain, spoken.uncertain) };
 }
 
 /**
@@ -59,7 +80,7 @@ export function planItemMatches(params: {
     if (cached) return cached;
     const stored = params.rootEntities?.get(rootId) ?? [];
     const root = params.roots.get(rootId);
-    const hit = root ? lexicalHit(root, params.queries) : null;
+    const hit = root ? itemLexicalHit(root, params.queries) : null;
     const ids = [
       ...new Set([
         ...stored,
@@ -72,7 +93,7 @@ export function planItemMatches(params: {
   };
 
   for (const item of params.items) {
-    const hit = lexicalHit(item, params.queries);
+    const hit = itemLexicalHit(item, params.queries);
     if (hit.certain) {
       plan.certain.push({ item, matchType: "direct", ...hit.certain });
       continue;

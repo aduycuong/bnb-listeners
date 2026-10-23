@@ -50,6 +50,16 @@ export function AdminContentItemDetailPage({ id }: { id: string }) {
         <p className="rounded-md border border-border p-3 text-sm whitespace-pre-wrap">
           {item.text || <span className="text-muted-foreground">(no text)</span>}
         </p>
+        {item.media.map((media, index) =>
+          media.type === "transcript" ? (
+            <div key={`transcript-${index}`} className="space-y-1">
+              <p className="text-xs text-muted-foreground">
+                Transcript · {media.source} · {media.language ?? "—"}
+              </p>
+              <p className="rounded-md border border-border p-3 text-sm whitespace-pre-wrap">{media.text}</p>
+            </div>
+          ) : null,
+        )}
         <AdminKeyValues
           items={[
             ["ID", item.id],
@@ -119,11 +129,17 @@ export function AdminContentItemDetailPage({ id }: { id: string }) {
               "Media",
               item.media.length > 0 ? (
                 <span className="space-x-3">
-                  {item.media.map((media, index) => (
-                    <a key={media.url} href={media.url} target="_blank" rel="noreferrer" className="hover:underline">
-                      {media.type} {index + 1}
-                    </a>
-                  ))}
+                  {item.media.map((media, index) =>
+                    media.url ? (
+                      <a key={media.url} href={media.url} target="_blank" rel="noreferrer" className="hover:underline">
+                        {media.type} {index + 1}
+                      </a>
+                    ) : (
+                      <span key={`${media.type}-${index}`}>
+                        {media.type} {index + 1}
+                      </span>
+                    ),
+                  )}
                 </span>
               ) : null,
             ],

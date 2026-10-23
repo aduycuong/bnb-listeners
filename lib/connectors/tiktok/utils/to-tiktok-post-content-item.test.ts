@@ -128,6 +128,38 @@ describe("toTiktokWebPostContentItem", () => {
     assert.equal(tiktokWebPostSchema.safeParse({ desc: "no id" }).success, false);
   });
 
+  test("stores the attached transcript as media", () => {
+    const item = toTiktokWebPostContentItem(
+      tiktokWebPostSchema.parse({
+        ...webPost,
+        transcript: {
+          text: "chelia vista mở bán",
+          language: "vie-VN",
+          source: "asr",
+          url: "https://media.example.test/transcripts/tiktok/7600000000000000001.vtt",
+        },
+      }),
+    );
+
+    assert.deepEqual(item.media, [
+      {
+        type: "transcript",
+        url: "https://media.example.test/transcripts/tiktok/7600000000000000001.vtt",
+        text: "chelia vista mở bán",
+        language: "vie-VN",
+        source: "asr",
+      },
+    ]);
+  });
+
+  test("a malformed transcript is dropped, not the video", () => {
+    const item = toTiktokWebPostContentItem(
+      tiktokWebPostSchema.parse({ ...webPost, transcript: { text: "", source: "asr" } }),
+    );
+
+    assert.deepEqual(item.media, []);
+  });
+
   test("a video without an author maps to a null author and a neutral link", () => {
     const item = toTiktokWebPostContentItem(
       tiktokWebPostSchema.parse({ id: "7600000000000000009", createTime: 1792590009 }),

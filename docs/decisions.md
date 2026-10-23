@@ -369,7 +369,7 @@ Chọn nhà cung cấp và cách thu thập TikTok sau các thử nghiệm ngày
 - Bình luận không có chữ (sticker) bị bỏ.
 
 **Ghi vào kho thô**
-- Video là `kind = post`; không lưu `media` (liên kết CDN có chữ ký và hết hạn). Tác giả theo id số. Thông tin riêng TikTok (hashtag, nhạc, thời lượng, số lượt lưu, cờ ghim) ở `metadata`.
+- Video là `kind = post`; không lưu ảnh và file video (liên kết CDN có chữ ký và hết hạn); `media` chỉ chứa transcript (D21). Tác giả theo id số. Thông tin riêng TikTok (hashtag, nhạc, thời lượng, số lượt lưu, cờ ghim) ở `metadata`.
 - Thời lượng: payload kiểu App tính bằng **mili-giây**, kiểu Web bằng giây; mapper đổi về giây.
 
 **Lỗi, thời gian và chi phí**
@@ -395,3 +395,48 @@ Run thường chỉ nhìn về phía trước từ bài mới nhất (D7), nên 
 - Facebook: một run cho cả khoảng (`start_date`, `end_date`; job Bright Data không có hạn thời gian).
 - TikTok: chia cửa sổ `backfillDaysPerRun` (2 ngày), mỗi run tối đa `maxPagesPerBackfillRun` (20 trang) vì một bước workflow bị chặn `runBudgetMs`. Quét bắt đầu với `cursor = until` (cursor là giờ đăng tính ms) rồi đi lùi tới `since`, bỏ video mới hơn `until`. Run bị cắt ghi `stoppedBy: maxPages` vào stats; khi đó chạy lại phần còn thiếu với `--window-days` nhỏ hơn.
 - **Chưa kiểm chứng:** TikHub `web/fetch_user_post` có nhận `cursor` tùy ý (đặt bằng `until`) hay không, và Bright Data có lọc đúng `end_date` dạng ISO datetime như `start_date`. Cần một lần chạy thật với khoảng ngắn.
+
+## D21 — Transcript video TikTok (2026-10-22)
+
+Nội dung chính của video TikTok nằm trong lời nói, còn `text` chỉ là caption. Caption gần như luôn có tên dự án nên đủ để tạo mention, nhưng enrich bài video trên caption chỉ là enrich lời quảng cáo của người đăng. Vì vậy video được lưu thêm **transcript** lấy từ phụ đề TikTok tự tạo.
+
+**Probe ngày 2026-10-22** (`scripts/probe-tiktok-subtitles.ts`, 178 video của project Trellia Vista / TT Genesis, kết quả ở `.local/experiments/`)
+- 84/178 video (47%) có phụ đề theo ngôn ngữ gốc: 83 do TikTok nhận dạng giọng nói (ASR), 1 do người đăng viết; 79 tiếng Việt. Video không có phụ đề có `no_caption_reason` 1 hoặc 3.
+- Phụ đề là file WebVTT trên CDN của TikTok, link có chữ ký và **hết hạn sau khoảng 30 ngày**. Tải mỗi file trung bình 250 ms, không tính tiền TikHub. Transcript trung bình 1.850 ký tự, dài nhất 11.600.
+- Payload search (`cla_info.caption_infos`) và quét kênh (`video.subtitleInfos`) có phụ đề; `fetch_multi_video` (làm mới) **không có**.
+- ASR **viết sai tên riêng nước ngoài** theo cách đọc: "Trellia Vista" thành "chelia vita", "gelia victa", "trailer vista", "Mizuki" thành "miyugi", "missiki". Trên 72 video có tên trong caption, transcript chỉ khớp từ vựng ở 37 (khớp được "TT Genesis", không khớp được "Trellia Vista"). Không có video nào chỉ nhắc tên trong lời nói (tìm từ khóa vốn trả video có tên trong caption).
+
+**Quyết định**
+- Transcript là một phần tử của `content_items.media`: `{ type: "transcript", url, text, language, source }`. `url` là bản sao file VTT trên R2 (bucket media, key `transcripts/tiktok/<videoId>.vtt`), null khi lưu R2 lỗi; `text` lưu ngay trong media vì Match quét hàng nghìn dòng. Chỉ bỏ bản dịch máy, ưu tiên tiếng Việt. Không cần migration (jsonb).
+- Connector `tiktok-search` và `tiktok-posts` tải phụ đề **trong `fetchRecords`**, chỉ cho video chưa có trong kho, rồi gắn vào record dưới khóa `transcript`, nên payload lưu trên R2 giữ transcript và `renormalize` dùng lại được. Lỗi tải hoặc hết `runBudgetMs` chỉ làm video đó thiếu transcript, **không hỏng run**; số liệu ở `collect_runs.stats.transcripts`. Cấu hình ở `COLLECT_CONFIG.tiktok.transcripts`.
+- `content_hash` tính trên text + transcript, nên transcript đến sau sẽ làm Match (cache phán xét) và Enrich chạy lại. Item không có transcript giữ nguyên hash cũ. Lần ghi không mang transcript (làm mới video) giữ transcript đã lưu.
+- **Match**: tách từ trên caption trước. Khớp trong caption giữ như cũ. Khớp **chỉ trong transcript** luôn qua tầng 2 (LLM), vì ASR viết sai và video có thể chỉ nhắc lướt qua. Bình luận của video chỉ nhắc tên trong lời nói vẫn thành ứng viên ngữ cảnh. Prompt tầng 2 có lời nói của bài gốc (cắt `maxTranscriptChars`), kèm lưu ý tên riêng có thể bị viết sai.
+- **Enrich**: prompt có lời nói của bài gốc (cắt `maxTranscriptChars`) như một phần nội dung bài gốc, nên bài video được enrich theo nội dung video và bình luận có ngữ cảnh.
+- Prompt của item không có transcript (Facebook, video không phụ đề) không đổi, nên không tăng `promptVersion` hay version enricher.
+- Video lưu trước khi có transcript: `npm run backfill:tiktok-transcripts -- -- [--source-id <id>] --yes` đọc lại payload trên R2 (link phụ đề còn hạn khoảng 30 ngày), chỉ đổi `media` và `content_hash`; sau đó chạy match và enrich của project.
+
+**Chưa làm**
+- Khớp tên bị ASR viết sai: xem D22.
+- Video không có phụ đề (khoảng một nửa): nghe audio bằng mô hình (Gemini), chỉ cho video đã khớp hoặc nhiều tương tác.
+- Hiển thị transcript ở màn hình gán nhãn và danh sách mention (hiện chỉ có ở trang admin của content item).
+
+## D22 — Sửa transcript bằng LLM theo tên đối tượng (2026-10-22)
+
+ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên dự án. Một lớp LLM sửa các tên bị nghe sai, dựa trên danh sách tên của các project theo dõi nguồn.
+
+**Đo ngày 2026-10-22** (`scripts/probe-transcript-correction.ts`, 74 video của project TT Genesis / Trellia Vista, kết quả ở `.local/experiments/`)
+- Cách đầu (model viết lại cả transcript) chèn tên sai: "treleco" (Trellia Cove, phân khu khác) và "the Park Vista" (dự án khác) thành "Trellia Vista", "Australia" thành "TT Genesis"; model còn sửa tên ngoài danh sách và đổi lời gốc. Cả 5 video có tên trong transcript mà không có trong caption đều là chèn sai.
+- Cách giữ lại: model **chỉ trả danh sách thay thế** (cụm nghe sai → tên), code áp vào bản gốc. Thay thế chỉ được áp khi cụm có trong bản ghi, tên đích nằm trong danh sách tên/alias, và hai cách viết đọc gần nhau: `nameSimilarity` (bỏ dấu, hoa thường, khoảng trắng; khoảng cách chỉnh sửa) ≥ **0,6**. Mọi thay thế sai đo được có điểm ≤ 0,58.
+- So 6 model với cùng bộ lọc (video có transcript khớp tên, trước khi sửa: 36/74): gpt-4.1-mini 52, gpt-4.1 55, gemini-3.6-flash 57, gpt-5.5 58, claude-sonnet-4-6 58, deepseek-v4-flash 58. Sonnet, DeepSeek và gpt-4.1-mini tự đề xuất thay thế sai (Trellia Cove, "the Park Vista"), bộ lọc chặn được; gpt-5.5 và gemini-3.6-flash thì không.
+
+**Quyết định**
+- Model **gemini-3.6-flash**, ngưỡng 0,6 (`TRANSCRIPT_CORRECTION_CONFIG`, `lib/transcripts`). Chỉ sửa transcript tiếng Việt.
+- Danh sách tên của một nguồn = tên và alias của mọi đối tượng thuộc các project theo dõi nguồn đó. Nguồn chưa có project nào theo dõi thì không sửa.
+- Kết quả lưu trong phần tử transcript của `media`: `text` là bản đã sửa, `rawText` là bản ASR (chỉ khi khác), `correction: { model, signature, replacements, correctedAt }`. `signature` gồm phiên bản prompt, model, ngưỡng và danh sách tên; luôn sửa lại từ bản ASR. `content_hash` đổi theo bản đã sửa nên Match và Enrich chạy lại.
+- Workflow `collect-source`: khi run thêm item mới, bước `correct-transcripts-{offset}` sửa transcript chưa sửa của run (8 item mỗi bước) **trước bước match**. Lỗi gọi model chỉ để lại bản ASR, đếm vào `collect_runs.stats.transcriptCorrection`.
+- Video đã có, hoặc khi project đổi đối tượng hay alias: `npm run transcripts:correct -- -- --project <id> --yes` (bỏ qua bản đã sửa với cùng danh sách tên), rồi chạy match và enrich.
+- Test thủ công với model thật (không ghi DB): `npm run test:transcript-correction -- -- --cases` chạy 8 ca lấy từ video thật (tên nghe sai phải được sửa; Trellia Cove, "the Park Vista", "Australia" và tên ngoài danh sách phải giữ nguyên). Chạy lại khi đổi prompt, model hoặc ngưỡng. `--text`/`--file` thử một đoạn bất kỳ, `--video-id` sửa lại một video đã lưu và so với bản sửa đang có.
+
+**Chưa làm**
+- Tự sửa lại khi project đổi đối tượng hay alias (hiện chạy script bằng tay).
+- Tên địa danh và thương hiệu hay gặp (Mizuki Park, Nam Long) chưa có trong danh sách; cần nơi lưu trong cấu hình project.

@@ -15,6 +15,8 @@ export const MATCH_CONFIG = {
   threadsPerStep: 10,
   maxPostChars: 1500,
   maxItemChars: 500,
+  /** Video transcripts average about 1,800 characters (probe of 2026-10-22). */
+  maxTranscriptChars: 3000,
   /** Wizard preview window and sample size. */
   previewDays: 30,
   previewSamples: 3,

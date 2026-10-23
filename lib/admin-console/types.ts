@@ -1,3 +1,4 @@
+import type { ContentItemMedia } from "@/db/schema";
 import type { ActivityTier, CollectRunStatus, ConnectorKey } from "@/lib/connectors/constants";
 
 export type PageParams = {
@@ -121,7 +122,7 @@ export type AdminContentItemDetail = {
     language: string | null;
     viewCount: number;
     reactions: Record<string, number> | null;
-    media: { type: string; url: string }[];
+    media: ContentItemMedia[];
     contentHash: string;
     lastCollectedAt: string;
     collectRunId: string | null;

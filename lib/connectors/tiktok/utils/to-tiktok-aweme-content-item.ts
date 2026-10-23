@@ -48,5 +48,6 @@ export function toTiktokAwemeContentItem(
     language: post.desc_language ?? null,
     isAd: post.is_ads ?? null,
     isPinned: post.is_top === 1,
+    transcript: post.transcript ?? null,
   });
 }

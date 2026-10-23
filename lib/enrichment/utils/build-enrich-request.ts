@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { safeSlice } from "@/lib/common/safe-slice";
+
 import { ENRICH_CONFIG } from "../config";
 import { ENRICHER_REGISTRY, type EnricherKey, type EnricherSpec } from "../registry";
 import type { EnrichItem, LlmEnricher, ProjectEnrichContext } from "../types";
@@ -12,7 +14,7 @@ const KIND_LABELS: Record<string, string> = {
 
 function clip(text: string, max: number) {
   const value = text.replace(/\s+/g, " ").trim();
-  return value.length > max ? `${value.slice(0, max)}…` : value;
+  return value.length > max ? `${safeSlice(value, max)}…` : value;
 }
 
 /** Keys that run as extractions are grouped under one `extractions` object in the output. */
@@ -60,6 +62,8 @@ export function buildEnrichPrompt(params: {
   ctx: ProjectEnrichContext;
   enrichers: LlmEnricher[];
   rootText: string;
+  /** What is said in the root video; part of the root post, not context only. */
+  rootTranscript?: string;
   items: EnrichItem[];
 }): { system: string; user: string } {
   const { ctx, enrichers } = params;
@@ -95,6 +99,9 @@ export function buildEnrichPrompt(params: {
       ? `Trường riêng:\n${extractions.flatMap((enricher) => enricher.promptLines(ctx)).join("\n")}`
       : "",
     `Bài gốc: ${clip(params.rootText, ENRICH_CONFIG.maxPostChars) || "(không có chữ)"}`,
+    params.rootTranscript
+      ? `Lời nói trong video của bài gốc, là nội dung của bài gốc (nhận dạng giọng nói tự động, tên riêng có thể bị viết sai theo cách đọc): ${clip(params.rootTranscript, ENRICH_CONFIG.maxTranscriptChars)}`
+      : "",
     "Các mục:",
     ...params.items.map(
       (item, index) =>

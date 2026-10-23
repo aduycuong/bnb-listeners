@@ -5,6 +5,20 @@ import { count, optional } from "../utils/lenient-schema";
 const urlListSchema = z.object({ url_list: optional(z.array(z.string())) });
 
 /**
+ * Not a TikHub field: the connector downloads the video's subtitle while
+ * fetching and adds it to the record, so the archived payload carries it.
+ */
+export const tiktokTranscriptSchema = z.object({
+  text: z.string().min(1),
+  language: optional(z.string()),
+  source: z.enum(["asr", "creator"]),
+  /** The subtitle file archived on R2. */
+  url: optional(z.string()),
+});
+
+export type TiktokTranscript = z.infer<typeof tiktokTranscriptSchema>;
+
+/**
  * A video as `web/fetch_user_post` returns it (camelCase, `createTime` in
  * seconds). Unknown fields are stripped; the full row stays in the R2 archive.
  */
@@ -43,6 +57,7 @@ export const tiktokWebPostSchema = z.object({
   ),
   isAd: optional(z.boolean()),
   textLanguage: optional(z.string()),
+  transcript: optional(tiktokTranscriptSchema),
 });
 
 export type TiktokWebPost = z.infer<typeof tiktokWebPostSchema>;
@@ -87,6 +102,7 @@ export const tiktokAwemeSchema = z.object({
       is_original: optional(z.boolean()),
     }),
   ),
+  transcript: optional(tiktokTranscriptSchema),
 });
 
 export type TiktokAweme = z.infer<typeof tiktokAwemeSchema>;

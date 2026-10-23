@@ -28,6 +28,8 @@ export type MatchItem = {
   kind: string;
   rootId: string | null;
   text: string;
+  /** What is said in the video (`media` transcripts); empty when there is none. */
+  transcript: string;
   contentHash: string;
   platform: string;
   sourceId: string | null;

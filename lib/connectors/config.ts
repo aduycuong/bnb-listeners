@@ -99,5 +99,17 @@ export const COLLECT_CONFIG = {
       /** Videos per `tiktok-comments` run; a video with replies needs dozens of requests. */
       videosPerRun: 5,
     },
+    /**
+     * Subtitles of new videos, downloaded while fetching (probe of 2026-10-22:
+     * about half the videos have one, 250 ms per download). Not billed by TikHub.
+     */
+    transcripts: {
+      concurrency: 4,
+      downloadTimeoutMs: 10_000,
+      /** Longest transcript kept; the probe's longest was about 11,600 characters. */
+      maxChars: 20_000,
+      /** R2 key prefix of the archived subtitle files (media bucket). */
+      objectKeyPrefix: "transcripts/tiktok",
+    },
   },
 } as const;

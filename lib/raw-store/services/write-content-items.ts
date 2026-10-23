@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 import {
   authors,
+  type ContentItemMedia,
   contentItems,
   engagementSnapshots,
   type NewContentItem,
@@ -15,7 +16,7 @@ import type {
   WriteContentItemsResult,
   WrittenContentItem,
 } from "../types";
-import { computeContentHash } from "../utils/compute-content-hash";
+import { computeItemContentHash } from "../utils/compute-item-content-hash";
 
 type ItemRef = { id: string; sourceId: string | null; authorId: string | null };
 
@@ -135,10 +136,23 @@ async function upsertAuthors(
   return new Map(rows.map((row) => [row.externalId, row.id]));
 }
 
+/**
+ * A re-collect that brings no transcript (a TikTok refresh payload has no
+ * subtitles) keeps the stored one, so the content hash does not flip back.
+ */
+function keepStoredTranscripts(
+  media: ContentItemMedia[],
+  stored: ContentItemMedia[] | undefined,
+): ContentItemMedia[] {
+  if (media.some((entry) => entry.type === "transcript")) return media;
+  const transcripts = (stored ?? []).filter((entry) => entry.type === "transcript");
+  return transcripts.length > 0 ? [...media, ...transcripts] : media;
+}
+
 async function findItemRefs(
   platform: string,
   externalIds: string[],
-): Promise<Map<string, ItemRef & { commentCount: number }>> {
+): Promise<Map<string, ItemRef & { commentCount: number; media: ContentItemMedia[] }>> {
   if (externalIds.length === 0) return new Map();
 
   const rows = await db
@@ -148,6 +162,7 @@ async function findItemRefs(
       sourceId: contentItems.sourceId,
       authorId: contentItems.authorId,
       commentCount: contentItems.commentCount,
+      media: contentItems.media,
     })
     .from(contentItems)
     .where(
@@ -190,6 +205,7 @@ async function writePass(
       ? threadRefs.get(item.rootExternalId)
       : undefined;
     const collectedAt = item.collectedAt ?? batchCollectedAt;
+    const media = keepStoredTranscripts(item.media, existing.get(item.externalId)?.media);
 
     return {
       kind: item.kind,
@@ -201,8 +217,8 @@ async function writePass(
       externalId: item.externalId,
       url: item.url,
       text: item.text,
-      media: item.media,
-      contentHash: computeContentHash(item.text),
+      media,
+      contentHash: computeItemContentHash(item.text, media),
       publishedAt: item.publishedAt,
       firstSeenAt: collectedAt,
       lastCollectedAt: collectedAt,
