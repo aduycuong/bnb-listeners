@@ -232,6 +232,20 @@ export function isEnricherKey(value: string): value is EnricherKey {
   return value in ENRICHER_REGISTRY;
 }
 
+/** Ready LLM enrichers whose output is a `mention_extractions.schema_key`. */
+export function listReadyExtractionSchemas(): { key: EnricherKey; label: string }[] {
+  return ENRICHER_KEYS.flatMap((key) => {
+    const spec = ENRICHER_REGISTRY[key];
+    return spec.kind === "llm" && spec.status === "ready" && spec.writes === "mention_extractions"
+      ? [{ key, label: spec.label }]
+      : [];
+  });
+}
+
+export function isReadyExtractionSchemaKey(value: string): value is EnricherKey {
+  return listReadyExtractionSchemas().some((item) => item.key === value);
+}
+
 export function getEnricherSpec(key: EnricherKey): EnricherSpec {
   return ENRICHER_REGISTRY[key];
 }

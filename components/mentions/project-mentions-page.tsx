@@ -1,37 +1,28 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLinkIcon, MessagesSquareIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTopicsList } from "@/components/topics/use-topics-api";
 import { Input } from "@/components/ui/input";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
-import { getProjectNavHref } from "@/lib/dashboard/nav-items";
+import { getProjectNavHref, PROJECT_MANAGE_MENTIONS_SEGMENT } from "@/lib/dashboard/nav-items";
 import type { ListMentionsQuery } from "@/lib/mentions/schema";
 import type { ProjectConfigDetail } from "@/lib/projects/types";
 import { projectFetch } from "@/lib/projects/utils/project-fetch";
 import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
 
 import { SENTIMENT_LABELS, SENTIMENTS } from "@/lib/enrichment/config";
+import { caseExtractionSchemas, getCaseTemplate } from "@/lib/projects/case-templates";
+import { isAvailableProjectCase } from "@/lib/projects/project-cases";
 
-import { HighlightTerms } from "./highlight-terms";
 import { MatchEvaluationCard } from "./match-evaluation-card";
-import { MentionEnrichment } from "./mention-enrichment";
+import { MentionAdminTable } from "./mention-admin-table";
 import { MentionFilterSelect } from "./mention-filter-select";
-import { MentionLabelButtons } from "./mention-label-buttons";
-import {
-  KIND_LABELS,
-  MATCH_TIER_LABELS,
-  MATCH_TYPE_LABELS,
-  formatDateTime,
-} from "./mention-labels";
 import { MentionThreadSheet } from "./mention-thread-sheet";
-import { SentimentAspectPicker } from "./sentiment-aspect-picker";
-import { useMentionsList, useSetItemLabel, type MentionsApiScope } from "./use-mentions-api";
+import { useMentionsList, type MentionsApiScope } from "./use-mentions-api";
 
 const ALL = "all";
 
@@ -55,7 +46,7 @@ export function ProjectMentionsPage({
       scope={{ workspaceId: workspace.id, projectId: project.id }}
       projectName={project.name}
       canEdit={hasMinWorkspacePermission(workspace.permission, "edit")}
-      labelHref={`${getProjectNavHref(workspaceIndex, projectIndex, "mentions")}/label`}
+      labelHref={`${getProjectNavHref(workspaceIndex, projectIndex, PROJECT_MANAGE_MENTIONS_SEGMENT)}/label`}
     />
   );
 }
@@ -82,7 +73,6 @@ function MentionsList({
   const [search, setSearch] = useState("");
   const [thread, setThread] = useState<{ rootId: string; focusId: string } | null>(null);
   const { data, isFetching, error } = useMentionsList(scope, filters);
-  const setLabel = useSetItemLabel(scope);
   const { data: config } = useQuery({
     queryKey: ["project-config", scope.projectId],
     queryFn: async () => {
@@ -96,23 +86,25 @@ function MentionsList({
     },
   });
   const { data: topicList } = useTopicsList(scope, true);
+  const extractionSchemas =
+    config && isAvailableProjectCase(config.case)
+      ? caseExtractionSchemas(getCaseTemplate(config.case, config.caseVersion))
+      : [];
   const entityNames = new Map(config?.entities.map((entity) => [entity.id, entity.name]) ?? []);
   const aspectNames = new Map(
     config?.aspects.map((aspect) => [aspect.id, { key: aspect.key, name: aspect.name }]) ?? [],
   );
-  const [editing, setEditing] = useState<string | null>(null);
-
   const update = (patch: Partial<ListMentionsQuery>) =>
     setFilters((current) => ({ ...current, ...patch, page: patch.page ?? 1 }));
   const page = data?.page ?? 1;
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-5 md:px-7">
+    <div className="flex w-full flex-col gap-4 px-4 py-5 md:px-7">
       <div>
         <h1 className="font-heading text-xl font-bold">Mentions</h1>
         <p className="text-[13px] text-muted-foreground">
-          {projectName} · nội dung khớp với project. Bấm vào một mục để xem cả thread.
+          {projectName} · nội dung khớp với project. Mở rộng để đọc hết. Menu cạnh Xem thread để gán liên quan hoặc sửa.
         </p>
       </div>
 
@@ -193,6 +185,17 @@ function MentionsList({
             onChange={(value) => update({ topicId: value === ALL ? undefined : value })}
           />
         ) : null}
+        {extractionSchemas.length > 0 ? (
+          <MentionFilterSelect
+            label="Trích xuất"
+            value={filters.schemaKey && filters.schemaKey !== ALL ? filters.schemaKey : ALL}
+            options={[
+              { value: ALL, label: "Mọi trích xuất" },
+              ...extractionSchemas.map((schema) => ({ value: schema.key, label: schema.label })),
+            ]}
+            onChange={(value) => update({ schemaKey: value === ALL ? undefined : value })}
+          />
+        ) : null}
         <MentionFilterSelect
           label="Nhãn"
           value={filters.labeled ?? ALL}
@@ -253,139 +256,22 @@ function MentionsList({
 
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
-      <div className="flex flex-col gap-2">
-        {data?.items.length === 0 ? (
-          <p className="rounded-xl bg-muted px-3 py-6 text-center text-sm text-muted-foreground">
-            Không có mention nào khớp bộ lọc.
-          </p>
-        ) : null}
-        {data?.items.map((mention) => (
-          <article
-            key={mention.id}
-            className="flex flex-col gap-2 rounded-2xl border border-border px-3 py-3 hover:border-primary/40"
-          >
-            <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{KIND_LABELS[mention.kind] ?? mention.kind}</span>
-              <span>{mention.authorName ?? "—"}</span>
-              <span>· {mention.sourceName ?? "—"}</span>
-              <span>· {formatDateTime(mention.publishedAt)}</span>
-              <Badge variant="outline">
-                {MATCH_TYPE_LABELS[mention.matchType]} · {MATCH_TIER_LABELS[mention.matchTier]}
-              </Badge>
-              {!mention.isRelevant ? <Badge variant="secondary">Bị loại</Badge> : null}
-              {mention.matchedEntityIds.map((id) =>
-                entityNames.get(id) ? (
-                  <Badge key={id} variant="outline">
-                    {entityNames.get(id)}
-                  </Badge>
-                ) : null,
-              )}
-              {mention.url ? (
-                <a
-                  href={mention.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-0.5 hover:text-foreground"
-                >
-                  <ExternalLinkIcon className="size-3" /> Mở
-                </a>
-              ) : null}
-            </div>
-            {mention.rootText ? (
-              <p className="line-clamp-1 border-l-2 border-border pl-2 text-xs text-muted-foreground">
-                Trong bài: {mention.rootText}
-              </p>
-            ) : null}
-            <button
-              type="button"
-              className="text-left text-sm whitespace-pre-line"
-              onClick={() =>
-                setThread({
-                  rootId: mention.rootItemId ?? mention.contentItemId,
-                  focusId: mention.contentItemId,
-                })
-              }
-            >
-              <span className="line-clamp-4">
-                <HighlightTerms text={mention.text || "(không có chữ)"} terms={mention.matchedTerms} />
-              </span>
-            </button>
-            {mention.matchReason ? (
-              <p className="text-xs text-muted-foreground">AI: {mention.matchReason}</p>
-            ) : null}
-            <MentionEnrichment mention={mention} aspectNames={aspectNames} />
-            {editing === mention.id && config ? (
-              <div className="rounded-xl bg-muted px-3 py-2">
-                <SentimentAspectPicker
-                  aspects={config.aspects}
-                  sentiment={mention.labelSentiment ?? mention.sentiment}
-                  aspectKeys={
-                    mention.labelAspectKeys ??
-                    mention.aspects
-                      .map((aspect) => aspectNames.get(aspect.aspectId)?.key)
-                      .filter((key): key is string => Boolean(key))
-                  }
-                  disabled={setLabel.isPending}
-                  onSentiment={(sentiment) =>
-                    setLabel.mutate({
-                      contentItemId: mention.contentItemId,
-                      isRelevant: mention.label ?? true,
-                      sentiment,
-                    })
-                  }
-                  onAspects={(aspectKeys) =>
-                    setLabel.mutate({
-                      contentItemId: mention.contentItemId,
-                      isRelevant: mention.label ?? true,
-                      aspectKeys,
-                    })
-                  }
-                />
-              </div>
-            ) : null}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              {canEdit ? (
-                <MentionLabelButtons
-                  compact
-                  label={mention.label}
-                  disabled={setLabel.isPending}
-                  onChange={(value) =>
-                    setLabel.mutate({ contentItemId: mention.contentItemId, isRelevant: value })
-                  }
-                />
-              ) : (
-                <span />
-              )}
-              <div className="flex gap-1">
-              {canEdit && mention.isRelevant ? (
-                <Button
-                  type="button"
-                  size="xs"
-                  variant="ghost"
-                  onClick={() => setEditing(editing === mention.id ? null : mention.id)}
-                >
-                  {editing === mention.id ? "Xong" : "Sửa cảm xúc, khía cạnh"}
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                size="xs"
-                variant="ghost"
-                onClick={() =>
-                  setThread({
-                    rootId: mention.rootItemId ?? mention.contentItemId,
-                    focusId: mention.contentItemId,
-                  })
-                }
-              >
-                <MessagesSquareIcon />
-                Xem thread
-              </Button>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
+      <MentionAdminTable
+        scope={scope}
+        items={data?.items ?? []}
+        loading={!data}
+        empty={data?.items.length === 0}
+        canEdit={canEdit}
+        entityNames={entityNames}
+        aspectNames={aspectNames}
+        aspects={config?.aspects ?? []}
+        onOpenThread={(mention) =>
+          setThread({
+            rootId: mention.rootItemId ?? mention.contentItemId,
+            focusId: mention.contentItemId,
+          })
+        }
+      />
 
       {data ? (
         <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
@@ -421,6 +307,7 @@ function MentionsList({
         rootId={thread?.rootId ?? null}
         focusId={thread?.focusId ?? null}
         canEdit={canEdit}
+        presentation="dialog"
         onClose={() => setThread(null)}
       />
     </div>

@@ -541,7 +541,7 @@ export function PriceTrendChart({
             strokeWidth={2}
             strokeDasharray={item.dashed ? "6 6" : undefined}
             connectNulls={false}
-            dot={item.dotted ? { r: 3 } : false}
+            dot={item.dashed ? false : { r: item.dotted ? 3 : 2.5 }}
           />
         ))}
       </LineChart>

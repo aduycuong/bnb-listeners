@@ -1,10 +1,10 @@
-import { LabelSamplePage } from "@/components/mentions/label-sample-page";
+import { redirect } from "next/navigation";
 
 type PageProps = {
   params: Promise<{ workspaceIndex: string; projectIndex: string }>;
 };
 
-export default async function ProjectLabelSampleRoute({ params }: PageProps) {
+export default async function ProjectLabelSampleRedirect({ params }: PageProps) {
   const { workspaceIndex, projectIndex } = await params;
-  return <LabelSamplePage workspaceIndexParam={workspaceIndex} projectIndexParam={projectIndex} />;
+  redirect(`/w/${workspaceIndex}/p/${projectIndex}/admin/mentions/label`);
 }

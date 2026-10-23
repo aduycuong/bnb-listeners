@@ -54,11 +54,12 @@ export function useAuthorMetrics(scope: MetricsApiScope, days: number) {
   });
 }
 
-export function useProjectCaseMetrics(scope: MetricsApiScope, days: number) {
+export function useProjectCaseMetrics(scope: MetricsApiScope, days: number, enabled = true) {
   return useQuery({
     queryKey: [...metricsQueryKey(scope.projectId), "project-case", days],
     queryFn: () =>
       fetchJson<ProjectCaseMetricsResult>(scope, `/api/metrics/project-case?days=${days}`),
     placeholderData: keepPreviousData,
+    enabled,
   });
 }

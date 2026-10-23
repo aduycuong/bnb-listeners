@@ -1,0 +1,143 @@
+"use client";
+
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+import { PriceBucketChart, PriceTrendChart } from "@/components/projects/demo/demo-charts";
+import { DemoPanel } from "@/components/projects/demo/demo-ui";
+import { formatCount } from "@/lib/projects/aqua-demo";
+import type { ProjectCaseMetricsResult } from "@/lib/metrics/types";
+
+import { formatDayLabel, MetricsEmpty } from "./metrics-page-header";
+
+function decimal(value: number) {
+  return String(value).replace(".", ",");
+}
+
+function detailNote(note: string | undefined, detail?: { href: string; label: string }): ReactNode {
+  if (!detail) return note;
+  const link = (
+    <Link href={detail.href} className="font-medium text-foreground underline">
+      “{detail.label}”
+    </Link>
+  );
+  return note ? (
+    <>
+      {note} · Chi tiết ở trang {link}
+    </>
+  ) : (
+    <>Chi tiết ở trang {link}</>
+  );
+}
+
+/** Resale-price charts shared by the overview preview and the project case page. */
+export function ProjectPricePanels({
+  data,
+  isPending,
+  days,
+  caseLabel,
+  detail,
+}: {
+  data: ProjectCaseMetricsResult | undefined;
+  isPending: boolean;
+  days: number;
+  caseLabel: string;
+  detail?: { href: string; label: string };
+}) {
+  const loading = isPending ? "Đang tải…" : null;
+  const priceSeries = data
+    ? [
+        {
+          key: data.primaryName,
+          color: "#0091FF",
+          dotted: true,
+          values: data.price.daily.map((day) => day.primary),
+        },
+        ...(data.hasCompetitors
+          ? [
+              {
+                key: "TB đối thủ",
+                color: "#FFC93C",
+                values: data.price.daily.map((day) => day.competitor),
+              },
+            ]
+          : []),
+        ...(data.price.priceRef != null
+          ? [
+              {
+                key: "Giá khởi điểm CĐT",
+                color: "var(--muted-foreground)",
+                dashed: true,
+                values: data.price.daily.map(() => data.price.priceRef),
+              },
+            ]
+          : []),
+      ]
+    : [];
+  const hasPriceLine =
+    data?.price.daily.some((day) => day.primary != null || day.competitor != null) ?? false;
+  const medianNote = data
+    ? [
+        data.price.median.current != null
+          ? `Trung vị dự án kỳ này ${decimal(data.price.median.current)} tr/m²`
+          : null,
+        data.price.median.previous != null
+          ? `kỳ trước ${decimal(data.price.median.previous)}`
+          : "chưa có kỳ trước",
+        data.price.priceRef != null ? `giá khởi điểm ${decimal(data.price.priceRef)}` : null,
+        data.price.droppedMultiEntity || data.price.droppedOutlier
+          ? `đã bỏ ${formatCount(data.price.droppedMultiEntity + data.price.droppedOutlier)} tin (nhiều đối tượng hoặc lệch mạnh)`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : undefined;
+
+  return (
+    <>
+      <DemoPanel
+        title="Giá rao bán lại theo ngày"
+        span="s8"
+        scope="case"
+        scopeLabel={caseLabel}
+        note={detailNote(
+          medianNote || "Triệu đồng/m², AI trích xuất từ tin rao, đã lọc trùng và tin bất thường",
+          detail,
+        )}
+      >
+        {data && hasPriceLine ? (
+          <PriceTrendChart
+            days={data.price.daily.map((day) => formatDayLabel(day.date))}
+            series={priceSeries}
+          />
+        ) : (
+          <MetricsEmpty>
+            {loading ??
+              `Chưa có giá rao bán (triệu/m²) gán được cho một đối tượng trong ${days} ngày gần nhất.`}
+          </MetricsEmpty>
+        )}
+      </DemoPanel>
+      <DemoPanel
+        title="Phân bố giá rao"
+        span="s4"
+        scope="case"
+        scopeLabel={caseLabel}
+        note={detailNote(
+          data?.price.used ? `${formatCount(data.price.used)} tin rao trong ${days} ngày` : undefined,
+          detail,
+        )}
+      >
+        {data?.price.buckets.length ? (
+          <PriceBucketChart
+            buckets={data.price.buckets.map((bucket) => ({
+              name: bucket.label,
+              value: bucket.count,
+            }))}
+          />
+        ) : (
+          <MetricsEmpty>{loading ?? "Chưa có tin rao để vẽ phân bố."}</MetricsEmpty>
+        )}
+      </DemoPanel>
+    </>
+  );
+}

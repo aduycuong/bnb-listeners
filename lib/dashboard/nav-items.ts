@@ -1,5 +1,6 @@
 import {
   BellIcon,
+  ClipboardListIcon,
   FileBarChartIcon,
   FileTextIcon,
   FilesIcon,
@@ -58,6 +59,9 @@ export function isProjectDemoSection(
   return (PROJECT_DEMO_SECTIONS as readonly string[]).includes(value);
 }
 
+/** Management list of mentions, under the project group. The report stays at `mentions`. */
+export const PROJECT_MANAGE_MENTIONS_SEGMENT = "admin/mentions";
+
 export const PROJECT_NAV_GROUPS = [
   {
     labelKey: "nav.groupAnalysis",
@@ -85,7 +89,14 @@ export const PROJECT_NAV_GROUPS = [
   },
   {
     labelKey: "nav.groupProject",
-    items: [{ labelKey: "nav.projectSettings", segment: "settings", icon: SettingsIcon }],
+    items: [
+      {
+        labelKey: "nav.manageMentions",
+        segment: PROJECT_MANAGE_MENTIONS_SEGMENT,
+        icon: ClipboardListIcon,
+      },
+      { labelKey: "nav.projectSettings", segment: "settings", icon: SettingsIcon },
+    ],
   },
 ];
 

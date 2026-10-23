@@ -40,6 +40,8 @@ type EntityRow = { role: string; name: string; count: number };
 /**
  * Numbers of the project-case page (`Chi tiết dự án`): resale prices, grouped
  * buyer questions, and aspect NSS of the primary project versus competitors.
+ * `price.median` is the tracked project only. Question totals cover this period
+ * and the one before.
  * Reads L3 directly. Only `case = project`.
  */
 export async function getProjectCaseMetrics(
@@ -120,12 +122,15 @@ export async function getProjectCaseMetrics(
       order by mentions desc, t.name
       limit ${METRICS_CONFIG.topBuyerQuestions}
     `),
-    db.execute<{ total: number }>(sql`
-      select count(*)::int as total
+    db.execute<{ current_count: number; previous_count: number }>(sql`
+      select
+        count(*) filter (where m.published_at >= ${start})::int as current_count,
+        count(*) filter (where m.published_at < ${start})::int as previous_count
       from mention_extractions x
       join mentions m on m.id = x.mention_id
       where m.project_id = ${params.projectId}::uuid and m.is_relevant
-        and x.schema_key = 'buyer_question' and m.published_at >= ${start}
+        and x.schema_key = 'buyer_question'
+        and m.published_at >= ${previousStart}
     `),
     loadAspectNss(params.projectId, start, "primary"),
     loadAspectNss(params.projectId, start, "competitor"),
@@ -162,8 +167,8 @@ export async function getProjectCaseMetrics(
     price: {
       daily,
       median: {
-        current: median(currentKept.map((row) => row.amount)),
-        previous: median(previousKept.map((row) => row.amount)),
+        current: median(amountsOf(currentKept, "primary")),
+        previous: median(amountsOf(previousKept, "primary")),
       },
       priceRef,
       buckets: priceBuckets(currentKept.map((row) => row.amount)),
@@ -174,7 +179,10 @@ export async function getProjectCaseMetrics(
       droppedOutlier: unique.filter((row) => currentDays.has(row.day)).length - currentKept.length,
     },
     questions: {
-      total: questionTotalRows[0]?.total ?? 0,
+      total: {
+        current: questionTotalRows[0]?.current_count ?? 0,
+        previous: questionTotalRows[0]?.previous_count ?? 0,
+      },
       items: questionRows,
     },
     aspects: primaryAspectRows.map((row) => ({
@@ -276,6 +284,10 @@ function quantile(sorted: QuoteRow[], q: number) {
   const hi = Math.ceil(index);
   if (lo === hi) return sorted[lo].amount;
   return sorted[lo].amount + (sorted[hi].amount - sorted[lo].amount) * (index - lo);
+}
+
+function amountsOf(quotes: QuoteRow[], role: QuoteRow["role"]) {
+  return quotes.filter((quote) => quote.role === role).map((quote) => quote.amount);
 }
 
 function median(values: number[]) {

@@ -26,6 +26,8 @@ export function ProjectOverviewPage({
     <ProjectOverviewReport
       scope={{ workspaceId: workspace.id, projectId: project.id }}
       projectName={project.name}
+      projectCase={project.case}
+      caseHref={getProjectNavHref(workspaceIndex, projectIndex, "case")}
       banner={{
         name: project.name,
         description: project.description,

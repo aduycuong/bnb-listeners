@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
-import { getProjectNavHref } from "@/lib/dashboard/nav-items";
+import { getProjectNavHref, PROJECT_MANAGE_MENTIONS_SEGMENT } from "@/lib/dashboard/nav-items";
 import type { Sentiment } from "@/lib/enrichment/config";
 import { createLabelSampleBodySchema } from "@/lib/mentions/schema";
 import type { LabelSampleTask } from "@/lib/mentions/types";
@@ -46,7 +46,7 @@ export function LabelSamplePage({
   );
   if (!workspace || !project) return null;
 
-  const mentionsHref = getProjectNavHref(workspaceIndex, projectIndex, "mentions");
+  const mentionsHref = getProjectNavHref(workspaceIndex, projectIndex, PROJECT_MANAGE_MENTIONS_SEGMENT);
 
   return (
     <LabelSampleWorkspace

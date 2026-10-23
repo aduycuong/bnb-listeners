@@ -291,7 +291,7 @@ export function formatShort(value: number) {
 }
 
 export function kpiHasOwnCompare(delta: string) {
-  return /mục tiêu|Hạng|TB|chuẩn|so với|Mới|nhiệt|Chưa|nghi vấn|sàn|ngày/.test(delta);
+  return /mục tiêu|Hạng|TB|chuẩn|so với|Mới|nhiệt|Chưa|Đang|nghi vấn|sàn|ngày/.test(delta);
 }
 
 export function sum(values: number[]) {

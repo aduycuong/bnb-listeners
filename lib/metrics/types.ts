@@ -109,6 +109,7 @@ export type ProjectCaseMetricsResult = {
   price: {
     /** Daily median of kept resale quotes, million VND/m². */
     daily: ProjectCasePricePoint[];
+    /** Period median of the tracked project's kept resale quotes, million VND/m². */
     median: MetricsValue<number | null>;
     priceRef: number | null;
     buckets: { label: string; count: number }[];
@@ -119,8 +120,8 @@ export type ProjectCaseMetricsResult = {
     droppedOutlier: number;
   };
   questions: {
-    /** Relevant `buyer_question` extractions in the period. */
-    total: number;
+    /** Relevant `buyer_question` extractions in the period and the period before. */
+    total: MetricsValue;
     items: { id: string; name: string; mentions: number }[];
   };
   aspects: {
