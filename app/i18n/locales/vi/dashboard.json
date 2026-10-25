@@ -83,5 +83,72 @@
     "description": "Bạn sẽ cần đăng nhập lại để truy cập không gian làm việc.",
     "confirm": "Đăng xuất"
   },
+  "overview": {
+    "title": "Tổng quan",
+    "subtitle": "{{workspace}} · {{days}} ngày gần nhất, mọi dự án",
+    "vsPrevious": "so với {{days}} ngày trước",
+    "kpi": {
+      "mentions": "Đề cập liên quan",
+      "nss": "Chỉ số cảm xúc (NSS)",
+      "negativeShare": "Tỉ lệ tiêu cực",
+      "alerts": "Cảnh báo",
+      "alertsSub": "{{count}} dự án đang theo dõi",
+      "noData": "Chưa có dữ liệu"
+    },
+    "chart": {
+      "title": "Đề cập theo ngày",
+      "description": "Theo cảm xúc, {{days}} ngày gần nhất",
+      "positive": "Tích cực",
+      "neutral": "Trung tính",
+      "negative": "Tiêu cực",
+      "unknown": "Chưa chấm"
+    },
+    "projects": {
+      "title": "Dự án",
+      "description": "Xếp theo số đề cập trong kỳ",
+      "project": "Dự án",
+      "mentions": "Đề cập",
+      "change": "Thay đổi",
+      "nss": "NSS",
+      "negative": "Tiêu cực",
+      "alerts": "Cảnh báo",
+      "empty": "Chưa có dự án. Tạo dự án để bắt đầu theo dõi.",
+      "create": "Tạo dự án"
+    },
+    "recentAlerts": {
+      "title": "Cảnh báo gần đây",
+      "empty": "Chưa có cảnh báo nào.",
+      "level": {
+        "high": "Cao",
+        "med": "Vừa",
+        "low": "Thấp"
+      }
+    },
+    "usage": {
+      "title": "Mức sử dụng",
+      "description": "{{plan}} · số liệu mẫu để demo",
+      "projects": "Dự án",
+      "members": "Thành viên",
+      "sources": "Nguồn đang theo dõi",
+      "analyzedMentions": "Đề cập đã phân tích (tháng này)",
+      "apiKeys": "API key",
+      "unlimited": "không giới hạn"
+    }
+  },
+  "projectList": {
+    "title": "Dự án",
+    "description": "Mỗi dự án theo dõi một thương hiệu hoặc chiến dịch. Số liệu {{days}} ngày gần nhất.",
+    "create": "Tạo dự án",
+    "emptyTitle": "Chưa có dự án",
+    "emptyDescription": "Tạo dự án để bắt đầu theo dõi thảo luận.",
+    "mentions": "đề cập",
+    "vsPrevious": "so với kỳ trước",
+    "nss": "NSS",
+    "negative": "Tiêu cực",
+    "alerts": "Cảnh báo",
+    "sources": "Nguồn",
+    "chartLabel": "Đề cập theo ngày",
+    "open": "Mở dashboard"
+  },
   "appName": "BNB Listeners"
 }

@@ -173,7 +173,7 @@ export type WorkspaceApiKey = typeof workspaceApiKeys.$inferSelect;
 export type NewWorkspaceApiKey = typeof workspaceApiKeys.$inferInsert;
 
 // ---------------------------------------------------------------------------
-// Social listening raw store (L1). Shared across workspaces; see docs/data-model.md.
+// Social listening raw store (L1). Shared across workspaces; see .ai/database-schema.md.
 // `origin`: connector | synthetic | legacy_import.
 // ---------------------------------------------------------------------------
 
@@ -576,7 +576,7 @@ export type ItemRefreshSchedule = typeof itemRefreshSchedules.$inferSelect;
 export type NewItemRefreshSchedule = typeof itemRefreshSchedules.$inferInsert;
 
 // ---------------------------------------------------------------------------
-// L2 — Project config. See docs/data-model.md and docs/decisions.md D10.
+// L2 — Project config. See .ai/database-schema.md and docs/decisions.md D10.
 // ---------------------------------------------------------------------------
 
 /** A brand, project, competitor or area that a project listens for. */
@@ -784,7 +784,7 @@ export type Alert = typeof alerts.$inferSelect;
 export type NewAlert = typeof alerts.$inferInsert;
 
 // ---------------------------------------------------------------------------
-// L3 — Analysis. See docs/data-model.md and docs/decisions.md D11.
+// L3 — Analysis. See .ai/database-schema.md and docs/decisions.md D11.
 // ---------------------------------------------------------------------------
 
 /** A content item that matched a project. Candidates rejected by the LLM stay with `is_relevant = false`. */

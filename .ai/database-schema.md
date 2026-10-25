@@ -6,6 +6,32 @@ Neon Postgres with `vector` and `pg_trgm` extensions. Multi-tenant: projects are
 
 ---
 
+## Layers
+
+```text
+L0  Raw archive      R2: raw payload of every connector run (real and synthetic)
+L1  Raw store        sources · authors · content_items · engagement_snapshots · item_refresh_schedules · collect_runs
+                     (+ personas · persona_panels · persona_panel_members for synthetic data)
+L2  Project config   projects · project_entities · project_queries · project_aspects · project_sources · project_enrichers · alert_rules
+L3  Analysis         mentions · item_labels · label_samples · mention_* · term_dictionary · topics · match_judgments
+L4  Aggregates       not built: metrics_hourly / metrics_daily; dashboards read L3 through `lib/metrics/` (D17)
+L5  Outputs          alert_rules · alerts; `insights` and `reports` not built
+```
+
+Layers depend only on the ones below. L3–L5 can be dropped and recomputed from L1 + L2. L1 is shared across workspaces; L2 and up belong to a project. Metric formulas (engagement, NSS, SoV) live in `lib/metrics/`, not in scattered SQL.
+
+### `origin` (L1 tables and `mentions`)
+
+| Value | Meaning |
+| ----- | ------- |
+| `connector` | Collected from a real source; has an R2 payload |
+| `synthetic` | Written by the synthetic connector (persona + LLM); traced by `collect_run_id` and `metadata.personaId`; has an R2 payload |
+| `legacy_import` | Moved from the old `documents` table; no payload, old id kept in `metadata` |
+
+Real and synthetic data may mix and the raw store is shared across workspaces, so every number shown to a customer must filter on `origin`. `origin` is copied to `mentions` so queries need no join.
+
+---
+
 ## Extensions (manual)
 
 Apply before or alongside the first migration (`db/manual/extensions.sql`):
@@ -524,7 +550,7 @@ Stores metadata for workspace API keys managed via Unkey. The actual key value i
 
 ## Social listening raw store (L1)
 
-New pipeline tables (see `docs/data-model.md`). Shared across workspaces — no `workspace_id`. Every table carries `origin`: `connector` | `synthetic` | `legacy_import`. Raw connector payloads are archived in payload storage (L0, R2 today) under `raw/{platform}/{connector}/{yyyy}/{mm}/{dd}/{collect_run_id}.json`. Written by `lib/raw-store/` and `lib/connectors/`; legacy modules must not read or write these tables.
+Shared across workspaces — no `workspace_id`. `sources`, `authors` and `content_items` carry `origin` (see Layers). Raw connector payloads are archived in payload storage (L0, R2 today) under `raw/{platform}/{connector}/{yyyy}/{mm}/{dd}/{collect_run_id}.json`. Written by `lib/raw-store/` and `lib/connectors/`; legacy modules must not read or write these tables.
 
 ### `sources`
 
@@ -608,9 +634,9 @@ Posts, comments and replies in one table.
 | external_id | text | NO | — | Platform item id |
 | url | text | YES | — | |
 | text | text | NO | `''` | Content text |
-| media | jsonb | NO | `[]` | `[{ type: image \| video, url }]` |
+| media | jsonb | NO | `[]` | `[{ type: image \| video, url }]`, plus video transcripts `{ type: transcript, url, text, language, source: asr \| creator, rawText?, correction? }` (D21, D22) |
 | language | text | YES | — | |
-| content_hash | text | NO | — | sha256 of normalized text |
+| content_hash | text | NO | — | Hash of the normalized text and transcript; unchanged content keeps downstream analysis cached |
 | published_at | timestamptz | YES | — | |
 | first_seen_at | timestamptz | NO | `now()` | |
 | last_collected_at | timestamptz | NO | `now()` | |

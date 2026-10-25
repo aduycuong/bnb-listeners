@@ -10,11 +10,12 @@ type DashboardHomeRoutePageProps = {
 export function DashboardHomeRoutePage({
   workspaceIndexParam,
 }: DashboardHomeRoutePageProps) {
-  const { workspace } = useWorkspaceRouteContext(workspaceIndexParam);
+  const { workspace, workspaceIndex } =
+    useWorkspaceRouteContext(workspaceIndexParam);
 
   if (!workspace) {
     return null;
   }
 
-  return <DashboardHome workspace={workspace} />;
+  return <DashboardHome workspace={workspace} workspaceIndex={workspaceIndex} />;
 }

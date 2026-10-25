@@ -1,39 +1,33 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useT } from "next-i18next/client";
 
+import { ProjectSummaryCard } from "@/components/projects/project-summary-card";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  fetchProjects,
-  projectsQueryKey,
-} from "@/hooks/use-project-route-context";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useProjectSummaries } from "@/hooks/use-project-summaries";
 import { useWorkspaceRouteContext } from "@/hooks/use-workspace-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
-import { PROJECT_CASE_ICONS } from "@/lib/projects/project-cases";
 
 type ProjectListPageProps = {
   workspaceIndexParam: string;
 };
 
+const CARD_GRID = "grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4";
+
 export function ProjectListPage({ workspaceIndexParam }: ProjectListPageProps) {
   const { t } = useT("dashboard");
   const { workspace, workspaceIndex } =
     useWorkspaceRouteContext(workspaceIndexParam);
-  const { data, isLoading, error } = useQuery({
-    queryKey: projectsQueryKey(workspace?.id ?? "pending"),
-    queryFn: () => fetchProjects(workspace!.id),
-    enabled: Boolean(workspace),
-  });
+  const { data, isLoading, error } = useProjectSummaries(workspace?.id);
 
   if (!workspace) {
     return null;
@@ -42,66 +36,51 @@ export function ProjectListPage({ workspaceIndexParam }: ProjectListPageProps) {
   const projects = data?.items ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-5 md:px-7">
+    <div className="w-full space-y-4 px-4 py-5 md:px-7">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">Projects</h1>
+          <h1 className="text-xl font-semibold">{t("projectList.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Each project listens for one brand or campaign. Terms live inside
-            the project.
+            {t("projectList.description", { days: data?.periodDays ?? 14 })}
           </p>
         </div>
-        <Button nativeButton={false} render={<Link href={`/w/${workspaceIndex}/projects/new`} />}>
+        <Button
+          nativeButton={false}
+          render={<Link href={`/w/${workspaceIndex}/projects/new`} />}
+        >
           <PlusIcon data-icon="inline-start" />
-          Tạo dự án
+          {t("projectList.create")}
         </Button>
       </div>
 
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading projects…</p>
-      ) : null}
       {error ? (
         <p className="text-sm text-destructive">{error.message}</p>
       ) : null}
 
-      {projects.length === 0 && !isLoading ? (
+      {isLoading ? (
+        <div className={CARD_GRID}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-72 rounded-xl" />
+          ))}
+        </div>
+      ) : projects.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>No projects yet</CardTitle>
-            <CardDescription>
-              Create a project before adding listening terms.
-            </CardDescription>
+            <CardTitle>{t("projectList.emptyTitle")}</CardTitle>
+            <CardDescription>{t("projectList.emptyDescription")}</CardDescription>
           </CardHeader>
         </Card>
       ) : (
-        <div className="grid gap-3">
+        <div className={CARD_GRID}>
           {projects.map((project, index) => (
-            <Link
+            <ProjectSummaryCard
               key={project.id}
+              project={project}
               href={getProjectNavHref(workspaceIndex, index, "")}
-            >
-              <Card className="transition-colors hover:bg-muted/40">
-                <CardHeader>
-                  <CardTitle className="flex flex-wrap items-center gap-2">
-                    <span aria-hidden="true">{PROJECT_CASE_ICONS[project.case]}</span>
-                    {project.name}
-                    <span className="rounded-full bg-[var(--tile-sun)] px-2 py-0.5 text-[11.5px] font-semibold text-[var(--tile-sun-foreground)]">
-                      {t(`cases.${project.case}`)}
-                    </span>
-                  </CardTitle>
-                  {project.description ? (
-                    <CardDescription>{project.description}</CardDescription>
-                  ) : null}
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  Open dashboard
-                </CardContent>
-              </Card>
-            </Link>
+            />
           ))}
         </div>
       )}
-
     </div>
   );
 }

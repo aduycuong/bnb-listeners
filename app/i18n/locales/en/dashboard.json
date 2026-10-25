@@ -83,5 +83,72 @@
     "description": "You will need to sign in again to access your workspace.",
     "confirm": "Log out"
   },
+  "overview": {
+    "title": "Overview",
+    "subtitle": "{{workspace}} · last {{days}} days, all projects",
+    "vsPrevious": "vs previous {{days}} days",
+    "kpi": {
+      "mentions": "Relevant mentions",
+      "nss": "Net sentiment (NSS)",
+      "negativeShare": "Negative share",
+      "alerts": "Alerts",
+      "alertsSub": "{{count}} projects tracked",
+      "noData": "No data yet"
+    },
+    "chart": {
+      "title": "Mentions per day",
+      "description": "By sentiment, last {{days}} days",
+      "positive": "Positive",
+      "neutral": "Neutral",
+      "negative": "Negative",
+      "unknown": "Not scored"
+    },
+    "projects": {
+      "title": "Projects",
+      "description": "Ranked by mentions in the period",
+      "project": "Project",
+      "mentions": "Mentions",
+      "change": "Change",
+      "nss": "NSS",
+      "negative": "Negative",
+      "alerts": "Alerts",
+      "empty": "No projects yet. Create one to start listening.",
+      "create": "Create project"
+    },
+    "recentAlerts": {
+      "title": "Recent alerts",
+      "empty": "No alerts yet.",
+      "level": {
+        "high": "High",
+        "med": "Medium",
+        "low": "Low"
+      }
+    },
+    "usage": {
+      "title": "Usage",
+      "description": "{{plan}} · sample limits for the demo",
+      "projects": "Projects",
+      "members": "Members",
+      "sources": "Followed sources",
+      "analyzedMentions": "Analyzed mentions (this month)",
+      "apiKeys": "API keys",
+      "unlimited": "unlimited"
+    }
+  },
+  "projectList": {
+    "title": "Projects",
+    "description": "Each project listens for one brand or campaign. Numbers cover the last {{days}} days.",
+    "create": "Create project",
+    "emptyTitle": "No projects yet",
+    "emptyDescription": "Create a project to start listening.",
+    "mentions": "mentions",
+    "vsPrevious": "vs previous period",
+    "nss": "NSS",
+    "negative": "Negative",
+    "alerts": "Alerts",
+    "sources": "Sources",
+    "chartLabel": "Mentions per day",
+    "open": "Open dashboard"
+  },
   "appName": "BNB Listeners"
 }
