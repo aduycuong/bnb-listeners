@@ -30,4 +30,4 @@ thật / ảo                project                         cảnh báo, báo c
 | Aggregate | Cập nhật tăng dần các rollup theo giờ và theo ngày. |
 | Serve | Dashboard theo widget, cảnh báo, báo cáo định kỳ, insight AI có trích dẫn mention. |
 
-Chi tiết bảng: [data-model.md](data-model.md).
+Chi tiết bảng: [database-schema.md](../.ai/database-schema.md).

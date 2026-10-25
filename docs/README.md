@@ -5,7 +5,7 @@ Tài liệu cho bản xây dựng lại theo hướng **social listening**.
 | File | Nội dung |
 |---|---|
 | [overview.md](overview.md) | Sản phẩm làm gì, kiến trúc các lớp xử lý |
-| [data-model.md](data-model.md) | Mô hình dữ liệu nhiều lớp |
+| [database-schema.md](../.ai/database-schema.md) | Schema và mô hình dữ liệu nhiều lớp |
 | [synthetic-data.md](synthetic-data.md) | Connector ảo, kịch bản dữ liệu giả, test độ nhạy |
 | [plan.md](plan.md) | Kế hoạch triển khai theo giai đoạn |
 | [decisions.md](decisions.md) | Các quyết định đã chốt |

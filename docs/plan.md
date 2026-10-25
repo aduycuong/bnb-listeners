@@ -2,7 +2,7 @@
 
 Kế hoạch xây dựng lại theo hướng social listening. Mỗi giai đoạn có kết quả kiểm chứng được. Thứ tự và chi tiết sẽ được điều chỉnh khi triển khai.
 
-Tham chiếu: [overview.md](overview.md), [data-model.md](data-model.md), [synthetic-data.md](synthetic-data.md).
+Tham chiếu: [overview.md](overview.md), [database-schema.md](../.ai/database-schema.md), [synthetic-data.md](synthetic-data.md).
 
 ## Giai đoạn 0 — Chuẩn bị
 

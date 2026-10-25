@@ -1,7 +1,7 @@
 import { AUTHOR_TIERS, MEDIA_BRAND_AUTHOR_TYPES, type AuthorTier } from "./config";
 
 /**
- * Shared dashboard formulas (docs/data-model.md L4): every page and, later, the L4 rollups
+ * Shared dashboard formulas (.ai/database-schema.md, L4): every page and, later, the L4 rollups
  * use these instead of writing their own. Engagement is `utils/engagement-sql.ts`, as it is
  * computed in SQL.
  */
