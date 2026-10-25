@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -98,6 +99,7 @@ export function WorkspaceSettings({
     <SettingsPageLayout
       title="Workspace settings"
       description="Details for the current workspace."
+      width="wide"
     >
       <Card>
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -117,31 +119,36 @@ export function WorkspaceSettings({
             </Button>
           ) : null}
         </CardHeader>
-        <CardContent>
-          <dl className="divide-y divide-border">
-            <div className="flex flex-col gap-1 py-3 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
-              <dt className="text-sm text-muted-foreground">Name</dt>
-              <dd className="text-sm font-medium">{workspace.name}</dd>
+        <CardContent className="space-y-5">
+          <div className="flex items-center gap-4">
+            <div
+              aria-hidden="true"
+              className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-xl font-semibold text-primary"
+            >
+              {workspace.name.trim().charAt(0).toUpperCase() || "W"}
             </div>
-            <div className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <dt className="text-sm text-muted-foreground">Slug</dt>
-              <dd className="text-sm font-medium">{workspace.slug ?? "—"}</dd>
+            <div className="min-w-0">
+              <p className="truncate text-lg font-semibold tracking-tight">
+                {workspace.name}
+              </p>
+              <p className="truncate text-sm text-muted-foreground">
+                {workspace.slug ? `/${workspace.slug}` : "No slug"}
+              </p>
             </div>
-            <div className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <dt className="text-sm text-muted-foreground">Your permission</dt>
-              <dd className="text-sm font-medium capitalize">
-                {workspace.permission}
-              </dd>
-            </div>
-            <div className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <dt className="text-sm text-muted-foreground">Created</dt>
-              <dd className="text-sm font-medium">
+            <Badge variant="secondary" className="ml-auto capitalize">
+              {workspace.permission}
+            </Badge>
+          </div>
+          <dl className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg bg-muted/50 px-4 py-3">
+              <dt className="text-xs text-muted-foreground">Created</dt>
+              <dd className="mt-0.5 text-sm font-medium">
                 {formatDate(workspace.createdAt)}
               </dd>
             </div>
-            <div className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <dt className="text-sm text-muted-foreground">Last updated</dt>
-              <dd className="text-sm font-medium">
+            <div className="rounded-lg bg-muted/50 px-4 py-3">
+              <dt className="text-xs text-muted-foreground">Last updated</dt>
+              <dd className="mt-0.5 text-sm font-medium">
                 {formatDate(workspace.updatedAt)}
               </dd>
             </div>
@@ -155,12 +162,12 @@ export function WorkspaceSettings({
         workspace={workspace}
       />
 
-      <WorkspaceApiKeysCard workspace={workspace} />
-
       <WorkspaceMembersSection workspace={workspace} />
 
+      <WorkspaceApiKeysCard workspace={workspace} />
+
       {isOwner ? (
-        <Card>
+        <Card className="border-destructive/40">
           <CardHeader>
             <CardTitle>Delete workspace</CardTitle>
             <CardDescription>

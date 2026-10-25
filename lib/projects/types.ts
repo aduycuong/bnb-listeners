@@ -120,3 +120,31 @@ export type SelectableSource = {
 export type ListSelectableSourcesResult = {
   items: SelectableSource[];
 };
+
+export type ProjectSummaryDailyPoint = {
+  dateKey: string;
+  mentions: number;
+};
+
+/** A project with the numbers of its card on the project list. */
+export type ProjectSummaryItem = ProjectListItem & {
+  /** Relevant mentions of the last `periodDays` days of the project's timezone. */
+  mentions: number;
+  previousMentions: number;
+  /** Net sentiment score, −100 to +100; null when no mention has a sentiment. */
+  nss: number | null;
+  /** Share of negative mentions among scored ones, in %; null when none are scored. */
+  negativeShare: number | null;
+  alerts: number;
+  sources: number;
+  daily: ProjectSummaryDailyPoint[];
+};
+
+export type ListProjectSummariesParams = {
+  workspaceId: string;
+};
+
+export type ListProjectSummariesResult = {
+  periodDays: number;
+  items: ProjectSummaryItem[];
+};
