@@ -3,13 +3,10 @@ import {
   ClipboardListIcon,
   FileBarChartIcon,
   FileTextIcon,
-  FilesIcon,
   FolderKanbanIcon,
   HashIcon,
-  LayersIcon,
   LayoutDashboardIcon,
   MessagesSquareIcon,
-  SearchIcon,
   SettingsIcon,
   Share2Icon,
   SmileIcon,
@@ -17,26 +14,9 @@ import {
   UsersIcon,
 } from "lucide-react";
 
-import { DOCUMENT_SEGMENT } from "@/lib/documents/document-config";
-import { DATA_SOURCE_GROUP_SEGMENT } from "@/lib/data-source-groups/data-source-group-config";
-import { DATA_SOURCE_MENU_NAV_ITEMS } from "@/lib/data-sources/data-source-menu-config";
-import { RESEARCH_SEGMENT } from "@/lib/research/research-config";
-
 export const DASHBOARD_NAV_ITEMS = [
   { labelKey: "nav.overview", segment: "", icon: FileTextIcon },
-  { labelKey: "nav.documents", segment: DOCUMENT_SEGMENT, icon: FilesIcon },
   { labelKey: "nav.projects", segment: "projects", icon: FolderKanbanIcon },
-  {
-    labelKey: "nav.research",
-    segment: RESEARCH_SEGMENT,
-    icon: SearchIcon,
-  },
-  {
-    labelKey: "nav.dataSourceGroups",
-    segment: DATA_SOURCE_GROUP_SEGMENT,
-    icon: LayersIcon,
-  },
-  ...DATA_SOURCE_MENU_NAV_ITEMS,
   { labelKey: "nav.settings", segment: "settings/workspace", icon: SettingsIcon },
 ];
 

@@ -453,3 +453,12 @@ ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên
 **Chưa làm**
 - Zalo, SMS, Slack, báo cáo AI định kỳ, insight, replay để test cảnh báo.
 - `metrics_hourly` và phát hiện bất thường ngoài ngưỡng đã cấu hình.
+
+## D24 — Gỡ pipeline cũ (2026-10-25)
+
+**Quyết định**
+- Xóa hẳn pipeline collect/score/classify cũ, không giữ để tham chiếu: `lib/{documents,comments,chunking,classification,scoring,terms,term-backfill,term-digests,document-parts,document-terms,research,retrieval,data-sources,data-source-groups,system-schedules,media-assets,exa,mcp,legacy-import}`, các trang và API tương ứng, webhook `/api/webhooks/bright-data/[sourceRunId]`, và các script `legacy:*`, `chunks:rebuild`, `terms:embed`.
+- Không còn hỗ trợ nhập dữ liệu cũ (`legacy:import`) và không sao lưu `pg_dump` trước khi xóa bảng. Dữ liệu đã nhập vào `content_items` (`origin = legacy_import`) được giữ.
+- Làm hai PR: PR 1 gỡ code (revert được), PR 2 xóa bảng khỏi schema. Thay D1 (đóng băng): không còn cần mở lại pipeline cũ.
+- Giữ `lib/bright-data` (connector mới dùng), `lib/langchain`, `lib/exposers`, khóa API workspace (`lib/unkey`). Khóa API workspace hiện chưa có chỗ dùng sau khi gỡ MCP.
+
