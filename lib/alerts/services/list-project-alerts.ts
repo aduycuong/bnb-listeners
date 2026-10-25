@@ -17,7 +17,7 @@ import { ALERT_LIST_LIMIT } from "../config";
 import type { AlertLevel, AlertStatus, ProjectAlertsResult } from "../types";
 import { alertScopeSummary } from "../utils/alert-scope";
 import { alertRecipients, wantsAlertEmail } from "../utils/alert-delivery";
-import { parseStoredAlertRule } from "../utils/parse-stored-alert-rule";
+import { parseStoredAlertRule, type StoredAlertRule } from "../utils/parse-stored-alert-rule";
 
 const LEVELS = new Set<AlertLevel>(["high", "med", "low"]);
 const STATUSES = new Set<AlertStatus>(["open", "emailed", "email_failed"]);
@@ -77,18 +77,36 @@ export async function listProjectAlerts(projectId: string): Promise<ProjectAlert
     rules: rules.flatMap((rule) => {
       const parsed = parseStoredAlertRule(rule.kind, rule.params);
       if (!parsed) return [];
-      const def = ALERT_RULE_KIND_DEFS[parsed.kind];
       return [{
         id: rule.id,
-        label: def.label,
+        label: ALERT_RULE_KIND_DEFS[parsed.kind].label,
         scope: alertScopeSummary(parsed.scope, entities, aspects, roleLabel),
-        threshold: `${parsed.threshold.toLocaleString("vi-VN")} ${def.unit}`,
+        threshold: formatRuleThreshold(parsed),
         window: parsed.window ? ALERT_WINDOW_LABELS[parsed.window] : "Một bài",
         deliversEmail: wantsAlertEmail(rule.channels, project.notificationConfig.channels),
       }];
     }),
     recipientCount: alertRecipients(project.notificationConfig.recipients).length,
   };
+}
+
+/** One cell, in the same shape as the demo rules table: “+30% trong 24 giờ”. */
+function formatRuleThreshold(rule: StoredAlertRule) {
+  const amount = rule.threshold.toLocaleString("vi-VN");
+  const span = rule.window ? ALERT_WINDOW_LABELS[rule.window] : null;
+  if (rule.kind === "volume_growth" || rule.kind === "buyer_questions_growth") {
+    return span ? `+${amount}% trong ${span}` : `+${amount}%`;
+  }
+  if (rule.kind === "negative_share") {
+    return span ? `Tiêu cực > ${amount}% trong ${span}` : `Tiêu cực > ${amount}%`;
+  }
+  if (rule.kind === "price_deviation") {
+    return span ? `Lệch > ${amount}% trong ${span}` : `Lệch > ${amount}%`;
+  }
+  if (rule.kind === "viral_post") return `> ${amount} lượt tương tác`;
+  const words = rule.keywords.slice(0, 3).map((keyword) => `“${keyword}”`).join(", ");
+  if (words) return span ? `${words} trong ${span}` : words;
+  return span ? `≥ ${amount} bài trong ${span}` : `≥ ${amount} bài`;
 }
 
 function roleLabelFor(projectCase: string, version: number) {

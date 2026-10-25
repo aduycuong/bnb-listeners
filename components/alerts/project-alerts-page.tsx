@@ -8,25 +8,19 @@ import {
   projectReportPageClassName,
   type ProjectPageBannerProps,
 } from "@/components/projects/project-page-banner";
-import { AQUA_PAGE_META } from "@/lib/projects/aqua-demo";
-import type { AlertLevel, AlertStatus } from "@/lib/alerts/types";
+import type { AlertStatus } from "@/lib/alerts/types";
+import { AQUA_ALERT_LABEL, AQUA_PAGE_META } from "@/lib/projects/aqua-demo";
 
 import { MetricsEmpty } from "../metrics/metrics-page-header";
 import { useProjectAlerts, type AlertsApiScope } from "./use-alerts-api";
 
-const LEVEL_LABEL: Record<AlertLevel, string> = {
-  high: "Cao",
-  med: "Trung bình",
-  low: "Thấp",
-};
-
 const STATUS_LABEL: Record<AlertStatus, string> = {
   open: "Chỉ ghi nhận",
   emailed: "Đã gửi email",
-  email_failed: "Chưa gửi được email",
+  email_failed: "Chưa gửi được",
 };
 
-/** Alerts page: firings from the hourly evaluator, and the rules that are on. */
+/** Alerts page, laid out as the approved demo: a feed beside the enabled rules. */
 export function ProjectAlertsPage({
   scope,
   projectName,
@@ -56,32 +50,33 @@ export function ProjectAlertsPage({
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
       <DemoGrid>
-        <DemoPanel
-          title="Cảnh báo gần đây"
-          span="s7"
-          scope="common"
-          note="Mới nhất trước. Cùng một quy tắc không lặp lại trong cửa sổ của nó."
-        >
+        <DemoPanel title="Cảnh báo gần đây" span="s7" scope="common">
           {error ? (
             <MetricsEmpty>Không tải được cảnh báo.</MetricsEmpty>
           ) : data && data.alerts.length > 0 ? (
-            <ul className="flex flex-col gap-3">
+            <ul>
               {data.alerts.map((alert) => (
-                <li key={alert.id} className="rounded-xl border border-border px-3 py-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <SentimentPill sentiment={alert.level} label={LEVEL_LABEL[alert.level]} />
-                    <b className="text-sm">{alert.title}</b>
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {formatAlertTime(alert.triggeredAt)}
-                    </span>
+                <li
+                  key={alert.id}
+                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-border py-3.5 last:border-b-0"
+                >
+                  <SentimentPill sentiment={alert.level} label={AQUA_ALERT_LABEL[alert.level]} />
+                  <div className="min-w-0">
+                    <h4 className="mb-0.5 font-heading text-sm font-bold tracking-[-0.01em]">
+                      {alert.title}
+                    </h4>
+                    <p className="line-clamp-2 text-[13px] leading-snug text-muted-foreground">
+                      {alert.body}
+                    </p>
                   </div>
-                  <p className="mt-1 text-sm leading-relaxed">{alert.body}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {STATUS_LABEL[alert.status]}
-                    {alert.status === "email_failed" && alert.emailError
-                      ? ` · ${alert.emailError}`
-                      : ""}
-                  </p>
+                  <div className="text-right">
+                    <time className="block text-xs whitespace-nowrap text-muted-foreground">
+                      {formatAlertTime(alert.triggeredAt)}
+                    </time>
+                    <div className="mt-1 text-xs text-foreground/70" title={alert.emailError ?? undefined}>
+                      {STATUS_LABEL[alert.status]}
+                    </div>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -92,7 +87,7 @@ export function ProjectAlertsPage({
           )}
         </DemoPanel>
         <DemoPanel
-          title="Quy tắc đang bật"
+          title="Quy tắc cảnh báo đang bật"
           span="s5"
           scope="common"
           note={
@@ -112,19 +107,15 @@ export function ProjectAlertsPage({
             <MetricsEmpty>Không tải được quy tắc.</MetricsEmpty>
           ) : data && data.rules.length > 0 ? (
             <DemoTable
-              headers={[
-                { label: "Quy tắc" },
-                { label: "Ngưỡng" },
-                { label: "Khoảng" },
-                { label: "Gửi" },
-              ]}
+              headers={[{ label: "Quy tắc" }, { label: "Ngưỡng" }, { label: "Gửi đến" }]}
               rows={data.rules.map((rule) => [
                 <span key={rule.id}>
-                  <b className="block">{rule.label}</b>
-                  <span className="text-xs text-muted-foreground">{rule.scope}</span>
+                  {rule.label}
+                  {rule.scope !== "Toàn project" ? (
+                    <span className="mt-0.5 block text-xs text-muted-foreground">{rule.scope}</span>
+                  ) : null}
                 </span>,
                 rule.threshold,
-                rule.window,
                 rule.deliversEmail ? "Email" : "Không gửi",
               ])}
             />
@@ -138,10 +129,10 @@ export function ProjectAlertsPage({
 }
 
 function formatAlertTime(iso: string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(iso));
+  const date = new Date(iso);
+  const startOfDay = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+  const days = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86_400_000);
+  if (days === 0) return "Hôm nay";
+  if (days === 1) return "Hôm qua";
+  return `${date.getDate()}/${date.getMonth() + 1}`;
 }
