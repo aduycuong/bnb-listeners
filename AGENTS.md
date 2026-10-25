@@ -23,7 +23,7 @@ Before making code changes, Codex should read the relevant files from those fold
 ## Reference docs
 
 - **`.cursor/rules/*.mdc`** — enforceable policy (schema workflow, lib layout).
-- **`.ai/*.md`** — architecture and structure reference; when a rule and an `.ai` doc disagree after a sync pass, follow the rule for policy. Update both when behaviour changes. Note: `.ai/database-schema.md` still describes the legacy schema.
+- **`.ai/*.md`** — architecture and structure reference; when a rule and an `.ai` doc disagree after a sync pass, follow the rule for policy. Update both when behaviour changes.
 - **`docs/`** — social listening rebuild: overview, data model, synthetic data, plan. Start at [`docs/README.md`](docs/README.md).
 - **`docs/deprecated/`** — docs of the legacy collect/score/classify pipeline; reference only.
 

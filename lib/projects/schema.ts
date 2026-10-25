@@ -1,11 +1,6 @@
 import { z } from "zod";
 
 import {
-  MAX_TERM_CRITERIA_LENGTH,
-  TERM_LANGUAGES,
-} from "@/lib/workspaces/constants";
-
-import {
   ALERT_RULE_KINDS,
   ALERT_WINDOWS,
   MAX_ALERT_RULES,
@@ -15,8 +10,6 @@ import {
 import { ENTITY_ROLES } from "./case-templates";
 import { AVAILABLE_PROJECT_CASES, PROJECT_CASES } from "./project-cases";
 import { collectProjectConfigIssues } from "./utils/collect-project-config-issues";
-
-export const termLanguageSchema = z.enum(TERM_LANGUAGES);
 
 export const projectCaseSchema = z.enum(PROJECT_CASES);
 
@@ -124,15 +117,6 @@ export const createProjectWithConfigSchema = projectConfigSchema.and(
 export const updateProjectSchema = z.object({
   name: z.string().trim().min(1, { error: "Project name is required." }).optional(),
   description: z.string().trim().nullable().optional(),
-  autoCreateTerms: z.boolean().optional(),
-  termLanguage: termLanguageSchema.optional(),
-  termCriteria: z
-    .string()
-    .trim()
-    .max(MAX_TERM_CRITERIA_LENGTH, {
-      error: `Term criteria must be ${MAX_TERM_CRITERIA_LENGTH} characters or fewer.`,
-    })
-    .optional(),
 });
 
 export type CreateProjectFormValues = z.infer<typeof createProjectSchema>;

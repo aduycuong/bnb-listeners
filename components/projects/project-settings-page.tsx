@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon } from "lucide-react";
 import { useT } from "next-i18next/client";
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,17 +17,11 @@ import {
 } from "@/components/ui/dialog";
 import {
   Field,
-  FieldContent,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { ProjectConfigEditor } from "@/components/projects/config/project-config-editor";
@@ -38,7 +32,6 @@ import {
 import { updateProjectSchema } from "@/lib/projects/schema";
 import type { ProjectListItem } from "@/lib/projects/types";
 import { projectFetch } from "@/lib/projects/utils/project-fetch";
-import { TERM_LANGUAGE_OPTIONS } from "@/lib/workspaces/constants";
 import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
 import type { z } from "zod";
 
@@ -53,9 +46,6 @@ function toFormValues(project: ProjectListItem): ProjectSettingsValues {
   return {
     name: project.name,
     description: project.description ?? "",
-    autoCreateTerms: project.autoCreateTerms,
-    termLanguage: project.termLanguage,
-    termCriteria: project.termCriteria,
   };
 }
 
@@ -75,9 +65,6 @@ export function ProjectSettingsPage({
     defaultValues: {
       name: "",
       description: "",
-      autoCreateTerms: true,
-      termLanguage: "auto",
-      termCriteria: "",
     },
   });
 
@@ -93,7 +80,6 @@ export function ProjectSettingsPage({
 
   const canEdit = hasMinWorkspacePermission(workspace.permission, "edit");
   const disabled = !canEdit || form.formState.isSubmitting;
-  const autoCreateTerms = form.watch("autoCreateTerms");
 
   async function onSubmit(values: ProjectSettingsValues) {
     if (!workspace || !project) {
@@ -151,7 +137,7 @@ export function ProjectSettingsPage({
             <DialogHeader>
               <DialogTitle>Chỉnh sửa dự án</DialogTitle>
               <DialogDescription>
-                Tên, mô tả và quy tắc tạo term của dự án này.
+                Tên và mô tả của dự án này.
               </DialogDescription>
             </DialogHeader>
             <FieldGroup>
@@ -176,83 +162,6 @@ export function ProjectSettingsPage({
                   {...form.register("description")}
                 />
               </Field>
-              <Field orientation="horizontal">
-                <FieldContent>
-                  <FieldLabel htmlFor="auto-create-terms">
-                    Auto-create terms
-                  </FieldLabel>
-                  <FieldDescription>
-                    Khi bật, AI có thể tạo term mới cho tài liệu không khớp term
-                    hiện có của project này.
-                  </FieldDescription>
-                </FieldContent>
-                <Controller
-                  name="autoCreateTerms"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Switch
-                      id="auto-create-terms"
-                      checked={field.value ?? false}
-                      onCheckedChange={field.onChange}
-                      disabled={disabled}
-                    />
-                  )}
-                />
-              </Field>
-              {autoCreateTerms ? (
-                <>
-                  <Controller
-                    name="termLanguage"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FieldSet>
-                        <FieldLegend variant="label">Term language</FieldLegend>
-                        <RadioGroup
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={disabled}
-                        >
-                          {TERM_LANGUAGE_OPTIONS.map((option) => (
-                            <Field key={option.value} orientation="horizontal">
-                              <RadioGroupItem
-                                value={option.value}
-                                id={`project-term-language-${option.value}`}
-                                disabled={disabled}
-                              />
-                              <FieldContent>
-                                <FieldLabel
-                                  htmlFor={`project-term-language-${option.value}`}
-                                >
-                                  {option.label}
-                                </FieldLabel>
-                                <FieldDescription>
-                                  {option.description}
-                                </FieldDescription>
-                              </FieldContent>
-                            </Field>
-                          ))}
-                        </RadioGroup>
-                      </FieldSet>
-                    )}
-                  />
-                  <Field>
-                    <FieldLabel htmlFor="project-term-criteria">
-                      Quy tắc tạo term
-                    </FieldLabel>
-                    <Textarea
-                      id="project-term-criteria"
-                      rows={4}
-                      disabled={disabled}
-                      {...form.register("termCriteria")}
-                    />
-                    <FieldDescription>
-                      Mỗi dòng một quy tắc. Áp dụng khi AI tạo term mới trong
-                      project này.
-                    </FieldDescription>
-                    <FieldError errors={[form.formState.errors.termCriteria]} />
-                  </Field>
-                </>
-              ) : null}
             </FieldGroup>
             {canEdit ? (
               <div className="flex justify-end">

@@ -268,7 +268,7 @@ Xem [D17](decisions.md#d17--giai-đoạn-5b-số-liệu-dashboard-2026-10-15).
 Xem [D24](decisions.md#d24--gỡ-pipeline-cũ-2026-10-25).
 
 - [x] PR 1: gỡ code, UI, route, script và job QStash của pipeline cũ (`documents`, `comments`, `chunks`, `terms`, digest, research, data source, system schedule, MCP, import dữ liệu cũ). Chưa đụng schema.
-- [ ] PR 2: xóa các bảng cũ khỏi `db/schema.ts` (anh chạy `db:generate` và `db:migrate`), cập nhật `.ai/database-schema.md` và `AGENTS.md`
+- [x] PR 2: xóa các bảng cũ và cột `projects.auto_create_terms`, `term_language`, `term_criteria` khỏi `db/schema.ts`, cập nhật `.ai/database-schema.md` và `AGENTS.md`. Migration do người dùng chạy (`db:generate`, `db:migrate`)
 - [ ] Dọn khóa i18n không còn dùng, biến môi trường và dependency không còn dùng
 - [ ] Xóa demo data khi mọi trang đã dùng dữ liệu thật
 

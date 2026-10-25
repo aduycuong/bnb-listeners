@@ -1,7 +1,6 @@
 import type { WorkspacePermission } from "./constants";
-import type { TermLanguage } from "./constants";
 
-export type { WorkspacePermission, TermLanguage };
+export type { WorkspacePermission };
 
 export type WorkspaceLlmSettings = {
   dataCollectionScope: string;

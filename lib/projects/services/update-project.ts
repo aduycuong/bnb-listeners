@@ -41,12 +41,6 @@ export async function updateProject(
     .set({
       name,
       description,
-      autoCreateTerms: params.autoCreateTerms ?? current.autoCreateTerms,
-      termLanguage: params.termLanguage ?? current.termLanguage,
-      termCriteria:
-        params.termCriteria === undefined
-          ? current.termCriteria
-          : params.termCriteria.trim(),
       updatedAt: new Date(),
     })
     .where(eq(projects.id, current.id))

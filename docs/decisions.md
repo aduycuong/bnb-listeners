@@ -461,4 +461,4 @@ ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên
 - Không còn hỗ trợ nhập dữ liệu cũ (`legacy:import`) và không sao lưu `pg_dump` trước khi xóa bảng. Dữ liệu đã nhập vào `content_items` (`origin = legacy_import`) được giữ.
 - Làm hai PR: PR 1 gỡ code (revert được), PR 2 xóa bảng khỏi schema. Thay D1 (đóng băng): không còn cần mở lại pipeline cũ.
 - Giữ `lib/bright-data` (connector mới dùng), `lib/langchain`, `lib/exposers`, khóa API workspace (`lib/unkey`). Khóa API workspace hiện chưa có chỗ dùng sau khi gỡ MCP.
-
+- PR 2 xóa các bảng `documents`, `comments`, `document_parts`, `chunks`, `terms`, `document_terms`, `term_backfill_runs`, `term_digest_daily`, `research_runs`, `dim_dates`, `data_sources`, `data_source_groups`, `data_source_group_members`, `source_runs`, `system_schedules`, `system_schedule_runs`, `workspace_task_runs` và ba cột term của `projects` (kèm form cài đặt term). `workspaces.data_collection_scope` và trang cài đặt LLM của workspace được giữ, chưa có chỗ dùng; xem xét riêng.

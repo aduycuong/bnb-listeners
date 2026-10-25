@@ -20,9 +20,6 @@ export const PATCH = createApiHandler(
       projectId: params.id,
       name: params.name,
       description: params.description,
-      autoCreateTerms: params.autoCreateTerms,
-      termLanguage: params.termLanguage,
-      termCriteria: params.termCriteria,
     }),
   {
     allowedRoles: [],

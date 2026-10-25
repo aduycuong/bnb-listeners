@@ -1,7 +1,5 @@
 import type { z } from "zod";
 
-import type { TermLanguage } from "@/lib/workspaces/constants";
-
 import type { EntityRole } from "./case-templates";
 import type { ProjectCase } from "./project-cases";
 import type {
@@ -20,9 +18,6 @@ export type ProjectListItem = {
   case: ProjectCase;
   caseVersion: number;
   configVersion: number;
-  autoCreateTerms: boolean;
-  termLanguage: TermLanguage;
-  termCriteria: string;
   createdAt: string;
   updatedAt: string;
 };
