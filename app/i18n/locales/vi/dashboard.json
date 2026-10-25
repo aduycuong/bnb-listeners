@@ -148,7 +148,10 @@
     "alerts": "Cảnh báo",
     "sources": "Nguồn",
     "chartLabel": "Đề cập theo ngày",
-    "open": "Mở dashboard"
+    "open": "Mở dashboard",
+    "menu": "Thao tác với dự án",
+    "settings": "Cài đặt",
+    "delete": "Xóa dự án"
   },
   "appName": "BNB Listeners"
 }

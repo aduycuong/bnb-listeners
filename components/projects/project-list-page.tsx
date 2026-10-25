@@ -3,7 +3,9 @@
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useT } from "next-i18next/client";
+import { useState } from "react";
 
+import { ProjectDeleteDialog } from "@/components/projects/project-delete-dialog";
 import { ProjectSummaryCard } from "@/components/projects/project-summary-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +18,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useProjectSummaries } from "@/hooks/use-project-summaries";
 import { useWorkspaceRouteContext } from "@/hooks/use-workspace-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
+import type { ProjectSummaryItem } from "@/lib/projects/types";
+import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
 
 type ProjectListPageProps = {
   workspaceIndexParam: string;
@@ -28,12 +32,14 @@ export function ProjectListPage({ workspaceIndexParam }: ProjectListPageProps) {
   const { workspace, workspaceIndex } =
     useWorkspaceRouteContext(workspaceIndexParam);
   const { data, isLoading, error } = useProjectSummaries(workspace?.id);
+  const [deleting, setDeleting] = useState<ProjectSummaryItem | null>(null);
 
   if (!workspace) {
     return null;
   }
 
   const projects = data?.items ?? [];
+  const canEdit = hasMinWorkspacePermission(workspace.permission, "edit");
 
   return (
     <div className="w-full space-y-4 px-4 py-5 md:px-7">
@@ -77,10 +83,23 @@ export function ProjectListPage({ workspaceIndexParam }: ProjectListPageProps) {
               key={project.id}
               project={project}
               href={getProjectNavHref(workspaceIndex, index, "")}
+              settingsHref={getProjectNavHref(workspaceIndex, index, "settings")}
+              onDelete={canEdit ? () => setDeleting(project) : undefined}
             />
           ))}
         </div>
       )}
+
+      {deleting ? (
+        <ProjectDeleteDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setDeleting(null);
+          }}
+          workspaceId={workspace.id}
+          project={deleting}
+        />
+      ) : null}
     </div>
   );
 }
