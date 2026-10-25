@@ -269,7 +269,7 @@ Xem [D24](decisions.md#d24--gỡ-pipeline-cũ-2026-10-25).
 
 - [x] PR 1: gỡ code, UI, route, script và job QStash của pipeline cũ (`documents`, `comments`, `chunks`, `terms`, digest, research, data source, system schedule, MCP, import dữ liệu cũ). Chưa đụng schema.
 - [x] PR 2: xóa các bảng cũ và cột `projects.auto_create_terms`, `term_language`, `term_criteria` khỏi `db/schema.ts`, cập nhật `.ai/database-schema.md` và `AGENTS.md`. Migration do người dùng chạy (`db:generate`, `db:migrate`)
-- [ ] Dọn khóa i18n không còn dùng, biến môi trường và dependency không còn dùng
+- [x] Dọn khóa i18n của pipeline cũ, `EXA_API_KEY` và 13 dependency không còn dùng (`@langchain/langgraph`, `@langchain/textsplitters`, `@modelcontextprotocol/sdk`, `react-markdown`, `remark-gfm`, `sonner`, 7 gói `@radix-ui/*`)
 - [ ] Xóa demo data khi mọi trang đã dùng dữ liệu thật
 
 ## Câu hỏi còn mở

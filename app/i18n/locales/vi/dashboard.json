@@ -14,16 +14,10 @@
     "home": "Tổng quan",
     "homeAriaLabel": "Về trang tổng quan",
     "create": "Tạo mới",
-    "detail": "Chi tiết",
-    "documentDetail": "Tài liệu",
-    "termDetail": "Term",
-    "dataSourceGroupDetail": "Nhóm nguồn dữ liệu",
-    "researchRunDetail": "Lượt nghiên cứu",
-    "dataSourceDetail": "Job"
+    "detail": "Chi tiết"
   },
   "nav": {
     "overview": "Tổng quan",
-    "documents": "Tài liệu",
     "projects": "Projects",
     "backToProjects": "Về danh sách project",
     "allProjects": "Quản lý tất cả dự án",
@@ -43,11 +37,6 @@
     "groupProject": "Dự án",
     "manageMentions": "Mentions",
     "projectSettings": "Cài đặt dự án",
-    "terms": "Terms",
-    "research": "Nghiên cứu",
-    "dataSourceGroups": "Nhóm nguồn dữ liệu",
-    "facebook-page": "Trang Facebook",
-    "website": "Website",
     "workspace": "Không gian làm việc",
     "settings": "Cài đặt"
   },

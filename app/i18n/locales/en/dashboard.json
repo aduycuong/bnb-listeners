@@ -14,16 +14,10 @@
     "home": "Overview",
     "homeAriaLabel": "Go to overview",
     "create": "Create",
-    "detail": "Details",
-    "documentDetail": "Document",
-    "termDetail": "Term",
-    "dataSourceGroupDetail": "Data source group",
-    "researchRunDetail": "Research run",
-    "dataSourceDetail": "Job"
+    "detail": "Details"
   },
   "nav": {
     "overview": "Overview",
-    "documents": "Documents",
     "projects": "Projects",
     "backToProjects": "Back to projects",
     "allProjects": "Manage all projects",
@@ -43,11 +37,6 @@
     "groupProject": "Project",
     "manageMentions": "Mentions",
     "projectSettings": "Project settings",
-    "terms": "Terms",
-    "research": "Research",
-    "dataSourceGroups": "Data source groups",
-    "facebook-page": "Facebook page",
-    "website": "Website",
     "workspace": "Workspace",
     "settings": "Settings"
   },
