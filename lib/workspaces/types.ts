@@ -2,10 +2,6 @@ import type { WorkspacePermission } from "./constants";
 
 export type { WorkspacePermission };
 
-export type WorkspaceLlmSettings = {
-  dataCollectionScope: string;
-};
-
 export type WorkspaceContext = {
   userId: string;
   workspaceId: string;
@@ -20,7 +16,6 @@ export type WorkspaceListItem = {
   slug: string | null;
   ownerUserId: string;
   permission: WorkspacePermission;
-  dataCollectionScope: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -56,18 +51,6 @@ export type UpdateWorkspaceGeneralResult = {
   id: string;
   name: string;
   slug: string | null;
-  updatedAt: string;
-  message: string;
-};
-
-export type UpdateWorkspaceLlmSettingsParams = {
-  workspaceId: string;
-  dataCollectionScope: string;
-};
-
-export type UpdateWorkspaceLlmSettingsResult = {
-  id: string;
-  dataCollectionScope: string;
   updatedAt: string;
   message: string;
 };

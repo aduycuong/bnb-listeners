@@ -68,7 +68,6 @@ Tenant container for members, projects, and API keys.
 | name | text | NO | — | Display name |
 | slug | text | YES | — | URL-safe identifier |
 | owner_user_id | uuid | NO | — | Owning user (`users.id`) |
-| data_collection_scope | text | NO | `tin tức và dữ liệu về bất động sản` | Domain description for the workspace |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Last update time |
 

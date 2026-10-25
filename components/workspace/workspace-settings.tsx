@@ -8,7 +8,6 @@ import { useState } from "react";
 import { SettingsPageLayout } from "@/components/dashboard/settings-page-layout";
 import { EditWorkspaceGeneralDialog } from "@/components/workspace/edit-workspace-general-dialog";
 import { WorkspaceApiKeysCard } from "@/components/workspace/workspace-api-keys-card";
-import { WorkspaceLlmSettingsCard } from "@/components/workspace/workspace-llm-settings-card";
 import { WorkspaceMembersSection } from "@/components/workspace/workspace-members-section";
 import {
   AlertDialog,
@@ -155,8 +154,6 @@ export function WorkspaceSettings({
         onOpenChange={setEditGeneralOpen}
         workspace={workspace}
       />
-
-      <WorkspaceLlmSettingsCard workspace={workspace} />
 
       <WorkspaceApiKeysCard workspace={workspace} />
 

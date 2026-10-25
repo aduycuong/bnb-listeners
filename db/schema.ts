@@ -51,9 +51,6 @@ export const workspaces = pgTable(
     ownerUserId: uuid("owner_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    dataCollectionScope: text("data_collection_scope")
-      .notNull()
-      .default("tin tức và dữ liệu về bất động sản"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

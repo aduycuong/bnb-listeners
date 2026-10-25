@@ -12,7 +12,3 @@ export const DEFAULT_WORKSPACE_INDEX = 0;
 
 export const WORKSPACE_INDEX_STORAGE_KEY = "workspace-index";
 
-export const DEFAULT_DATA_COLLECTION_SCOPE =
-  "tin tức và dữ liệu về bất động sản";
-
-export const MAX_DATA_COLLECTION_SCOPE_LENGTH = 500;

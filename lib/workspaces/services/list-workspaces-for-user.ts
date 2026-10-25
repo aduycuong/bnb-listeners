@@ -18,7 +18,6 @@ export async function listWorkspacesForUser(
       name: workspaces.name,
       slug: workspaces.slug,
       ownerUserId: workspaces.ownerUserId,
-      dataCollectionScope: workspaces.dataCollectionScope,
       memberPermission: workspaceMembers.permission,
       createdAt: workspaces.createdAt,
       updatedAt: workspaces.updatedAt,
@@ -49,7 +48,6 @@ export async function listWorkspacesForUser(
         row.ownerUserId === params.userId
           ? "owner"
           : ((row.memberPermission as WorkspacePermission | null) ?? "read"),
-      dataCollectionScope: row.dataCollectionScope,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     })),
