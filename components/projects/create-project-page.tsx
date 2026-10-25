@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2Icon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -18,6 +18,21 @@ import { ProjectConfigSummary } from "@/components/projects/config/project-confi
 import { ProjectEntitiesFields } from "@/components/projects/config/project-entities-fields";
 import { ProjectMatchPreview } from "@/components/projects/config/project-match-preview";
 import { ProjectSourcesFields } from "@/components/projects/config/project-sources-fields";
+import {
+  ProjectConfigLiveSummary,
+  type ProjectConfigSection,
+} from "@/components/projects/config/project-config-live-summary";
+import {
+  CreateProjectCaseCard,
+  CreateProjectStepNav,
+  CreateProjectStepProgress,
+  type CreateProjectStep,
+} from "@/components/projects/create-project-steps";
+import {
+  PROJECT_FORM_COLUMNS,
+  ProjectFormActionBar,
+  ProjectFormPage,
+} from "@/components/projects/project-form-layout";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { fetchProjects, projectsQueryKey } from "@/hooks/use-project-route-context";
@@ -43,15 +58,15 @@ import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
 
 type FormValues = CreateProjectWithConfigInput;
 
-const STEPS = [
-  "Kiểu case",
-  "Thông tin chung",
-  "Nguồn",
-  "Đối tượng theo dõi",
-  "Khía cạnh",
-  "Cảnh báo & báo cáo",
-  "Xem lại",
-] as const;
+const STEPS: readonly CreateProjectStep[] = [
+  { label: "Kiểu case", hint: "Tình huống cần theo dõi" },
+  { label: "Thông tin chung", hint: "Tên và mô tả project" },
+  { label: "Nguồn", hint: "Group, page sẽ nghe" },
+  { label: "Đối tượng theo dõi", hint: "Tên, alias, đối thủ" },
+  { label: "Khía cạnh", hint: "Đo cảm xúc theo chủ đề" },
+  { label: "Cảnh báo & báo cáo", hint: "Ngưỡng và người nhận" },
+  { label: "Xem lại", hint: "Kiểm tra trước khi tạo" },
+];
 
 const STEP_FIELDS: Record<number, FieldPath<FormValues>[]> = {
   1: ["name", "description"],
@@ -67,6 +82,15 @@ const STEP_OF_FIELD: Record<string, number> = {
   sourceIds: 2,
   entities: 3,
   caseConfig: 3,
+  aspects: 4,
+  alerts: 5,
+};
+
+const STEP_OF_SECTION: Record<ProjectConfigSection, number> = {
+  case: 0,
+  info: 1,
+  sources: 2,
+  entities: 3,
   aspects: 4,
   alerts: 5,
 };
@@ -197,143 +221,162 @@ export function CreateProjectPage({
     return null;
   }
 
-  return (
-    <div
-      ref={topRef}
-      className="mx-auto flex w-full max-w-4xl scroll-mt-16 flex-col gap-4 px-4 py-5 md:px-7"
-    >
-      <div>
-        <h1 className="font-heading text-xl font-bold">Tạo project</h1>
-        <p className="text-[13px] text-muted-foreground">
-          Project áp cấu hình lên kho dữ liệu dùng chung, không thu thập lại dữ liệu.
-        </p>
-      </div>
-      <ol className="flex flex-wrap gap-2">
-        {STEPS.map((label, index) => (
-          <li key={label}>
-            <button
-              type="button"
-              disabled={index > step}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full px-3 py-1 text-[13px]",
-                index === step
-                  ? "bg-primary text-primary-foreground"
-                  : index < step
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground",
-              )}
-              onClick={() => {
-                if (index < step) setStep(index);
-              }}
-            >
-              <span className="grid size-5 place-items-center rounded-full bg-white/20 text-xs font-semibold">
-                {index < step ? "✓" : index + 1}
-              </span>
-              {label}
-            </button>
-          </li>
-        ))}
-      </ol>
+  const caseLabel = projectCase ? t(`cases.${projectCase}`) : null;
+  const nextStep = STEPS[step + 1];
 
-      <form
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-        }}
-      >
-        <section className="rounded-[22px] border-[1.5px] border-border bg-card px-4 py-4 md:px-5">
-          {step === 0 ? (
-            <CaseStep
-              selected={projectCase}
-              caseLabel={(value) => t(`cases.${value}`)}
-              groupLabel={(key) => t(key)}
-              onChoose={chooseCase}
+  return (
+    <ProjectFormPage
+      ref={topRef}
+      title="Tạo project"
+      description="Project áp cấu hình lên kho dữ liệu dùng chung, không thu thập lại dữ liệu."
+    >
+      <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-border bg-background/90 px-4 py-2.5 backdrop-blur md:-mx-7 md:px-7 lg:hidden">
+        <CreateProjectStepProgress steps={STEPS} current={step} />
+      </div>
+
+      <div className={cn("grid flex-1 items-start gap-6", PROJECT_FORM_COLUMNS)}>
+        <aside className="sticky top-5 hidden flex-col gap-4 lg:flex">
+          <CreateProjectStepNav
+            steps={STEPS}
+            current={step}
+            onSelect={(index) => {
+              if (index < step) setStep(index);
+            }}
+          />
+          {projectCase && caseLabel && step > 0 ? (
+            <CreateProjectCaseCard
+              icon={PROJECT_CASE_ICONS[projectCase]}
+              label={caseLabel}
+              onChange={() => setStep(0)}
             />
           ) : null}
+        </aside>
 
-          {step === 1 ? (
-            <StepBody title="Thông tin chung">
-              <div className="flex flex-col gap-3">
-                <FormFieldText
-                  control={form.control}
-                  name="name"
-                  label="Tên project"
-                  placeholder="VD: Dự án La Pura"
-                />
-                <FormFieldTextarea
-                  control={form.control}
-                  name="description"
-                  label="Mô tả"
-                  placeholder="Mục tiêu, ai sẽ dùng dashboard này…"
-                />
-              </div>
-            </StepBody>
-          ) : null}
+        <form
+          noValidate
+          className="min-w-0"
+          onSubmit={(event) => {
+            event.preventDefault();
+          }}
+        >
+          <section className="rounded-[22px] border-[1.5px] border-border bg-card px-4 py-5 md:px-6">
+            <p className="mb-1 text-xs font-medium text-muted-foreground">
+              Bước {step + 1}/{STEPS.length}
+            </p>
+            {step === 0 ? (
+              <CaseStep
+                selected={projectCase}
+                caseLabel={(value) => t(`cases.${value}`)}
+                groupLabel={(key) => t(key)}
+                onChoose={chooseCase}
+              />
+            ) : null}
 
-          {step === 3 && projectCase ? (
-            <StepBody
-              title={ENTITY_STEP_TITLE[projectCase]}
-              description="Mỗi mục sinh một truy vấn: nội dung nhắc tới tên hoặc tên gọi khác sẽ được tính là mention."
-            >
-              <div className="flex flex-col gap-6">
-                <ProjectEntitiesFields form={form} projectCase={projectCase} />
-                <ProjectMatchPreview form={form} workspaceId={workspace.id} />
-                <div className="flex flex-col gap-2">
-                  <h3 className="text-sm font-semibold">Thông tin của case</h3>
-                  <ProjectCaseConfigFields form={form} projectCase={projectCase} />
+            {step === 1 ? (
+              <StepBody title="Thông tin chung">
+                <div className="flex flex-col gap-3">
+                  <FormFieldText
+                    control={form.control}
+                    name="name"
+                    label="Tên project"
+                    placeholder="VD: Dự án La Pura"
+                  />
+                  <FormFieldTextarea
+                    control={form.control}
+                    name="description"
+                    label="Mô tả"
+                    placeholder="Mục tiêu, ai sẽ dùng dashboard này…"
+                  />
                 </div>
-              </div>
-            </StepBody>
-          ) : null}
+              </StepBody>
+            ) : null}
 
-          {step === 4 && projectCase ? (
-            <StepBody
-              title="Khía cạnh"
-              description="Cảm xúc được đo riêng theo từng khía cạnh. Bộ mẫu theo case, sửa được."
-            >
-              <ProjectAspectsFields form={form} projectCase={projectCase} />
-            </StepBody>
-          ) : null}
+            {step === 3 && projectCase ? (
+              <StepBody
+                title={ENTITY_STEP_TITLE[projectCase]}
+                description="Mỗi mục sinh một truy vấn: nội dung nhắc tới tên hoặc tên gọi khác sẽ được tính là mention."
+              >
+                <div className="flex flex-col gap-6">
+                  <ProjectEntitiesFields form={form} projectCase={projectCase} />
+                  <ProjectMatchPreview form={form} workspaceId={workspace.id} />
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-sm font-semibold">Thông tin của case</h3>
+                    <ProjectCaseConfigFields form={form} projectCase={projectCase} />
+                  </div>
+                </div>
+              </StepBody>
+            ) : null}
 
-          {step === 2 ? (
-            <StepBody
-              title="Nguồn theo dõi"
-              description="Facebook không cho tìm theo từ khóa, nên project chỉ nghe các group, page đã chọn."
-            >
-              <ProjectSourcesFields form={form} workspaceId={workspace.id} />
-            </StepBody>
-          ) : null}
+            {step === 4 && projectCase ? (
+              <StepBody
+                title="Khía cạnh"
+                description="Cảm xúc được đo riêng theo từng khía cạnh. Bộ mẫu theo case, sửa được."
+              >
+                <ProjectAspectsFields form={form} projectCase={projectCase} />
+              </StepBody>
+            ) : null}
 
-          {step === 5 && projectCase ? (
-            <StepBody
-              title="Cảnh báo & báo cáo"
-              description="Quy tắc gợi ý theo kiểu case. Bỏ chọn hoặc chỉnh ngưỡng theo nhu cầu."
-            >
-              <ProjectAlertsFields form={form} projectCase={projectCase} />
-            </StepBody>
-          ) : null}
+            {step === 2 ? (
+              <StepBody
+                title="Nguồn theo dõi"
+                description="Facebook không cho tìm theo từ khóa, nên project chỉ nghe các group, page đã chọn."
+              >
+                <ProjectSourcesFields form={form} workspaceId={workspace.id} />
+              </StepBody>
+            ) : null}
 
-          {step === 6 && projectCase ? (
-            <StepBody title="Xem lại" description="Kiểm tra cấu hình trước khi tạo project.">
-              <ReviewStep form={form} workspaceId={workspace.id} caseLabel={t(`cases.${projectCase}`)} />
-            </StepBody>
-          ) : null}
-        </section>
-      </form>
+            {step === 5 && projectCase ? (
+              <StepBody
+                title="Cảnh báo & báo cáo"
+                description="Quy tắc gợi ý theo kiểu case. Bỏ chọn hoặc chỉnh ngưỡng theo nhu cầu."
+              >
+                <ProjectAlertsFields form={form} projectCase={projectCase} />
+              </StepBody>
+            ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button variant="outline" nativeButton={false} render={<Link href={projectsHref} />}>
+            {step === 6 && projectCase ? (
+              <StepBody title="Xem lại" description="Kiểm tra cấu hình trước khi tạo project.">
+                <ReviewStep form={form} workspaceId={workspace.id} caseLabel={t(`cases.${projectCase}`)} />
+              </StepBody>
+            ) : null}
+          </section>
+        </form>
+
+        <aside className="sticky top-5 hidden 2xl:block">
+          <ProjectConfigLiveSummary
+            form={form}
+            workspaceId={workspace.id}
+            caseLabel={caseLabel}
+            sectionState={(section) => {
+              const index = STEP_OF_SECTION[section];
+              return index < step ? "edit" : index > step ? "upcoming" : "plain";
+            }}
+            onEdit={(section) => setStep(STEP_OF_SECTION[section])}
+          />
+        </aside>
+      </div>
+
+      <ProjectFormActionBar>
+        <Button variant="ghost" nativeButton={false} render={<Link href={projectsHref} />}>
           Hủy
         </Button>
         <div className="flex gap-2">
           {step > 0 ? (
-            <Button type="button" variant="outline" onClick={() => setStep((current) => current - 1)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStep((current) => current - 1)}
+            >
+              <ArrowLeftIcon />
               Quay lại
             </Button>
           ) : null}
-          {step > 0 && step < STEPS.length - 1 ? (
+          {step > 0 && nextStep ? (
             <Button type="button" onClick={() => void goNext()}>
-              Tiếp tục
+              <span>
+                Tiếp tục<span className="hidden sm:inline">: {nextStep.label}</span>
+              </span>
+              <ArrowRightIcon />
             </Button>
           ) : null}
           {step === STEPS.length - 1 ? (
@@ -347,8 +390,8 @@ export function CreateProjectPage({
             </Button>
           ) : null}
         </div>
-      </div>
-    </div>
+      </ProjectFormActionBar>
+    </ProjectFormPage>
   );
 }
 
@@ -362,11 +405,11 @@ function StepBody({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-base font-semibold">{title}</h2>
+    <div className="flex flex-col gap-5">
+      <div className="border-b border-border pb-4">
+        <h2 className="text-lg font-semibold">{title}</h2>
         {description ? (
-          <p className="text-[13px] text-muted-foreground">{description}</p>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {children}
@@ -393,7 +436,7 @@ function CaseStep({
       {PROJECT_CASE_GROUPS.map((group) => (
         <div key={group.labelKey}>
           <h3 className="mb-2 text-sm font-semibold">{groupLabel(group.labelKey)}</h3>
-          <div className="grid gap-2 md:grid-cols-2">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-2.5">
             {group.cases.map((value) => {
               const ready = isAvailableProjectCase(value);
               const catalog = PROJECT_CASE_CATALOG[value];
@@ -404,8 +447,10 @@ function CaseStep({
                   disabled={!ready}
                   aria-pressed={selected === value}
                   className={cn(
-                    "rounded-2xl border px-3 py-3 text-left",
-                    selected === value ? "border-primary bg-primary/5" : "border-border",
+                    "rounded-2xl border px-3.5 py-3 text-left transition-colors",
+                    selected === value
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50 hover:bg-muted/40",
                     !ready && "cursor-not-allowed opacity-55",
                   )}
                   onClick={() => {

@@ -2,8 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2Icon } from "lucide-react";
+import { Loader2Icon, Trash2Icon } from "lucide-react";
 import { useT } from "next-i18next/client";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -25,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { ProjectConfigEditor } from "@/components/projects/config/project-config-editor";
+import { ProjectDeleteDialog } from "@/components/projects/project-delete-dialog";
 import {
   projectsQueryKey,
   useProjectRouteContext,
@@ -53,13 +55,15 @@ export function ProjectSettingsPage({
   workspaceIndexParam,
   projectIndexParam,
 }: ProjectSettingsPageProps) {
-  const { workspace, project } = useProjectRouteContext(
+  const { workspace, workspaceIndex, project } = useProjectRouteContext(
     workspaceIndexParam,
     projectIndexParam,
   );
   const queryClient = useQueryClient();
   const { t } = useT("dashboard");
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const form = useForm<ProjectSettingsValues>({
     resolver: zodResolver(updateProjectSchema),
     defaultValues: {
@@ -122,6 +126,29 @@ export function ProjectSettingsPage({
         caseLabel={t(`cases.${project.case}`)}
         canEdit={canEdit}
         onEditInfo={() => setEditing(true)}
+        dangerZone={
+          canEdit ? (
+            <section className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] border-[1.5px] border-destructive/40 px-4 py-4 md:px-6">
+              <div>
+                <h2 className="text-base font-semibold text-destructive">Xóa project</h2>
+                <p className="text-[13px] text-muted-foreground">
+                  Xóa cấu hình và toàn bộ dữ liệu đã khớp của project. Không thể hoàn tác.
+                </p>
+              </div>
+              <Button type="button" variant="destructive" onClick={() => setDeleting(true)}>
+                <Trash2Icon />
+                Xóa project
+              </Button>
+            </section>
+          ) : null
+        }
+      />
+      <ProjectDeleteDialog
+        open={deleting}
+        onOpenChange={setDeleting}
+        workspaceId={workspace.id}
+        project={project}
+        onDeleted={() => router.push(`/w/${workspaceIndex}/projects`)}
       />
       <Dialog open={editing} onOpenChange={setEditing}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">

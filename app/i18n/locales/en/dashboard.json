@@ -148,7 +148,10 @@
     "alerts": "Alerts",
     "sources": "Sources",
     "chartLabel": "Mentions per day",
-    "open": "Open dashboard"
+    "open": "Open dashboard",
+    "menu": "Project actions",
+    "settings": "Settings",
+    "delete": "Delete project"
   },
   "appName": "BNB Listeners"
 }
