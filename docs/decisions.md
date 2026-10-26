@@ -523,3 +523,14 @@ ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên
   - Hôm nay đọc từ L4 như mọi ngày, không đọc lai L3.
 - **Báo cáo AI theo kỳ** (`ai_reports`, khóa `(project_id, period_type, period_start)`): sinh sau khi kỳ đóng có độ trễ 24–48 giờ; số liệu đóng băng trong `metrics_snapshot`, sinh lại tạo phiên bản mới. `REPORT_SCHEDULES` thêm `yearly`.
 - Chưa dựng lại `dim_dates`: tuần, tháng, quý, năm dùng `date_trunc`. Thêm khi cần so theo âm lịch hoặc Tết (`lunar_month`, `is_holiday`).
+
+## D29 — Báo cáo AI theo kỳ (2026-10-26)
+
+- **Không duyệt, không email (tạm thời).** Báo cáo là của AI, ghi rõ "tạo tự động", không có trạng thái nháp/đã duyệt. Chưa gửi email; trang Báo cáo AI liệt kê các báo cáo cũ để chọn xem.
+- **Kỳ theo `reportSchedule` của project:** `daily` → báo cáo ngày (kỳ `day`, so với ngày trước), `weekly` → tuần (thứ 2–chủ nhật), `monthly` → tháng, `yearly` → năm; `none` không tự tạo. Kỳ `day` thêm vào kỳ lịch (D28). Người dùng tạo được báo cáo cho kỳ bất kỳ, kể cả kỳ đang chạy.
+- **Tạo ngay khi kỳ đóng:** job QStash `generate-due-reports` chạy mỗi giờ, tạo báo cáo của kỳ vừa đóng ở lần chạy đầu tiên sau đó, không chờ 24 giờ. Dữ liệu của mấy giờ cuối kỳ có thể chưa thu thập hay Enrich xong; số liệu đóng băng trong snapshot, "Tạo lại" cập nhật khi dữ liệu trễ đã về.
+- **Một báo cáo mỗi `(project_id, period_type, period_start)`**; tạo lại ghi đè, giữ `generated_at` mới.
+- **Nội dung** theo demo: tóm tắt điều hành; số liệu chính do hệ thống tính từ snapshot (KPI L4 và số liệu riêng theo case), AI không viết số này; điểm nổi bật, rủi ro (mỗi mục trích 1–3 đề cập), khuyến nghị.
+- **Cách sinh:** snapshot số liệu kỳ và kỳ so sánh (tổng quan, cảm xúc, kênh, chủ đề, số liệu case) cùng khoảng 100–150 đề cập mẫu (tương tác cao, tiêu cực, theo chủ đề và khía cạnh), mỗi đề cập gắn nhãn `[M1]…`. LLM (`REPORT_CONFIG.model`) viết từng phần bằng structured output và trích theo nhãn; hệ thống đổi nhãn sang `mention_id`, bỏ nhãn sai. Mọi con số trong lời văn phải có trong snapshot; sai thì thử lại một lần, vẫn sai thì lưu kèm cảnh báo. Đề cập được trích lưu kèm đoạn trích để báo cáo đọc được dù đề cập đổi sau đó.
+- **MCP:** `list_reports`, `get_report` (scope `reports:read`).
+- **Chia PR:** 5a bảng, bộ sinh, script, MCP; 5b trang Báo cáo AI và AI tóm tắt ở Tổng quan; 5c job `generate-due-reports`.

@@ -45,6 +45,17 @@ describe("resolvePeriodDates", () => {
     assert.equal(march.previousEnd, "2026-03-01");
   });
 
+  test("day: closed yesterday against the day before, today still running", () => {
+    const yesterday = resolvePeriodDates({ type: "day", date: "2026-10-25" }, "2026-10-26");
+    assert.equal(yesterday.start, "2026-10-25");
+    assert.equal(yesterday.end, "2026-10-26");
+    assert.equal(yesterday.days, 1);
+    assert.equal(yesterday.previousStart, "2026-10-24");
+    assert.equal(yesterday.previousEnd, "2026-10-25");
+    assert.equal(yesterday.complete, true);
+    assert.equal(resolvePeriodDates({ type: "day" }, "2026-10-26").complete, false);
+  });
+
   test("week runs Monday to Sunday", () => {
     const dates = resolvePeriodDates({ type: "week", date: "2026-10-18" }, "2026-10-26");
     assert.equal(dates.start, "2026-10-12");

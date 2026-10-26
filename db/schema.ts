@@ -813,6 +813,50 @@ export const alerts = pgTable(
 export type Alert = typeof alerts.$inferSelect;
 export type NewAlert = typeof alerts.$inferInsert;
 
+/**
+ * AI report of one project and period (D29): numbers frozen at generation, sections written
+ * by the model with mention citations. Generating again overwrites the row.
+ */
+export const aiReports = pgTable(
+  "ai_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom().notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** `rolling`, `custom` or a calendar type (`day`, `week`, `month`, `quarter`, `year`). */
+    periodType: text("period_type").notNull(),
+    /** First and last day of the period in the project's timezone. */
+    periodStart: date("period_start").notNull(),
+    periodEnd: date("period_end").notNull(),
+    /** The period had ended when the report was generated. */
+    complete: boolean("complete").notNull(),
+    /** Snapshot of the metrics the report was written from (`ReportMetrics`). */
+    metrics: jsonb("metrics").$type<Record<string, unknown>>().notNull(),
+    /** Summary, highlights, risks and recommendations (`ReportSections`). */
+    sections: jsonb("sections").$type<Record<string, unknown>>().notNull(),
+    /** Cited mentions with an excerpt, so the report reads the same later (`ReportCitation[]`). */
+    citations: jsonb("citations").$type<Record<string, unknown>[]>().notNull().default([]),
+    /** Checks that failed, e.g. a number not found in the snapshot. */
+    warnings: jsonb("warnings").$type<string[]>().notNull().default([]),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    costUsd: real("cost_usd").notNull().default(0),
+    /** `schedule`, `user`, `script` or `mcp`. */
+    trigger: text("trigger").notNull(),
+    generatedAt: timestamp("generated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("ai_reports_period_key").on(table.projectId, table.periodType, table.periodStart),
+  ],
+);
+
+export type AiReport = typeof aiReports.$inferSelect;
+export type NewAiReport = typeof aiReports.$inferInsert;
+
 // ---------------------------------------------------------------------------
 // L3 — Analysis. See .ai/database-schema.md and docs/decisions.md D11.
 // ---------------------------------------------------------------------------

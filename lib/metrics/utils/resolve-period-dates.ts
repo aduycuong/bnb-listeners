@@ -1,6 +1,6 @@
 import { InvalidInputError } from "@/lib/common/service-errors";
 
-import { METRICS_CONFIG } from "../config";
+import { METRICS_CONFIG, REPORT_PERIOD_TYPES } from "../config";
 import type { ReportPeriod, ReportPeriodInfo } from "../types";
 
 /** Days of a period as in `ReportPeriodInfo`, but `end` and `previousEnd` are exclusive. */
@@ -30,10 +30,11 @@ function minKey(a: string, b: string) {
 }
 
 /** First day of the calendar period holding `dateKey`, and the first day after it. */
-function calendarBounds(type: "week" | "month" | "quarter" | "year", dateKey: string) {
+function calendarBounds(type: (typeof REPORT_PERIOD_TYPES)[number], dateKey: string) {
   const date = toDate(dateKey);
   const year = date.getUTCFullYear();
   const month = date.getUTCMonth();
+  if (type === "day") return { start: dateKey, next: addDays(dateKey, 1) };
   if (type === "week") {
     const start = addDays(dateKey, -((date.getUTCDay() + 6) % 7));
     return { start, next: addDays(start, 7) };
