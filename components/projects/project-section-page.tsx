@@ -7,6 +7,8 @@ import { ProjectCaseReport } from "@/components/metrics/project-case-report";
 import { ProjectChannelsReport } from "@/components/metrics/project-channels-report";
 import { ProjectSentimentReport } from "@/components/metrics/project-sentiment-report";
 import { ProjectPendingDashboard } from "@/components/projects/project-pending-dashboard";
+import { ProjectReportPage } from "@/components/reports/project-report-page";
+import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
 import type { ProjectPageBannerProps } from "@/components/projects/project-page-banner";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import {
@@ -77,6 +79,16 @@ export function ProjectSectionPage({
   }
   if (section === "case" && project.case === "brand") {
     return <BrandCaseReport scope={scope} projectName={project.name} banner={banner} />;
+  }
+  if (section === "report") {
+    return (
+      <ProjectReportPage
+        scope={scope}
+        projectName={project.name}
+        banner={banner}
+        canGenerate={hasMinWorkspacePermission(workspace.permission, "edit")}
+      />
+    );
   }
   if (section === "alerts") {
     return (

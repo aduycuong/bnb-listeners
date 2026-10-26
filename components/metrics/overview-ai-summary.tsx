@@ -1,65 +1,93 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { DemoPanel } from "@/components/projects/demo/demo-ui";
+import { formatGeneratedAt } from "@/components/reports/report-view";
+import { useReport, useReports } from "@/components/reports/use-reports-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getAquaCase, type AquaCase } from "@/lib/projects/aqua-demo";
-import type { ProjectCase } from "@/lib/projects/project-cases";
+import { formatReportPeriod } from "@/lib/reports/utils/format-report-period";
+
+import type { MetricsApiScope } from "./use-metrics-api";
 
 const CHIPS = ["Vì sao tiêu cực tăng?", "Đề xuất hành động"];
+const HIGHLIGHTS = 3;
 
-const DEMO_NOTE =
-  "(Bản demo: khi kết nối dữ liệu thật, AI trả lời dựa trên toàn bộ đề cập.)";
-
-function sampleAnswer(question: string, demo: AquaCase | null) {
-  if (!demo) return "";
-  if (question.toLowerCase().includes("hành động")) {
-    return demo.report.recs[0] ?? "";
-  }
-  const insight = demo.ai[1];
-  return insight ? `${insight.headline} ${insight.body}` : "";
-}
-
-/** Static AI summary from the approved demo. Real answers come later. */
-export function OverviewAiSummary({ projectCase }: { projectCase: ProjectCase }) {
-  const demo = getAquaCase(projectCase);
-  const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
-
-  function ask(nextQuestion: string) {
-    const trimmed = nextQuestion.trim();
-    if (!trimmed) return;
-    setQuestion(trimmed);
-    setAnswer(sampleAnswer(trimmed, demo));
-  }
+/**
+ * Highlights of the project's latest AI report (D29). The question box stays until the chat
+ * widget takes it over.
+ */
+export function OverviewAiSummary({
+  scope,
+  reportHref,
+}: {
+  scope: MetricsApiScope;
+  reportHref: string;
+}) {
+  const reports = useReports(scope);
+  const latest = reports.data?.items[0] ?? null;
+  const report = useReport(scope, latest?.id ?? null);
+  const [asked, setAsked] = useState(false);
+  const highlights = report.data?.sections.highlights.slice(0, HIGHLIGHTS) ?? [];
 
   return (
-    <DemoPanel title="AI tóm tắt" span="s4" scope="common" invert className="h-full">
-      <ul className="flex flex-col gap-3">
-        {demo?.ai.map((item) => (
-          <li key={item.headline} className="flex gap-2.5 text-[13.5px] leading-[1.55]">
-            <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-white/12 text-[13px]">
-              {item.emoji}
-            </span>
-            <span>
-              <b className="font-semibold text-white">{item.headline}</b> {item.body}
-            </span>
-          </li>
-        ))}
-      </ul>
+    <DemoPanel
+      title="AI tóm tắt"
+      span="s4"
+      scope="common"
+      invert
+      className="h-full"
+      note={
+        latest ? (
+          <span className="text-[#BFD6EE]">
+            {formatReportPeriod(latest)} · tạo {formatGeneratedAt(latest.generatedAt)} ·{" "}
+            <Link href={`${reportHref}?report=${latest.id}`} className="font-semibold text-white underline">
+              Xem báo cáo
+            </Link>
+          </span>
+        ) : undefined
+      }
+    >
+      {reports.isPending || (latest && report.isPending) ? (
+        <p className="text-[13px] text-[#CFE3F7]">Đang tải…</p>
+      ) : latest && report.data ? (
+        highlights.length > 0 ? (
+          <ul className="flex flex-col gap-3">
+            {highlights.map((item, index) => (
+              <li key={item.title} className="flex gap-2.5 text-[13.5px] leading-[1.55]">
+                <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-white/12 text-[12px] font-semibold">
+                  {index + 1}
+                </span>
+                <span>
+                  <b className="font-semibold text-white">{item.title}</b> {item.body}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[13.5px] leading-[1.55]">{report.data.sections.summary}</p>
+        )
+      ) : (
+        <p className="text-[13px] leading-relaxed text-[#CFE3F7]">
+          Chưa có báo cáo AI. Báo cáo tự tạo khi hết mỗi kỳ theo lịch trong cài đặt project, hoặc
+          tạo ở{" "}
+          <Link href={reportHref} className="font-semibold text-white underline">
+            Báo cáo AI
+          </Link>
+          .
+        </p>
+      )}
       <form
         className="mt-auto flex flex-col gap-2 pt-3.5"
         onSubmit={(event) => {
           event.preventDefault();
-          ask(question);
+          setAsked(true);
         }}
       >
         <div className="flex items-center gap-2 rounded-full border border-white/15 bg-white/8 py-1 pr-1 pl-4">
           <Input
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
             placeholder="Hỏi AI về dữ liệu này…"
             aria-label="Câu hỏi cho AI"
             className="h-8 border-0 bg-transparent px-0 text-[13px] text-white shadow-none placeholder:text-[#8FB2D6] focus-visible:border-0 focus-visible:ring-0"
@@ -78,20 +106,15 @@ export function OverviewAiSummary({ projectCase }: { projectCase: ProjectCase })
               type="button"
               variant="ghost"
               className="h-7 rounded-full bg-white/8 px-2.5 text-[12px] font-medium text-[#CFE3F7] hover:bg-white/12 hover:text-white"
-              onClick={() => ask(chip)}
+              onClick={() => setAsked(true)}
             >
               {chip}
             </Button>
           ))}
         </div>
-        {answer || question ? (
-          <p className="text-[12.5px] leading-relaxed text-[#CFE3F7]">
-            {answer ? (
-              <>
-                <b className="text-white">Trả lời mẫu:</b> {answer}{" "}
-              </>
-            ) : null}
-            <i>{DEMO_NOTE}</i>
+        {asked ? (
+          <p className="text-[12.5px] text-[#CFE3F7]">
+            <i>Hỏi đáp với AI sẽ mở trong khung chat, đang làm.</i>
           </p>
         ) : null}
       </form>

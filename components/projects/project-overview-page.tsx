@@ -28,6 +28,7 @@ export function ProjectOverviewPage({
       projectName={project.name}
       projectCase={project.case}
       caseHref={getProjectNavHref(workspaceIndex, projectIndex, "case")}
+      reportHref={getProjectNavHref(workspaceIndex, projectIndex, "report")}
       banner={{
         name: project.name,
         description: project.description,
