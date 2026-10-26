@@ -282,8 +282,8 @@ Xem [D27](decisions.md#d27--mcp-và-scope-của-api-key-2026-10-26) và [D28](de
 - [x] Tool `list_reports`, `get_report`
 
 5b — giao diện (2–3 ngày)
-- [ ] Trang Báo cáo AI cho project thật: chọn báo cáo theo kỳ, danh sách báo cáo cũ, trích dẫn mở đề cập, tạo lại, tạo cho kỳ bất kỳ
-- [ ] AI tóm tắt ở Tổng quan đọc báo cáo mới nhất
+- [x] Trang Báo cáo AI cho project thật: báo cáo đang chọn (`?report=`), danh sách báo cáo đã tạo bên dưới, dẫn chứng mở rộng được kèm link bài gốc, tạo lại, tạo cho kỳ lịch bất kỳ (quyền `edit`); `GET/POST /api/reports`, `GET /api/reports/[id]`
+- [x] AI tóm tắt ở Tổng quan hiện điểm nổi bật của báo cáo mới nhất, link sang báo cáo; ô hỏi AI giữ chỗ cho khung chat
 
 5c — lịch (1 ngày)
 - [ ] Job `generate-due-reports` mỗi giờ theo `reportSchedule`, schedule QStash

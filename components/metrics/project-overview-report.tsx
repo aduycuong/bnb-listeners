@@ -28,6 +28,7 @@ import {
 import { BrandCasePanels } from "./brand-case-panels";
 import { formatDayLabel, MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
 import { OverviewAiSummary } from "./overview-ai-summary";
+import { buildKpis, countKpi, decimal, pointKpi } from "./overview-kpis";
 import { ProjectPricePanels } from "./project-price-panels";
 import {
   useBrandCaseMetrics,
@@ -49,82 +50,6 @@ const GLOSSARY = [
   ["Câu hỏi của người mua", "Số câu hỏi AI trích từ mention của người đang cân nhắc mua hoặc thuê."],
   ["Dùng chung / Riêng case", "Nhãn ở góc mỗi khung cho biết khung đó có trong mọi case hay chỉ có ở case đang chọn."],
 ];
-
-function decimal(value: number | string) {
-  return String(value).replace(".", ",");
-}
-
-/** Change in % for counts; "Chưa có kỳ trước" when the period before is empty. */
-function countKpi(
-  label: string,
-  value: MetricsValue,
-  tip: string,
-  format: (value: number) => string = formatCount,
-): AquaKpi {
-  const growth = growthPercent(value.current, value.previous);
-  return {
-    label,
-    value: format(value.current),
-    delta: growth === null ? "Chưa có kỳ trước" : `${decimal(formatSigned(growth))}%`,
-    good: growth === null || growth >= 0,
-    tip,
-  };
-}
-
-/** Change in points for scores and shares; `higherIsBetter` colours the change. */
-function pointKpi(
-  label: string,
-  value: MetricsValue<number | null>,
-  tip: string,
-  { suffix = "", higherIsBetter = true, signed = false } = {},
-): AquaKpi {
-  const show = (number: number) => decimal(signed ? formatSigned(number) : number) + suffix;
-  const change =
-    value.current === null || value.previous === null
-      ? null
-      : Math.round((value.current - value.previous) * 10) / 10;
-  return {
-    label,
-    value: value.current === null ? "—" : show(value.current),
-    delta:
-      change === null
-        ? "Chưa có kỳ trước"
-        : `${decimal(formatSigned(change))} điểm`,
-    good: change === null || (higherIsBetter ? change >= 0 : change <= 0),
-    tip,
-  };
-}
-
-function buildKpis(data: OverviewMetricsResult): AquaKpi[] {
-  const kpis = [
-    countKpi("Lượt đề cập", data.mentions, "Bài đăng, bình luận, trả lời có liên quan"),
-    countKpi("Tương tác", data.engagement, "Tổng lượt thích, bình luận, chia sẻ", formatShort),
-    countKpi("Tác giả", data.uniqueAuthors, "Số người khác nhau viết đề cập"),
-    pointKpi("Chỉ số cảm xúc (NSS)", data.nss, "(Tích cực − Tiêu cực) / Tổng đề cập đã phân loại × 100", {
-      signed: true,
-    }),
-  ];
-  kpis.push(
-    data.shareOfVoice
-      ? pointKpi("Share of Voice", data.shareOfVoice, "Tỷ lệ đề cập của đối tượng chính so với đối thủ", {
-          suffix: "%",
-        })
-      : {
-          label: "Share of Voice",
-          value: "—",
-          delta: "Chưa có đối thủ",
-          good: true,
-          tip: "Thêm đối thủ trong cấu hình project để so sánh",
-        },
-  );
-  kpis.push(
-    pointKpi("Tỷ lệ tiêu cực", data.negativeShare, "Phần trăm đề cập tiêu cực trên tổng đề cập đã phân loại", {
-      suffix: "%",
-      higherIsBetter: false,
-    }),
-  );
-  return kpis;
-}
 
 const PRICE_TIP =
   "Trung vị giá rao bán lại của dự án đang theo dõi, triệu đồng/m². Đã lọc tin trùng và tin lệch.";
@@ -200,6 +125,7 @@ export function ProjectOverviewReport({
   banner,
   mentionsHref,
   caseHref,
+  reportHref,
 }: {
   scope: MetricsApiScope;
   projectName: string;
@@ -207,6 +133,7 @@ export function ProjectOverviewReport({
   banner: ProjectPageBannerProps;
   mentionsHref: string;
   caseHref: string;
+  reportHref: string;
 }) {
   const { t } = useT("dashboard");
   const [days, setDays] = useReportPeriodDays();
@@ -271,7 +198,7 @@ export function ProjectOverviewReport({
             <MetricsEmpty>{isPending ? "Đang tải…" : `Chưa có đề cập trong ${days} ngày gần nhất.`}</MetricsEmpty>
           )}
         </DemoPanel>
-        <OverviewAiSummary projectCase={projectCase} />
+        <OverviewAiSummary scope={scope} reportHref={reportHref} />
         <DemoPanel title="Phân bổ cảm xúc" span="s4" scope="common">
           {data && sentimentTotal > 0 ? (
             <>
