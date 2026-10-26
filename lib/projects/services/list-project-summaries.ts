@@ -45,7 +45,7 @@ function shiftDateKey(dateKey: string, days: number) {
 export async function listProjectSummaries(
   params: ListProjectSummariesParams,
 ): Promise<ListProjectSummariesResult> {
-  const periodDays = METRICS_CONFIG.reportPeriodDays[0];
+  const periodDays = METRICS_CONFIG.defaultReportPeriodDays;
 
   const projectRows = await db
     .select()

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 
 import { DonutChart } from "@/components/projects/demo/demo-charts";
 import { DemoGrid, DemoPanel, DemoTable, SentimentPill } from "@/components/projects/demo/demo-ui";
@@ -11,7 +10,7 @@ import {
   type ProjectPageBannerProps,
 } from "@/components/projects/project-page-banner";
 import type { Sentiment } from "@/lib/enrichment/config";
-import { AUTHOR_TIERS, METRICS_CONFIG } from "@/lib/metrics/config";
+import { AUTHOR_TIERS } from "@/lib/metrics/config";
 import {
   AQUA_PAGE_META,
   AQUA_SENTIMENT_LABEL,
@@ -22,6 +21,7 @@ import {
 
 import { MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
 import { useAuthorMetrics, type MetricsApiScope } from "./use-metrics-api";
+import { useReportPeriodDays } from "./use-report-period-days";
 
 const PILL: Record<Sentiment, AquaSentiment> = {
   positive: "pos",
@@ -46,7 +46,7 @@ export function ProjectAuthorsReport({
   mentionsHref: string;
   banner: ProjectPageBannerProps;
 }) {
-  const [days, setDays] = useState<number>(METRICS_CONFIG.reportPeriodDays[0]);
+  const [days, setDays] = useReportPeriodDays();
   const { data, error, isPending, isFetching } = useAuthorMetrics(scope, days);
   const authorTotal = data?.tiers.reduce((sum, tier) => sum + tier.authors, 0) ?? 0;
   const empty = isPending ? "Đang tải…" : `Chưa có đề cập trong ${days} ngày gần nhất.`;

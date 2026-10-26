@@ -31,6 +31,6 @@ export const metricsReportQuerySchema = z
       .number()
       .int()
       .refine((days) => (METRICS_CONFIG.reportPeriodDays as readonly number[]).includes(days))
-      .default(METRICS_CONFIG.reportPeriodDays[0]),
+      .default(METRICS_CONFIG.defaultReportPeriodDays),
   })
   .transform(({ days }) => ({ period: { type: "rolling" as const, days } }));
