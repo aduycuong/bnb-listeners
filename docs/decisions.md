@@ -488,3 +488,25 @@ ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên
   - **Lý do:** project Trần Anh Group (2026-10-26) có 34 đề cập, tất cả vào qua truy vấn của đối thủ Nam Long Group; biểu đồ đề cập theo ngày cũng như KPI đang vẽ thảo luận về đối thủ.
 - **Enrich gán đối tượng chỉ trong các entity Match đã khớp** (`mentions.matched_entity_ids`; đề cập thêm tay không có thì giữ kết quả LLM), và prompt nói rõ vai trò không phải điều kiện để gán (`entities` v8). Trước đó LLM gán bình luận khen Khang Điền (không theo dõi) cho Trần Anh Group vì cùng vai trò "Chủ đầu tư"; chỉ sửa prompt chưa đủ. Đã chạy lại Enrich `entities` cho mọi project.
 - Gỡ `LEGACY_PROJECT_CASES` và `scripts/migrate-project-cases.ts`: DB chỉ còn id case BĐS (kiểm ngày 2026-10-26).
+
+## D27 — MCP và scope của API key (2026-10-26)
+
+- MCP chạy ở `/api/mcp` (Streamable HTTP, stateless), xác thực `Authorization: Bearer <key>` qua Unkey. Chat agent ở repo khác gọi cùng endpoint này. Lớp tool nằm ở `lib/ai-tools/`, dùng chung cho MCP và chat agent; tool chỉ gọi service trong `lib/metrics/`, `lib/mentions/`, `lib/projects/`, không viết SQL riêng.
+- **Key thuộc workspace, có scope và danh sách project**, không làm key theo project. `workspace_api_keys` thêm `scopes` (`reports:read`, `mentions:read`, `projects:write`), `project_ids` (null là mọi project của workspace) và `created_by`.
+  - **Lý do:** MCP tạo project là thao tác cấp workspace, key theo project không làm được; key workspace không giới hạn thì không đưa được cho người chỉ nên đọc một project.
+- Unkey chỉ xác thực và rate limit; quyền đọc từ DB, đổi scope không cần tạo lại key. Mỗi lần gọi kiểm lại quyền của `created_by` trong workspace (`assertWorkspaceAccess`): người rời workspace thì key của họ hết tác dụng. Thao tác ghi ghi nhận là của người đó.
+- Thẻ API key ở workspace settings thêm chọn scope và project. Nhóm menu Dự án thêm mục **Kết nối AI**: URL MCP, các key truy cập được project, tạo key chỉ đọc cho project đang xem, đoạn config mẫu.
+- Bản đầu chỉ Bearer key. claude.ai web và ChatGPT cần OAuth, để sau. Chat widget trong app dùng token ngắn hạn đổi từ phiên đăng nhập, làm khi làm widget.
+- MCP tạo project dùng cùng schema zod và `createProjectWithConfig` với wizard, có `dry_run` để agent cho người dùng xem lại trước khi tạo.
+
+## D28 — Kỳ báo cáo và L4 theo ngày (2026-10-26)
+
+- **Hai loại kỳ:** kỳ cuộn (7/14/30 ngày trọn, tính cả hôm nay) cho dashboard; kỳ lịch (`week` thứ 2–chủ nhật, `month`, `quarter`, `year`) cho báo cáo. Tất cả theo `projects.timezone`. Kỳ so sánh: kỳ liền trước; báo cáo tháng và năm thêm cùng kỳ năm trước. `loadReportWindow(projectId, days)` đổi thành một hàm resolve kỳ trả `{ start, end, previousStart }`; service metrics nhận khoảng ngày thay cho `days`.
+- **`project_metrics_daily`** khóa `(project_id, date_key, entity_id, source_id)`, `date_key` theo timezone project; lưu `mentions`, `posts`, `comments`, `pos`, `neu`, `neg`, `engagement`. **`project_aspect_daily`** khóa `(project_id, date_key, aspect_id, entity_id)`, lưu `mentions`, `pos`, `neu`, `neg`. Mọi kỳ (cuộn, lịch, tùy chọn) là sum trong khoảng `date_key`.
+  - Chỉ lưu số đếm. NSS, tỷ lệ tiêu cực, SoV, điểm trụ cột tính từ tổng lúc đọc; không lấy trung bình tỷ lệ theo ngày.
+  - Đề cập khớp nhiều entity hay nhiều aspect: dòng `entity_id = null` là tổng đề cập của bên mình đã khử trùng (logic `own-mention-sql`, D26), KPI tổng đọc dòng này; dòng theo entity chỉ dùng cho SoV và so sánh. Không cộng các aspect lại thành tổng đề cập.
+  - Số tác giả khác nhau không cộng qua ngày được: vẫn đếm từ L3 theo kỳ. Bản đồ nhiệt giờ × thứ, top tác giả, danh sách mention, chủ đề cũng vẫn đọc L3.
+  - Tương tác gắn vào ngày đăng của mention, lấy số mới nhất lúc tính.
+- **Tính lại theo (project, ngày)**, xóa rồi chèn, idempotent; không dùng hàng đợi `is_stale` từng dòng như `term_digest_daily` cũ. Kích hoạt: sau match/enrich tăng dần (các ngày bị ảnh hưởng, gồm hôm nay), khi sửa nhãn tay, job đêm tính lại 35 ngày gần nhất (comment và tương tác về trễ); đổi `match_signature` hay timezone thì tính lại cả project. Hôm nay đọc từ L4 như mọi ngày, không đọc lai L3.
+- **Báo cáo AI theo kỳ** (`ai_reports`, khóa `(project_id, period_type, period_start)`): sinh sau khi kỳ đóng có độ trễ 24–48 giờ; số liệu đóng băng trong `metrics_snapshot`, sinh lại tạo phiên bản mới. `REPORT_SCHEDULES` thêm `yearly`.
+- Chưa dựng lại `dim_dates`: tuần, tháng, quý, năm dùng `date_trunc`. Thêm khi cần so theo âm lịch hoặc Tết (`lunar_month`, `is_holiday`).

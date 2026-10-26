@@ -14,8 +14,8 @@ L1  Raw store        sources · authors · content_items · engagement_snapshots
                      (+ personas · persona_panels · persona_panel_members for synthetic data)
 L2  Project config   projects · project_entities · project_queries · project_aspects · project_sources · project_enrichers · alert_rules
 L3  Analysis         mentions · item_labels · label_samples · mention_* · term_dictionary · topics · match_judgments
-L4  Aggregates       not built: metrics_hourly / metrics_daily; dashboards read L3 through `lib/metrics/` (D17)
-L5  Outputs          alert_rules · alerts; `insights` and `reports` not built
+L4  Aggregates       not built: metrics_hourly; project_metrics_daily / project_aspect_daily planned (D28); dashboards read L3 through `lib/metrics/` (D17)
+L5  Outputs          alert_rules · alerts; `insights` not built, `ai_reports` planned (D28)
 ```
 
 Layers depend only on the ones below. L3–L5 can be dropped and recomputed from L1 + L2. L1 is shared across workspaces; L2 and up belong to a project. Metric formulas (engagement, NSS, SoV) live in `lib/metrics/`, not in scattered SQL.
