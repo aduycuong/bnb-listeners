@@ -16,7 +16,7 @@ import {
   topics,
 } from "@/db/schema";
 import { db } from "@/lib/db";
-import { loadReportWindow } from "@/lib/metrics/utils/load-report-window";
+import { resolveReportWindow } from "@/lib/metrics/utils/resolve-report-window";
 
 import { MENTION_PAGE_SIZE } from "../schema";
 import type { ListMentionsParams, ListMentionsResult, MentionListItem } from "../types";
@@ -66,9 +66,10 @@ export async function listMentions(params: ListMentionsParams): Promise<ListMent
       ))
     )`);
   }
-  if (params.days) {
-    const window = await loadReportWindow(params.projectId, params.days);
-    filters.push(gte(mentions.publishedAt, window.start));
+  const period = params.period ?? (params.days ? { type: "rolling" as const, days: params.days } : null);
+  if (period) {
+    const window = await resolveReportWindow(params.projectId, period);
+    filters.push(gte(mentions.publishedAt, window.start), lt(mentions.publishedAt, window.end));
   }
   if (params.from) filters.push(gte(mentions.publishedAt, new Date(params.from)));
   if (params.to) filters.push(lt(mentions.publishedAt, new Date(Date.parse(params.to) + DAY_MS)));

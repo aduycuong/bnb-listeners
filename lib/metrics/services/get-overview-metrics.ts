@@ -16,7 +16,7 @@ import {
 import type { MetricsReportParams, OverviewMetricsResult } from "../types";
 import { engagementSql } from "../utils/engagement-sql";
 import { loadDailySentiment } from "../utils/load-daily-sentiment";
-import { loadReportWindow } from "../utils/load-report-window";
+import { periodSql, resolveReportWindow } from "../utils/resolve-report-window";
 
 type PeriodRow = {
   period: "current" | "previous";
@@ -33,24 +33,23 @@ type PeriodRow = {
 
 /**
  * Numbers of the Overview page for real projects: KPIs of the period against the period
- * before, mentions per day and sentiment, mentions per source and top topics. Reads L3
+ * compared (D28), mentions per day and sentiment, mentions per source and top topics. Reads L3
  * (`mentions`) directly until the L4 rollups exist; only relevant mentions count.
  */
 export async function getOverviewMetrics(
   params: MetricsReportParams,
 ): Promise<OverviewMetricsResult> {
-  const window = await loadReportWindow(params.projectId, params.days);
-  const start = sql`${window.start.toISOString()}::timestamptz`;
-  const previousStart = sql`${window.previousStart.toISOString()}::timestamptz`;
+  const window = await resolveReportWindow(params.projectId, params.period);
+  const period = periodSql(window);
   const allScope = sql`m.project_id = ${params.projectId}::uuid and m.is_relevant`;
   const scope = sql`${allScope} and ${ownMentionSql}`;
   const own = ownMentionSql;
-  const inPeriod = sql`m.published_at >= ${start}`;
+  const inPeriod = period.current;
 
   const [{ rows: periodRows }, daily, { rows: sourceRows }, { rows: topicRows }, { rows: entityRows }] =
     await Promise.all([
       db.execute<PeriodRow>(sql`
-        select case when m.published_at >= ${start} then 'current' else 'previous' end as period,
+        select case when ${period.current} then 'current' else 'previous' end as period,
           (count(*) filter (where ${own}))::int as mentions,
           coalesce(sum(${engagementSql(sql`ci`)}) filter (where ${own}), 0)::int as engagement,
           (count(distinct m.author_id) filter (where ${own}))::int as authors,
@@ -69,7 +68,7 @@ export async function getOverviewMetrics(
         from mentions m
         join content_items ci on ci.id = m.content_item_id
         ${effectiveSentimentJoins}
-        where ${allScope} and m.published_at >= ${previousStart}
+        where ${allScope} and ${period.either}
         group by 1
       `),
       loadDailySentiment(params.projectId, window),
@@ -116,7 +115,7 @@ export async function getOverviewMetrics(
   const pick = <T,>(read: (row: PeriodRow) => T) => ({ current: read(current), previous: read(previous) });
 
   return {
-    days: params.days,
+    period: window.info,
     timezone: window.timezone,
     mentions: pick((row) => row.mentions),
     engagement: pick((row) => row.engagement),

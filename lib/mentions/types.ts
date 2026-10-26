@@ -1,5 +1,7 @@
 import type { z } from "zod";
 
+import type { ReportPeriod } from "@/lib/metrics/types";
+
 import type { listMentionsQuerySchema } from "./schema";
 
 export type MentionMatchType = "direct" | "context" | "manual";
@@ -41,7 +43,11 @@ export type MentionListItem = {
   topic: { id: string; name: string } | null;
 };
 
-export type ListMentionsParams = { projectId: string } & z.infer<typeof listMentionsQuerySchema>;
+export type ListMentionsParams = {
+  projectId: string;
+  /** Report period (D28); wins over `days`. Not part of the query string. */
+  period?: ReportPeriod;
+} & z.infer<typeof listMentionsQuerySchema>;
 
 export type ListMentionsResult = {
   items: MentionListItem[];

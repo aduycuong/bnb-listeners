@@ -8,7 +8,7 @@ import {
 import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 
 import type { MetricsDay } from "../types";
-import type { ReportWindow } from "./load-report-window";
+import { periodSql, type ReportWindow } from "./resolve-report-window";
 
 /** Relevant mentions of each day of the period by sentiment; days without mentions are zeros. */
 export async function loadDailySentiment(
@@ -24,7 +24,7 @@ export async function loadDailySentiment(
     from mentions m
     ${effectiveSentimentJoins}
     where m.project_id = ${projectId}::uuid and m.is_relevant and ${ownMentionSql}
-      and m.published_at >= ${window.start.toISOString()}::timestamptz
+      and ${periodSql(window).current}
     group by 1
   `);
   const byDate = new Map(rows.map((row) => [row.date, row]));

@@ -6,6 +6,7 @@ import {
   effectiveSentimentSql,
 } from "@/lib/enrichment/utils/effective-sentiment-sql";
 import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
+import { periodSql, resolveReportWindow } from "@/lib/metrics/utils/resolve-report-window";
 
 import { TOPIC_CONFIG } from "../config";
 import type { TopicReportParams, TopicReportResult } from "../types";
@@ -26,15 +27,15 @@ function percent(part: number, total: number) {
 }
 
 /**
- * Active topics of a project for the Topics report over the last `days`: relevant
- * mentions published in the period, growth against the `days` before, and
+ * Active topics of a project for the Topics report over a period (D28): relevant
+ * mentions published in the period, growth against the period compared, and
  * positive/negative shares of the period. Topics without mentions in either
  * period are left out. Reads `mention_topics` directly until L4 metrics exist.
  * Keywords of the cloud are counted the same way from `mention_terms` (D16/D18).
  */
 export async function getTopicReport(params: TopicReportParams): Promise<TopicReportResult> {
-  const { days } = params;
-  const current = sql`m.published_at >= now() - make_interval(days => ${days})`;
+  const window = await resolveReportWindow(params.projectId, params.period);
+  const { current, either } = periodSql(window);
   const [{ rows }, { rows: keywordRows }] = await Promise.all([
     db.execute<ReportRow>(sql`
       select t.id, t.name,
@@ -45,7 +46,7 @@ export async function getTopicReport(params: TopicReportParams): Promise<TopicRe
       from topics t
       join mention_topics mt on mt.topic_id = t.id and mt.kind = 'topic'
       join mentions m on m.id = mt.mention_id and m.is_relevant and ${ownMentionSql}
-        and m.published_at >= now() - make_interval(days => ${days * 2})
+        and ${either}
       ${effectiveSentimentJoins}
       where t.project_id = ${params.projectId}::uuid and t.kind = 'topic' and t.status = 'active'
       group by t.id
@@ -82,6 +83,6 @@ export async function getTopicReport(params: TopicReportParams): Promise<TopicRe
       mentions: row.mentions,
       negative: percent(row.negative, row.mentions),
     })),
-    days,
+    period: window.info,
   };
 }

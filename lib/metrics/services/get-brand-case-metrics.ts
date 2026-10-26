@@ -13,9 +13,9 @@ import { parseProjectCase } from "@/lib/projects/project-cases";
 import { METRICS_CONFIG } from "../config";
 import { netSentimentScore, reputationIndex, reputationPillarScore } from "../formulas";
 import type { BrandCaseMetricsResult, MetricsReportParams } from "../types";
-import { loadReportWindow } from "../utils/load-report-window";
+import { periodSql, resolveReportWindow } from "../utils/resolve-report-window";
 
-type Period = BrandCaseMetricsResult["period"];
+type Period = BrandCaseMetricsResult["trendPeriod"];
 
 const PERIOD_INTERVAL: Record<Period, string> = {
   week: "1 week",
@@ -63,9 +63,8 @@ export async function getBrandCaseMetrics(
 
   const parsedConfig = brandCaseConfigSchema.safeParse(project.caseConfig);
   const period: Period = parsedConfig.success ? parsedConfig.data.period : "month";
-  const window = await loadReportWindow(params.projectId, params.days);
-  const start = sql`${window.start.toISOString()}::timestamptz`;
-  const previousStart = sql`${window.previousStart.toISOString()}::timestamptz`;
+  const window = await resolveReportWindow(params.projectId, params.period);
+  const inPeriod = periodSql(window);
   const tz = window.timezone;
   const unit = sql.raw(`'${period}'`);
   const step = sql.raw(`interval '${PERIOD_INTERVAL[period]}'`);
@@ -111,7 +110,7 @@ export async function getBrandCaseMetrics(
       from mention_entities me
       join mentions m on m.id = me.mention_id
       where m.project_id = ${params.projectId}::uuid and m.is_relevant
-        and m.published_at >= ${start}
+        and ${inPeriod.current}
       group by me.entity_id
     `),
     db.execute<{ mentions: number }>(sql`
@@ -120,17 +119,17 @@ export async function getBrandCaseMetrics(
       join project_entities pe on pe.id = me.entity_id
       join mentions m on m.id = me.mention_id
       where m.project_id = ${params.projectId}::uuid and m.is_relevant
-        and m.published_at >= ${start}
+        and ${inPeriod.current}
         and pe.role in ('primary', 'product')
     `),
     loadAspectCounts(
       params.projectId,
-      previousStart,
-      sql`case when m.published_at >= ${start} then 'current' else 'previous' end`,
+      inPeriod.either,
+      sql`case when ${inPeriod.current} then 'current' else 'previous' end`,
     ),
     loadAspectCounts(
       params.projectId,
-      trendStart,
+      sql`m.published_at >= ${trendStart}`,
       sql`to_char(date_trunc(${unit}, m.published_at at time zone ${tz}), 'YYYY-MM-DD')`,
     ),
   ]);
@@ -167,7 +166,7 @@ export async function getBrandCaseMetrics(
   });
 
   return {
-    days: params.days,
+    period: window.info,
     timezone: tz,
     primaryName: primary?.name ?? project.name,
     hasCompetitors: competitors.length > 0,
@@ -206,7 +205,7 @@ export async function getBrandCaseMetrics(
         mentions: countsById.get(row.id)?.mentions ?? 0,
       })),
     ],
-    period,
+    trendPeriod: period,
     trend,
   };
 }
@@ -239,7 +238,7 @@ function sideIndex(rows: AspectCountRow[], side: string, aspectIds: string[]) {
  * their own sentiment. Mentions without an entity, or naming several competitors and nothing of
  * the developer, count for no side.
  */
-function loadAspectCounts(projectId: string, from: SQL, bucket: SQL) {
+function loadAspectCounts(projectId: string, inRange: SQL, bucket: SQL) {
   return db.execute<AspectCountRow>(sql`
     with sides as (
       select me.mention_id,
@@ -260,7 +259,7 @@ function loadAspectCounts(projectId: string, from: SQL, bucket: SQL) {
       from mentions m
       ${effectiveSentimentJoins}
       left join sides s on s.mention_id = m.id
-      where m.project_id = ${projectId}::uuid and m.is_relevant and m.published_at >= ${from}
+      where m.project_id = ${projectId}::uuid and m.is_relevant and ${inRange}
     ),
     effective as (
       select pm.side, pm.bucket, pa.id as aspect_id, pm.sentiment
