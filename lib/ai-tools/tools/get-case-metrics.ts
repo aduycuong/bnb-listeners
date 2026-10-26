@@ -10,6 +10,7 @@ import { resolveToolPeriod } from "../utils/resolve-tool-period";
 
 export const getCaseMetricsTool = defineAiTool({
   name: "get_case_metrics",
+  scope: "reports:read",
   description:
     "Số liệu riêng theo case của project. Case project (Theo dõi dự án): giá rao bán, " +
     "câu hỏi người mua, NSS theo khía cạnh so với đối thủ. Case brand (Uy tín chủ đầu tư): " +

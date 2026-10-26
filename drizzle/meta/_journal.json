@@ -407,6 +407,13 @@
       "when": 1792983873484,
       "tag": "0057_jazzy_yellowjacket",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1792996795376,
+      "tag": "0058_confused_white_queen",
+      "breakpoints": true
     }
   ]
 }

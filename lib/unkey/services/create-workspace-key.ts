@@ -4,6 +4,8 @@ import { CreateFailedError } from "@/lib/common/service-errors";
 
 import { createUnkeyClient, getUnkeyApiId } from "../config";
 import type { CreateWorkspaceKeyParams, CreateWorkspaceKeyResult } from "../types";
+import { assertKeyProjects } from "../utils/assert-key-projects";
+import { toWorkspaceKeyItem } from "../utils/to-workspace-key-item";
 
 const KEY_DISPLAY_LENGTH = 16;
 const RATE_LIMIT_PER_MINUTE = 100;
@@ -11,7 +13,8 @@ const RATE_LIMIT_PER_MINUTE = 100;
 export async function createWorkspaceKey(
   params: CreateWorkspaceKeyParams,
 ): Promise<CreateWorkspaceKeyResult> {
-  const { workspaceId, name } = params;
+  const { workspaceId, name, scopes, projectIds, userId } = params;
+  await assertKeyProjects(workspaceId, projectIds);
 
   const unkey = createUnkeyClient();
   const apiId = getUnkeyApiId();
@@ -50,7 +53,7 @@ export async function createWorkspaceKey(
 
   const [row] = await db
     .insert(workspaceApiKeys)
-    .values({ workspaceId, unkeyKeyId, name, keyStart })
+    .values({ workspaceId, unkeyKeyId, name, keyStart, scopes, projectIds, createdBy: userId })
     .returning();
 
   if (!row) {
@@ -58,13 +61,7 @@ export async function createWorkspaceKey(
   }
 
   return {
-    key: {
-      id: row.id,
-      unkeyKeyId: row.unkeyKeyId,
-      name: row.name,
-      keyStart: row.keyStart,
-      createdAt: row.createdAt.toISOString(),
-    },
+    key: toWorkspaceKeyItem(row, null),
     rawKey,
   };
 }

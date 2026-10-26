@@ -256,9 +256,10 @@ Xem [D27](decisions.md#d27--mcp-và-scope-của-api-key-2026-10-26) và [D28](de
 - [ ] Thử qua HTTP bằng key thật với chat agent
 
 **PR 2 — Scope key + trang Kết nối AI** (1,5–2 ngày)
-- [ ] `workspace_api_keys`: `scopes`, `project_ids`, `created_by`; kiểm scope, project và quyền người tạo ở mỗi tool
-- [ ] Thẻ API key ở workspace settings chọn scope và project
-- [ ] Mục **Kết nối AI** trong nhóm menu Dự án
+- [x] `workspace_api_keys`: `scopes`, `project_ids`, `created_by`; `/api/mcp` kiểm key qua `authorizeWorkspaceKey` (người tạo còn trong workspace, key cũ chạy với quyền chủ workspace), chỉ đăng ký tool trong scope, tool kiểm project
+- [x] Thẻ API key ở workspace settings: tạo, sửa tên, scope, project (`PATCH /api/workspace-keys/[keyId]`), thu hồi
+- [x] Mục **Kết nối AI** trong nhóm menu Dự án (`/p/[projectIndex]/connect`): địa chỉ MCP, id project, cấu hình mẫu (HTTP, Claude Code, Claude Desktop), key dùng được cho project, tạo key chỉ đọc cho project
+- [x] Chạy migration (`0058`), kiểm tay trang Kết nối AI và thẻ API key: tạo key giới hạn scope và project, gọi `/api/mcp` qua HTTP, sửa scope có hiệu lực ngay, thu hồi trả 401
 
 **PR 3 — MCP tạo project** (2–3 ngày)
 - [ ] `list_case_templates`, `list_sources`, `preview_project_match`, `create_project` (cùng schema với wizard, có `dry_run`), scope `projects:write`

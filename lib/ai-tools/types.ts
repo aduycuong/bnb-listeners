@@ -1,8 +1,13 @@
 import type { z } from "zod";
 
+import type { ApiKeyScope } from "@/lib/unkey/constants";
+
 /** Who calls a tool: an API key of a workspace (D27). */
 export type AiToolContext = {
   workspaceId: string;
+  /** Member the call runs as. */
+  userId: string;
+  scopes: ApiKeyScope[];
   /** Projects the key may read; null is every project of the workspace. */
   projectIds: string[] | null;
 };
@@ -13,6 +18,8 @@ export type AiToolContext = {
  */
 export type AiTool<Input extends z.ZodObject = z.ZodObject> = {
   name: string;
+  /** Scope a key needs to see and call the tool; null: any key. */
+  scope: ApiKeyScope | null;
   /** Read by the model: say what the tool answers and when to call it. */
   description: string;
   inputSchema: Input;

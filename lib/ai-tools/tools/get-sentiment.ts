@@ -7,6 +7,7 @@ import { resolveToolPeriod } from "../utils/resolve-tool-period";
 
 export const getSentimentTool = defineAiTool({
   name: "get_sentiment",
+  scope: "reports:read",
   description:
     "Cảm xúc của project trong kỳ: NSS theo ngày, cảm xúc chi tiết (emotion) và tỷ lệ tích " +
     "cực, tiêu cực theo từng khía cạnh.",

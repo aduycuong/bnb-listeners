@@ -7,6 +7,7 @@ import { resolveToolPeriod } from "../utils/resolve-tool-period";
 
 export const getChannelsTool = defineAiTool({
   name: "get_channels",
+  scope: "reports:read",
   description:
     "Kênh và nguồn trong kỳ: đề cập và cảm xúc theo kênh, đề cập theo thứ và giờ, các nguồn " +
     "(group, page, kênh) nhiều đề cập nhất.",

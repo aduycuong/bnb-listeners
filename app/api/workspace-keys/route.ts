@@ -1,12 +1,7 @@
-import { z } from "zod";
-
 import { createApiHandler } from "@/lib/exposers/create-api-handler";
+import { workspaceKeyBodySchema } from "@/lib/unkey/schema";
 import { createWorkspaceKey } from "@/lib/unkey/services/create-workspace-key";
 import { listWorkspaceKeys } from "@/lib/unkey/services/list-workspace-keys";
-
-const createKeyBodySchema = z.object({
-  name: z.string().min(1, "Name is required").max(64, "Name must be 64 characters or fewer"),
-});
 
 export const GET = createApiHandler(
   {},
@@ -15,8 +10,8 @@ export const GET = createApiHandler(
 );
 
 export const POST = createApiHandler(
-  { requestBody: createKeyBodySchema },
+  { requestBody: workspaceKeyBodySchema },
   (params, ctx) =>
-    createWorkspaceKey({ workspaceId: ctx.workspaceId, name: params.name }),
+    createWorkspaceKey({ ...params, workspaceId: ctx.workspaceId, userId: ctx.userId }),
   { allowedRoles: [], requireWorkspace: true, minWorkspacePermission: "edit" },
 );

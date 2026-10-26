@@ -7,6 +7,7 @@ import { resolveToolPeriod } from "../utils/resolve-tool-period";
 
 export const getTopicsTool = defineAiTool({
   name: "get_topics",
+  scope: "reports:read",
   description:
     "Chủ đề trong kỳ: số đề cập, tăng trưởng so với kỳ trước, tỷ lệ tích cực và tiêu cực " +
     "của từng chủ đề, và từ khóa nổi bật.",

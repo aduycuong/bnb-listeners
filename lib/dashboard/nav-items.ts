@@ -7,6 +7,7 @@ import {
   HashIcon,
   LayoutDashboardIcon,
   MessagesSquareIcon,
+  PlugIcon,
   SettingsIcon,
   Share2Icon,
   SmileIcon,
@@ -76,6 +77,7 @@ export const PROJECT_NAV_GROUPS = [
         icon: ClipboardListIcon,
       },
       { labelKey: "nav.projectSettings", segment: "settings", icon: SettingsIcon },
+      { labelKey: "nav.aiConnect", segment: "connect", icon: PlugIcon },
     ],
   },
 ];

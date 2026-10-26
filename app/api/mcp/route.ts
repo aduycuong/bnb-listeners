@@ -2,11 +2,13 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { NextResponse, type NextRequest } from "next/server";
 
 import { createMcpServer } from "@/lib/ai-tools/services/create-mcp-server";
-import { verifyWorkspaceKey } from "@/lib/unkey/services/verify-workspace-key";
+import { APIError } from "@/lib/exposers/api-error";
+import { authorizeWorkspaceKey } from "@/lib/unkey/services/authorize-workspace-key";
 
 /**
  * MCP server of the report tools (docs/decisions.md D27): Streamable HTTP, stateless, one
- * server per request. `Authorization: Bearer <workspace API key>`.
+ * server per request. `Authorization: Bearer <workspace API key>`; the key's scopes and
+ * projects decide which tools and projects the caller sees.
  */
 async function handleRequest(request: NextRequest): Promise<Response> {
   const authHeader = request.headers.get("Authorization");
@@ -18,16 +20,24 @@ async function handleRequest(request: NextRequest): Promise<Response> {
     );
   }
 
-  const verification = await verifyWorkspaceKey(apiKey);
-  if (!verification.valid) {
-    return NextResponse.json({ error: "Unauthorized", message: verification.reason }, { status: 401 });
+  let key;
+  try {
+    key = await authorizeWorkspaceKey(apiKey);
+  } catch (error) {
+    if (!(error instanceof APIError)) throw error;
+    return NextResponse.json({ error: error.code, message: error.message }, { status: error.statusCode });
   }
 
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
   });
-  const mcp = createMcpServer({ workspaceId: verification.workspaceId, projectIds: null });
+  const mcp = createMcpServer({
+    workspaceId: key.workspaceId,
+    userId: key.userId,
+    scopes: key.scopes,
+    projectIds: key.projectIds,
+  });
   await mcp.connect(transport);
   return transport.handleRequest(request);
 }

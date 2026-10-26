@@ -539,12 +539,16 @@ Stores metadata for workspace API keys managed via Unkey. The actual key value i
 | `unkey_key_id` | text NOT NULL UNIQUE | Unkey internal key ID |
 | `name` | text NOT NULL | human-readable label |
 | `key_start` | text NOT NULL | first ~12 chars of key for display (e.g. `bnb_xxxx...`) |
+| `scopes` | jsonb NOT NULL | `string[]` of `API_KEY_SCOPES` (`reports:read`, `mentions:read`, `projects:write`); default the two read scopes (D27) |
+| `project_ids` | jsonb | `string[]` of projects the key may use; null = every project of the workspace |
+| `created_by` | uuid FK → users | set null; MCP calls run as this member and stop when they leave the workspace. Null on keys made before D27: they run as the workspace owner |
 | `created_at` | timestamptz | |
 
 **Indexes:** btree on `workspace_id`; unique on `unkey_key_id`.
 
 **Relations:**
 - `workspace_id` → `workspaces.id` (cascade delete)
+- `created_by` → `users.id` (set null)
 
 ## app_settings
 

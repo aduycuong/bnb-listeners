@@ -7,7 +7,7 @@ import { AI_TOOLS } from "../registry";
 import type { AiToolContext } from "../types";
 
 /**
- * An MCP server with every AI tool for one caller (D27). Results go back as JSON text;
+ * An MCP server with the AI tools the caller's key may use (D27). Results go back as JSON text;
  * service errors (not found, invalid input) are tool errors the model can read and fix.
  */
 export function createMcpServer(ctx: AiToolContext): McpServer {
@@ -16,7 +16,8 @@ export function createMcpServer(ctx: AiToolContext): McpServer {
     version: AI_TOOLS_CONFIG.serverVersion,
   });
 
-  for (const tool of AI_TOOLS) {
+  const tools = AI_TOOLS.filter((tool) => !tool.scope || ctx.scopes.includes(tool.scope));
+  for (const tool of tools) {
     mcp.registerTool(
       tool.name,
       {
