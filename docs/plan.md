@@ -286,7 +286,8 @@ Xem [D27](decisions.md#d27--mcp-và-scope-của-api-key-2026-10-26) và [D28](de
 - [x] AI tóm tắt ở Tổng quan hiện điểm nổi bật của báo cáo mới nhất, link sang báo cáo; ô hỏi AI giữ chỗ cho khung chat
 
 5c — lịch (1 ngày)
-- [ ] Job `generate-due-reports` mỗi giờ theo `reportSchedule`, schedule QStash
+- [x] Job `generate-due-reports` mỗi giờ theo `reportSchedule`: một job `generate-report` cho mỗi báo cáo đến hạn, flow control 2; `npm run reports:due`
+- [ ] Tạo schedule QStash `generate-due-reports` (mỗi giờ) sau khi deploy
 
 ## Giai đoạn 7 — Mở rộng nguồn
 
