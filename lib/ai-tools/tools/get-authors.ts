@@ -7,6 +7,7 @@ import { resolveToolPeriod } from "../utils/resolve-tool-period";
 
 export const getAuthorsTool = defineAiTool({
   name: "get_authors",
+  scope: "reports:read",
   description:
     "Tác giả trong kỳ: tác giả có tổng tương tác cao nhất (số đề cập, cảm xúc chính, người " +
     "theo dõi) và số tác giả theo nhóm KOL.",

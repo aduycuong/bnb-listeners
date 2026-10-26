@@ -6,6 +6,7 @@ import { defineAiTool } from "../utils/define-ai-tool";
 
 export const listProjectsTool = defineAiTool({
   name: "list_projects",
+  scope: null,
   description:
     "Liệt kê các project social listening mà key được đọc: id, tên, mô tả, case. " +
     "Gọi đầu tiên để lấy projectId cho các tool khác.",

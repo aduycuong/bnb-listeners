@@ -18,6 +18,7 @@ function cut(text: string | null, length: number) {
 
 export const searchMentionsTool = defineAiTool({
   name: "search_mentions",
+  scope: "mentions:read",
   description:
     "Tìm các đề cập liên quan của project trong kỳ, mới nhất trước, mỗi trang 50. " +
     "Dùng để đọc nội dung cụ thể và trích dẫn (id, url) cho nhận định. Lọc theo chữ, " +

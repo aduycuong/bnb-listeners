@@ -1,11 +1,8 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckIcon, CopyIcon, KeyRoundIcon, Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
+import { KeyRoundIcon, Loader2Icon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import {
   AlertDialog,
@@ -17,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,236 +23,82 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
+import { ApiKeyDialog } from "@/components/workspace/api-key-dialog";
+import { fetchProjects, projectsQueryKey } from "@/hooks/use-project-route-context";
+import { useWorkspaceKeys } from "@/hooks/use-workspace-keys";
+import type { ProjectListItem } from "@/lib/projects/types";
+import { API_KEY_SCOPE_LABELS, PROJECT_KEY_SCOPES } from "@/lib/unkey/constants";
+import type { WorkspaceKeyBody } from "@/lib/unkey/schema";
+import type { WorkspaceApiKeyItem } from "@/lib/unkey/types";
 import type { WorkspaceListItem } from "@/lib/workspaces/types";
+import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
-import type {
-  CreateWorkspaceKeyResult,
-  ListWorkspaceKeysResult,
-  WorkspaceApiKeyItem,
-} from "@/lib/unkey/types";
-
-const createKeySchema = z.object({
-  name: z.string().min(1, "Name is required").max(64, "Max 64 characters"),
-});
-
-type CreateKeyValues = z.infer<typeof createKeySchema>;
 
 type WorkspaceApiKeysCardProps = {
   workspace: WorkspaceListItem;
+  /** On a project's "Kết nối AI" page: only keys that can use the project; new keys default to it. */
+  project?: ProjectListItem;
 };
-
-const keysQueryKey = (workspaceId: string) => ["workspace-api-keys", workspaceId];
-
-async function fetchKeys(workspaceId: string): Promise<ListWorkspaceKeysResult> {
-  const res = await workspaceFetch(workspaceId, "/api/workspace-keys");
-  const data = (await res.json()) as ListWorkspaceKeysResult & {
-    error?: string;
-    message?: string;
-  };
-  if (!res.ok) throw new Error(data.message ?? data.error ?? "Could not load API keys.");
-  return data;
-}
 
 function formatDate(iso: string) {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(iso));
+  return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(new Date(iso));
 }
 
-type NewKeyDialogProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  workspaceId: string;
-  onCreated: () => void;
-};
+function projectScopeLabel(key: WorkspaceApiKeyItem, projectNames: Map<string, string>) {
+  if (!key.projectIds) return "Mọi project";
+  const names = key.projectIds.map((id) => projectNames.get(id)).filter(Boolean);
+  const missing = key.projectIds.length - names.length;
+  return [...names, ...(missing ? [`${missing} project đã xóa`] : [])].join(", ");
+}
 
-function NewKeyDialog({ open, onOpenChange, workspaceId, onCreated }: NewKeyDialogProps) {
-  const [createdKey, setCreatedKey] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  const form = useForm<CreateKeyValues>({
-    resolver: zodResolver(createKeySchema),
-    defaultValues: { name: "" },
+/** API keys of a workspace for MCP (D27): list, create, edit scopes and projects, revoke. */
+export function WorkspaceApiKeysCard({ workspace, project }: WorkspaceApiKeysCardProps) {
+  const { keys: allKeys, isLoading, error, refresh } = useWorkspaceKeys(workspace.id);
+  const { data: projectData } = useQuery({
+    queryKey: projectsQueryKey(workspace.id),
+    queryFn: () => fetchProjects(workspace.id),
   });
-
-  const isSubmitting = form.formState.isSubmitting;
-  const nameError = form.formState.errors.name;
-
-  function handleClose(nextOpen: boolean) {
-    if (!nextOpen) {
-      form.reset();
-      setCreatedKey(null);
-      setCopied(false);
-    }
-    onOpenChange(nextOpen);
-  }
-
-  async function onSubmit(values: CreateKeyValues) {
-    const res = await workspaceFetch(workspaceId, "/api/workspace-keys", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
-    });
-    const data = (await res.json()) as CreateWorkspaceKeyResult & {
-      error?: string;
-      message?: string;
-    };
-
-    if (!res.ok) {
-      toast.add({ title: data.message ?? data.error ?? "Could not create key.", type: "error" });
-      return;
-    }
-
-    setCreatedKey(data.rawKey);
-    onCreated();
-  }
-
-  async function copyKey() {
-    if (!createdKey) return;
-    await navigator.clipboard.writeText(createdKey);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent showCloseButton={!isSubmitting}>
-        {createdKey ? (
-          <>
-            <DialogHeader>
-              <DialogTitle>API key created</DialogTitle>
-              <DialogDescription>
-                Copy your key now — it will not be shown again.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="flex items-center gap-2 rounded-md border bg-muted px-3 py-2">
-              <code className="min-w-0 flex-1 truncate font-mono text-sm">{createdKey}</code>
-              <Button variant="ghost" size="icon-sm" onClick={copyKey} aria-label="Copy key">
-                {copied ? (
-                  <CheckIcon className="size-4 text-green-600" />
-                ) : (
-                  <CopyIcon className="size-4" />
-                )}
-              </Button>
-            </div>
-
-            <p className="text-sm text-muted-foreground">
-              Use this key in the{" "}
-              <code className="text-xs">Authorization: Bearer &lt;key&gt;</code> header when
-              connecting to <code className="text-xs">/api/mcp/search</code>.
-            </p>
-
-            <DialogFooter>
-              <Button onClick={() => handleClose(false)}>Done</Button>
-            </DialogFooter>
-          </>
-        ) : (
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <DialogHeader>
-              <DialogTitle>Create API key</DialogTitle>
-              <DialogDescription>
-                Give this key a name to identify its use (e.g. "Claude Desktop", "n8n prod").
-              </DialogDescription>
-            </DialogHeader>
-
-            <FieldGroup className="py-4">
-              <Field data-invalid={!!nameError || undefined}>
-                <FieldLabel htmlFor="api-key-name">Name</FieldLabel>
-                <Input
-                  id="api-key-name"
-                  autoComplete="off"
-                  placeholder="e.g. Claude Desktop"
-                  aria-invalid={!!nameError}
-                  disabled={isSubmitting}
-                  {...form.register("name")}
-                />
-                <FieldError errors={[nameError]} />
-              </Field>
-            </FieldGroup>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isSubmitting}
-                onClick={() => handleClose(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2Icon className="animate-spin" data-icon="inline-start" />
-                    Creating…
-                  </>
-                ) : (
-                  "Create key"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-type KeyToRevoke = Pick<WorkspaceApiKeyItem, "id" | "name">;
-
-export function WorkspaceApiKeysCard({ workspace }: WorkspaceApiKeysCardProps) {
-  const queryClient = useQueryClient();
-  const [newKeyOpen, setNewKeyOpen] = useState(false);
-  const [keyToRevoke, setKeyToRevoke] = useState<KeyToRevoke | null>(null);
+  const projects = useMemo(() => projectData?.items ?? [], [projectData]);
+  const projectNames = useMemo(() => new Map(projects.map((item) => [item.id, item.name])), [projects]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<WorkspaceApiKeyItem | null>(null);
+  const [keyToRevoke, setKeyToRevoke] = useState<WorkspaceApiKeyItem | null>(null);
   const [revoking, setRevoking] = useState(false);
 
-  const isEditor =
-    workspace.permission === "owner" || workspace.permission === "edit";
+  const isEditor = hasMinWorkspacePermission(workspace.permission, "edit");
+  const keys = project
+    ? allKeys.filter((key) => !key.projectIds || key.projectIds.includes(project.id))
+    : allKeys;
+  const defaults = useMemo<WorkspaceKeyBody | undefined>(
+    () =>
+      project
+        ? { name: `${project.name} · chỉ đọc`, scopes: PROJECT_KEY_SCOPES, projectIds: [project.id] }
+        : undefined,
+    [project],
+  );
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: keysQueryKey(workspace.id),
-    queryFn: () => fetchKeys(workspace.id),
-  });
-
-  const keys = data?.items ?? [];
-
-  async function refreshKeys() {
-    await queryClient.invalidateQueries({ queryKey: keysQueryKey(workspace.id) });
+  function openDialog(key: WorkspaceApiKeyItem | null) {
+    setEditing(key);
+    setDialogOpen(true);
   }
 
   async function handleRevoke() {
     if (!keyToRevoke) return;
     setRevoking(true);
-
     try {
-      const res = await workspaceFetch(
-        workspace.id,
-        `/api/workspace-keys/${keyToRevoke.id}`,
-        { method: "DELETE" },
-      );
-      const responseData = (await res.json()) as { message?: string; error?: string };
-
+      const res = await workspaceFetch(workspace.id, `/api/workspace-keys/${keyToRevoke.id}`, {
+        method: "DELETE",
+      });
+      const data = (await res.json()) as { message?: string; error?: string };
       if (!res.ok) {
-        toast.add({
-          title: responseData.error ?? responseData.message ?? "Could not revoke key.",
-          type: "error",
-        });
+        toast.add({ title: data.message ?? data.error ?? "Không thu hồi được key.", type: "error" });
         return;
       }
-
-      toast.add({ title: responseData.message ?? "API key revoked.", type: "success" });
+      toast.add({ title: "Đã thu hồi key.", type: "success" });
       setKeyToRevoke(null);
-      await refreshKeys();
+      await refresh();
     } finally {
       setRevoking(false);
     }
@@ -265,17 +109,16 @@ export function WorkspaceApiKeysCard({ workspace }: WorkspaceApiKeysCardProps) {
       <Card>
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
-            <CardTitle>API Keys</CardTitle>
+            <CardTitle>{project ? "Key dùng được cho project này" : "API keys"}</CardTitle>
             <CardDescription>
-              Keys for external agents to access this workspace via{" "}
-              <code className="text-xs">/api/mcp/search</code>.
-              Rate-limited to 100 requests/minute per key.
+              Key cho agent bên ngoài đọc dữ liệu qua MCP (<code className="text-xs">/api/mcp</code>
+              ). Mỗi key giới hạn 100 request/phút.
             </CardDescription>
           </div>
           {isEditor ? (
-            <Button className="shrink-0" onClick={() => setNewKeyOpen(true)}>
+            <Button className="shrink-0" onClick={() => openDialog(null)}>
               <PlusIcon data-icon="inline-start" />
-              Create key
+              {project ? "Tạo key chỉ đọc" : "Tạo key"}
             </Button>
           ) : null}
         </CardHeader>
@@ -291,37 +134,52 @@ export function WorkspaceApiKeysCard({ workspace }: WorkspaceApiKeysCardProps) {
           ) : keys.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground">
               <KeyRoundIcon className="size-8 opacity-40" />
-              <p className="text-sm">
-                No API keys yet. Create one to connect external agents.
-              </p>
+              <p className="text-sm">Chưa có key. Tạo một key để kết nối agent.</p>
             </div>
           ) : (
             <ul className="divide-y divide-border">
               {keys.map((key) => (
-                <li
-                  key={key.id}
-                  className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
-                >
-                  <KeyRoundIcon className="size-4 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0 flex-1">
+                <li key={key.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                  <KeyRoundIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1 space-y-1">
                     <p className="truncate text-sm font-medium">{key.name}</p>
                     <p className="font-mono text-xs text-muted-foreground">{key.keyStart}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="text-xs text-muted-foreground">
+                    <div className="flex flex-wrap gap-1">
+                      {key.scopes.map((scope) => (
+                        <Badge key={scope} variant="secondary">
+                          {API_KEY_SCOPE_LABELS[scope].label}
+                        </Badge>
+                      ))}
+                      <Badge variant="outline" className="max-w-full truncate">
+                        {projectScopeLabel(key, projectNames)}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {key.createdByName ? `Tạo bởi ${key.createdByName}` : "Key cũ, chạy với quyền chủ workspace"}
+                      {" · "}
                       {formatDate(key.createdAt)}
-                    </span>
-                    {isEditor ? (
+                    </p>
+                  </div>
+                  {isEditor ? (
+                    <div className="flex shrink-0 items-center">
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        aria-label={`Revoke ${key.name}`}
-                        onClick={() => setKeyToRevoke({ id: key.id, name: key.name })}
+                        aria-label={`Sửa ${key.name}`}
+                        onClick={() => openDialog(key)}
+                      >
+                        <PencilIcon className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Thu hồi ${key.name}`}
+                        onClick={() => setKeyToRevoke(key)}
                       >
                         <Trash2Icon className="size-4" />
                       </Button>
-                    ) : null}
-                  </div>
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -329,11 +187,14 @@ export function WorkspaceApiKeysCard({ workspace }: WorkspaceApiKeysCardProps) {
         </CardContent>
       </Card>
 
-      <NewKeyDialog
-        open={newKeyOpen}
-        onOpenChange={setNewKeyOpen}
+      <ApiKeyDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
         workspaceId={workspace.id}
-        onCreated={refreshKeys}
+        projects={projects}
+        editing={editing}
+        defaults={defaults}
+        onSaved={() => void refresh()}
       />
 
       <AlertDialog
@@ -344,31 +205,21 @@ export function WorkspaceApiKeysCard({ workspace }: WorkspaceApiKeysCardProps) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke API key?</AlertDialogTitle>
+            <AlertDialogTitle>Thu hồi API key?</AlertDialogTitle>
             <AlertDialogDescription>
               {keyToRevoke ? (
                 <>
-                  <span className="font-medium text-foreground">{keyToRevoke.name}</span> will be
-                  permanently revoked. Any agent using this key will lose access immediately.
+                  <span className="font-medium text-foreground">{keyToRevoke.name}</span> sẽ bị
+                  thu hồi vĩnh viễn. Agent đang dùng key này mất quyền truy cập ngay.
                 </>
               ) : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={revoking}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={revoking}
-              onClick={handleRevoke}
-            >
-              {revoking ? (
-                <>
-                  <Loader2Icon className="animate-spin" data-icon="inline-start" />
-                  Revoking…
-                </>
-              ) : (
-                "Revoke key"
-              )}
+            <AlertDialogCancel disabled={revoking}>Hủy</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" disabled={revoking} onClick={handleRevoke}>
+              {revoking ? <Loader2Icon className="animate-spin" data-icon="inline-start" /> : null}
+              Thu hồi key
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

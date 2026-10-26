@@ -1,26 +1,22 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { workspaceApiKeys } from "@/db/schema";
+import { users, workspaceApiKeys } from "@/db/schema";
 
 import type { ListWorkspaceKeysResult } from "../types";
+import { toWorkspaceKeyItem } from "../utils/to-workspace-key-item";
 
 export async function listWorkspaceKeys(
   workspaceId: string,
 ): Promise<ListWorkspaceKeysResult> {
   const rows = await db
-    .select()
+    .select({ key: workspaceApiKeys, displayName: users.displayName, email: users.email })
     .from(workspaceApiKeys)
+    .leftJoin(users, eq(users.id, workspaceApiKeys.createdBy))
     .where(eq(workspaceApiKeys.workspaceId, workspaceId))
     .orderBy(workspaceApiKeys.createdAt);
 
   return {
-    items: rows.map((row) => ({
-      id: row.id,
-      unkeyKeyId: row.unkeyKeyId,
-      name: row.name,
-      keyStart: row.keyStart,
-      createdAt: row.createdAt.toISOString(),
-    })),
+    items: rows.map((row) => toWorkspaceKeyItem(row.key, row.displayName ?? row.email)),
   };
 }

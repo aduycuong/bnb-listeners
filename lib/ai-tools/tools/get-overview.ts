@@ -7,6 +7,7 @@ import { resolveToolPeriod } from "../utils/resolve-tool-period";
 
 export const getOverviewTool = defineAiTool({
   name: "get_overview",
+  scope: "reports:read",
   description:
     "Tổng quan của project trong kỳ: lượt đề cập, tương tác, số tác giả, NSS, tỷ lệ tiêu " +
     "cực, Share of Voice (so với kỳ trước), đề cập theo ngày và cảm xúc, nguồn và chủ đề " +

@@ -8,6 +8,7 @@ import { defineAiTool } from "../utils/define-ai-tool";
 
 export const getProjectTool = defineAiTool({
   name: "get_project",
+  scope: null,
   description:
     "Cấu hình của một project: case, các đối tượng theo dõi (chủ đầu tư, dự án, đối thủ) " +
     "và các khía cạnh. Dùng id đối tượng và khía cạnh để lọc search_mentions.",

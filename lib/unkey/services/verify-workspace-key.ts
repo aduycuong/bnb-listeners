@@ -16,11 +16,11 @@ export async function verifyWorkspaceKey(
 
     const workspaceId = data.identity?.externalId ?? null;
 
-    if (!workspaceId) {
+    if (!workspaceId || !data.keyId) {
       return { valid: false, workspaceId: null, reason: "KEY_HAS_NO_WORKSPACE" };
     }
 
-    return { valid: true, workspaceId };
+    return { valid: true, workspaceId, unkeyKeyId: data.keyId };
   } catch {
     return { valid: false, workspaceId: null, reason: "VERIFICATION_ERROR" };
   }

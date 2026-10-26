@@ -159,6 +159,12 @@ export const workspaceApiKeys = pgTable(
     unkeyKeyId: text("unkey_key_id").notNull().unique(),
     name: text("name").notNull(),
     keyStart: text("key_start").notNull(),
+    /** What the key may do (`API_KEY_SCOPES`, D27). */
+    scopes: jsonb("scopes").$type<string[]>().notNull().default(["reports:read", "mentions:read"]),
+    /** Projects the key may use; null is every project of the workspace. */
+    projectIds: jsonb("project_ids").$type<string[]>(),
+    /** Calls run as this member; keys made before D27 have none and run as the owner. */
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
