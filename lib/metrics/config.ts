@@ -13,7 +13,19 @@ export const METRICS_CONFIG = {
   /** Rows of the sources table on the Channels page and of the authors table. */
   channelSources: 10,
   topAuthors: 20,
+  /** Mentions with a sentiment a pillar needs before it gets a reputation score. */
+  reputationMinMentions: 5,
+  /** Report periods (`caseConfig.period`) on the reputation trend of the brand case. */
+  reputationTrendPeriods: 6,
 } as const;
+
+/** Labels of the reputation index (brand case), by lowest score of the band. */
+export const REPUTATION_BANDS = [
+  { min: 70, label: "tốt" },
+  { min: 55, label: "khá" },
+  { min: 40, label: "trung bình" },
+  { min: 0, label: "yếu" },
+] as const;
 
 /**
  * Author groups of the Authors page, as in the demo. Follower thresholds decide the KOL

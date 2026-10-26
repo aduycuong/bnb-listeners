@@ -57,11 +57,11 @@ export async function getOverviewMetrics(
           (count(*) filter (where ${effectiveSentimentSql} is null))::int as unknown,
           (count(*) filter (where exists (
             select 1 from mention_entities me join project_entities pe on pe.id = me.entity_id
-            where me.mention_id = m.id and pe.role = 'primary'
+            where me.mention_id = m.id and pe.role in ('primary', 'product')
           )))::int as sov_primary,
           (count(*) filter (where exists (
             select 1 from mention_entities me join project_entities pe on pe.id = me.entity_id
-            where me.mention_id = m.id and pe.role in ('primary', 'competitor')
+            where me.mention_id = m.id and pe.role in ('primary', 'product', 'competitor')
           )))::int as sov_tracked
         from mentions m
         join content_items ci on ci.id = m.content_item_id

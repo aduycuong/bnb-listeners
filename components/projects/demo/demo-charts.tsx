@@ -436,7 +436,8 @@ export function ChannelSentimentChart({
   );
 }
 
-export function GaugeChart() {
+/** Half-donut score out of 100, with the score and its label in the middle. */
+export function GaugeChart({ score, label }: { score: number; label: string }) {
   return (
     <div className="relative h-[180px]">
       <ChartBox
@@ -446,8 +447,8 @@ export function GaugeChart() {
         <PieChart>
           <Pie
             data={[
-              { name: "score", value: 60 },
-              { name: "rest", value: 40 },
+              { name: "score", value: score },
+              { name: "rest", value: 100 - score },
             ]}
             dataKey="value"
             startAngle={180}
@@ -463,43 +464,66 @@ export function GaugeChart() {
         </PieChart>
       </ChartBox>
       <div className="pointer-events-none absolute inset-x-0 bottom-1 text-center">
-        <b className="block text-[34px] leading-none font-extrabold tracking-tight">60</b>
-        <small className="text-xs text-muted-foreground">/100 · khá</small>
+        <b className="block text-[34px] leading-none font-extrabold tracking-tight">{score}</b>
+        <small className="text-xs text-muted-foreground">/100 · {label}</small>
       </div>
     </div>
   );
 }
 
-export function HealthLineChart() {
-  const data = ["T5", "T6", "T7", "T8", "T9", "T10"].map((month, index) => ({
-    month,
-    developer: [52, 54, 57, 58, 59, 60][index],
-    peers: [55, 55, 56, 56, 57, 57][index],
+/** Score of the tracked developer per period against the mean of its peers (dashed). */
+export function HealthLineChart({
+  labels,
+  developer,
+  peers,
+  developerLabel,
+  peersLabel,
+}: {
+  labels: string[];
+  developer: (number | null)[];
+  peers: (number | null)[] | null;
+  developerLabel: string;
+  peersLabel: string;
+}) {
+  const data = labels.map((label, index) => ({
+    label,
+    developer: developer[index],
+    peers: peers?.[index] ?? null,
   }));
 
   return (
     <ChartBox
       height={220}
       config={{
-        developer: { label: "Phát Đạt", color: "var(--primary)" },
-        peers: { label: "TB chủ đầu tư cùng phân khúc", color: "var(--muted-foreground)" },
+        developer: { label: developerLabel, color: "var(--primary)" },
+        peers: { label: peersLabel, color: "var(--muted-foreground)" },
       }}
     >
       <LineChart data={data}>
         <CartesianGrid vertical={false} stroke="var(--border)" />
-        <XAxis dataKey="month" tickLine={false} axisLine={false} />
-        <YAxis domain={[45, 75]} tickLine={false} axisLine={false} width={32} />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} />
+        <YAxis domain={[0, 100]} tickLine={false} axisLine={false} width={32} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend verticalAlign="top" align="right" iconType="circle" />
-        <Line type="monotone" dataKey="developer" stroke="var(--primary)" strokeWidth={2} dot={{ r: 3 }} />
         <Line
           type="monotone"
-          dataKey="peers"
-          stroke="var(--muted-foreground)"
-          strokeDasharray="5 5"
+          dataKey="developer"
+          name={developerLabel}
+          stroke="var(--primary)"
           strokeWidth={2}
-          dot={false}
+          dot={{ r: 3 }}
         />
+        {peers ? (
+          <Line
+            type="monotone"
+            dataKey="peers"
+            name={peersLabel}
+            stroke="var(--muted-foreground)"
+            strokeDasharray="5 5"
+            strokeWidth={2}
+            dot={false}
+            />
+        ) : null}
       </LineChart>
     </ChartBox>
   );
@@ -610,21 +634,23 @@ export function BuyerIntentChart() {
   );
 }
 
-export function ProjectSentimentChart() {
-  const data = [
-    { name: "Bắc Hà Thanh", value: 48 },
-    { name: "La Pura", value: 41 },
-    { name: "Quy Nhơn Iconic", value: 26 },
-  ];
-
+/** NSS per project of a developer, as horizontal bars (red below zero). */
+export function ProjectSentimentChart({ rows }: { rows: { name: string; value: number }[] }) {
   return (
-    <ChartBox height={260} config={{ value: { label: "NSS", color: "var(--pos)" } }}>
-      <BarChart data={data} layout="vertical">
+    <ChartBox
+      height={Math.max(160, rows.length * 44 + 40)}
+      config={{ value: { label: "NSS", color: "var(--pos)" } }}
+    >
+      <BarChart data={rows} layout="vertical">
         <CartesianGrid horizontal={false} stroke="var(--border)" />
-        <XAxis type="number" domain={[-40, 80]} tickLine={false} axisLine={false} />
+        <XAxis type="number" domain={[-100, 100]} tickLine={false} axisLine={false} />
         <YAxis type="category" dataKey="name" width={120} tickLine={false} axisLine={false} />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="value" fill="var(--pos)" radius={4} />
+        <Bar dataKey="value" radius={4}>
+          {rows.map((row) => (
+            <Cell key={row.name} fill={row.value < 0 ? "var(--neg)" : "var(--pos)"} />
+          ))}
+        </Bar>
       </BarChart>
     </ChartBox>
   );

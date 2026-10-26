@@ -141,7 +141,7 @@ Mục tiêu thu hẹp: có dữ liệu post và comment nằm trong kho thô đ�
 Case BĐS, thứ tự ưu tiên và cấu hình theo case: xem [D10](decisions.md#d10--giai-đoạn-3-case-bđs-và-cấu-hình-project-2026-10-14). Giai đoạn này làm thật 3 case `project`, `market`, `brand`.
 
 **PR 1 — Cấu hình project**
-- [x] Đổi `projects.case` sang id case BĐS; `npm run projects:migrate-cases` chuyển case cũ và đánh dấu project demo (`is_demo`)
+- [x] Đổi `projects.case` sang id case BĐS; chuyển case cũ và đánh dấu project demo (`is_demo`). Script chuyển đã gỡ (D26)
 - [x] Schema `projects` (thêm `mode`, `timezone`, `config_version`, `case_config`, `is_demo`), `project_entities`, `project_queries`, `project_aspects`, `project_sources` (`project_scenarios` chỉ thêm khi có `scenarios`, xem [D8](decisions.md#d8--giai-đoạn-2-persona--connector-ảo--kho-thô-2026-10-13))
 - [x] Template entity, aspect và trường riêng cho `project`, `market`, `brand`
 - [x] Wizard tạo project thật: case → thông tin → entity/khu vực và truy vấn → aspect → nguồn → cảnh báo & báo cáo → xem lại (theo `.cursor/rules/form-creation.mdc`)
@@ -230,7 +230,7 @@ Xem [D17](decisions.md#d17--giai-đoạn-5b-số-liệu-dashboard-2026-10-15).
 - [ ] Phân loại tác giả (`authors.author_type`, KOL, báo chí/thương hiệu) và lấy số người theo dõi: task riêng. Hiện tác giả chưa có số người theo dõi được tính là người dùng thường
 
 **Sau đó**
-- [ ] Trang riêng theo case
+- [ ] Trang riêng theo case: đã có `project` (Chi tiết dự án) và `brand` (Chỉ số uy tín, D26); còn `market`
 - [ ] `metrics_daily` khi dữ liệu lớn
 
 **Kết quả giai đoạn 5:** một project `general` thật và một project sandbox chạy end-to-end.

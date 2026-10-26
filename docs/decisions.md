@@ -152,7 +152,7 @@ Rà lại việc lấy dữ liệu Facebook trước giai đoạn 3.
 - Case là một **tình huống theo dõi cụ thể**, không chung chung. Hai case có thể giống nhau ở Collect và Enrich nhưng khác nhau về report và view, nên vẫn là hai case riêng (ví dụ `crisis` tách khỏi `brand`, `rival` tách khỏi `project`).
 - `projects.case` lưu id case BĐS thay cho bộ case social listening chung (`general`, `campaign`, `cx`…). Danh sách nằm trong `lib/projects/project-cases.ts`:
   `brand`, `project`, `ir`, `launch`, `broker`, `lead`, `rival`, `market`, `policy`, `kol`, `crisis`, `residents`.
-- Case cũ được chuyển bằng `npm run projects:migrate-cases`: `general → brand`, `campaign → project`, `competitor → market`, `cx → broker`, `crisis → crisis`. Các case cũ không có trong demo (`reputation`, `trend`, `care`, `employer`…) được chuyển về case gần nhất.
+- Case cũ đã được chuyển sang id case BĐS (`general → brand`, `campaign → project`, `competitor → market`, `cx → broker`…). Script chuyển và bảng ánh xạ case cũ đã gỡ ngày 2026-10-26 (D26); `projects.case` không thuộc danh sách thì `parseProjectCase` báo lỗi.
 - Giai đoạn 3 làm thật 3 case: `project`, `market`, `brand`. Các case khác hiện ở wizard với nhãn "sắp có".
 - `lead` chưa làm vì cần nghiên cứu pháp lý về dữ liệu cá nhân.
 
@@ -316,7 +316,7 @@ Từ khóa là các cụm từ ngắn mà mention nói tới ("sổ hồng", "ph
 - SoV = mention nhắc đối tượng `primary` / mention nhắc `primary` hoặc `competitor` (`mention_entities`). Project không có đối thủ thì ô SoV hiện "—".
 - Kỳ báo cáo là N ngày trọn theo `projects.timezone`, tính cả hôm nay (`METRICS_CONFIG.reportPeriodDays`: 14, 7, 30), so với N ngày liền trước. Khác Topics 5a (khoảng trượt tính từ lúc xem) vì biểu đồ theo ngày cần ngày trọn.
 - Cảm xúc theo khía cạnh theo D14: khía cạnh của nhãn tay (kèm sentiment của mention) khi item đã gán nhãn, nếu không thì khía cạnh của Enrich kèm sentiment riêng của khía cạnh.
-- "Kênh thảo luận" trên Overview tính theo nguồn (group, page) vì hiện chỉ có Facebook. Overview xếp như demo: biểu đồ đề cập (8) cạnh khung AI tóm tắt (4), rồi cảm xúc, kênh và chủ đề mỗi khung 4 cột. Khung AI giữ nội dung mẫu của demo; hỏi đáp chưa gọi mô hình. Case Theo dõi dự án thêm hai widget giá (xu hướng theo ngày và phân bố) trên Overview, trỏ sang trang Chi tiết dự án. Widget case của các case khác vẫn để sau.
+- "Kênh thảo luận" trên Overview tính theo nguồn (group, page) vì hiện chỉ có Facebook. Overview xếp như demo: biểu đồ đề cập (8) cạnh khung AI tóm tắt (4), rồi cảm xúc, kênh và chủ đề mỗi khung 4 cột. Khung AI giữ nội dung mẫu của demo; hỏi đáp chưa gọi mô hình. Case Theo dõi dự án thêm hai widget giá (xu hướng theo ngày và phân bố) trên Overview, trỏ sang trang Chi tiết dự án. Case Uy tín chủ đầu tư thêm ba widget (D26). Widget case của các case khác vẫn để sau.
 - Channels (PR 2) giữ bố cục demo dù mới có 1 kênh và 1 nguồn mỗi project. Kênh = nền tảng, Facebook group tách khỏi page/profile (`lib/metrics/utils/channel-label.ts`). Bản đồ nhiệt tính theo `projects.timezone`.
 - Authors (PR 2) xếp theo tổng tương tác của các đề cập của tác giả trong kỳ. Nhóm tác giả giữ như demo (`AUTHOR_TIERS`): Mega/Macro/Micro KOL theo số người theo dõi, "Báo chí, thương hiệu" theo `authors.author_type`, còn lại là người dùng thường, kể cả tác giả chưa có số người theo dõi (toàn bộ tác giả thật hiện nay). Phân loại tác giả làm ở task riêng. Không dùng `metadata.isPage` để nhận biết page: cờ này lấy từ `delegate_page_id` của bài và đúng cả với tài khoản cá nhân.
 
@@ -475,3 +475,13 @@ ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên
   - Giới hạn mềm: run đã khởi tạo vẫn chạy hết, nên có thể vượt một ít. Run chạy tay (CLI) không bị chặn.
   - **Lý do:** usage thật 7 ngày (2026-10-20 → 26): comment chiếm 70–90% record; ngày lấy lần đầu một group lên tới ~10.000 record so với 600–1.000 ngày thường. Giới hạn tháng không ngăn một đợt đột biến tiêu hết ngân sách trong vài ngày; giới hạn ngày (gợi ý 2–3 lần mức thường) chặn được. Không làm giới hạn record mỗi run: hạ trần chỉ làm mất bài cũ hơn trong cửa sổ, không tiết kiệm thật.
 - **Lý do:** Bright Data tính tiền theo record nên giảm tần suất quét Facebook ít tiết kiệm (cùng số bài); công cụ chặn chi phí là `monthly_record_limit`. Hạ tier có ích cho nguồn ít quan trọng và cho TikTok (tính theo request). Hạ tier của nguồn đông bài có thể chạm trần 500 record/run và sót bài; tooltip và form cảnh báo khi số bài dự kiến mỗi run vượt trần.
+
+## D26 — Report case Uy tín chủ đầu tư (2026-10-26)
+
+- Trang riêng của case `brand` là **Chỉ số uy tín** (`/api/metrics/brand-case`), bố cục theo demo Phát Đạt: chỉ số uy tín và các trụ cột, cảm xúc theo từng dự án, Share of Voice, chỉ số uy tín theo kỳ báo cáo. Overview dùng 6 KPI chung (đề cập, tương tác, tác giả, NSS, SoV, tỷ lệ tiêu cực; reach bỏ như D17) và thêm ba widget đầu, trỏ sang trang Chỉ số uy tín. AI tóm tắt và Báo cáo AI giữ nội dung mẫu như case Theo dõi dự án.
+- **Trụ cột** là mọi khía cạnh của project (template có 5, người dùng sửa được). Điểm trụ cột = (NSS của khía cạnh + 100) / 2, thang 0–100, chỉ tính khi khía cạnh có ít nhất `reputationMinMentions` (5) đề cập có cảm xúc. **Chỉ số uy tín** = trung bình không trọng số các trụ cột có điểm. Nhãn: từ 70 tốt, 55 khá, 40 trung bình, dưới 40 yếu. Cảm xúc theo khía cạnh lấy như D17.
+- **Phía chủ đầu tư** là mọi đề cập trừ đề cập chỉ nhắc đối thủ: đề cập nhắc chủ đầu tư hoặc dự án của chủ đầu tư, và đề cập chưa gán được đối tượng nào. Đề cập nhắc cả chủ đầu tư và đối thủ tính cho chủ đầu tư, vì cảm xúc gán cho cả đề cập. Điểm của một đối thủ chỉ tính trên đề cập nhắc riêng đối thủ đó; đề cập nhắc nhiều đối thủ không tính cho bên nào.
+- **Cảm xúc theo dự án**: NSS theo cảm xúc riêng của từng entity `product` (`mention_entities.sentiment`).
+- **Share of Voice**: đề cập nhắc dự án của chủ đầu tư được tính cho chủ đầu tư, cả trên ô KPI của Overview. Biểu đồ tròn đếm đề cập theo từng chủ đầu tư; đề cập nhắc nhiều bên được tính cho mỗi bên.
+- **Xu hướng**: 6 kỳ gần nhất theo `caseConfig.period` (tuần, tháng, quý), kỳ cuối đang chạy, không phụ thuộc khoảng ngày đang chọn. Đường so sánh là trung bình chỉ số của các đối thủ có điểm trong kỳ. Kỳ không đủ dữ liệu để trống, không nối.
+- Gỡ `LEGACY_PROJECT_CASES` và `scripts/migrate-project-cases.ts`: DB chỉ còn id case BĐS (kiểm ngày 2026-10-26).

@@ -1,3 +1,5 @@
+import { InvalidInputError } from "@/lib/common/service-errors";
+
 // Real estate listening cases. A case is one concrete tracking situation: two
 // cases may share collection and enrichment but differ in reports and views.
 // See docs/decisions.md D10.
@@ -60,28 +62,17 @@ export const PROJECT_CASE_ICONS: Record<ProjectCase, string> = {
   residents: "🏠",
 };
 
-/** Generic social listening cases used before D10, mapped to the closest real estate case. */
-export const LEGACY_PROJECT_CASES: Record<string, ProjectCase> = {
-  general: "brand",
-  campaign: "project",
-  competitor: "market",
-  cx: "broker",
-  reputation: "brand",
-  trend: "market",
-  care: "residents",
-  employer: "brand",
-};
-
 export function isAvailableProjectCase(
   value: ProjectCase,
 ): value is AvailableProjectCase {
   return (AVAILABLE_PROJECT_CASES as readonly string[]).includes(value);
 }
 
+/** Reads `projects.case`; an unknown id means a broken row, so it throws. */
 export function parseProjectCase(value: string): ProjectCase {
   if ((PROJECT_CASES as readonly string[]).includes(value)) {
     return value as ProjectCase;
   }
 
-  return LEGACY_PROJECT_CASES[value] ?? "project";
+  throw new InvalidInputError(`Unknown project case: ${value}`);
 }
