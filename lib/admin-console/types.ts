@@ -1,5 +1,6 @@
 import type { ContentItemMedia } from "@/db/schema";
 import type { ActivityTier, CollectRunStatus, ConnectorKey } from "@/lib/connectors/constants";
+import type { SourceBudget } from "@/lib/connectors/services/get-source-budgets";
 
 export type PageParams = {
   page?: number;
@@ -61,14 +62,25 @@ export type AdminSourceRow = {
   url: string | null;
   activityTier: ActivityTier;
   activityTierLocked: boolean;
+  /** `manual`: tier pinned by an admin (`activity_tier_locked`), or paused. */
+  tierMode: "auto" | "manual";
+  /** Tier the automatic rule gives now; null for a keyword search (fixed interval). */
+  autoTier: Exclude<ActivityTier, "paused"> | null;
+  /** `search`: a TikTok keyword search runs at its own interval, not by tier. */
+  intervalRule: "tier" | "search";
+  /** Hours between post runs; null when paused. */
+  intervalHours: number | null;
   monthlyRecordLimit: number | null;
+  /** Per day in Vietnam time; null = unlimited. */
+  dailyRecordLimit: number | null;
   origin: string;
   lastCollectedAt: string | null;
   posts: number;
   comments: number;
-  /** Posts per day over `COLLECT_CONFIG.tiers.windowDays`. */
+  /** Posts per day over the tier window (a newer source: over what it has). */
   postsPerDay: number;
   usedThisMonth: number;
+  usedToday: number;
   lastPostRun: {
     id: string;
     status: CollectRunStatus;
@@ -78,7 +90,23 @@ export type AdminSourceRow = {
   nextPostRunAt: string | null;
 };
 
+/** Tier settings in use, for tooltips and the source form. */
+export type AdminTierRules = {
+  intervalHours: Record<Exclude<ActivityTier, "paused">, number>;
+  minPostsPerDay: { hot: number; normal: number };
+  windowDays: number;
+  searchIntervalHours: number;
+  /** Records cap of one post run; a run that hits it can miss posts. */
+  maxRecordsPerRun: number;
+};
+
+export type ListAdminSourcesResult = {
+  items: AdminSourceRow[];
+  tierRules: AdminTierRules;
+};
+
 export type AdminSourceDetail = AdminSourceRow & {
+  tierRules: AdminTierRules;
   externalId: string;
   followerCount: number | null;
   memberCount: number | null;
@@ -226,7 +254,7 @@ export type AdminRefreshScheduleRow = {
 export type AdminSchedulerState = {
   config: {
     intervalMinutes: number;
-    tierIntervalHours: Record<string, number>;
+    tierRules: AdminTierRules;
     checkpointsHours: readonly number[];
   };
   schedules: {
@@ -246,15 +274,11 @@ export type AdminSchedulerState = {
       name: string | null;
       activityTier: string;
       lastRunAt: string;
+      intervalHours: number;
       status: string;
       maxRecords: number | null;
     }[];
-    budgets: {
-      sourceId: string;
-      limit: number;
-      used: number;
-      remaining: number;
-    }[];
+    budgets: SourceBudget[];
     refreshes: {
       due: number;
       runs: { sourceId: string | null; posts: number }[];

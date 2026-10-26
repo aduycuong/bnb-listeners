@@ -3,6 +3,10 @@ import type { ActivityTier } from "./constants";
 /**
  * Collection tuning in one place. Values come from the Bright Data probes of
  * 2026-10-12; see "Giai đoạn 1 — Phát sinh" in docs/plan.md.
+ *
+ * `tiers`, `tiktok.search.intervalHours` and `commentRefresh.checkpointsHours`
+ * are defaults: admins override them in `/admin/settings` (see
+ * `./settings.ts`), so read them through `getCollectSettings`.
  */
 export const COLLECT_CONFIG = {
   posts: {

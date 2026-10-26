@@ -5,9 +5,11 @@ import { db } from "@/lib/db";
 
 import { COLLECT_CONFIG } from "../config";
 import { type ActivityTier, POST_CONNECTOR_KEYS } from "../constants";
+import type { CollectSettings } from "../settings";
 import { getPostConnectorKey } from "../utils/get-post-connector-key";
 import { getSourceIntervalHours } from "../utils/get-source-interval-hours";
 import { collectSource } from "./collect-source";
+import { getCollectSettings } from "./get-collect-settings";
 import type { SourceBudget } from "./get-source-budgets";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -18,12 +20,15 @@ type DispatchDueSourcesParams = {
   now?: Date;
   /** Report what would happen; no runs started. */
   dryRun?: boolean;
+  /** Loaded when missing. */
+  settings?: CollectSettings;
 };
 
 export type DueSourceDecision = {
   sourceId: string;
   activityTier: ActivityTier;
   lastRunAt: string;
+  intervalHours: number;
   /** `due` starts a run; anything else says why not. */
   status: "due" | "not-due" | "running" | "no-budget";
   maxRecords?: number;
@@ -78,6 +83,7 @@ export async function dispatchDueSources(
   });
 
   if (candidates.length === 0) return [];
+  const settings = params.settings ?? (await getCollectSettings());
 
   const active = await db
     .selectDistinct({ sourceId: collectRuns.sourceId })
@@ -98,12 +104,13 @@ export async function dispatchDueSources(
 
   for (const source of candidates) {
     const tier = source.activityTier as Exclude<ActivityTier, "paused">;
-    const intervalHours = getSourceIntervalHours(source)!;
+    const intervalHours = getSourceIntervalHours(source, settings)!;
     const budget = budgets.get(source.id);
     const base = {
       sourceId: source.id,
       activityTier: tier,
       lastRunAt: source.lastRunAt!.toISOString(),
+      intervalHours,
     };
 
     if (source.lastRunAt!.getTime() + intervalHours * HOUR_MS > now.getTime()) {

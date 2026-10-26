@@ -1,0 +1,1 @@
+ALTER TABLE "sources" ADD COLUMN "daily_record_limit" integer;

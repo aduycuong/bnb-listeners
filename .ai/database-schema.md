@@ -546,6 +546,18 @@ Stores metadata for workspace API keys managed via Unkey. The actual key value i
 **Relations:**
 - `workspace_id` → `workspaces.id` (cascade delete)
 
+## app_settings
+
+Admin overrides of app-wide settings (collection frequency, comment refresh checkpoints, …), one row per settings group. A group without a row uses the defaults in code. Groups, their Zod schemas and defaults are declared in `lib/settings/registry.ts`; edited in `/admin/settings`.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| key | text | NO | — | Primary key; settings group (e.g. `collect-tiers`) |
+| value | jsonb | NO | — | The whole group; a value that no longer passes the schema falls back to the default |
+| updated_by | uuid | YES | — | FK → `users.id` ON DELETE SET NULL |
+| created_at | timestamptz | NO | `now()` | Row creation time |
+| updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
+
 ---
 
 ## Social listening raw store (L1)
@@ -564,9 +576,10 @@ Shared across workspaces — no `workspace_id`. `sources`, `authors` and `conten
 | name | text | YES | — | Display name |
 | follower_count | integer | YES | — | Page followers |
 | member_count | integer | YES | — | Group members |
-| activity_tier | text | NO | `normal` | `hot` \| `normal` \| `low` \| `paused`; collection frequency |
-| activity_tier_locked | boolean | NO | `false` | Pin the tier by hand; post runs skip recomputing it |
-| monthly_record_limit | integer | YES | — | Max Bright Data records per calendar month across the source's runs; null = unlimited |
+| activity_tier | text | NO | `normal` | `hot` \| `normal` \| `low` \| `paused`; collection frequency (intervals in `app_settings` `collect-tiers`) |
+| activity_tier_locked | boolean | NO | `false` | Manual tier (set in `/admin/sources/{id}`); post runs skip recomputing it. `paused` is always manual |
+| monthly_record_limit | integer | YES | — | Max Bright Data records per calendar month (UTC) across the source's runs; null = unlimited |
+| daily_record_limit | integer | YES | — | Max records per day (Asia/Ho_Chi_Minh) across the source's runs, comment runs included; null = unlimited. Soft: runs already started may go over |
 | origin | text | NO | `connector` | Data origin |
 | metadata | jsonb | NO | `{}` | Platform extras |
 | last_collected_at | timestamptz | YES | — | Last successful collect run |

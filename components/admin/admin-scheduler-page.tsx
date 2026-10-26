@@ -28,6 +28,7 @@ import { AdminQueryState } from "./admin-query-state";
 import { adminQueryKeys } from "./admin-query-keys";
 import { AdminSection } from "./admin-section";
 import { AdminStatusBadge } from "./admin-status-badge";
+import { AdminTierBadge } from "./admin-tier-badge";
 import { fetchAdminJson } from "./fetch-admin-json";
 
 type WorkflowName = ListWorkflowRunsParams["workflow"];
@@ -38,17 +39,27 @@ function SchedulerConfig({ state }: { state: AdminSchedulerState }) {
   return (
     <AdminSection
       title="Scheduler"
-      description="Changes go through scripts: npm run schedules:sync, lib/connectors/config.ts."
+      description="Intervals and checkpoints are edited in Settings; the tick interval through npm run schedules:sync."
+      actions={
+        <Link href="/admin/settings" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+          Edit settings →
+        </Link>
+      }
     >
       <AdminKeyValues
         items={[
           ["Tick interval", `${state.config.intervalMinutes} min`],
           [
             "Post run interval by tier",
-            Object.entries(state.config.tierIntervalHours)
+            Object.entries(state.config.tierRules.intervalHours)
               .map(([tier, hours]) => `${tier} ${hours}h`)
               .join(" · "),
           ],
+          [
+            "Automatic tier",
+            `hot ≥ ${state.config.tierRules.minPostsPerDay.hot} · normal ≥ ${state.config.tierRules.minPostsPerDay.normal} posts/day over ${state.config.tierRules.windowDays}d`,
+          ],
+          ["TikTok keyword search", `every ${state.config.tierRules.searchIntervalHours}h`],
           [
             "Comment refresh checkpoints",
             state.config.checkpointsHours.map((hours) => `+${hours}h`).join(" · "),
@@ -157,7 +168,10 @@ function NextTick({ state }: { state: AdminSchedulerState }) {
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <AdminStatusBadge value={source.activityTier} />
+                    <AdminTierBadge
+                      tier={source.activityTier}
+                      lines={[`Post run every ${source.intervalHours}h after the last one.`]}
+                    />
                   </TableCell>
                   <TableCell className="text-xs">
                     {formatDateTime(source.lastRunAt)} · {formatRelative(source.lastRunAt)}
@@ -169,7 +183,9 @@ function NextTick({ state }: { state: AdminSchedulerState }) {
                     {formatNumber(source.maxRecords)}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {budget ? `${formatNumber(budget.remaining)} / ${formatNumber(budget.limit)}` : "∞"}
+                    {budget
+                      ? `${formatNumber(budget.remaining)} (${budget.limitedBy === "day" ? "today" : "this month"})`
+                      : "∞"}
                   </TableCell>
                 </TableRow>
               );

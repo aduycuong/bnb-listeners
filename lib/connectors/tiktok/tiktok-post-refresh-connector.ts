@@ -81,6 +81,7 @@ export const tiktokPostRefreshConnector: DirectConnector<TiktokPostRefreshParams
         checked: decisions.length,
         commentRunsPlanned: followUps.length,
         postsToCollect: decisions.filter((decision) => decision.collect).length,
+        commentsDeferredForBudget: decisions.filter((decision) => decision.deferredForBudget).length,
       },
       followUps,
     };

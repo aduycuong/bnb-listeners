@@ -172,6 +172,27 @@ export const workspaceApiKeys = pgTable(
 export type WorkspaceApiKey = typeof workspaceApiKeys.$inferSelect;
 export type NewWorkspaceApiKey = typeof workspaceApiKeys.$inferInsert;
 
+/**
+ * Admin overrides of app-wide settings, one row per settings group. A group
+ * without a row uses the defaults in code; see `lib/settings/registry.ts`.
+ */
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey().notNull(),
+  /** The whole group, validated by the group's schema on read and write. */
+  value: jsonb("value").$type<Record<string, unknown>>().notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export type AppSetting = typeof appSettings.$inferSelect;
+export type NewAppSetting = typeof appSettings.$inferInsert;
+
 // ---------------------------------------------------------------------------
 // Social listening raw store (L1). Shared across workspaces; see .ai/database-schema.md.
 // `origin`: connector | synthetic | legacy_import.
@@ -195,6 +216,8 @@ export const sources = pgTable(
     activityTierLocked: boolean("activity_tier_locked").notNull().default(false),
     /** Max Bright Data records per calendar month across all runs; null = unlimited. */
     monthlyRecordLimit: integer("monthly_record_limit"),
+    /** Max Bright Data records per day (Vietnam time) across all runs; null = unlimited. */
+    dailyRecordLimit: integer("daily_record_limit"),
     origin: text("origin").notNull().default("connector"),
     metadata: jsonb("metadata")
       .$type<Record<string, unknown>>()

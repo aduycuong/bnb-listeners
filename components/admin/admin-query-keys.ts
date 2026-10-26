@@ -19,5 +19,6 @@ export const adminQueryKeys = {
   panels: () => ["admin", "persona-panels"] as const,
   panel: (id: string) => ["admin", "persona-panels", id] as const,
   scheduler: () => ["admin", "scheduler"] as const,
+  settings: () => ["admin", "settings"] as const,
   workflowRuns: (workflow: string) => ["admin", "workflow-runs", workflow] as const,
 };

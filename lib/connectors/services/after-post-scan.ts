@@ -1,5 +1,6 @@
 import type { AfterNormalizeResult, ConnectorContext } from "../types";
 import { createItemRefreshSchedules } from "./create-item-refresh-schedules";
+import { getCollectSettings } from "./get-collect-settings";
 import { measureLateArrivals } from "./measure-late-arrivals";
 import { recomputeSourceActivityTier } from "./recompute-source-activity-tier";
 
@@ -16,15 +17,16 @@ export async function afterPostScan(
   context: ConnectorContext,
   params: AfterPostScanParams,
 ): Promise<AfterNormalizeResult> {
+  const settings = await getCollectSettings();
   const [lateArrivals, schedules] = await Promise.all([
     measureLateArrivals({
       collectRunId: context.collectRunId,
       newestKnownAt: params.newestKnownAt,
     }),
-    createItemRefreshSchedules({ collectRunId: context.collectRunId }),
+    createItemRefreshSchedules({ collectRunId: context.collectRunId, settings }),
   ]);
   const tier = context.sourceId
-    ? await recomputeSourceActivityTier({ sourceId: context.sourceId })
+    ? await recomputeSourceActivityTier({ sourceId: context.sourceId, settings })
     : null;
 
   const { followUps, ...scheduleStats } = schedules;

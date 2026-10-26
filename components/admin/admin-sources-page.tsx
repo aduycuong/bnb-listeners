@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { LockIcon } from "lucide-react";
 
 import {
   Table,
@@ -12,25 +11,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { AdminSourceRow } from "@/lib/admin-console/types";
+import type { ListAdminSourcesResult } from "@/lib/admin-console/types";
 
 import { formatDateTime, formatNumber, formatRelative } from "./admin-format";
 import { AdminQueryState } from "./admin-query-state";
 import { adminQueryKeys } from "./admin-query-keys";
 import { AdminSection } from "./admin-section";
 import { AdminStatusBadge } from "./admin-status-badge";
+import { AdminTierBadge, describeTierSchedule } from "./admin-tier-badge";
 import { fetchAdminJson } from "./fetch-admin-json";
 
 export function AdminSourcesPage() {
   const { data, isPending, error } = useQuery({
     queryKey: adminQueryKeys.sources(),
-    queryFn: () => fetchAdminJson<{ items: AdminSourceRow[] }>("/api/admin/sources"),
+    queryFn: () => fetchAdminJson<ListAdminSourcesResult>("/api/admin/sources"),
   });
 
   return (
     <AdminSection
       title="Sources"
-      description="Usage is Bright Data records this month across all connectors. Next post run = last post run + tier interval."
+      description="Usage is Bright Data records across all connectors, this month (UTC) and today (Vietnam time). Next post run = last post run + tier interval. Hover a tier to see how often it runs; a lock means the tier is set by hand."
     >
       {!data ? (
         <AdminQueryState isPending={isPending} error={error} />
@@ -42,8 +42,9 @@ export function AdminSourcesPage() {
               <TableHead>Tier</TableHead>
               <TableHead className="text-right">Posts</TableHead>
               <TableHead className="text-right">Comments</TableHead>
-              <TableHead className="text-right">Posts/day (7d)</TableHead>
-              <TableHead className="text-right">Usage / limit</TableHead>
+              <TableHead className="text-right">Posts/day ({data.tierRules.windowDays}d)</TableHead>
+              <TableHead className="text-right">Month: used / limit</TableHead>
+              <TableHead className="text-right">Today: used / limit</TableHead>
               <TableHead>Last post run</TableHead>
               <TableHead>Next post run</TableHead>
             </TableRow>
@@ -63,12 +64,11 @@ export function AdminSourcesPage() {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span className="inline-flex items-center gap-1">
-                    <AdminStatusBadge value={source.activityTier} />
-                    {source.activityTierLocked ? (
-                      <LockIcon className="size-3 text-muted-foreground" aria-label="Tier locked" />
-                    ) : null}
-                  </span>
+                  <AdminTierBadge
+                    tier={source.activityTier}
+                    manual={source.tierMode === "manual"}
+                    lines={describeTierSchedule(source, data.tierRules)}
+                  />
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{formatNumber(source.posts)}</TableCell>
                 <TableCell className="text-right tabular-nums">
@@ -78,6 +78,10 @@ export function AdminSourcesPage() {
                 <TableCell className="text-right tabular-nums">
                   {formatNumber(source.usedThisMonth)} /{" "}
                   {source.monthlyRecordLimit === null ? "∞" : formatNumber(source.monthlyRecordLimit)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatNumber(source.usedToday)} /{" "}
+                  {source.dailyRecordLimit === null ? "∞" : formatNumber(source.dailyRecordLimit)}
                 </TableCell>
                 <TableCell>
                   {source.lastPostRun ? (

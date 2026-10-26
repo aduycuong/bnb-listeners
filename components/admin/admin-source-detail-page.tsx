@@ -18,7 +18,8 @@ import { AdminKeyValues } from "./admin-key-values";
 import { AdminQueryState } from "./admin-query-state";
 import { adminQueryKeys } from "./admin-query-keys";
 import { AdminSection } from "./admin-section";
-import { AdminStatusBadge } from "./admin-status-badge";
+import { AdminSourceSettingsForm } from "./admin-source-settings-form";
+import { AdminTierBadge, describeTierSchedule } from "./admin-tier-badge";
 import { fetchAdminJson } from "./fetch-admin-json";
 
 const RECENT = 10;
@@ -77,11 +78,16 @@ export function AdminSourceDetailPage({ id }: { id: string }) {
             [
               "Tier",
               <span key="tier" className="inline-flex items-center gap-2">
-                <AdminStatusBadge value={data.activityTier} />
-                {data.activityTierLocked ? "locked" : "auto"}
+                <AdminTierBadge
+                  tier={data.activityTier}
+                  manual={data.tierMode === "manual"}
+                  lines={describeTierSchedule(data, data.tierRules)}
+                />
+                {data.tierMode === "manual" ? "manual" : "automatic"}
+                {data.intervalHours !== null ? ` · every ${data.intervalHours}h` : null}
               </span>,
             ],
-            ["Posts / day (7d)", data.postsPerDay],
+            [`Posts / day (${data.tierRules.windowDays}d)`, data.postsPerDay],
             ["Posts", formatNumber(data.posts)],
             ["Comments + replies", formatNumber(data.comments)],
             ["Followers / members", `${formatNumber(data.followerCount)} / ${formatNumber(data.memberCount)}`],
@@ -89,6 +95,12 @@ export function AdminSourceDetailPage({ id }: { id: string }) {
               "Usage this month",
               `${formatNumber(data.usedThisMonth)} / ${
                 data.monthlyRecordLimit === null ? "unlimited" : formatNumber(data.monthlyRecordLimit)
+              }`,
+            ],
+            [
+              "Usage today (Vietnam time)",
+              `${formatNumber(data.usedToday)} / ${
+                data.dailyRecordLimit === null ? "unlimited" : formatNumber(data.dailyRecordLimit)
               }`,
             ],
             ["Last collected", formatDateTime(data.lastCollectedAt)],
@@ -111,6 +123,13 @@ export function AdminSourceDetailPage({ id }: { id: string }) {
             ["Created / updated", `${formatDateTime(data.createdAt)} / ${formatDateTime(data.updatedAt)}`],
           ]}
         />
+      </AdminSection>
+
+      <AdminSection
+        title="Collection settings"
+        description="Intervals and automatic-tier thresholds are shared by all sources; edit them in Settings."
+      >
+        <AdminSourceSettingsForm key={data.updatedAt} source={data} />
       </AdminSection>
 
       <AdminSection title="Metadata">
