@@ -273,11 +273,20 @@ Xem [D27](decisions.md#d27--mcp-và-scope-của-api-key-2026-10-26) và [D28](de
 - [x] Thay job đêm bằng sự kiện: lần thu thập chỉ cập nhật item (tương tác) tính lại ngày của các item đó; đổi vai trò đối tượng tính lại cả project. Kiểm trên DB dev: làm hỏng `engagement` của ngày một run làm mới, bước mới trả về đúng số
 - [x] `REPORT_SCHEDULES` thêm `yearly`
 
-**PR 5 — Báo cáo AI theo kỳ** (6–9 ngày)
-- [ ] `ai_reports`: snapshot số liệu, các phần, trích dẫn mention, trạng thái nháp/đã duyệt, model, chi phí
-- [ ] Sinh báo cáo: số liệu tính sẵn, LLM viết từng phần có trích dẫn, kiểm lại con số; workflow QStash sau khi kỳ đóng 24–48 giờ
-- [ ] Màn hình Báo cáo AI cho project thật, AI tóm tắt ở Tổng quan đọc bản mới nhất, luồng duyệt
-- [ ] Tool `list_reports`, `get_report`
+**PR 5 — Báo cáo AI theo kỳ** (xem [D29](decisions.md#d29--báo-cáo-ai-theo-kỳ-2026-10-26))
+
+5a — bộ sinh và MCP (2,5–3 ngày)
+- [x] Kỳ `day` trong kỳ lịch
+- [x] `ai_reports` (migration `0060`): snapshot số liệu, các phần, trích dẫn đề cập, model, token, chi phí, cảnh báo
+- [x] Sinh báo cáo: snapshot, đề cập mẫu, LLM viết từng phần có trích dẫn, kiểm con số; `npm run reports:generate`. Thử trên DB dev: tuần, ngày, tháng đang chạy, project không có đề cập; 5–9 giây, $0,01–0,03 mỗi báo cáo
+- [x] Tool `list_reports`, `get_report`
+
+5b — giao diện (2–3 ngày)
+- [ ] Trang Báo cáo AI cho project thật: chọn báo cáo theo kỳ, danh sách báo cáo cũ, trích dẫn mở đề cập, tạo lại, tạo cho kỳ bất kỳ
+- [ ] AI tóm tắt ở Tổng quan đọc báo cáo mới nhất
+
+5c — lịch (1 ngày)
+- [ ] Job `generate-due-reports` mỗi giờ theo `reportSchedule`, schedule QStash
 
 ## Giai đoạn 7 — Mở rộng nguồn
 

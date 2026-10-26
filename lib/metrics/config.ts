@@ -25,8 +25,8 @@ export const METRICS_CONFIG = {
   reputationTrendPeriods: 6,
 } as const;
 
-/** Calendar report periods (D28), in the project's timezone; a week runs Monday to Sunday. */
-export const REPORT_PERIOD_TYPES = ["week", "month", "quarter", "year"] as const;
+/** Calendar report periods (D28, D29), in the project's timezone; a week runs Monday to Sunday. */
+export const REPORT_PERIOD_TYPES = ["day", "week", "month", "quarter", "year"] as const;
 
 /** Labels of the reputation index (brand case), by lowest score of the band. */
 export const REPUTATION_BANDS = [

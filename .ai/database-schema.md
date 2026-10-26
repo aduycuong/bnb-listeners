@@ -15,7 +15,7 @@ L1  Raw store        sources · authors · content_items · engagement_snapshots
 L2  Project config   projects · project_entities · project_queries · project_aspects · project_sources · project_enrichers · alert_rules
 L3  Analysis         mentions · item_labels · label_samples · mention_* · term_dictionary · topics · match_judgments
 L4  Aggregates       project_metrics_daily · project_aspect_daily (D28); not built: metrics_hourly
-L5  Outputs          alert_rules · alerts; `insights` not built, `ai_reports` planned (D28)
+L5  Outputs          alert_rules · alerts · ai_reports (D29); `insights` not built
 ```
 
 Layers depend only on the ones below. L3–L5 can be dropped and recomputed from L1 + L2. L1 is shared across workspaces; L2 and up belong to a project. Metric formulas (engagement, NSS, SoV) live in `lib/metrics/`, not in scattered SQL.
@@ -542,6 +542,29 @@ One firing of an alert rule. The same rule and scope are recorded at most once p
 **Indexes:** unique `alerts_rule_bucket_uidx` on `(rule_id, dedupe_key, bucket)`; `alerts_project_triggered_idx` on `(project_id, triggered_at)`
 
 ---
+
+### `ai_reports`
+
+AI report of one project and period (D29). Numbers are a snapshot taken at generation; the model writes the summary, highlights, risks and recommendations and cites mentions. One row per `(project_id, period_type, period_start)`; generating again overwrites it. No approval state.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| id | uuid | NO | random | Primary key |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| period_type | text | NO | — | `day`, `week`, `month`, `quarter`, `year`, `rolling` or `custom` |
+| period_start / period_end | date | NO | — | First and last day of the period in `projects.timezone` |
+| complete | boolean | NO | — | The period had ended at generation |
+| metrics | jsonb | NO | — | Metrics snapshot (`ReportMetrics` in `lib/reports/types.ts`) |
+| sections | jsonb | NO | — | `ReportSections`: summary, highlights and risks with citation ids, recommendations |
+| citations | jsonb | NO | `[]` | Cited mentions with excerpt, author, source, URL, date |
+| warnings | jsonb | NO | `[]` | Failed checks, e.g. a number not in the snapshot |
+| model | text | NO | — | Chat model id |
+| input_tokens / output_tokens | int | NO | `0` | Usage of the generation call(s) |
+| cost_usd | real | NO | `0` | From `getChatModelPricing` |
+| trigger | text | NO | — | `schedule`, `user`, `script` or `mcp` |
+| generated_at | timestamptz | NO | `now()` | |
+
+**Constraints:** unique `(project_id, period_type, period_start)` (`ai_reports_period_key`).
 
 ### `workspace_members`
 

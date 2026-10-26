@@ -11,7 +11,7 @@ export const toolPeriodSchema = reportPeriodSchema
   .optional()
   .describe(
     "Kỳ báo cáo theo timezone của project. rolling: N ngày gần nhất tính cả hôm nay. " +
-      "week | month | quarter | year: kỳ lịch chứa `date` (YYYY-MM-DD), bỏ trống là kỳ đang chạy; " +
+      "day | week | month | quarter | year: kỳ lịch chứa `date` (YYYY-MM-DD), bỏ trống là kỳ đang chạy; " +
       "tuần từ thứ 2 đến chủ nhật. custom: từ `from` đến `to`, tính cả hai ngày. " +
       "Bỏ trống là 14 ngày gần nhất. Mọi số liệu so với kỳ liền trước cùng độ dài.",
   );
