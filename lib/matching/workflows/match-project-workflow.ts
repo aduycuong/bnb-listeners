@@ -2,6 +2,7 @@ import type { RouteFunction, WorkflowServeOptions } from "@upstash/workflow";
 import { z } from "zod";
 
 import { triggerProjectEnrich } from "@/lib/enrichment/services/trigger-project-enrich";
+import { refreshProjectMetricsDaily } from "@/lib/metrics/services/refresh-project-metrics-daily";
 
 import { MATCH_CONFIG } from "../config";
 import { finalizeProjectMatch } from "../services/finalize-project-match";
@@ -21,7 +22,8 @@ export const matchProjectWorkflowPayloadSchema = z.object({
  *    An incremental run on a project whose config changed since its last full
  *    match runs a full match instead.
  * 2. judge-{n}: tier 2 for a few threads per step.
- * 3. finalize (full only): drop stale mentions and record the signature.
+ * 3. finalize (full only): drop stale mentions and record the signature, then rewrite
+ *    every L4 day of the project (D28): relevance may have changed on any day.
  * 4. enrich: start Enrich for the project's new or changed mentions.
  */
 export const matchProjectWorkflow: RouteFunction<MatchProjectWorkflowPayload> = async (
@@ -54,6 +56,7 @@ export const matchProjectWorkflow: RouteFunction<MatchProjectWorkflowPayload> = 
     await context.run("finalize", () =>
       finalizeProjectMatch({ projectId, signature: lexical.signature }),
     );
+    await context.run("metrics", () => refreshProjectMetricsDaily({ projectId }));
   }
 
   await context.run("enrich", () =>

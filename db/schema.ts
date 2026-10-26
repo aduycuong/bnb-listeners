@@ -16,6 +16,7 @@ import {
   real,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
   foreignKey,
@@ -1294,3 +1295,74 @@ export const mentionEmbeddings = pgTable(
 export type MentionEmbedding = typeof mentionEmbeddings.$inferSelect;
 export type NewMentionEmbedding = typeof mentionEmbeddings.$inferInsert;
 
+// ---------------------------------------------------------------------------
+// L4 — Aggregates (docs/decisions.md D28). Daily counts of relevant mentions per
+// project, day of the project's timezone and source; recomputed per (project, day)
+// from L3 by `lib/metrics/services/refresh-project-metrics-daily.ts`. Only counts
+// are stored: NSS, shares and SoV are computed from sums of any period.
+// ---------------------------------------------------------------------------
+
+export const projectMetricsDaily = pgTable(
+  "project_metrics_daily",
+  {
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** Day of `mentions.published_at` in the project's timezone. */
+    dateKey: date("date_key").notNull(),
+    sourceId: uuid("source_id").references(() => sources.id, { onDelete: "set null" }),
+    /** Own mentions (D26): enriched to at least one non-competitor entity. */
+    mentions: integer("mentions").notNull().default(0),
+    posts: integer("posts").notNull().default(0),
+    engagement: integer("engagement").notNull().default(0),
+    positive: integer("positive").notNull().default(0),
+    neutral: integer("neutral").notNull().default(0),
+    negative: integer("negative").notNull().default(0),
+    /** Own mentions without a sentiment yet. */
+    unknown: integer("unknown").notNull().default(0),
+    /** Own mentions per emotion, `{ [emotion]: count }`. */
+    emotions: jsonb("emotions").$type<Record<string, number>>().notNull().default({}),
+    /** Relevant mentions naming a primary or product entity, and any tracked entity (SoV). */
+    sovPrimary: integer("sov_primary").notNull().default(0),
+    sovTracked: integer("sov_tracked").notNull().default(0),
+    computedAt: timestamp("computed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // Upserts keep two refreshes of the same days from adding rows twice.
+    unique("project_metrics_daily_key")
+      .on(table.projectId, table.dateKey, table.sourceId)
+      .nullsNotDistinct(),
+  ],
+);
+
+export type ProjectMetricsDaily = typeof projectMetricsDaily.$inferSelect;
+export type NewProjectMetricsDaily = typeof projectMetricsDaily.$inferInsert;
+
+/** Own mentions per effective aspect (D14) and day, with the aspect's sentiment. */
+export const projectAspectDaily = pgTable(
+  "project_aspect_daily",
+  {
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    dateKey: date("date_key").notNull(),
+    aspectId: uuid("aspect_id")
+      .notNull()
+      .references(() => projectAspects.id, { onDelete: "cascade" }),
+    mentions: integer("mentions").notNull().default(0),
+    positive: integer("positive").notNull().default(0),
+    neutral: integer("neutral").notNull().default(0),
+    negative: integer("negative").notNull().default(0),
+    computedAt: timestamp("computed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("project_aspect_daily_key").on(table.projectId, table.dateKey, table.aspectId),
+  ],
+);
+
+export type ProjectAspectDaily = typeof projectAspectDaily.$inferSelect;
+export type NewProjectAspectDaily = typeof projectAspectDaily.$inferInsert;

@@ -2,77 +2,46 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { EMOTIONS, type Emotion } from "@/lib/enrichment/config";
-import {
-  effectiveSentimentJoins,
-  effectiveSentimentSql,
-  emotionSql,
-} from "@/lib/enrichment/utils/effective-sentiment-sql";
-import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 
 import { netSentimentScore, sharePercent } from "../formulas";
 import type { MetricsReportParams, SentimentMetricsResult } from "../types";
 import { loadDailySentiment } from "../utils/load-daily-sentiment";
-import { periodSql, resolveReportWindow } from "../utils/resolve-report-window";
+import { periodDateSql, resolveReportWindow } from "../utils/resolve-report-window";
 
 type AspectRow = { id: string; name: string; mentions: number; positive: number; negative: number };
 
 /**
  * Numbers of the Sentiment page for real projects over the period: NSS per day, emotions,
- * and sentiment per aspect. Effective aspects follow D14: a label's aspect keys when the
- * item is labeled (with the mention's sentiment), else Enrich's aspects with their own
- * sentiment. Reads L3 directly until the L4 rollups exist.
+ * and sentiment per aspect, all sums of L4 (D28). Effective aspects follow D14 and are
+ * resolved when L4 is written: a label's aspect keys when the item is labeled (with the
+ * mention's sentiment), else Enrich's aspects with their own sentiment.
  */
 export async function getSentimentMetrics(
   params: MetricsReportParams,
 ): Promise<SentimentMetricsResult> {
   const window = await resolveReportWindow(params.projectId, params.period);
-  const periodMentions = sql`
-    select m.id, m.content_item_id, ${effectiveSentimentSql} as sentiment, ${emotionSql} as emotion
-    from mentions m
-    ${effectiveSentimentJoins}
-    where m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
-      and ${periodSql(window).current}
-  `;
+  const inPeriod = periodDateSql(window).current;
 
   const [daily, { rows: emotionRows }, { rows: aspectRows }] = await Promise.all([
     loadDailySentiment(params.projectId, window),
     db.execute<{ emotion: string; mentions: number }>(sql`
-      select m.emotion, count(*)::int as mentions
-      from (${periodMentions}) m
-      where m.emotion is not null
-      group by m.emotion
+      select e.key as emotion, sum(e.value::int)::int as mentions
+      from project_metrics_daily d, jsonb_each_text(d.emotions) e
+      where d.project_id = ${params.projectId}::uuid and ${inPeriod}
+      group by e.key
     `),
     db.execute<AspectRow>(sql`
-      with pm as (${periodMentions}),
-      effective as (
-        select pm.id as mention_id, pa.id as aspect_id, pm.sentiment
-        from pm
-        join item_labels il on il.content_item_id = pm.content_item_id
-          and il.project_id = ${params.projectId}::uuid and il.aspect_keys is not null
-        join project_aspects pa on pa.project_id = ${params.projectId}::uuid
-          and il.aspect_keys @> jsonb_build_array(pa.key)
-        union all
-        select pm.id, ma.aspect_id, coalesce(ma.sentiment, pm.sentiment)
-        from pm
-        join mention_aspects ma on ma.mention_id = pm.id
-        where not exists (
-          select 1 from item_labels il
-          where il.content_item_id = pm.content_item_id
-            and il.project_id = ${params.projectId}::uuid and il.aspect_keys is not null
-        )
-      )
       select pa.id, pa.name,
-        count(e.mention_id)::int as mentions,
-        (count(e.mention_id) filter (where e.sentiment = 'positive'))::int as positive,
-        (count(e.mention_id) filter (where e.sentiment = 'negative'))::int as negative
+        coalesce(sum(d.mentions), 0)::int as mentions,
+        coalesce(sum(d.positive), 0)::int as positive,
+        coalesce(sum(d.negative), 0)::int as negative
       from project_aspects pa
-      left join effective e on e.aspect_id = pa.id
+      left join project_aspect_daily d on d.aspect_id = pa.id and ${inPeriod}
       where pa.project_id = ${params.projectId}::uuid
       group by pa.id
       order by pa.sort_order, pa.name
     `),
   ]);
-
   const emotionCounts = new Map(emotionRows.map((row) => [row.emotion, row.mentions]));
   const emotionTotal = EMOTIONS.reduce((total, emotion) => total + (emotionCounts.get(emotion) ?? 0), 0);
 

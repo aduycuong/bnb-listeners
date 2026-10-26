@@ -1,6 +1,7 @@
 import type { RouteFunction, WorkflowServeOptions } from "@upstash/workflow";
 import { z } from "zod";
 
+import { refreshThreadMetricsDaily } from "@/lib/metrics/services/refresh-thread-metrics-daily";
 import { triggerProjectTopics } from "@/lib/topics/services/trigger-project-topics";
 
 import { ENRICH_CONFIG } from "../config";
@@ -37,7 +38,8 @@ async function planStages(payload: EnrichProjectWorkflowPayload) {
  *    the state.
  * 2. enrich-{n}: a few threads per step, one model call per thread for the
  *    union of the pending enrichers.
- * 3. stages: `terms_index` in steps of `termsPerStep`; grouping stages
+ * 3. metrics: rewrite the L4 days of the enriched threads and the last days (D28).
+ * 4. stages: `terms_index` in steps of `termsPerStep`; grouping stages
  *    (`topic_assign`, `question_assign`) as the topic workflow (D15).
  */
 export const enrichProjectWorkflow: RouteFunction<EnrichProjectWorkflowPayload> = async (context) => {
@@ -53,6 +55,10 @@ export const enrichProjectWorkflow: RouteFunction<EnrichProjectWorkflowPayload> 
       }),
     );
   }
+
+  await context.run("metrics", () =>
+    refreshThreadMetricsDaily({ projectId, rootIds: plan.rootIds }),
+  );
 
   const stages = await context.run("stages", () => planStages(payload));
 

@@ -163,7 +163,7 @@ export const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannel, string> = 
   slack: "Slack",
 };
 
-export const REPORT_SCHEDULES = ["none", "daily", "weekly", "monthly"] as const;
+export const REPORT_SCHEDULES = ["none", "daily", "weekly", "monthly", "yearly"] as const;
 
 export type ReportSchedule = (typeof REPORT_SCHEDULES)[number];
 
@@ -172,4 +172,5 @@ export const REPORT_SCHEDULE_LABELS: Record<ReportSchedule, string> = {
   daily: "Hằng ngày, 8:00",
   weekly: "Thứ Hai hằng tuần, 8:00",
   monthly: "Ngày 1 hằng tháng, 8:00",
+  yearly: "Ngày 1/1 hằng năm, 8:00",
 };

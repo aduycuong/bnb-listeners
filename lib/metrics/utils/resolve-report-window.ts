@@ -74,3 +74,11 @@ export function periodSql(window: ReportWindow, column: SQL = sql`m.published_at
   const previous = sql`(${column} >= ${timestampSql(window.previousStart)} and ${column} < ${timestampSql(window.previousEnd)})`;
   return { current, previous, either: sql`(${current} or ${previous})` };
 }
+
+/** Filters of a day column (default `d.date_key`, L4) on the period and the one before. */
+export function periodDateSql(window: ReportWindow, column: SQL = sql`d.date_key`) {
+  const { start, end, previousStart, previousEnd } = window.info;
+  const current = sql`(${column} between ${start}::date and ${end}::date)`;
+  const previous = sql`(${column} between ${previousStart}::date and ${previousEnd}::date)`;
+  return { current, previous, either: sql`(${current} or ${previous})` };
+}

@@ -1,17 +1,12 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import {
-  effectiveSentimentJoins,
-  effectiveSentimentSql,
-} from "@/lib/enrichment/utils/effective-sentiment-sql";
 import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 
 import { METRICS_CONFIG } from "../config";
 import type { ChannelMetricsResult, MetricsReportParams } from "../types";
 import { channelLabel } from "../utils/channel-label";
-import { engagementSql } from "../utils/engagement-sql";
-import { periodSql, resolveReportWindow } from "../utils/resolve-report-window";
+import { periodDateSql, periodSql, resolveReportWindow } from "../utils/resolve-report-window";
 
 type ChannelRow = {
   platform: string;
@@ -35,7 +30,8 @@ type SourceRow = {
 /**
  * Numbers of the Channels page for real projects over the period: mentions and sentiment
  * per channel, mentions per weekday and hour, and the sources with the most mentions.
- * Reads L3 directly until the L4 rollups exist; only relevant mentions count.
+ * Channels and sources are sums of L4 (D28); the hour × weekday heat reads L3. Only
+ * relevant mentions count.
  */
 export async function getChannelMetrics(
   params: MetricsReportParams,
@@ -43,18 +39,20 @@ export async function getChannelMetrics(
   const window = await resolveReportWindow(params.projectId, params.period);
   const scope = sql`m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
     and ${periodSql(window).current}`;
+  const days = sql`d.project_id = ${params.projectId}::uuid and ${periodDateSql(window).current}`;
 
   const [{ rows: channelRows }, { rows: heatRows }, { rows: sourceRows }] = await Promise.all([
     db.execute<ChannelRow>(sql`
-      select m.platform, s.source_type, count(*)::int as mentions,
-        (count(*) filter (where ${effectiveSentimentSql} = 'positive'))::int as positive,
-        (count(*) filter (where ${effectiveSentimentSql} = 'neutral'))::int as neutral,
-        (count(*) filter (where ${effectiveSentimentSql} = 'negative'))::int as negative
-      from mentions m
-      left join sources s on s.id = m.source_id
-      ${effectiveSentimentJoins}
-      where ${scope}
-      group by m.platform, s.source_type
+      select coalesce(s.platform, 'unknown') as platform, s.source_type,
+        sum(d.mentions)::int as mentions,
+        sum(d.positive)::int as positive,
+        sum(d.neutral)::int as neutral,
+        sum(d.negative)::int as negative
+      from project_metrics_daily d
+      left join sources s on s.id = d.source_id
+      where ${days}
+      group by 1, 2
+      having sum(d.mentions) > 0
     `),
     db.execute<{ weekday: number; hour: number; mentions: number }>(sql`
       select (extract(isodow from m.published_at at time zone ${window.timezone}) - 1)::int as weekday,
@@ -65,15 +63,15 @@ export async function getChannelMetrics(
       group by 1, 2
     `),
     db.execute<SourceRow>(sql`
-      select m.source_id as id, s.name, s.platform, s.source_type,
-        (count(*) filter (where m.kind = 'post'))::int as posts,
-        count(*)::int as mentions,
-        coalesce(sum(${engagementSql(sql`ci`)}), 0)::int as engagement
-      from mentions m
-      join content_items ci on ci.id = m.content_item_id
-      left join sources s on s.id = m.source_id
-      where ${scope}
-      group by m.source_id, s.name, s.platform, s.source_type
+      select d.source_id as id, s.name, s.platform, s.source_type,
+        sum(d.posts)::int as posts,
+        sum(d.mentions)::int as mentions,
+        sum(d.engagement)::int as engagement
+      from project_metrics_daily d
+      left join sources s on s.id = d.source_id
+      where ${days}
+      group by d.source_id, s.name, s.platform, s.source_type
+      having sum(d.mentions) > 0
       order by mentions desc, s.name
       limit ${METRICS_CONFIG.channelSources}
     `),

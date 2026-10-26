@@ -20,6 +20,7 @@
     "enrich:project": "tsx scripts/enrich-project.ts",
     "eval:enrich": "tsx scripts/evaluate-enrich.ts",
     "alerts:evaluate": "tsx scripts/evaluate-alerts.ts",
+    "metrics:refresh": "tsx scripts/refresh-metrics-daily.ts",
     "topics:project": "tsx scripts/topics-project.ts",
     "firebase:set-user-role": "tsx scripts/set-firebase-user-role.ts",
     "test": "tsx --test \"lib/**/*.test.ts\"",

@@ -9,6 +9,11 @@ export type ReportPeriod = z.infer<typeof reportPeriodSchema>;
 
 export type MetricsReportParams = { projectId: string; period: ReportPeriod };
 
+/** Days to rewrite in L4: those holding `from` and `to`; every day when both are left out. */
+export type RefreshProjectMetricsDailyParams = { projectId: string; from?: Date; to?: Date };
+
+export type RefreshProjectMetricsDailyResult = { metricRows: number; aspectRows: number };
+
 /** The days a report covers, `YYYY-MM-DD` in the project's timezone, last days included. */
 export type ReportPeriodInfo = {
   type: ReportPeriod["type"];

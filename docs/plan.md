@@ -266,10 +266,12 @@ Xem [D27](decisions.md#d27--mcp-và-scope-của-api-key-2026-10-26) và [D28](de
 - [ ] Tạo thật (`dryRun: false`) qua chat agent
 
 **PR 4 — L4 theo ngày** (3–4 ngày)
-- [ ] `project_metrics_daily` (dòng `entity_id = null` là tổng bên mình đã khử trùng), `project_aspect_daily`
-- [ ] Tính lại theo (project, ngày): sau match/enrich tăng dần, khi sửa nhãn tay, job đêm 35 ngày; đổi `match_signature` hay timezone thì tính lại cả project
-- [ ] Service metrics đọc L4 (tác giả, bản đồ nhiệt, top tác giả, chủ đề vẫn đọc L3), giao diện không đổi; so số với bản đọc L3 trên project thật
-- [ ] `REPORT_SCHEDULES` thêm `yearly`
+- [x] `project_metrics_daily` (theo nguồn, cột SoV thay cho chiều entity), `project_aspect_daily`
+- [x] Tính lại theo (project, ngày): cuối mỗi lần Enrich, khi sửa nhãn tay, sau match lại toàn bộ, job đêm `refresh-metrics-daily`; `npm run metrics:refresh`
+- [x] Tổng quan, Cảm xúc, Kênh đọc L4 (tác giả, bản đồ nhiệt, chủ đề, trang case vẫn đọc L3), giao diện không đổi
+- [x] Chạy migration (`0059`), backfill (4 project, mỗi project dưới 0,3 giây), so số Tổng quan, Cảm xúc, Kênh với bản đọc L3 trên DB dev (4 project × 5 kỳ): khớp; chạy lại và chạy song song giữ nguyên tổng
+- [ ] Tạo schedule QStash cho job `refresh-metrics-daily` (đêm, `Asia/Ho_Chi_Minh`)
+- [x] `REPORT_SCHEDULES` thêm `yearly`
 
 **PR 5 — Báo cáo AI theo kỳ** (6–9 ngày)
 - [ ] `ai_reports`: snapshot số liệu, các phần, trích dẫn mention, trạng thái nháp/đã duyệt, model, chi phí

@@ -1,31 +1,24 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import {
-  effectiveSentimentJoins,
-  effectiveSentimentSql,
-} from "@/lib/enrichment/utils/effective-sentiment-sql";
-import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 
 import type { MetricsDay } from "../types";
-import { periodSql, type ReportWindow } from "./resolve-report-window";
+import { periodDateSql, type ReportWindow } from "./resolve-report-window";
 
-/** Relevant mentions of each day of the period by sentiment; days without mentions are zeros. */
+/** Own mentions of each day of the period by sentiment, from L4 (D28); days without any are zeros. */
 export async function loadDailySentiment(
   projectId: string,
   window: ReportWindow,
 ): Promise<MetricsDay[]> {
   const { rows } = await db.execute<MetricsDay>(sql`
-    select to_char(m.published_at at time zone ${window.timezone}, 'YYYY-MM-DD') as date,
-      (count(*) filter (where ${effectiveSentimentSql} = 'positive'))::int as positive,
-      (count(*) filter (where ${effectiveSentimentSql} = 'neutral'))::int as neutral,
-      (count(*) filter (where ${effectiveSentimentSql} = 'negative'))::int as negative,
-      (count(*) filter (where ${effectiveSentimentSql} is null))::int as unknown
-    from mentions m
-    ${effectiveSentimentJoins}
-    where m.project_id = ${projectId}::uuid and m.is_relevant and ${ownMentionSql}
-      and ${periodSql(window).current}
-    group by 1
+    select to_char(d.date_key, 'YYYY-MM-DD') as date,
+      sum(d.positive)::int as positive,
+      sum(d.neutral)::int as neutral,
+      sum(d.negative)::int as negative,
+      sum(d.unknown)::int as unknown
+    from project_metrics_daily d
+    where d.project_id = ${projectId}::uuid and ${periodDateSql(window).current}
+    group by d.date_key
   `);
   const byDate = new Map(rows.map((row) => [row.date, row]));
 

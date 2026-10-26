@@ -7,6 +7,11 @@ export const METRICS_CONFIG = {
   reportPeriodDays: [14, 7, 30],
   /** Longest rolling or custom period, in days. */
   maxPeriodDays: 366,
+  /**
+   * Days the nightly job and each Enrich run rewrite in L4 (D28): late comments and
+   * engagement land on days already past.
+   */
+  dailyRefreshDays: 35,
   /** Rows of the "Kênh thảo luận" (by source) and "Chủ đề nổi bật" panels. */
   topSources: 6,
   topTopics: 6,
@@ -49,3 +54,6 @@ export type AuthorTier = (typeof AUTHOR_TIERS)[number]["key"];
 
 /** `authors.author_type` values counted as "Báo chí, thương hiệu". */
 export const MEDIA_BRAND_AUTHOR_TYPES = ["media", "brand"] as const;
+
+/** QStash job of the nightly L4 refresh (D28). */
+export const REFRESH_METRICS_DAILY_JOB_NAME = "refresh-metrics-daily";
