@@ -169,3 +169,21 @@ export type StoreRawPayloadResult = {
   payloadKey: string;
   itemCount: number;
 };
+
+export type CreateSourceResult = {
+  sourceId: string;
+  /** False when the source was already registered; nothing is collected then. */
+  created: boolean;
+  /** Set when the first post run started. */
+  collectRunId: string | null;
+  /** Why the first post run did not start; the source is registered anyway. */
+  collectError: string | null;
+};
+
+export type DeleteSourceResult = {
+  sourceId: string;
+  /** Posts, comments and replies removed with the source. */
+  deletedContentItems: number;
+  /** Projects the source was removed from. */
+  projectIds: string[];
+};

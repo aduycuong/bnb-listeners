@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import type { ListAdminSourcesResult } from "@/lib/admin-console/types";
 
+import { AdminAddSourceDialog } from "./admin-add-source-dialog";
 import { formatDateTime, formatNumber, formatRelative } from "./admin-format";
 import { AdminQueryState } from "./admin-query-state";
 import { adminQueryKeys } from "./admin-query-keys";
@@ -31,6 +32,7 @@ export function AdminSourcesPage() {
     <AdminSection
       title="Sources"
       description="Usage is Bright Data records across all connectors, this month (UTC) and today (Vietnam time). Next post run = last post run + tier interval. Hover a tier to see how often it runs; a lock means the tier is set by hand."
+      actions={<AdminAddSourceDialog />}
     >
       {!data ? (
         <AdminQueryState isPending={isPending} error={error} />

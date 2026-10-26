@@ -12,6 +12,7 @@ import type {
 
 import { AdminCollectRunsTable } from "./admin-collect-runs-table";
 import { AdminContentItemsTable } from "./admin-content-items-table";
+import { AdminDeleteSourceDialog } from "./admin-delete-source-dialog";
 import { formatDateTime, formatNumber, formatRelative } from "./admin-format";
 import { AdminJsonBlock } from "./admin-json-block";
 import { AdminKeyValues } from "./admin-key-values";
@@ -157,6 +158,20 @@ export function AdminSourceDetailPage({ id }: { id: string }) {
           <AdminQueryState isPending={posts.isPending} error={posts.error} />
         )}
       </AdminSection>
+
+      {data.origin === "connector" ? (
+        <AdminSection
+          title="Delete source"
+          description={
+            data.activeRuns > 0
+              ? `${data.activeRuns} collect run${data.activeRuns === 1 ? " is" : "s are"} still pending or running; delete once ${data.activeRuns === 1 ? "it finishes" : "they finish"}.`
+              : "Removes the source with its posts, comments and their analysis, and takes it out of every project that follows it."
+          }
+          actions={<AdminDeleteSourceDialog source={data} />}
+        >
+          {null}
+        </AdminSection>
+      ) : null}
     </>
   );
 }

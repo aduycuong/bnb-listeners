@@ -1,6 +1,13 @@
-import { count, eq } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 
-import { contentItems, itemRefreshSchedules, sources } from "@/db/schema";
+import {
+  collectRuns,
+  contentItems,
+  itemRefreshSchedules,
+  projectSources,
+  projects,
+  sources,
+} from "@/db/schema";
 import { NotFoundError } from "@/lib/common/service-errors";
 import { getCollectSettings } from "@/lib/connectors/services/get-collect-settings";
 import { db } from "@/lib/db";
@@ -20,13 +27,28 @@ export async function getAdminSource(params: GetAdminSourceParams): Promise<Admi
   }
 
   const settings = await getCollectSettings();
-  const [[row], [refreshes]] = await Promise.all([
+  const [[row], [refreshes], projectRows, [active]] = await Promise.all([
     buildAdminSourceRows([source], settings),
     db
       .select({ value: count() })
       .from(itemRefreshSchedules)
       .innerJoin(contentItems, eq(contentItems.id, itemRefreshSchedules.contentItemId))
       .where(eq(contentItems.sourceId, source.id)),
+    db
+      .select({ id: projects.id, name: projects.name })
+      .from(projectSources)
+      .innerJoin(projects, eq(projects.id, projectSources.projectId))
+      .where(eq(projectSources.sourceId, source.id))
+      .orderBy(projects.name),
+    db
+      .select({ value: count() })
+      .from(collectRuns)
+      .where(
+        and(
+          eq(collectRuns.sourceId, source.id),
+          inArray(collectRuns.status, ["pending", "running"]),
+        ),
+      ),
   ]);
 
   return {
@@ -39,5 +61,7 @@ export async function getAdminSource(params: GetAdminSourceParams): Promise<Admi
     createdAt: source.createdAt.toISOString(),
     updatedAt: source.updatedAt.toISOString(),
     pendingRefreshes: refreshes?.value ?? 0,
+    projects: projectRows,
+    activeRuns: active?.value ?? 0,
   };
 }

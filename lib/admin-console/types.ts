@@ -114,6 +114,10 @@ export type AdminSourceDetail = AdminSourceRow & {
   createdAt: string;
   updatedAt: string;
   pendingRefreshes: number;
+  /** Projects that follow the source; deleting it removes it from them. */
+  projects: { id: string; name: string }[];
+  /** Collect runs still pending or running; the source cannot be deleted meanwhile. */
+  activeRuns: number;
 };
 
 // --- Content items ----------------------------------------------------------
