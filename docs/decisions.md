@@ -516,7 +516,9 @@ ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên
   - Cuối mỗi lần Enrich (bước `metrics`): 35 ngày gần nhất, lùi tới đề cập cũ nhất của các thread vừa Enrich (backfill).
   - Gán hay bỏ nhãn tay: ngày của item.
   - Match lại toàn bộ (sau `finalize`): mọi ngày của project. Đổi timezone chưa có chỗ sửa trong UI; khi có thì cũng tính lại cả project.
-  - Job đêm `refresh-metrics-daily` (QStash): 35 ngày gần nhất của mọi project, cho comment và tương tác về trễ.
+  - Đổi vai trò đối tượng trong cấu hình: mọi ngày của project, vì vai trò quyết định đề cập bên mình và SoV ở mọi ngày mà không đổi query nên không match lại.
+  - Lần thu thập chỉ cập nhật item (`inserted = 0`, `updated > 0`, thường là làm mới like, comment, share): không có Match, Enrich nên workflow `collect-source` tự tính lại các ngày có đề cập của những item run đó vừa ghi (bước `metrics`). Comment về trễ là item mới, đi qua Match rồi Enrich như mọi item.
+  - Sửa khi làm (2026-10-26): bỏ job đêm `refresh-metrics-daily` đã định ban đầu. Mọi thay đổi của L3 đều đi qua một trong các bước trên, nên không cần schedule QStash.
   - Backfill: `npm run metrics:refresh -- -- --all`.
   - Hôm nay đọc từ L4 như mọi ngày, không đọc lai L3.
 - **Báo cáo AI theo kỳ** (`ai_reports`, khóa `(project_id, period_type, period_start)`): sinh sau khi kỳ đóng có độ trễ 24–48 giờ; số liệu đóng băng trong `metrics_snapshot`, sinh lại tạo phiên bản mới. `REPORT_SCHEDULES` thêm `yearly`.

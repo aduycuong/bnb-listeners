@@ -1,7 +1,5 @@
 import { EVALUATE_ALERTS_JOB_NAME } from "@/lib/alerts/config";
 import { evaluateAlerts } from "@/lib/alerts/services/evaluate-alerts";
-import { REFRESH_METRICS_DAILY_JOB_NAME } from "@/lib/metrics/config";
-import { refreshRecentMetricsDaily } from "@/lib/metrics/services/refresh-recent-metrics-daily";
 
 export type QstashJobHandlerContext = {
   userId?: string;
@@ -32,9 +30,4 @@ export const qstashJobHandlers: Record<string, QstashJobHandler> = {
       emailFailed: result.emailFailed,
     };
   },
-  /**
-   * Nightly. Rewrites the last days of the L4 daily metrics of every project (D28).
-   * No payload required.
-   */
-  [REFRESH_METRICS_DAILY_JOB_NAME]: async () => refreshRecentMetricsDaily(),
 };
