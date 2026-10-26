@@ -14,7 +14,7 @@ L1  Raw store        sources · authors · content_items · engagement_snapshots
                      (+ personas · persona_panels · persona_panel_members for synthetic data)
 L2  Project config   projects · project_entities · project_queries · project_aspects · project_sources · project_enrichers · alert_rules
 L3  Analysis         mentions · item_labels · label_samples · mention_* · term_dictionary · topics · match_judgments
-L4  Aggregates       not built: metrics_hourly; project_metrics_daily / project_aspect_daily planned (D28); dashboards read L3 through `lib/metrics/` (D17)
+L4  Aggregates       project_metrics_daily · project_aspect_daily (D28); not built: metrics_hourly
 L5  Outputs          alert_rules · alerts; `insights` not built, `ai_reports` planned (D28)
 ```
 
@@ -459,6 +459,42 @@ Tier 2 cache shared by projects.
 | reason | text | YES | — | |
 | model | text | NO | — | |
 | created_at | timestamptz | NO | `now()` | |
+
+### `project_metrics_daily`
+
+L4 (D28). Counts of relevant mentions per project, day of the project's timezone and source. Rewritten per (project, day range) by `refreshProjectMetricsDaily` (one statement upserts the days' rows and deletes those left without mentions; idempotent). Dashboards sum any period from it; distinct authors, the hour × weekday heat, top authors, topics and the case pages still read L3.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| date_key | date | NO | — | Day of `mentions.published_at` in `projects.timezone` |
+| source_id | uuid | YES | — | FK → `sources.id` ON DELETE SET NULL |
+| mentions | int | NO | `0` | Own mentions (D26) |
+| posts | int | NO | `0` | Own mentions that are posts |
+| engagement | int | NO | `0` | Sum of item engagement of own mentions |
+| positive / neutral / negative | int | NO | `0` | Own mentions by effective sentiment |
+| unknown | int | NO | `0` | Own mentions without a sentiment |
+| emotions | jsonb | NO | `{}` | Own mentions per emotion |
+| sov_primary | int | NO | `0` | Relevant mentions naming a `primary` or `product` entity |
+| sov_tracked | int | NO | `0` | Relevant mentions naming a `primary`, `product` or `competitor` entity |
+| computed_at | timestamptz | NO | `now()` | |
+
+**Constraints:** unique `(project_id, date_key, source_id)` NULLS NOT DISTINCT (`project_metrics_daily_key`), the upsert target.
+
+### `project_aspect_daily`
+
+L4 (D28). Own mentions per effective aspect (D14: label keys when labeled, else Enrich's aspects) and day, with the aspect's sentiment. Rewritten with `project_metrics_daily`. Do not add aspects up into a mention count: one mention can have several aspects.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| date_key | date | NO | — | |
+| aspect_id | uuid | NO | — | FK → `project_aspects.id` ON DELETE CASCADE |
+| mentions | int | NO | `0` | |
+| positive / neutral / negative | int | NO | `0` | |
+| computed_at | timestamptz | NO | `now()` | |
+
+**Constraints:** unique `(project_id, date_key, aspect_id)` (`project_aspect_daily_key`).
 
 ### `alert_rules`
 

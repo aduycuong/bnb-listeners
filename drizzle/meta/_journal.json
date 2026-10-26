@@ -414,6 +414,13 @@
       "when": 1792996795376,
       "tag": "0058_confused_white_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1793000753721,
+      "tag": "0059_luxuriant_miss_america",
+      "breakpoints": true
     }
   ]
 }

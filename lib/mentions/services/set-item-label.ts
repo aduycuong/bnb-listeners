@@ -10,6 +10,7 @@ import {
 } from "@/db/schema";
 import { InvalidInputError, NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
+import { refreshProjectMetricsDaily } from "@/lib/metrics/services/refresh-project-metrics-daily";
 
 import type { SetItemLabelParams, SetItemLabelResult } from "../types";
 
@@ -20,6 +21,21 @@ import type { SetItemLabelParams, SetItemLabelResult } from "../types";
  * changed when given. A null answer removes the whole label.
  */
 export async function setItemLabel(params: SetItemLabelParams): Promise<SetItemLabelResult> {
+  const result = await writeItemLabel(params);
+  // A label changes relevance, sentiment or aspects of the item's day in L4 (D28).
+  if (result.publishedAt) {
+    await refreshProjectMetricsDaily({
+      projectId: params.projectId,
+      from: result.publishedAt,
+      to: result.publishedAt,
+    });
+  }
+  return result.value;
+}
+
+async function writeItemLabel(
+  params: SetItemLabelParams,
+): Promise<{ value: SetItemLabelResult; publishedAt: Date | null }> {
   const followed = db
     .select({ sourceId: projectSources.sourceId })
     .from(projectSources)
@@ -63,10 +79,13 @@ export async function setItemLabel(params: SetItemLabelParams): Promise<SetItemL
         .where(eq(mentions.id, mention.id));
     }
     return {
-      contentItemId: item.id,
-      label: null,
-      isRelevant: null,
-      message: "Đã bỏ nhãn, trả về kết quả của hệ thống.",
+      publishedAt: item.publishedAt,
+      value: {
+        contentItemId: item.id,
+        label: null,
+        isRelevant: null,
+        message: "Đã bỏ nhãn, trả về kết quả của hệ thống.",
+      },
     };
   }
 
@@ -139,9 +158,12 @@ export async function setItemLabel(params: SetItemLabelParams): Promise<SetItemL
   }
 
   return {
-    contentItemId: item.id,
-    label: params.isRelevant,
-    isRelevant: params.isRelevant,
-    message: params.isRelevant ? "Đã gán: có liên quan." : "Đã gán: không liên quan.",
+    publishedAt: item.publishedAt,
+    value: {
+      contentItemId: item.id,
+      label: params.isRelevant,
+      isRelevant: params.isRelevant,
+      message: params.isRelevant ? "Đã gán: có liên quan." : "Đã gán: không liên quan.",
+    },
   };
 }

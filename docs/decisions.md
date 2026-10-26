@@ -507,11 +507,17 @@ ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên
 ## D28 — Kỳ báo cáo và L4 theo ngày (2026-10-26)
 
 - **Hai loại kỳ:** kỳ cuộn (7/14/30 ngày trọn, tính cả hôm nay) cho dashboard; kỳ lịch (`week` thứ 2–chủ nhật, `month`, `quarter`, `year`) cho báo cáo. Tất cả theo `projects.timezone`. Kỳ so sánh: kỳ liền trước; báo cáo tháng và năm thêm cùng kỳ năm trước. `loadReportWindow(projectId, days)` đổi thành một hàm resolve kỳ trả `{ start, end, previousStart }`; service metrics nhận khoảng ngày thay cho `days`.
-- **`project_metrics_daily`** khóa `(project_id, date_key, entity_id, source_id)`, `date_key` theo timezone project; lưu `mentions`, `posts`, `comments`, `pos`, `neu`, `neg`, `engagement`. **`project_aspect_daily`** khóa `(project_id, date_key, aspect_id, entity_id)`, lưu `mentions`, `pos`, `neu`, `neg`. Mọi kỳ (cuộn, lịch, tùy chọn) là sum trong khoảng `date_key`.
-  - Chỉ lưu số đếm. NSS, tỷ lệ tiêu cực, SoV, điểm trụ cột tính từ tổng lúc đọc; không lấy trung bình tỷ lệ theo ngày.
-  - Đề cập khớp nhiều entity hay nhiều aspect: dòng `entity_id = null` là tổng đề cập của bên mình đã khử trùng (logic `own-mention-sql`, D26), KPI tổng đọc dòng này; dòng theo entity chỉ dùng cho SoV và so sánh. Không cộng các aspect lại thành tổng đề cập.
-  - Số tác giả khác nhau không cộng qua ngày được: vẫn đếm từ L3 theo kỳ. Bản đồ nhiệt giờ × thứ, top tác giả, danh sách mention, chủ đề cũng vẫn đọc L3.
+- **`project_metrics_daily`** khóa `(project_id, date_key, source_id)`, `date_key` theo timezone project; lưu `mentions`, `posts`, `engagement`, `positive`, `neutral`, `negative`, `unknown`, `emotions` của đề cập bên mình (D26, đã khử trùng), cùng `sov_primary`, `sov_tracked` (đề cập liên quan nhắc primary/product, và nhắc bất kỳ đối tượng theo dõi). **`project_aspect_daily`** khóa `(project_id, date_key, aspect_id)`, lưu `mentions`, `positive`, `neutral`, `negative` theo khía cạnh hiệu lực (D14). Mọi kỳ (cuộn, lịch, tùy chọn) là sum trong khoảng `date_key`.
+  - Chỉ lưu số đếm. NSS, tỷ lệ tiêu cực, SoV, tỷ lệ theo khía cạnh tính từ tổng lúc đọc; không lấy trung bình tỷ lệ theo ngày.
+  - Sửa khi làm (2026-10-26): bỏ chiều `entity_id`. SoV cần số đề cập khác nhau nhắc *bất kỳ* đối tượng bên mình, không cộng được từ dòng theo từng entity, nên lưu thẳng hai cột SoV. Không cộng các aspect lại thành tổng đề cập.
+  - Đọc L4: Tổng quan (KPI, đề cập theo ngày, nguồn), Cảm xúc (theo ngày, emotion, khía cạnh), Kênh (theo kênh, nguồn). Vẫn đọc L3: số tác giả khác nhau (không cộng qua ngày được), bản đồ nhiệt giờ × thứ, trang Tác giả, chủ đề, danh sách mention, trang riêng theo case (giá, câu hỏi người mua, chỉ số uy tín theo entity) và cảnh báo.
   - Tương tác gắn vào ngày đăng của mention, lấy số mới nhất lúc tính.
-- **Tính lại theo (project, ngày)**, xóa rồi chèn, idempotent; không dùng hàng đợi `is_stale` từng dòng như `term_digest_daily` cũ. Kích hoạt: sau match/enrich tăng dần (các ngày bị ảnh hưởng, gồm hôm nay), khi sửa nhãn tay, job đêm tính lại 35 ngày gần nhất (comment và tương tác về trễ); đổi `match_signature` hay timezone thì tính lại cả project. Hôm nay đọc từ L4 như mọi ngày, không đọc lai L3.
+- **Tính lại theo (project, ngày)** (`refreshProjectMetricsDaily`): một câu lệnh upsert các dòng của những ngày đó và xóa dòng không còn đề cập, idempotent, hai lần chạy cùng lúc không nhân đôi dòng (khóa unique, `source_id` NULLS NOT DISTINCT); không dùng hàng đợi `is_stale` từng dòng như `term_digest_daily` cũ. Kích hoạt:
+  - Cuối mỗi lần Enrich (bước `metrics`): 35 ngày gần nhất, lùi tới đề cập cũ nhất của các thread vừa Enrich (backfill).
+  - Gán hay bỏ nhãn tay: ngày của item.
+  - Match lại toàn bộ (sau `finalize`): mọi ngày của project. Đổi timezone chưa có chỗ sửa trong UI; khi có thì cũng tính lại cả project.
+  - Job đêm `refresh-metrics-daily` (QStash): 35 ngày gần nhất của mọi project, cho comment và tương tác về trễ.
+  - Backfill: `npm run metrics:refresh -- -- --all`.
+  - Hôm nay đọc từ L4 như mọi ngày, không đọc lai L3.
 - **Báo cáo AI theo kỳ** (`ai_reports`, khóa `(project_id, period_type, period_start)`): sinh sau khi kỳ đóng có độ trễ 24–48 giờ; số liệu đóng băng trong `metrics_snapshot`, sinh lại tạo phiên bản mới. `REPORT_SCHEDULES` thêm `yearly`.
 - Chưa dựng lại `dim_dates`: tuần, tháng, quý, năm dùng `date_trunc`. Thêm khi cần so theo âm lịch hoặc Tết (`lunar_month`, `is_holiday`).
