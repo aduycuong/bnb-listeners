@@ -34,3 +34,10 @@ export const REPORT_SCHEDULE_PERIODS = {
 } as const;
 
 export const REPORT_TRIGGERS = ["schedule", "user", "script", "mcp"] as const;
+
+/** QStash jobs of scheduled reports (D29): the hourly check, then one job per report. */
+export const GENERATE_DUE_REPORTS_JOB_NAME = "generate-due-reports";
+export const GENERATE_REPORT_JOB_NAME = "generate-report";
+
+/** Scheduled reports generated at once, each one model call. */
+export const REPORT_JOB_PARALLELISM = 2;
