@@ -35,6 +35,44 @@ export const sourceSettingsFormSchema = z.object({
 
 export type SourceSettingsFormValues = z.infer<typeof sourceSettingsFormSchema>;
 
+export const NEW_SOURCE_KINDS = ["facebook", "tiktok-channel", "tiktok-search"] as const;
+
+export type NewSourceKind = (typeof NEW_SOURCE_KINDS)[number];
+
+/**
+ * Admin add-source form and body (`POST /api/admin/sources`). Facebook and
+ * TikTok channels take a URL; a TikTok keyword search takes a keyword and region.
+ */
+export const createSourceBodySchema = z
+  .object({
+    kind: z.enum(NEW_SOURCE_KINDS),
+    url: z.string().trim().max(500),
+    keyword: z.string().trim().max(200),
+    /** ISO 3166-1 alpha-2; empty = the configured search region. */
+    region: z
+      .string()
+      .trim()
+      .regex(/^([A-Za-z]{2})?$/, { error: "Use a two-letter country code, e.g. VN." }),
+    name: z.string().trim().max(200),
+    /** Start the first post run now; the scheduler only picks up sources run once. */
+    collectNow: z.boolean(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.kind === "tiktok-search") {
+      if (!value.keyword) {
+        ctx.addIssue({ code: "custom", path: ["keyword"], message: "Enter a keyword." });
+      }
+    } else if (!z.url().safeParse(value.url).success) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["url"],
+        message: "Enter the full URL, starting with https://.",
+      });
+    }
+  });
+
+export type CreateSourceBody = z.infer<typeof createSourceBodySchema>;
+
 export function toUpdateSourceSettingsBody(
   values: SourceSettingsFormValues,
 ): UpdateSourceSettingsBody {
