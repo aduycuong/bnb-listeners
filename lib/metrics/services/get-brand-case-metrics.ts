@@ -40,9 +40,9 @@ type EntityCountRow = SentimentCounts & { id: string; mentions: number };
  * NSS per project of the developer, share of voice against competitors, and the index over
  * the last report periods. Each project aspect is a pillar.
  *
- * The developer's side is every mention except those naming only competitors; mentions
- * naming one of its projects count for it. A competitor's side is the mentions naming that
- * competitor alone. Reads L3 directly. Only `case = brand`.
+ * The developer's side is the mentions Enrich gave the developer or one of its projects, also
+ * when they name a competitor too. A competitor's side is the mentions naming that competitor
+ * alone. Mentions without an entity count for no side. Reads L3 directly. Only `case = brand`.
  */
 export async function getBrandCaseMetrics(
   params: MetricsReportParams,
@@ -236,8 +236,8 @@ function sideIndex(rows: AspectCountRow[], side: string, aspectIds: string[]) {
 /**
  * Aspect sentiment counts per side and bucket since `from`. Aspects follow D17: the label's
  * aspects with the mention's sentiment when the item is labelled, else Enrich's aspects with
- * their own sentiment. Mentions naming several competitors and nothing of the developer count
- * for no side.
+ * their own sentiment. Mentions without an entity, or naming several competitors and nothing of
+ * the developer, count for no side.
  */
 function loadAspectCounts(projectId: string, from: SQL, bucket: SQL) {
   return db.execute<AspectCountRow>(sql`
@@ -254,7 +254,7 @@ function loadAspectCounts(projectId: string, from: SQL, bucket: SQL) {
     pm as (
       select m.id, m.content_item_id, ${effectiveSentimentSql} as sentiment, ${bucket} as bucket,
         case
-          when s.mention_id is null or s.own then 'primary'
+          when s.own then 'primary'
           when s.competitors = 1 then s.competitor_id
         end as side
       from mentions m

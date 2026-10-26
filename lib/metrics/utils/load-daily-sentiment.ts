@@ -5,6 +5,7 @@ import {
   effectiveSentimentJoins,
   effectiveSentimentSql,
 } from "@/lib/enrichment/utils/effective-sentiment-sql";
+import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 
 import type { MetricsDay } from "../types";
 import type { ReportWindow } from "./load-report-window";
@@ -22,7 +23,7 @@ export async function loadDailySentiment(
       (count(*) filter (where ${effectiveSentimentSql} is null))::int as unknown
     from mentions m
     ${effectiveSentimentJoins}
-    where m.project_id = ${projectId}::uuid and m.is_relevant
+    where m.project_id = ${projectId}::uuid and m.is_relevant and ${ownMentionSql}
       and m.published_at >= ${window.start.toISOString()}::timestamptz
     group by 1
   `);

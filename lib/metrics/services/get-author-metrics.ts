@@ -6,6 +6,7 @@ import {
   effectiveSentimentJoins,
   effectiveSentimentSql,
 } from "@/lib/enrichment/utils/effective-sentiment-sql";
+import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 
 import { AUTHOR_TIERS, METRICS_CONFIG, type AuthorTier } from "../config";
 import { authorTier } from "../formulas";
@@ -44,7 +45,7 @@ export async function getAuthorMetrics(params: MetricsReportParams): Promise<Aut
     join authors a on a.id = m.author_id
     join content_items ci on ci.id = m.content_item_id
     ${effectiveSentimentJoins}
-    where m.project_id = ${params.projectId}::uuid and m.is_relevant
+    where m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
       and m.published_at >= ${window.start.toISOString()}::timestamptz
     group by a.id
     order by engagement desc, mentions desc, a.name

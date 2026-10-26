@@ -123,6 +123,7 @@ type PendingRow = {
   text: string;
   content_hash: string;
   published_at: string | null;
+  matched_entity_ids: string[];
   key: string;
 };
 
@@ -154,7 +155,7 @@ export async function enrichThreads(
         enrichers,
         force: params.force,
         select: sql`m.id as mention_id, m.content_item_id, coalesce(m.root_item_id, m.content_item_id) as root_id,
-          ci.kind, ci.text, ci.content_hash, ci.published_at, k.key`,
+          ci.kind, ci.text, ci.content_hash, ci.published_at, m.matched_entity_ids, k.key`,
         extraWhere: sql`coalesce(m.root_item_id, m.content_item_id) = any(${uuidArraySql(params.rootIds)})`,
       }),
     ),
@@ -173,6 +174,7 @@ export async function enrichThreads(
       text: row.text,
       contentHash: row.content_hash,
       publishedAt: row.published_at ? new Date(row.published_at) : null,
+      matchedEntityIds: row.matched_entity_ids,
       keys: [],
     };
     item.keys.push(row.key as EnricherKey);

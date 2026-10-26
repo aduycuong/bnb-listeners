@@ -40,6 +40,8 @@ export type EnrichItem = {
   text: string;
   contentHash: string;
   publishedAt: Date | null;
+  /** Entities Match linked the mention to; entities from Enrich must be among them. */
+  matchedEntityIds: string[];
   keys: EnricherKey[];
 };
 

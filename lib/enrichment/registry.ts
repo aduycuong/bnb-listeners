@@ -110,7 +110,7 @@ export const ENRICHER_REGISTRY = {
   },
   entities: {
     kind: "llm",
-    version: 7,
+    version: 8,
     status: "ready",
     label: "Đối tượng được nhắc",
     writes: "mention_entities",
