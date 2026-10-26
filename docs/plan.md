@@ -267,10 +267,10 @@ Xem [D27](decisions.md#d27--mcp-và-scope-của-api-key-2026-10-26) và [D28](de
 
 **PR 4 — L4 theo ngày** (3–4 ngày)
 - [x] `project_metrics_daily` (theo nguồn, cột SoV thay cho chiều entity), `project_aspect_daily`
-- [x] Tính lại theo (project, ngày): cuối mỗi lần Enrich, khi sửa nhãn tay, sau match lại toàn bộ, job đêm `refresh-metrics-daily`; `npm run metrics:refresh`
+- [x] Tính lại theo (project, ngày): cuối mỗi lần Enrich, khi sửa nhãn tay, sau match lại toàn bộ; `npm run metrics:refresh`
 - [x] Tổng quan, Cảm xúc, Kênh đọc L4 (tác giả, bản đồ nhiệt, chủ đề, trang case vẫn đọc L3), giao diện không đổi
 - [x] Chạy migration (`0059`), backfill (4 project, mỗi project dưới 0,3 giây), so số Tổng quan, Cảm xúc, Kênh với bản đọc L3 trên DB dev (4 project × 5 kỳ): khớp; chạy lại và chạy song song giữ nguyên tổng
-- [ ] Tạo schedule QStash cho job `refresh-metrics-daily` (đêm, `Asia/Ho_Chi_Minh`)
+- [x] Thay job đêm bằng sự kiện: lần thu thập chỉ cập nhật item (tương tác) tính lại ngày của các item đó; đổi vai trò đối tượng tính lại cả project. Kiểm trên DB dev: làm hỏng `engagement` của ngày một run làm mới, bước mới trả về đúng số
 - [x] `REPORT_SCHEDULES` thêm `yearly`
 
 **PR 5 — Báo cáo AI theo kỳ** (6–9 ngày)

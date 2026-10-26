@@ -2,6 +2,7 @@ import type { RouteFunction, WorkflowServeOptions } from "@upstash/workflow";
 import { z } from "zod";
 
 import { matchCollectRun } from "@/lib/matching/services/match-collect-run";
+import { refreshCollectRunMetricsDaily } from "@/lib/metrics/services/refresh-collect-run-metrics-daily";
 import { TRANSCRIPT_CORRECTION_CONFIG } from "@/lib/transcripts/config";
 import { correctItemTranscripts } from "@/lib/transcripts/services/correct-item-transcripts";
 import { listTranscriptItems } from "@/lib/transcripts/services/list-transcript-items";
@@ -52,7 +53,9 @@ export const collectSourceWorkflowPayloadSchema = z.object({
  *    in their new transcripts (D22), before Match reads them.
  * 4. after-normalize: the connector's post-write hook (schedules, tier, stats).
  * 5. finish, then one step per follow-up run (e.g. comments for refreshed posts).
- * 6. match: incremental Match for projects following the source, when items were added.
+ * 6. match: incremental Match for projects following the source, when items were added;
+ *    Enrich then rewrites L4. A run that only updated items (engagement) rewrites the L4
+ *    days of those items instead (D28).
  */
 export const collectSourceWorkflow: RouteFunction<
   CollectSourceWorkflowPayload
@@ -138,6 +141,8 @@ export const collectSourceWorkflow: RouteFunction<
 
   if (stats.inserted > 0) {
     await context.run("match", () => matchCollectRun({ collectRunId }));
+  } else if (stats.updated > 0) {
+    await context.run("metrics", () => refreshCollectRunMetricsDaily({ collectRunId }));
   }
 };
 
