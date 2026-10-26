@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 
 import { AspectChart, EmotionChart, NssChart } from "@/components/projects/demo/demo-charts";
 import { DemoGrid, DemoPanel } from "@/components/projects/demo/demo-ui";
@@ -9,11 +8,11 @@ import {
   projectReportPageClassName,
   type ProjectPageBannerProps,
 } from "@/components/projects/project-page-banner";
-import { METRICS_CONFIG } from "@/lib/metrics/config";
 import { AQUA_PAGE_META, formatCount } from "@/lib/projects/aqua-demo";
 
 import { formatDayLabel, MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
 import { useSentimentMetrics, type MetricsApiScope } from "./use-metrics-api";
+import { useReportPeriodDays } from "./use-report-period-days";
 
 /** Sentiment page of real projects, laid out as the approved demo (phase 5b). */
 export function ProjectSentimentReport({
@@ -25,7 +24,7 @@ export function ProjectSentimentReport({
   projectName: string;
   banner: ProjectPageBannerProps;
 }) {
-  const [days, setDays] = useState<number>(METRICS_CONFIG.reportPeriodDays[0]);
+  const [days, setDays] = useReportPeriodDays();
   const { data, error, isPending, isFetching } = useSentimentMetrics(scope, days);
   const hasNss = data?.daily.some((day) => day.nss !== null) ?? false;
   const emotionTotal = data?.emotions.reduce((total, item) => total + item.mentions, 0) ?? 0;

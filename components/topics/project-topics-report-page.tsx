@@ -1,10 +1,10 @@
 "use client";
 
-import { CalendarIcon, SettingsIcon } from "lucide-react";
+import { SettingsIcon } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 
-import { MentionFilterSelect } from "@/components/mentions/mention-filter-select";
+import { MetricsPageHeader } from "@/components/metrics/metrics-page-header";
+import { useReportPeriodDays } from "@/components/metrics/use-report-period-days";
 import { GrowthChart } from "@/components/projects/demo/demo-charts";
 import { KeywordCloud } from "@/components/projects/demo/demo-keyword-cloud";
 import { DemoGrid, DemoPanel, DemoTable } from "@/components/projects/demo/demo-ui";
@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
 import { AQUA_PAGE_META, formatCount } from "@/lib/projects/aqua-demo";
-import { TOPIC_CONFIG } from "@/lib/topics/config";
 import type { TopicReportItem } from "@/lib/topics/types";
 import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
 
@@ -85,7 +84,7 @@ function TopicsReport({
   mentionsHref: string;
   banner: ProjectPageBannerProps;
 }) {
-  const [days, setDays] = useState<number>(TOPIC_CONFIG.reportPeriodDays[0]);
+  const [days, setDays] = useReportPeriodDays();
   const { data, error, isPending, isFetching } = useTopicReport(scope, days);
   const items = data?.items ?? [];
   const keywords = (data?.keywords ?? []).map((keyword) => ({
@@ -102,28 +101,14 @@ function TopicsReport({
 
   return (
     <div className={projectReportPageClassName}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-heading text-[22px] leading-none font-bold tracking-[-0.015em]">
-            {AQUA_PAGE_META.topics.title}
-          </h1>
-          <p className="mt-1 text-[12.5px] text-muted-foreground">
-            {projectName} · chủ đề gom tự động từ các mention có liên quan
-            {isFetching && !isPending ? " · đang tải…" : ""}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <MentionFilterSelect
-            label="Khoảng thời gian"
-            icon={<CalendarIcon />}
-            value={String(days)}
-            options={TOPIC_CONFIG.reportPeriodDays.map((value) => ({
-              value: String(value),
-              label: `${value} ngày gần nhất`,
-            }))}
-            onChange={(value) => setDays(Number(value))}
-          />
-          {manageHref ? (
+      <MetricsPageHeader
+        title={AQUA_PAGE_META.topics.title}
+        subtitle={`${projectName} · chủ đề gom tự động từ các mention có liên quan`}
+        days={days}
+        onDaysChange={setDays}
+        loading={isFetching && !isPending}
+        actions={
+          manageHref ? (
             <Button
               size="sm"
               variant="outline"
@@ -133,9 +118,9 @@ function TopicsReport({
               <SettingsIcon />
               Quản lý topic
             </Button>
-          ) : null}
-        </div>
-      </div>
+          ) : null
+        }
+      />
       <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 

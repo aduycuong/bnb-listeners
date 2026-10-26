@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useT } from "next-i18next/client";
-import { useState } from "react";
 
 import { DonutChart, TrendChart } from "@/components/projects/demo/demo-charts";
 import { DemoBars, DemoGrid, DemoKpis, DemoPanel } from "@/components/projects/demo/demo-ui";
@@ -11,7 +10,6 @@ import {
   projectReportPageClassName,
   type ProjectPageBannerProps,
 } from "@/components/projects/project-page-banner";
-import { METRICS_CONFIG } from "@/lib/metrics/config";
 import { growthPercent } from "@/lib/metrics/formulas";
 import type {
   MetricsValue,
@@ -37,6 +35,7 @@ import {
   useProjectCaseMetrics,
   type MetricsApiScope,
 } from "./use-metrics-api";
+import { useReportPeriodDays } from "./use-report-period-days";
 
 const GLOSSARY = [
   ["Lượt đề cập (Mentions)", "Số bài đăng, bình luận và trả lời AI xác định nói về đối tượng của project (không tính đối thủ). Đề cập chỉ nói về đối thủ hoặc chưa rõ nói về ai chỉ dùng cho Share of Voice và phần so sánh."],
@@ -210,7 +209,7 @@ export function ProjectOverviewReport({
   caseHref: string;
 }) {
   const { t } = useT("dashboard");
-  const [days, setDays] = useState<number>(METRICS_CONFIG.reportPeriodDays[0]);
+  const [days, setDays] = useReportPeriodDays();
   const { data, error, isPending, isFetching } = useOverviewMetrics(scope, days);
   const caseMetrics = useProjectCaseMetrics(scope, days, projectCase === "project");
   const brandMetrics = useBrandCaseMetrics(scope, days, projectCase === "brand");

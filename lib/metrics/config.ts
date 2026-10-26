@@ -2,9 +2,11 @@
 export const METRICS_CONFIG = {
   /**
    * Periods of the Overview and Sentiment pages, in whole days of the project's timezone,
-   * today included; the first is the default. Changes compare with the same number of days before.
+   * today included, in picker order. Changes compare with the same number of days before.
    */
-  reportPeriodDays: [14, 7, 30],
+  reportPeriodDays: [7, 14, 30],
+  /** Period of a report until the user picks another one (then remembered across reports). */
+  defaultReportPeriodDays: 14,
   /** Longest rolling or custom period, in days. */
   maxPeriodDays: 366,
   /**

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 
 import {
   ChannelMixChart,
@@ -14,12 +13,12 @@ import {
   projectReportPageClassName,
   type ProjectPageBannerProps,
 } from "@/components/projects/project-page-banner";
-import { METRICS_CONFIG } from "@/lib/metrics/config";
 import { sharePercent } from "@/lib/metrics/formulas";
 import { AQUA_PAGE_META, formatCount, formatShort } from "@/lib/projects/aqua-demo";
 
 import { MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
 import { useChannelMetrics, type MetricsApiScope } from "./use-metrics-api";
+import { useReportPeriodDays } from "./use-report-period-days";
 
 /** Channels page of real projects, laid out as the approved demo (phase 5b). */
 export function ProjectChannelsReport({
@@ -33,7 +32,7 @@ export function ProjectChannelsReport({
   mentionsHref: string;
   banner: ProjectPageBannerProps;
 }) {
-  const [days, setDays] = useState<number>(METRICS_CONFIG.reportPeriodDays[0]);
+  const [days, setDays] = useReportPeriodDays();
   const { data, error, isPending, isFetching } = useChannelMetrics(scope, days);
   const channels = data?.channels ?? [];
   const total = channels.reduce((sum, channel) => sum + channel.mentions, 0);

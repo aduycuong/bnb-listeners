@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useT } from "next-i18next/client";
-import { useState } from "react";
 
 import { RadarAttributeChart } from "@/components/projects/demo/demo-charts";
 import { DemoGrid, DemoPanel } from "@/components/projects/demo/demo-ui";
@@ -11,12 +10,12 @@ import {
   projectReportPageClassName,
   type ProjectPageBannerProps,
 } from "@/components/projects/project-page-banner";
-import { METRICS_CONFIG } from "@/lib/metrics/config";
 import { formatCount } from "@/lib/projects/aqua-demo";
 
 import { MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
 import { ProjectPricePanels } from "./project-price-panels";
 import { useProjectCaseMetrics, type MetricsApiScope } from "./use-metrics-api";
+import { useReportPeriodDays } from "./use-report-period-days";
 
 /** Case page of a `project` listening case, laid out as the approved demo. */
 export function ProjectCaseReport({
@@ -31,7 +30,7 @@ export function ProjectCaseReport({
   banner: ProjectPageBannerProps;
 }) {
   const { t } = useT("dashboard");
-  const [days, setDays] = useState<number>(METRICS_CONFIG.reportPeriodDays[0]);
+  const [days, setDays] = useReportPeriodDays();
   const { data, error, isPending, isFetching } = useProjectCaseMetrics(scope, days);
   const loading = isPending ? "Đang tải…" : null;
   const caseLabel = t("cases.project");

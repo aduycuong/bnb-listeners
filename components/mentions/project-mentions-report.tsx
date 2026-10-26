@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 import { useChannelMetrics } from "@/components/metrics/use-metrics-api";
 import { MetricsEmpty, MetricsPageHeader } from "@/components/metrics/metrics-page-header";
+import { useReportPeriodDays } from "@/components/metrics/use-report-period-days";
 import { DemoPanel, DemoTable, SentimentPill } from "@/components/projects/demo/demo-ui";
 import {
   ProjectPageBanner,
@@ -17,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
 import { SENTIMENTS, type Sentiment } from "@/lib/enrichment/config";
-import { METRICS_CONFIG } from "@/lib/metrics/config";
 import type { ListMentionsQuery } from "@/lib/mentions/schema";
 import { AQUA_PAGE_META, AQUA_SENTIMENT_LABEL, type AquaSentiment } from "@/lib/projects/aqua-demo";
 
@@ -75,7 +75,7 @@ function MentionsReport({
 }) {
   const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
-  const [days, setDays] = useState<number>(METRICS_CONFIG.reportPeriodDays[0]);
+  const [days, setDays] = useReportPeriodDays();
   const [filters, setFilters] = useState<ListMentionsQuery>({
     relevance: "relevant",
     page: 1,
@@ -86,7 +86,7 @@ function MentionsReport({
   const [thread, setThread] = useState<{ rootId: string; focusId: string } | null>(null);
   const { data, isPending, isFetching, error } = useMentionsList(scope, {
     ...filters,
-    days: days as (typeof METRICS_CONFIG.reportPeriodDays)[number],
+    days,
   });
   const { data: channels } = useChannelMetrics(scope, days);
   const { data: topics } = useTopicsList(scope);

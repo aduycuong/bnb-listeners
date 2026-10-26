@@ -1,7 +1,6 @@
 "use client";
 
 import { useT } from "next-i18next/client";
-import { useState } from "react";
 
 import { DemoGrid } from "@/components/projects/demo/demo-ui";
 import {
@@ -9,11 +8,11 @@ import {
   projectReportPageClassName,
   type ProjectPageBannerProps,
 } from "@/components/projects/project-page-banner";
-import { METRICS_CONFIG } from "@/lib/metrics/config";
 
 import { BrandCasePanels } from "./brand-case-panels";
 import { MetricsPageHeader } from "./metrics-page-header";
 import { useBrandCaseMetrics, type MetricsApiScope } from "./use-metrics-api";
+import { useReportPeriodDays } from "./use-report-period-days";
 
 /** Case page of a `brand` listening case (`Chỉ số uy tín`), laid out as the approved demo. */
 export function BrandCaseReport({
@@ -26,7 +25,7 @@ export function BrandCaseReport({
   banner: ProjectPageBannerProps;
 }) {
   const { t } = useT("dashboard");
-  const [days, setDays] = useState<number>(METRICS_CONFIG.reportPeriodDays[0]);
+  const [days, setDays] = useReportPeriodDays();
   const { data, error, isPending, isFetching } = useBrandCaseMetrics(scope, days);
   const caseLabel = t("cases.brand");
 
