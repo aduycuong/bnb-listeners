@@ -35,6 +35,7 @@ async function handleRequest(request: NextRequest): Promise<Response> {
   const mcp = createMcpServer({
     workspaceId: key.workspaceId,
     userId: key.userId,
+    userEmail: key.userEmail,
     scopes: key.scopes,
     projectIds: key.projectIds,
   });

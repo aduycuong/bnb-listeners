@@ -49,6 +49,7 @@ export type AuthorizedWorkspaceKey = {
   workspaceId: string;
   /** Member the calls run as: the key's creator, or the workspace owner for older keys. */
   userId: string;
+  userEmail: string | null;
   scopes: ApiKeyScope[];
   projectIds: string[] | null;
 };

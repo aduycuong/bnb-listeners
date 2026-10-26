@@ -500,6 +500,9 @@ ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên
 - Thẻ API key ở workspace settings thêm chọn scope và project. Nhóm menu Dự án thêm mục **Kết nối AI**: URL MCP, các key truy cập được project, tạo key chỉ đọc cho project đang xem, đoạn config mẫu.
 - Bản đầu chỉ Bearer key. claude.ai web và ChatGPT cần OAuth, để sau. Chat widget trong app dùng token ngắn hạn đổi từ phiên đăng nhập, làm khi làm widget.
 - MCP tạo project dùng cùng schema zod và `createProjectWithConfig` với wizard, có `dry_run` để agent cho người dùng xem lại trước khi tạo.
+  - Input của `create_project` gọn cho model: case, tên, đối tượng (vai trò, tên, alias, từ loại trừ), nguồn, `caseConfig`, khía cạnh và email nhận tùy chọn. Tool tự sinh id, lấy khía cạnh và cảnh báo mặc định của case, email nhận mặc định là email người tạo key (như wizard). `dryRun` mặc định true, trả tóm tắt cấu hình và số khớp thử (`previewMatches`).
+  - Cần scope `projects:write`, key dùng cho mọi project, và người tạo key còn quyền `edit` workspace lúc gọi.
+  - Tool hỗ trợ: `list_case_templates` (vai trò, khía cạnh, JSON Schema của `caseConfig`), `list_sources` (lọc không dấu theo tên, URL), `preview_project_match`.
 
 ## D28 — Kỳ báo cáo và L4 theo ngày (2026-10-26)
 

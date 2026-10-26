@@ -7,6 +7,8 @@ export type AiToolContext = {
   workspaceId: string;
   /** Member the call runs as. */
   userId: string;
+  /** Their email: default recipient of a new project's alerts, as in the wizard. */
+  userEmail: string | null;
   scopes: ApiKeyScope[];
   /** Projects the key may read; null is every project of the workspace. */
   projectIds: string[] | null;
@@ -20,6 +22,8 @@ export type AiTool<Input extends z.ZodObject = z.ZodObject> = {
   name: string;
   /** Scope a key needs to see and call the tool; null: any key. */
   scope: ApiKeyScope | null;
+  /** The tool changes data (creates a project); read-only when left out. */
+  writes?: boolean;
   /** Read by the model: say what the tool answers and when to call it. */
   description: string;
   inputSchema: Input;

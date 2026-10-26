@@ -14,7 +14,7 @@ export const API_KEY_SCOPE_LABELS: Record<ApiKeyScope, { label: string; descript
   },
   "projects:write": {
     label: "Tạo project",
-    description: "Tạo project mới trong workspace (chưa có tool, sắp làm).",
+    description: "Tạo project mới trong workspace; key phải dùng được cho mọi project.",
   },
 };
 

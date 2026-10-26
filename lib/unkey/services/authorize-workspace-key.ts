@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { workspaceApiKeys, workspaces } from "@/db/schema";
+import { users, workspaceApiKeys, workspaces } from "@/db/schema";
 import { db } from "@/lib/db";
 import { APIError } from "@/lib/exposers/api-error";
 import { assertWorkspaceAccess } from "@/lib/workspaces/services/assert-workspace-access";
@@ -39,10 +39,13 @@ export async function authorizeWorkspaceKey(rawKey: string): Promise<AuthorizedW
     throw unauthorized("KEY_OWNER_LEFT_WORKSPACE");
   }
 
+  const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId));
+
   return {
     keyId: row.key.id,
     workspaceId: row.key.workspaceId,
     userId,
+    userEmail: user?.email ?? null,
     scopes: toWorkspaceKeyScopes(row.key.scopes),
     projectIds: row.key.projectIds,
   };

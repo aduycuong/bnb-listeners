@@ -23,7 +23,7 @@ export function createMcpServer(ctx: AiToolContext): McpServer {
       {
         description: tool.description,
         inputSchema: tool.inputSchema,
-        annotations: { readOnlyHint: true },
+        annotations: { readOnlyHint: !tool.writes },
       },
       async (input: unknown) => {
         try {
