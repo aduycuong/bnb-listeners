@@ -5,6 +5,7 @@ import {
   effectiveSentimentJoins,
   effectiveSentimentSql,
 } from "@/lib/enrichment/utils/effective-sentiment-sql";
+import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 
 import { METRICS_CONFIG } from "../config";
 import {
@@ -41,32 +42,34 @@ export async function getOverviewMetrics(
   const window = await loadReportWindow(params.projectId, params.days);
   const start = sql`${window.start.toISOString()}::timestamptz`;
   const previousStart = sql`${window.previousStart.toISOString()}::timestamptz`;
-  const scope = sql`m.project_id = ${params.projectId}::uuid and m.is_relevant`;
+  const allScope = sql`m.project_id = ${params.projectId}::uuid and m.is_relevant`;
+  const scope = sql`${allScope} and ${ownMentionSql}`;
+  const own = ownMentionSql;
   const inPeriod = sql`m.published_at >= ${start}`;
 
   const [{ rows: periodRows }, daily, { rows: sourceRows }, { rows: topicRows }, { rows: entityRows }] =
     await Promise.all([
       db.execute<PeriodRow>(sql`
         select case when m.published_at >= ${start} then 'current' else 'previous' end as period,
-          count(*)::int as mentions,
-          coalesce(sum(${engagementSql(sql`ci`)}), 0)::int as engagement,
-          count(distinct m.author_id)::int as authors,
-          (count(*) filter (where ${effectiveSentimentSql} = 'positive'))::int as positive,
-          (count(*) filter (where ${effectiveSentimentSql} = 'neutral'))::int as neutral,
-          (count(*) filter (where ${effectiveSentimentSql} = 'negative'))::int as negative,
-          (count(*) filter (where ${effectiveSentimentSql} is null))::int as unknown,
+          (count(*) filter (where ${own}))::int as mentions,
+          coalesce(sum(${engagementSql(sql`ci`)}) filter (where ${own}), 0)::int as engagement,
+          (count(distinct m.author_id) filter (where ${own}))::int as authors,
+          (count(*) filter (where ${own} and ${effectiveSentimentSql} = 'positive'))::int as positive,
+          (count(*) filter (where ${own} and ${effectiveSentimentSql} = 'neutral'))::int as neutral,
+          (count(*) filter (where ${own} and ${effectiveSentimentSql} = 'negative'))::int as negative,
+          (count(*) filter (where ${own} and ${effectiveSentimentSql} is null))::int as unknown,
           (count(*) filter (where exists (
             select 1 from mention_entities me join project_entities pe on pe.id = me.entity_id
-            where me.mention_id = m.id and pe.role = 'primary'
+            where me.mention_id = m.id and pe.role in ('primary', 'product')
           )))::int as sov_primary,
           (count(*) filter (where exists (
             select 1 from mention_entities me join project_entities pe on pe.id = me.entity_id
-            where me.mention_id = m.id and pe.role in ('primary', 'competitor')
+            where me.mention_id = m.id and pe.role in ('primary', 'product', 'competitor')
           )))::int as sov_tracked
         from mentions m
         join content_items ci on ci.id = m.content_item_id
         ${effectiveSentimentJoins}
-        where ${scope} and m.published_at >= ${previousStart}
+        where ${allScope} and m.published_at >= ${previousStart}
         group by 1
       `),
       loadDailySentiment(params.projectId, window),

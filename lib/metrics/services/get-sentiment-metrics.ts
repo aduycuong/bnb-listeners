@@ -7,6 +7,7 @@ import {
   effectiveSentimentSql,
   emotionSql,
 } from "@/lib/enrichment/utils/effective-sentiment-sql";
+import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 
 import { netSentimentScore, sharePercent } from "../formulas";
 import type { MetricsReportParams, SentimentMetricsResult } from "../types";
@@ -30,7 +31,8 @@ export async function getSentimentMetrics(
     select m.id, m.content_item_id, ${effectiveSentimentSql} as sentiment, ${emotionSql} as emotion
     from mentions m
     ${effectiveSentimentJoins}
-    where m.project_id = ${params.projectId}::uuid and m.is_relevant and m.published_at >= ${start}
+    where m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
+      and m.published_at >= ${start}
   `;
 
   const [daily, { rows: emotionRows }, { rows: aspectRows }] = await Promise.all([

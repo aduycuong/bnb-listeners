@@ -131,3 +131,41 @@ export type ProjectCaseMetricsResult = {
     competitor: number | null;
   }[];
 };
+
+/** A pillar of the reputation index: an aspect of the brand project. */
+export type BrandCasePillar = {
+  id: string;
+  name: string;
+  /** Mentions of the aspect with a sentiment. */
+  mentions: number;
+  /** 0–100; null below `reputationMinMentions`. */
+  score: number | null;
+};
+
+/** One report period of the reputation trend. */
+export type BrandCaseTrendPoint = {
+  /** First day of the period, `YYYY-MM-DD` in the project's timezone. */
+  start: string;
+  primary: number | null;
+  /** Mean index of the competitors that have one in the period. */
+  competitors: number | null;
+};
+
+export type BrandCaseMetricsResult = {
+  days: number;
+  timezone: string;
+  primaryName: string;
+  hasCompetitors: boolean;
+  /** Reputation index of the period and the period before, 0–100. */
+  index: MetricsValue<number | null>;
+  /** Pillars of the period, in aspect order. */
+  pillars: BrandCasePillar[];
+  /** Projects (`product` entities) of the developer, most mentioned first. */
+  products: { id: string; name: string; mentions: number; nss: number | null }[];
+  /** Mentions of the period naming the developer (or its projects) and each competitor. */
+  shareOfVoice: { id: string; name: string; role: "primary" | "competitor"; mentions: number }[];
+  /** `caseConfig.period` of the project. */
+  period: "week" | "month" | "quarter";
+  /** Last `reputationTrendPeriods` periods, oldest first, the running one last. */
+  trend: BrandCaseTrendPoint[];
+};

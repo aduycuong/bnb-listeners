@@ -6,6 +6,7 @@ import {
   effectiveSentimentJoins,
   effectiveSentimentSql,
 } from "@/lib/enrichment/utils/effective-sentiment-sql";
+import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 import { METRICS_CONFIG } from "@/lib/metrics/config";
 import { netSentimentScore, sharePercent } from "@/lib/metrics/formulas";
 
@@ -72,7 +73,7 @@ export async function listProjectSummaries(
       join projects p on p.id = m.project_id
       ${effectiveSentimentJoins}
       where p.workspace_id = ${params.workspaceId}::uuid
-        and m.is_relevant
+        and m.is_relevant and ${ownMentionSql}
         and m.published_at >= ${previousStart}
       group by 1, 2
     `),

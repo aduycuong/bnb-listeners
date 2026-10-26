@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarIcon } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { MentionFilterSelect } from "@/components/mentions/mention-filter-select";
@@ -54,6 +55,23 @@ export function MetricsPageHeader({
 export function formatDayLabel(date: string) {
   const [, month, day] = date.split("-");
   return `${Number(day)}/${Number(month)}`;
+}
+
+/** Panel note, followed by a link to the case page when the panel is a preview of it. */
+export function detailNote(note: ReactNode, detail?: { href: string; label: string }): ReactNode {
+  if (!detail) return note;
+  const link = (
+    <Link href={detail.href} className="font-medium text-foreground underline">
+      “{detail.label}”
+    </Link>
+  );
+  return note ? (
+    <>
+      {note} · Chi tiết ở trang {link}
+    </>
+  ) : (
+    <>Chi tiết ở trang {link}</>
+  );
 }
 
 export function MetricsEmpty({ children }: { children: ReactNode }) {

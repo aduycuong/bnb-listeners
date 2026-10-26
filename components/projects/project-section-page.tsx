@@ -2,6 +2,7 @@
 
 import { ProjectAuthorsReport } from "@/components/metrics/project-authors-report";
 import { ProjectAlertsPage } from "@/components/alerts/project-alerts-page";
+import { BrandCaseReport } from "@/components/metrics/brand-case-report";
 import { ProjectCaseReport } from "@/components/metrics/project-case-report";
 import { ProjectChannelsReport } from "@/components/metrics/project-channels-report";
 import { ProjectSentimentReport } from "@/components/metrics/project-sentiment-report";
@@ -73,6 +74,9 @@ export function ProjectSectionPage({
         banner={banner}
       />
     );
+  }
+  if (section === "case" && project.case === "brand") {
+    return <BrandCaseReport scope={scope} projectName={project.name} banner={banner} />;
   }
   if (section === "alerts") {
     return (

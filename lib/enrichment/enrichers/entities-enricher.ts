@@ -8,7 +8,11 @@ import { db } from "@/lib/db";
 import type { LlmEnricher } from "../types";
 import { entitySignature, isSentiment, sentimentEnum } from "./shared";
 
-/** Which tracked entities a mention talks about, with sentiment toward each. */
+/**
+ * Which tracked entities a mention talks about, with sentiment toward each. Only entities Match
+ * linked the mention to are kept: the model tends to give an untracked developer to the tracked
+ * one by role. Mentions without matched entities (added by hand) keep the model's answer.
+ */
 export const entitiesEnricher: LlmEnricher = {
   key: "entities",
   needsEntities: true,
@@ -23,9 +27,19 @@ export const entitiesEnricher: LlmEnricher = {
     return fields;
   },
   promptLines: (ctx) =>
-    ctx.entities.length ? ["- entities: các đối tượng mục đó nói tới, kèm sentiment với từng đối tượng."] : [],
+    ctx.entities.length
+      ? [
+          "- entities: các đối tượng theo dõi mục đó nói tới, kèm sentiment với từng đối tượng.",
+          "  Chỉ gán khi mục nói về chính đối tượng đó: nhắc tên hoặc tên khác, hoặc rõ ràng nói về đối tượng mà bài gốc nhắc tên. Nhãn trong ngoặc (vai trò) chỉ để hiểu đối tượng, không phải điều kiện để gán: một chủ đầu tư, dự án hay khu vực khác không có trong danh sách thì không gán cho đối tượng nào. Không chắc thì [].",
+        ]
+      : [],
   writes: (ctx, item, result) => {
-    const entityIds = new Map(ctx.entities.map((entity) => [entity.ref, entity.id]));
+    const allowed = new Set(item.matchedEntityIds);
+    const entityIds = new Map(
+      ctx.entities
+        .filter((entity) => allowed.size === 0 || allowed.has(entity.id))
+        .map((entity) => [entity.ref, entity.id]),
+    );
     const raw = Array.isArray(result.entities)
       ? (result.entities as { entity: string; sentiment: unknown }[])
       : [];

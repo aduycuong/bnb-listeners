@@ -4,6 +4,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import type {
   AuthorMetricsResult,
+  BrandCaseMetricsResult,
   ChannelMetricsResult,
   OverviewMetricsResult,
   ProjectCaseMetricsResult,
@@ -59,6 +60,15 @@ export function useProjectCaseMetrics(scope: MetricsApiScope, days: number, enab
     queryKey: [...metricsQueryKey(scope.projectId), "project-case", days],
     queryFn: () =>
       fetchJson<ProjectCaseMetricsResult>(scope, `/api/metrics/project-case?days=${days}`),
+    placeholderData: keepPreviousData,
+    enabled,
+  });
+}
+
+export function useBrandCaseMetrics(scope: MetricsApiScope, days: number, enabled = true) {
+  return useQuery({
+    queryKey: [...metricsQueryKey(scope.projectId), "brand-case", days],
+    queryFn: () => fetchJson<BrandCaseMetricsResult>(scope, `/api/metrics/brand-case?days=${days}`),
     placeholderData: keepPreviousData,
     enabled,
   });

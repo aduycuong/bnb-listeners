@@ -5,6 +5,7 @@ import {
   effectiveSentimentJoins,
   effectiveSentimentSql,
 } from "@/lib/enrichment/utils/effective-sentiment-sql";
+import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 
 import { METRICS_CONFIG } from "../config";
 import type { ChannelMetricsResult, MetricsReportParams } from "../types";
@@ -40,7 +41,7 @@ export async function getChannelMetrics(
   params: MetricsReportParams,
 ): Promise<ChannelMetricsResult> {
   const window = await loadReportWindow(params.projectId, params.days);
-  const scope = sql`m.project_id = ${params.projectId}::uuid and m.is_relevant
+  const scope = sql`m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
     and m.published_at >= ${window.start.toISOString()}::timestamptz`;
 
   const [{ rows: channelRows }, { rows: heatRows }, { rows: sourceRows }] = await Promise.all([

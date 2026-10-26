@@ -7,6 +7,7 @@ import {
   effectiveSentimentJoins,
   effectiveSentimentSql,
 } from "@/lib/enrichment/utils/effective-sentiment-sql";
+import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 import { projectCaseConfigSchema } from "@/lib/projects/case-templates";
 import { parseProjectCase } from "@/lib/projects/project-cases";
 
@@ -114,7 +115,7 @@ export async function getProjectCaseMetrics(
       select t.id, t.name, count(*)::int as mentions
       from topics t
       join mention_topics mt on mt.topic_id = t.id and mt.kind = 'buyer_question'
-      join mentions m on m.id = mt.mention_id and m.is_relevant
+      join mentions m on m.id = mt.mention_id and m.is_relevant and ${ownMentionSql}
       where t.project_id = ${params.projectId}::uuid
         and t.kind = 'buyer_question' and t.status = 'active'
         and m.published_at >= ${start}
@@ -128,7 +129,7 @@ export async function getProjectCaseMetrics(
         count(*) filter (where m.published_at < ${start})::int as previous_count
       from mention_extractions x
       join mentions m on m.id = x.mention_id
-      where m.project_id = ${params.projectId}::uuid and m.is_relevant
+      where m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
         and x.schema_key = 'buyer_question'
         and m.published_at >= ${previousStart}
     `),
@@ -222,6 +223,7 @@ async function loadAspectNss(
       from mentions m
       ${effectiveSentimentJoins}
       where m.project_id = ${projectId}::uuid and m.is_relevant and m.published_at >= ${start}
+        and ${side === "primary" ? ownMentionSql : sql`true`}
     ),
     effective as (
       select pm.id as mention_id, pa.id as aspect_id, pm.sentiment

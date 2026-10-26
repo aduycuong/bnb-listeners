@@ -1,33 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import type { ReactNode } from "react";
-
 import { PriceBucketChart, PriceTrendChart } from "@/components/projects/demo/demo-charts";
 import { DemoPanel } from "@/components/projects/demo/demo-ui";
 import { formatCount } from "@/lib/projects/aqua-demo";
 import type { ProjectCaseMetricsResult } from "@/lib/metrics/types";
 
-import { formatDayLabel, MetricsEmpty } from "./metrics-page-header";
+import { detailNote, formatDayLabel, MetricsEmpty } from "./metrics-page-header";
 
 function decimal(value: number) {
   return String(value).replace(".", ",");
-}
-
-function detailNote(note: string | undefined, detail?: { href: string; label: string }): ReactNode {
-  if (!detail) return note;
-  const link = (
-    <Link href={detail.href} className="font-medium text-foreground underline">
-      “{detail.label}”
-    </Link>
-  );
-  return note ? (
-    <>
-      {note} · Chi tiết ở trang {link}
-    </>
-  ) : (
-    <>Chi tiết ở trang {link}</>
-  );
 }
 
 /** Resale-price charts shared by the overview preview and the project case page. */
