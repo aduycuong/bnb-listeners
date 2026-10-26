@@ -29,13 +29,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
 import type { ProjectListItem } from "@/lib/projects/types";
-import { API_KEY_SCOPE_LABELS, API_KEY_SCOPES, type ApiKeyScope } from "@/lib/unkey/constants";
+import { API_KEY_SCOPE_LABELS, API_KEY_SCOPES } from "@/lib/unkey/constants";
 import { workspaceKeyBodySchema, type WorkspaceKeyBody } from "@/lib/unkey/schema";
 import type { CreateWorkspaceKeyResult, WorkspaceApiKeyItem } from "@/lib/unkey/types";
 import { workspaceFetch } from "@/lib/workspaces/utils/workspace-fetch";
-
-/** Scopes that have no tool yet (D27): shown, not selectable. */
-const UPCOMING_SCOPES: ApiKeyScope[] = ["projects:write"];
 
 type ApiKeyDialogProps = {
   open: boolean;
@@ -188,13 +185,12 @@ export function ApiKeyDialog({
                   <FieldSet data-invalid={!!errors.scopes || undefined}>
                     <FieldLegend variant="label">Quyền</FieldLegend>
                     {API_KEY_SCOPES.map((scope) => {
-                      const upcoming = UPCOMING_SCOPES.includes(scope);
                       return (
-                        <Field key={scope} orientation="horizontal" data-disabled={upcoming || undefined}>
+                        <Field key={scope} orientation="horizontal">
                           <Switch
                             id={`api-key-scope-${scope}`}
                             checked={field.value.includes(scope)}
-                            disabled={isSubmitting || upcoming}
+                            disabled={isSubmitting}
                             onCheckedChange={(checked) =>
                               field.onChange(
                                 checked

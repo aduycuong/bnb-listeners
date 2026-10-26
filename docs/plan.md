@@ -262,7 +262,8 @@ Xem [D27](decisions.md#d27--mcp-và-scope-của-api-key-2026-10-26) và [D28](de
 - [x] Chạy migration (`0058`), kiểm tay trang Kết nối AI và thẻ API key: tạo key giới hạn scope và project, gọi `/api/mcp` qua HTTP, sửa scope có hiệu lực ngay, thu hồi trả 401
 
 **PR 3 — MCP tạo project** (2–3 ngày)
-- [ ] `list_case_templates`, `list_sources`, `preview_project_match`, `create_project` (cùng schema với wizard, có `dry_run`), scope `projects:write`
+- [x] `list_case_templates`, `list_sources`, `preview_project_match`, `create_project` (cùng schema với wizard, `dryRun` mặc định true), scope `projects:write` mở trong form key; kiểm in-memory trên DB dev: dry run, thiếu vai trò, trùng tên, `caseConfig` sai, key giới hạn project
+- [ ] Tạo thật (`dryRun: false`) qua chat agent
 
 **PR 4 — L4 theo ngày** (3–4 ngày)
 - [ ] `project_metrics_daily` (dòng `entity_id = null` là tổng bên mình đã khử trùng), `project_aspect_daily`

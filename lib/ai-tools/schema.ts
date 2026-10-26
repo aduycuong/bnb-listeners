@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { reportPeriodSchema } from "@/lib/metrics/schema";
+import { ENTITY_ROLES } from "@/lib/projects/case-templates";
 
 export const toolProjectIdSchema = z
   .uuid()
@@ -20,3 +21,25 @@ export const projectPeriodInputSchema = z.object({
   projectId: toolProjectIdSchema,
   period: toolPeriodSchema,
 });
+
+const toolTermsSchema = z.array(z.string().trim().min(1).max(80)).max(30).optional();
+
+/** An entity to track, as a model writes it: no id, terms optional. */
+export const toolEntityInputSchema = z.object({
+  role: z
+    .enum(ENTITY_ROLES)
+    .describe("Vai trò theo case, xem list_case_templates (primary, competitor, product, area…)."),
+  name: z.string().trim().min(1).max(120),
+  aliases: toolTermsSchema.describe("Tên khác, viết tắt, tên cũ, mã cổ phiếu."),
+  ambiguousAliases: toolTermsSchema.describe(
+    "Tên dễ nhầm với thứ khác; chỉ khớp khi LLM xác nhận theo ngữ cảnh.",
+  ),
+  withTerms: toolTermsSchema.describe("Nếu có: bài phải chứa ít nhất một từ này cạnh tên."),
+  exclude: toolTermsSchema.describe("Bỏ bài chứa các từ này."),
+});
+
+export const toolSourceIdsSchema = z
+  .array(z.uuid())
+  .min(1)
+  .max(100)
+  .describe("Id nguồn, lấy từ list_sources.");
