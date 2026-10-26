@@ -63,7 +63,7 @@ Module mới nằm trực tiếp trong `lib/` theo `.cursor/rules/lib-services.m
 
 ## D7 — Lập lịch thu thập, tier và lấy lại comment (2026-10-13)
 
-Dựa trên các thử nghiệm Bright Data ngày 2026-10-12 và 2026-10-13 (`npm run probe:bright-data`, kết quả ở `.local/experiments/`, tóm tắt trong [plan.md](plan.md)). Các con số điều chỉnh được nằm ở `lib/connectors/config.ts`.
+Dựa trên các thử nghiệm Bright Data ngày 2026-10-12 và 2026-10-13 (`npm run probe:bright-data`, kết quả ở `.local/experiments/`, tóm tắt trong [plan.md](plan.md)). Các con số điều chỉnh được nằm ở `lib/connectors/config.ts` (mặc định; admin chỉnh tần suất và mốc lấy lại ở `/admin/settings`, xem D25).
 
 **Run post (`facebook-posts`)**
 - `start_date` = `published_at` mới nhất của source − 2 giờ chồng lấn, dạng ISO datetime. Không gửi `num_of_posts` và `end_date`. Source chưa có bài thì lấy lùi 1 ngày.
@@ -90,7 +90,7 @@ Dựa trên các thử nghiệm Bright Data ngày 2026-10-12 và 2026-10-13 (`np
 - **Lý do:** phần lớn bài ít comment chỉ cần lấy một lần ở mốc 24 giờ; bài nóng được lấy sớm. "Most relevant" và "All comments" trả cùng tập comment trên bài thử.
 
 **Ngân sách**
-- `sources.monthly_record_limit` (null = không giới hạn). Usage tháng = tổng `collect_runs.item_count` của mọi run thuộc source trong tháng (UTC). Hết ngân sách thì không lên lịch run post và run refresh. Run comment chưa bị chặn theo ngân sách còn lại.
+- `sources.monthly_record_limit` (null = không giới hạn). Usage tháng = tổng `collect_runs.item_count` của mọi run thuộc source trong tháng (UTC). Hết ngân sách thì không lên lịch run post và run refresh. ~~Run comment chưa bị chặn theo ngân sách còn lại.~~ Từ D25 run comment cũng bị chặn, và có thêm giới hạn theo ngày.
 
 **Công cụ**
 - `npm run refresh:check`: gửi các mốc lấy lại đến hạn bằng tay.
@@ -462,3 +462,16 @@ ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên
 - Làm hai PR: PR 1 gỡ code (revert được), PR 2 xóa bảng khỏi schema. Thay D1 (đóng băng): không còn cần mở lại pipeline cũ.
 - Giữ `lib/bright-data` (connector mới dùng), `lib/langchain`, `lib/exposers`, khóa API workspace (`lib/unkey`). Khóa API workspace hiện chưa có chỗ dùng sau khi gỡ MCP.
 - PR 2 xóa các bảng `documents`, `comments`, `document_parts`, `chunks`, `terms`, `document_terms`, `term_backfill_runs`, `term_digest_daily`, `research_runs`, `dim_dates`, `data_sources`, `data_source_groups`, `data_source_group_members`, `source_runs`, `system_schedules`, `system_schedule_runs`, `workspace_task_runs` và ba cột term của `projects` (kèm form cài đặt term). `workspaces.data_collection_scope`, thẻ cài đặt LLM của workspace và `PATCH /api/workspaces/[id]` bị xóa vì không còn chỗ dùng.
+
+## D25 — Admin chỉnh tần suất thu thập qua UI (2026-10-26)
+
+- Tier của source có hai chế độ, chỉnh ở `/admin/sources/{id}`: **tự động** (tính lại sau mỗi run post như D7) hoặc **thủ công** (`activity_tier_locked`, chọn `hot` / `normal` / `low` / `paused`). `paused` luôn là thủ công. Chuyển về tự động thì tier được tính lại ngay. Không có interval riêng cho từng source.
+- Khoảng cách quét theo tier, ngưỡng tier, số ngày đo, khoảng cách của nguồn tìm từ khóa TikTok và các mốc lấy lại comment chỉnh được ở `/admin/settings`. Giá trị mặc định vẫn là `COLLECT_CONFIG`; phần admin đổi lưu ở bảng `app_settings` (mỗi nhóm một dòng, cả nhóm), "Về mặc định" xóa dòng. Không lưu lịch sử thay đổi, chỉ người đổi và thời điểm gần nhất.
+- Đổi các mốc lấy lại chỉ có tác dụng từ mốc kế tiếp của mỗi bài; bài đang chờ mốc cũ vẫn đi mốc đó.
+- Thêm nhóm setting mới: khai báo một `SettingDefinition` (schema Zod, mặc định, `fields` cho form) cạnh module dùng nó, thêm vào `lib/settings/registry.ts`, đọc bằng `getSettings`. Form được dựng từ `fields`.
+- **Giới hạn record theo ngày** (`sources.daily_record_limit`, null = không giới hạn), áp dụng mọi chế độ tier. Ngày tính theo giờ Việt Nam (reset 0h, tức 17:00 UTC); tháng vẫn theo UTC. Ngân sách còn lại = min(còn lại của tháng, còn lại của ngày).
+  - Hết ngân sách thì không lên lịch run post và run refresh (như D7). Bài không mất: run post kế tiếp lấy từ bài mới nhất đã lưu, trừ khi phần tồn vượt trần 500 record/run.
+  - **Run comment cũng bị chặn** (D7 chưa chặn), cả khi bài vào kho lẫn tại mốc refresh: mỗi bài ước tính `min(num_comments, 150)` record, ưu tiên bài nhiều comment nhất; bài không vừa ngân sách được xét lại ở mốc kế tiếp (qua mốc cuối thì không lấy). Số bài bị hoãn ghi vào `collect_runs.stats.commentsDeferredForBudget`.
+  - Giới hạn mềm: run đã khởi tạo vẫn chạy hết, nên có thể vượt một ít. Run chạy tay (CLI) không bị chặn.
+  - **Lý do:** usage thật 7 ngày (2026-10-20 → 26): comment chiếm 70–90% record; ngày lấy lần đầu một group lên tới ~10.000 record so với 600–1.000 ngày thường. Giới hạn tháng không ngăn một đợt đột biến tiêu hết ngân sách trong vài ngày; giới hạn ngày (gợi ý 2–3 lần mức thường) chặn được. Không làm giới hạn record mỗi run: hạ trần chỉ làm mất bài cũ hơn trong cửa sổ, không tiết kiệm thật.
+- **Lý do:** Bright Data tính tiền theo record nên giảm tần suất quét Facebook ít tiết kiệm (cùng số bài); công cụ chặn chi phí là `monthly_record_limit`. Hạ tier có ích cho nguồn ít quan trọng và cho TikTok (tính theo request). Hạ tier của nguồn đông bài có thể chạm trần 500 record/run và sót bài; tooltip và form cảnh báo khi số bài dự kiến mỗi run vượt trần.

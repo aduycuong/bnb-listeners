@@ -1,10 +1,10 @@
-import { COLLECT_CONFIG } from "../config";
-
 const HOUR_MS = 60 * 60 * 1000;
 
 type FindNextRefreshCheckpointParams = {
   publishedAt: Date;
   now: Date;
+  /** Ascending; from `CollectSettings.commentRefresh`. */
+  checkpointsHours: readonly number[];
 };
 
 type RefreshCheckpoint = {
@@ -21,7 +21,7 @@ type RefreshCheckpoint = {
 export function findNextRefreshCheckpoint(
   params: FindNextRefreshCheckpointParams,
 ): RefreshCheckpoint | null {
-  for (const hours of COLLECT_CONFIG.commentRefresh.checkpointsHours) {
+  for (const hours of params.checkpointsHours) {
     const dueAt = new Date(params.publishedAt.getTime() + hours * HOUR_MS);
     if (dueAt > params.now) return { checkpointHours: hours, dueAt };
   }

@@ -3,12 +3,14 @@ import { inArray } from "drizzle-orm";
 import { sources } from "@/db/schema";
 import { db } from "@/lib/db";
 import { COLLECT_CONFIG } from "@/lib/connectors/config";
+import { getCollectSettings } from "@/lib/connectors/services/get-collect-settings";
 import { dispatchDueRefreshes } from "@/lib/connectors/services/dispatch-due-refreshes";
 import { dispatchDueSources } from "@/lib/connectors/services/dispatch-due-sources";
 import { getSourceBudgets } from "@/lib/connectors/services/get-source-budgets";
 import { getScheduleClient } from "@/lib/workflows/utils/get-schedule-client";
 
 import type { AdminSchedulerState } from "../types";
+import { toAdminTierRules } from "../utils/to-admin-tier-rules";
 
 async function listQStashSchedules(): Promise<
   Pick<AdminSchedulerState, "schedules" | "schedulesError">
@@ -45,14 +47,14 @@ async function listQStashSchedules(): Promise<
  * Nothing is written.
  */
 export async function getAdminSchedulerState(): Promise<AdminSchedulerState> {
-  const budgets = await getSourceBudgets();
+  const [budgets, settings] = await Promise.all([getSourceBudgets(), getCollectSettings()]);
   const exhausted = budgets
     .filter((budget) => budget.remaining <= 0)
     .map((budget) => budget.sourceId);
 
   const [qstash, decisions, refreshes] = await Promise.all([
     listQStashSchedules(),
-    dispatchDueSources({ budgets, dryRun: true }),
+    dispatchDueSources({ budgets, dryRun: true, settings }),
     dispatchDueRefreshes({ excludeSourceIds: exhausted, dryRun: true }),
   ]);
 
@@ -68,8 +70,8 @@ export async function getAdminSchedulerState(): Promise<AdminSchedulerState> {
   return {
     config: {
       intervalMinutes: COLLECT_CONFIG.scheduler.intervalMinutes,
-      tierIntervalHours: COLLECT_CONFIG.tiers.intervalHours,
-      checkpointsHours: COLLECT_CONFIG.commentRefresh.checkpointsHours,
+      tierRules: toAdminTierRules(settings),
+      checkpointsHours: settings.commentRefresh.checkpointsHours,
     },
     ...qstash,
     nextTick: {
@@ -78,6 +80,7 @@ export async function getAdminSchedulerState(): Promise<AdminSchedulerState> {
         name: nameById.get(decision.sourceId) ?? null,
         activityTier: decision.activityTier,
         lastRunAt: decision.lastRunAt,
+        intervalHours: decision.intervalHours,
         status: decision.status,
         maxRecords: decision.maxRecords ?? null,
       })),

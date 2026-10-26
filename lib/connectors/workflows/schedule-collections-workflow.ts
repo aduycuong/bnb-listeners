@@ -8,7 +8,7 @@ import { getSourceBudgets } from "../services/get-source-budgets";
  * Started by a QStash schedule (`npm run schedules:sync`), every
  * `COLLECT_CONFIG.scheduler.intervalMinutes`.
  *
- * 1. budgets: monthly usage of sources with a `monthly_record_limit`.
+ * 1. budgets: monthly and daily usage of sources with a record limit.
  * 2. dispatch-sources: post runs for sources due by tier.
  * 3. dispatch-refreshes: `facebook-post-refresh` runs for due checkpoints,
  *    skipping sources out of budget.

@@ -73,6 +73,7 @@ export const facebookPostRefreshConnector: JobConnector<FacebookPostRefreshParam
         checked: decisions.length,
         commentRunsPlanned: followUps.length,
         postsToCollect: decisions.filter((decision) => decision.collect).length,
+        commentsDeferredForBudget: decisions.filter((decision) => decision.deferredForBudget).length,
       },
       followUps,
     };

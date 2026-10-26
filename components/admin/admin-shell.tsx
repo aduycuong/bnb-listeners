@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { href: "/admin/collect-runs", label: "Collect runs" },
   { href: "/admin/refresh-schedules", label: "Refresh schedules" },
   { href: "/admin/scheduler", label: "Scheduler" },
+  { href: "/admin/settings", label: "Settings" },
   { href: "/admin/personas", label: "Personas" },
   { href: "/admin/panels", label: "Panels" },
   { href: "/admin/generate", label: "Generate" },

@@ -1,5 +1,5 @@
-import { COLLECT_CONFIG } from "../config";
 import type { ActivityTier } from "../constants";
+import type { CollectSettings } from "../settings";
 
 type IntervalSource = {
   platform: string;
@@ -13,14 +13,17 @@ type IntervalSource = {
  * per day to measure (each run is a sample of the same window), so it runs at
  * a fixed interval.
  */
-export function getSourceIntervalHours(source: IntervalSource): number | null {
+export function getSourceIntervalHours(
+  source: IntervalSource,
+  settings: Pick<CollectSettings, "tiers" | "tiktokSearch">,
+): number | null {
   if (source.activityTier === "paused") return null;
 
   if (source.platform === "tiktok" && source.sourceType === "search") {
-    return COLLECT_CONFIG.tiktok.search.intervalHours;
+    return settings.tiktokSearch.intervalHours;
   }
 
-  return COLLECT_CONFIG.tiers.intervalHours[
+  return settings.tiers.intervalHours[
     source.activityTier as Exclude<ActivityTier, "paused">
   ];
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { COLLECT_CONFIG } from "../config";
+import { DEFAULT_COLLECT_SETTINGS as settings } from "../settings";
 import { getPostConnectorKey } from "./get-post-connector-key";
 import { getSourceIntervalHours } from "./get-source-interval-hours";
 
@@ -21,35 +21,35 @@ describe("getPostConnectorKey", () => {
 });
 
 describe("getSourceIntervalHours", () => {
-  const tiers = COLLECT_CONFIG.tiers.intervalHours;
+  const tiers = settings.tiers.intervalHours;
 
   test("a group or channel follows its activity tier", () => {
     for (const [platform, sourceType] of [
       ["facebook", "group"],
       ["tiktok", "channel"],
     ]) {
-      assert.equal(getSourceIntervalHours({ platform, sourceType, activityTier: "hot" }), tiers.hot);
-      assert.equal(getSourceIntervalHours({ platform, sourceType, activityTier: "normal" }), tiers.normal);
-      assert.equal(getSourceIntervalHours({ platform, sourceType, activityTier: "low" }), tiers.low);
+      assert.equal(getSourceIntervalHours({ platform, sourceType, activityTier: "hot" }, settings), tiers.hot);
+      assert.equal(getSourceIntervalHours({ platform, sourceType, activityTier: "normal" }, settings), tiers.normal);
+      assert.equal(getSourceIntervalHours({ platform, sourceType, activityTier: "low" }, settings), tiers.low);
     }
   });
 
   test("a keyword search runs at its own interval whatever the tier", () => {
     for (const activityTier of ["hot", "normal", "low"]) {
       assert.equal(
-        getSourceIntervalHours({ platform: "tiktok", sourceType: "search", activityTier }),
-        COLLECT_CONFIG.tiktok.search.intervalHours,
+        getSourceIntervalHours({ platform: "tiktok", sourceType: "search", activityTier }, settings),
+        settings.tiktokSearch.intervalHours,
       );
     }
   });
 
   test("a paused source has no interval", () => {
     assert.equal(
-      getSourceIntervalHours({ platform: "tiktok", sourceType: "search", activityTier: "paused" }),
+      getSourceIntervalHours({ platform: "tiktok", sourceType: "search", activityTier: "paused" }, settings),
       null,
     );
     assert.equal(
-      getSourceIntervalHours({ platform: "facebook", sourceType: "group", activityTier: "paused" }),
+      getSourceIntervalHours({ platform: "facebook", sourceType: "group", activityTier: "paused" }, settings),
       null,
     );
   });
