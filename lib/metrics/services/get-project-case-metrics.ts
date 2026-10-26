@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, type SQL } from "drizzle-orm";
 
 import { projects } from "@/db/schema";
 import { InvalidInputError, NotFoundError } from "@/lib/common/service-errors";
@@ -14,7 +14,7 @@ import { parseProjectCase } from "@/lib/projects/project-cases";
 import { METRICS_CONFIG } from "../config";
 import { netSentimentScore } from "../formulas";
 import type { MetricsReportParams, ProjectCaseMetricsResult } from "../types";
-import { loadReportWindow } from "../utils/load-report-window";
+import { periodSql, resolveReportWindow } from "../utils/resolve-report-window";
 
 type QuoteRow = {
   mention_id: string;
@@ -62,9 +62,8 @@ export async function getProjectCaseMetrics(
     throw new InvalidInputError("Trang Chi tiết dự án chỉ có ở case Theo dõi dự án.");
   }
 
-  const window = await loadReportWindow(params.projectId, params.days);
-  const start = sql`${window.start.toISOString()}::timestamptz`;
-  const previousStart = sql`${window.previousStart.toISOString()}::timestamptz`;
+  const window = await resolveReportWindow(params.projectId, params.period);
+  const inPeriod = periodSql(window);
   const tz = window.timezone;
   const parsedConfig = projectCaseConfigSchema.safeParse(project.caseConfig);
   const priceRef = parsedConfig.success ? (parsedConfig.data.priceRef ?? null) : null;
@@ -95,7 +94,7 @@ export async function getProjectCaseMetrics(
           and x.data->>'unit' = 'trieu_m2'
           and x.data->>'kind' = 'rao_ban'
           and jsonb_typeof(x.data->'amount') = 'number'
-          and m.published_at >= ${previousStart}
+          and ${inPeriod.either}
       ),
       assigned as (
         select me.mention_id, min(pe.role) as role
@@ -118,23 +117,23 @@ export async function getProjectCaseMetrics(
       join mentions m on m.id = mt.mention_id and m.is_relevant and ${ownMentionSql}
       where t.project_id = ${params.projectId}::uuid
         and t.kind = 'buyer_question' and t.status = 'active'
-        and m.published_at >= ${start}
+        and ${inPeriod.current}
       group by t.id
       order by mentions desc, t.name
       limit ${METRICS_CONFIG.topBuyerQuestions}
     `),
     db.execute<{ current_count: number; previous_count: number }>(sql`
       select
-        count(*) filter (where m.published_at >= ${start})::int as current_count,
-        count(*) filter (where m.published_at < ${start})::int as previous_count
+        count(*) filter (where ${inPeriod.current})::int as current_count,
+        count(*) filter (where ${inPeriod.previous})::int as previous_count
       from mention_extractions x
       join mentions m on m.id = x.mention_id
       where m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
         and x.schema_key = 'buyer_question'
-        and m.published_at >= ${previousStart}
+        and ${inPeriod.either}
     `),
-    loadAspectNss(params.projectId, start, "primary"),
-    loadAspectNss(params.projectId, start, "competitor"),
+    loadAspectNss(params.projectId, inPeriod.current, "primary"),
+    loadAspectNss(params.projectId, inPeriod.current, "competitor"),
   ]);
 
   const primaryName =
@@ -161,7 +160,7 @@ export async function getProjectCaseMetrics(
   );
 
   return {
-    days: params.days,
+    period: window.info,
     timezone: window.timezone,
     primaryName,
     hasCompetitors,
@@ -197,7 +196,7 @@ export async function getProjectCaseMetrics(
 
 async function loadAspectNss(
   projectId: string,
-  start: ReturnType<typeof sql>,
+  inPeriod: SQL,
   side: "primary" | "competitor",
 ) {
   const entityFilter =
@@ -222,7 +221,7 @@ async function loadAspectNss(
       select m.id, m.content_item_id, ${effectiveSentimentSql} as sentiment
       from mentions m
       ${effectiveSentimentJoins}
-      where m.project_id = ${projectId}::uuid and m.is_relevant and m.published_at >= ${start}
+      where m.project_id = ${projectId}::uuid and m.is_relevant and ${inPeriod}
         and ${side === "primary" ? ownMentionSql : sql`true`}
     ),
     effective as (

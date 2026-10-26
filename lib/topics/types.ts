@@ -1,5 +1,7 @@
 import type { z } from "zod";
 
+import type { ReportPeriod, ReportPeriodInfo } from "@/lib/metrics/types";
+
 import type { TopicStageKind, TopicStatus } from "./config";
 import type { listTopicsQuerySchema, updateTopicBodySchema } from "./schema";
 
@@ -81,12 +83,12 @@ export type TopicReportKeyword = {
   negative: number;
 };
 
-export type TopicReportParams = { projectId: string; days: number };
+export type TopicReportParams = { projectId: string; period: ReportPeriod };
 
 export type TopicReportResult = {
   items: TopicReportItem[];
   keywords: TopicReportKeyword[];
-  days: number;
+  period: ReportPeriodInfo;
 };
 
 export type UpdateTopicParams = { projectId: string; topicId: string } & z.infer<

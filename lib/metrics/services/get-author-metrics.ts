@@ -13,7 +13,7 @@ import { authorTier } from "../formulas";
 import type { AuthorMetricsResult, MetricsReportParams } from "../types";
 import { channelLabel } from "../utils/channel-label";
 import { engagementSql } from "../utils/engagement-sql";
-import { loadReportWindow } from "../utils/load-report-window";
+import { periodSql, resolveReportWindow } from "../utils/resolve-report-window";
 
 type AuthorRow = {
   id: string;
@@ -33,7 +33,7 @@ type AuthorRow = {
  * every author of the period is loaded, which is fine until the L4 rollups exist.
  */
 export async function getAuthorMetrics(params: MetricsReportParams): Promise<AuthorMetricsResult> {
-  const window = await loadReportWindow(params.projectId, params.days);
+  const window = await resolveReportWindow(params.projectId, params.period);
   const { rows } = await db.execute<AuthorRow>(sql`
     select a.id, a.name, a.url, a.platform,
       a.follower_count, a.author_type,
@@ -46,7 +46,7 @@ export async function getAuthorMetrics(params: MetricsReportParams): Promise<Aut
     join content_items ci on ci.id = m.content_item_id
     ${effectiveSentimentJoins}
     where m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
-      and m.published_at >= ${window.start.toISOString()}::timestamptz
+      and ${periodSql(window).current}
     group by a.id
     order by engagement desc, mentions desc, a.name
   `);
@@ -69,7 +69,7 @@ export async function getAuthorMetrics(params: MetricsReportParams): Promise<Aut
   });
 
   return {
-    days: params.days,
+    period: window.info,
     timezone: window.timezone,
     items: items.slice(0, METRICS_CONFIG.topAuthors),
     tiers: AUTHOR_TIERS.map(({ key }) => ({ tier: key, authors: tierCounts.get(key) ?? 0 })),

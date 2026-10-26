@@ -5,6 +5,8 @@ export const METRICS_CONFIG = {
    * today included; the first is the default. Changes compare with the same number of days before.
    */
   reportPeriodDays: [14, 7, 30],
+  /** Longest rolling or custom period, in days. */
+  maxPeriodDays: 366,
   /** Rows of the "Kênh thảo luận" (by source) and "Chủ đề nổi bật" panels. */
   topSources: 6,
   topTopics: 6,
@@ -18,6 +20,9 @@ export const METRICS_CONFIG = {
   /** Report periods (`caseConfig.period`) on the reputation trend of the brand case. */
   reputationTrendPeriods: 6,
 } as const;
+
+/** Calendar report periods (D28), in the project's timezone; a week runs Monday to Sunday. */
+export const REPORT_PERIOD_TYPES = ["week", "month", "quarter", "year"] as const;
 
 /** Labels of the reputation index (brand case), by lowest score of the band. */
 export const REPUTATION_BANDS = [

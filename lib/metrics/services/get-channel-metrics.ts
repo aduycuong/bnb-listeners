@@ -11,7 +11,7 @@ import { METRICS_CONFIG } from "../config";
 import type { ChannelMetricsResult, MetricsReportParams } from "../types";
 import { channelLabel } from "../utils/channel-label";
 import { engagementSql } from "../utils/engagement-sql";
-import { loadReportWindow } from "../utils/load-report-window";
+import { periodSql, resolveReportWindow } from "../utils/resolve-report-window";
 
 type ChannelRow = {
   platform: string;
@@ -40,9 +40,9 @@ type SourceRow = {
 export async function getChannelMetrics(
   params: MetricsReportParams,
 ): Promise<ChannelMetricsResult> {
-  const window = await loadReportWindow(params.projectId, params.days);
+  const window = await resolveReportWindow(params.projectId, params.period);
   const scope = sql`m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
-    and m.published_at >= ${window.start.toISOString()}::timestamptz`;
+    and ${periodSql(window).current}`;
 
   const [{ rows: channelRows }, { rows: heatRows }, { rows: sourceRows }] = await Promise.all([
     db.execute<ChannelRow>(sql`
@@ -92,7 +92,7 @@ export async function getChannelMetrics(
   }
 
   return {
-    days: params.days,
+    period: window.info,
     timezone: window.timezone,
     channels: [...channels.values()].sort((a, b) => b.mentions - a.mentions),
     heat: heatRows,

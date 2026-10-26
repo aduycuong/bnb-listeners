@@ -10,7 +10,7 @@ const topicReportQuerySchema = z.object({
     .int()
     .refine((days) => (TOPIC_CONFIG.reportPeriodDays as readonly number[]).includes(days))
     .default(TOPIC_CONFIG.reportPeriodDays[0]),
-});
+}).transform(({ days }) => ({ period: { type: "rolling" as const, days } }));
 
 export const GET = createApiHandler(
   { queryParams: topicReportQuerySchema },

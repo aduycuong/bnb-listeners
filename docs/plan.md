@@ -240,10 +240,40 @@ Xem [D17](decisions.md#d17--giai-đoạn-5b-số-liệu-dashboard-2026-10-15).
 - [x] Đánh giá `alert_rules` mỗi giờ trên L3 (ngưỡng, tăng trưởng, bài lan rộng, từ khóa, giá, câu hỏi). Chưa `metrics_hourly`, chưa phát hiện bất thường ngoài các ngưỡng đã cấu hình
 - [ ] `engagement_snapshots` định kỳ cho bài đang nóng
 - [ ] Connector ảo chế độ replay để test cảnh báo
-- [ ] Insight và báo cáo AI có trích dẫn mention
+- [ ] Insight và báo cáo AI có trích dẫn mention (PR 5 bên dưới)
 - [x] Gửi cảnh báo qua email (Resend). Zalo, SMS, Slack chưa gửi
 
 **Kết quả:** đo được độ trễ phát hiện trên scenario khủng hoảng.
+
+### MCP và báo cáo AI theo kỳ
+
+Xem [D27](decisions.md#d27--mcp-và-scope-của-api-key-2026-10-26) và [D28](decisions.md#d28--kỳ-báo-cáo-và-l4-theo-ngày-2026-10-26). PR 4 làm song song được với PR 3.
+
+**PR 1 — Kỳ báo cáo + MCP đọc** (3–4 ngày)
+- [x] Resolve kỳ cuộn, kỳ lịch và kỳ tùy chọn theo timezone project (`resolveReportWindow`, `periodSql`); service metrics và báo cáo Chủ đề nhận `period` thay cho `days`, kết quả trả `period` (ngày đầu, ngày cuối, kỳ so sánh). Route dashboard vẫn nhận `?days=`
+- [x] `lib/ai-tools/`: `list_projects`, `get_project`, `get_overview`, `get_sentiment`, `get_channels`, `get_authors`, `get_topics`, `get_case_metrics`, `search_mentions`
+- [x] `/api/mcp` Bearer key qua Unkey (stateless, JSON response); đã chạy cả 9 tool qua client MCP in-memory trên DB dev
+- [ ] Thử qua HTTP bằng key thật với chat agent
+
+**PR 2 — Scope key + trang Kết nối AI** (1,5–2 ngày)
+- [ ] `workspace_api_keys`: `scopes`, `project_ids`, `created_by`; kiểm scope, project và quyền người tạo ở mỗi tool
+- [ ] Thẻ API key ở workspace settings chọn scope và project
+- [ ] Mục **Kết nối AI** trong nhóm menu Dự án
+
+**PR 3 — MCP tạo project** (2–3 ngày)
+- [ ] `list_case_templates`, `list_sources`, `preview_project_match`, `create_project` (cùng schema với wizard, có `dry_run`), scope `projects:write`
+
+**PR 4 — L4 theo ngày** (3–4 ngày)
+- [ ] `project_metrics_daily` (dòng `entity_id = null` là tổng bên mình đã khử trùng), `project_aspect_daily`
+- [ ] Tính lại theo (project, ngày): sau match/enrich tăng dần, khi sửa nhãn tay, job đêm 35 ngày; đổi `match_signature` hay timezone thì tính lại cả project
+- [ ] Service metrics đọc L4 (tác giả, bản đồ nhiệt, top tác giả, chủ đề vẫn đọc L3), giao diện không đổi; so số với bản đọc L3 trên project thật
+- [ ] `REPORT_SCHEDULES` thêm `yearly`
+
+**PR 5 — Báo cáo AI theo kỳ** (6–9 ngày)
+- [ ] `ai_reports`: snapshot số liệu, các phần, trích dẫn mention, trạng thái nháp/đã duyệt, model, chi phí
+- [ ] Sinh báo cáo: số liệu tính sẵn, LLM viết từng phần có trích dẫn, kiểm lại con số; workflow QStash sau khi kỳ đóng 24–48 giờ
+- [ ] Màn hình Báo cáo AI cho project thật, AI tóm tắt ở Tổng quan đọc bản mới nhất, luồng duyệt
+- [ ] Tool `list_reports`, `get_report`
 
 ## Giai đoạn 7 — Mở rộng nguồn
 

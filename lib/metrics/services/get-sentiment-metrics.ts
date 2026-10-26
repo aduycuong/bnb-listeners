@@ -12,7 +12,7 @@ import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 import { netSentimentScore, sharePercent } from "../formulas";
 import type { MetricsReportParams, SentimentMetricsResult } from "../types";
 import { loadDailySentiment } from "../utils/load-daily-sentiment";
-import { loadReportWindow } from "../utils/load-report-window";
+import { periodSql, resolveReportWindow } from "../utils/resolve-report-window";
 
 type AspectRow = { id: string; name: string; mentions: number; positive: number; negative: number };
 
@@ -25,14 +25,13 @@ type AspectRow = { id: string; name: string; mentions: number; positive: number;
 export async function getSentimentMetrics(
   params: MetricsReportParams,
 ): Promise<SentimentMetricsResult> {
-  const window = await loadReportWindow(params.projectId, params.days);
-  const start = sql`${window.start.toISOString()}::timestamptz`;
+  const window = await resolveReportWindow(params.projectId, params.period);
   const periodMentions = sql`
     select m.id, m.content_item_id, ${effectiveSentimentSql} as sentiment, ${emotionSql} as emotion
     from mentions m
     ${effectiveSentimentJoins}
     where m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
-      and m.published_at >= ${start}
+      and ${periodSql(window).current}
   `;
 
   const [daily, { rows: emotionRows }, { rows: aspectRows }] = await Promise.all([
@@ -78,7 +77,7 @@ export async function getSentimentMetrics(
   const emotionTotal = EMOTIONS.reduce((total, emotion) => total + (emotionCounts.get(emotion) ?? 0), 0);
 
   return {
-    days: params.days,
+    period: window.info,
     timezone: window.timezone,
     daily: daily.map((day) => ({ ...day, nss: netSentimentScore(day) })),
     emotions: EMOTIONS.map((emotion: Emotion) => {

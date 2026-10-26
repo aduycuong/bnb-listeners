@@ -1,8 +1,26 @@
 import type { Emotion, Sentiment } from "@/lib/enrichment/config";
 
-import type { AuthorTier } from "./config";
+import type { z } from "zod";
 
-export type MetricsReportParams = { projectId: string; days: number };
+import type { AuthorTier } from "./config";
+import type { reportPeriodSchema } from "./schema";
+
+export type ReportPeriod = z.infer<typeof reportPeriodSchema>;
+
+export type MetricsReportParams = { projectId: string; period: ReportPeriod };
+
+/** The days a report covers, `YYYY-MM-DD` in the project's timezone, last days included. */
+export type ReportPeriodInfo = {
+  type: ReportPeriod["type"];
+  start: string;
+  end: string;
+  days: number;
+  /** The period compared against: the one before, cut to the same length while running. */
+  previousStart: string;
+  previousEnd: string;
+  /** False while the period still runs (it holds today). */
+  complete: boolean;
+};
 
 /** A whole day of the project's timezone. */
 export type MetricsDay = {
@@ -19,7 +37,7 @@ export type MetricsDay = {
 export type MetricsValue<T = number> = { current: T; previous: T };
 
 export type OverviewMetricsResult = {
-  days: number;
+  period: ReportPeriodInfo;
   timezone: string;
   /** Relevant mentions published in the period, comments included. */
   mentions: MetricsValue;
@@ -39,7 +57,7 @@ export type OverviewMetricsResult = {
 };
 
 export type SentimentMetricsResult = {
-  days: number;
+  period: ReportPeriodInfo;
   timezone: string;
   daily: (MetricsDay & { nss: number | null })[];
   /** Mentions of the period per emotion, in the order of `EMOTIONS`. */
@@ -49,7 +67,7 @@ export type SentimentMetricsResult = {
 };
 
 export type ChannelMetricsResult = {
-  days: number;
+  period: ReportPeriodInfo;
   timezone: string;
   /** Mentions of the period per channel (platform, Facebook groups apart), most first. */
   channels: { channel: string; mentions: number; positive: number; neutral: number; negative: number }[];
@@ -82,7 +100,7 @@ export type AuthorMetricsItem = {
 };
 
 export type AuthorMetricsResult = {
-  days: number;
+  period: ReportPeriodInfo;
   timezone: string;
   /** Authors with the most engagement in the period. */
   items: AuthorMetricsItem[];
@@ -102,7 +120,7 @@ export type ProjectCasePricePoint = {
 };
 
 export type ProjectCaseMetricsResult = {
-  days: number;
+  period: ReportPeriodInfo;
   timezone: string;
   primaryName: string;
   hasCompetitors: boolean;
@@ -152,7 +170,7 @@ export type BrandCaseTrendPoint = {
 };
 
 export type BrandCaseMetricsResult = {
-  days: number;
+  period: ReportPeriodInfo;
   timezone: string;
   primaryName: string;
   hasCompetitors: boolean;
@@ -164,8 +182,8 @@ export type BrandCaseMetricsResult = {
   products: { id: string; name: string; mentions: number; nss: number | null }[];
   /** Mentions of the period naming the developer (or its projects) and each competitor. */
   shareOfVoice: { id: string; name: string; role: "primary" | "competitor"; mentions: number }[];
-  /** `caseConfig.period` of the project. */
-  period: "week" | "month" | "quarter";
+  /** `caseConfig.period` of the project: the unit of the trend. */
+  trendPeriod: "week" | "month" | "quarter";
   /** Last `reputationTrendPeriods` periods, oldest first, the running one last. */
   trend: BrandCaseTrendPoint[];
 };

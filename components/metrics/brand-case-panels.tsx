@@ -14,7 +14,7 @@ import { AQUA_BRAND_COLORS, formatCount, formatSigned } from "@/lib/projects/aqu
 
 import { detailNote, formatDayLabel, MetricsEmpty } from "./metrics-page-header";
 
-const PERIOD_NAMES: Record<BrandCaseMetricsResult["period"], string> = {
+const PERIOD_NAMES: Record<BrandCaseMetricsResult["trendPeriod"], string> = {
   week: "tuần",
   month: "tháng",
   quarter: "quý",
@@ -22,7 +22,7 @@ const PERIOD_NAMES: Record<BrandCaseMetricsResult["period"], string> = {
 
 const SOV_COLORS = [...AQUA_BRAND_COLORS, "#8B5CF6", "#F97316", "#14B8A6", "#64748B"];
 
-function periodLabel(start: string, period: BrandCaseMetricsResult["period"]) {
+function periodLabel(start: string, period: BrandCaseMetricsResult["trendPeriod"]) {
   const [year, month] = start.split("-").map(Number);
   const shortYear = String(year).slice(2);
   if (period === "week") return formatDayLabel(start);
@@ -57,7 +57,7 @@ export function BrandCasePanels({
       : null;
   const products = data?.products.filter((product) => product.nss !== null) ?? [];
   const sovTotal = data?.shareOfVoice.reduce((sum, row) => sum + row.mentions, 0) ?? 0;
-  const periodName = data ? PERIOD_NAMES[data.period] : "kỳ";
+  const periodName = data ? PERIOD_NAMES[data.trendPeriod] : "kỳ";
   const hasTrend = data?.trend.some((point) => point.primary !== null) ?? false;
 
   return (
@@ -154,7 +154,7 @@ export function BrandCasePanels({
         >
           {data && hasTrend ? (
             <HealthLineChart
-              labels={data.trend.map((point) => periodLabel(point.start, data.period))}
+              labels={data.trend.map((point) => periodLabel(point.start, data.trendPeriod))}
               developer={data.trend.map((point) => point.primary)}
               peers={data.hasCompetitors ? data.trend.map((point) => point.competitors) : null}
               developerLabel={data.primaryName}
