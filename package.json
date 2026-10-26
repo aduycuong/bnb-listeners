@@ -39,6 +39,7 @@
     "refresh:check": "tsx scripts/check-item-refreshes.ts",
     "collect:renormalize": "tsx scripts/renormalize-collect-run.ts",
     "schedules:sync": "tsx scripts/sync-collection-schedules.ts",
+    "schedules:jobs": "tsx scripts/sync-job-schedules.ts",
     "synthetic:seed-personas": "tsx scripts/seed-persona-templates.ts",
     "synthetic:generate": "tsx scripts/generate-synthetic-data.ts",
     "synthetic:seed-history": "tsx scripts/seed-synthetic-history.ts",

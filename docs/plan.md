@@ -287,7 +287,7 @@ Xem [D27](decisions.md#d27--mcp-và-scope-của-api-key-2026-10-26) và [D28](de
 
 5c — lịch (1 ngày)
 - [x] Job `generate-due-reports` mỗi giờ theo `reportSchedule`: một job `generate-report` cho mỗi báo cáo đến hạn, flow control 2; `npm run reports:due`
-- [ ] Tạo schedule QStash `generate-due-reports` (mỗi giờ) sau khi deploy
+- [ ] Tạo schedule QStash `system-generate-due-reports` (mỗi giờ) sau khi deploy: `npm run schedules:jobs -- -- --yes` (danh sách schedule job ở `lib/qstash/system-schedules.ts`)
 
 ## Giai đoạn 7 — Mở rộng nguồn
 
