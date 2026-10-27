@@ -6,9 +6,10 @@ import { db } from "@/lib/db";
 
 import { isCompareCase } from "../project-cases";
 import type { CheckCompareMembersResult, UpdateCompareMembersParams } from "../types";
+import { toCompareMemberRows } from "../utils/to-compare-member-rows";
 import { checkCompareMembers } from "./check-compare-members";
 
-/** Replaces the members of a compare project, in the given order. */
+/** Replaces the primary project and competitors of a compare project, in the given order. */
 export async function updateCompareMembers(
   params: UpdateCompareMembersParams,
 ): Promise<CheckCompareMembersResult & { message: string }> {
@@ -23,7 +24,8 @@ export async function updateCompareMembers(
   const check = await checkCompareMembers({
     workspaceId: params.workspaceId,
     case: project.case,
-    memberIds: params.memberIds,
+    primaryId: params.primaryId,
+    competitorIds: params.competitorIds,
     compareProjectId: params.projectId,
   });
   if (check.issues.length) throw new InvalidInputError(check.issues.join(" "));
@@ -32,13 +34,7 @@ export async function updateCompareMembers(
     db
       .delete(projectCompareMembers)
       .where(eq(projectCompareMembers.compareProjectId, params.projectId)),
-    db.insert(projectCompareMembers).values(
-      params.memberIds.map((memberProjectId, sortOrder) => ({
-        compareProjectId: params.projectId,
-        memberProjectId,
-        sortOrder,
-      })),
-    ),
+    db.insert(projectCompareMembers).values(toCompareMemberRows(params.projectId, params)),
     db.update(projects).set({ updatedAt: new Date() }).where(eq(projects.id, params.projectId)),
   ]);
 

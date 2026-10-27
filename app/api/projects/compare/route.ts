@@ -10,7 +10,8 @@ export const POST = createApiHandler(
       name: params.name,
       description: params.description,
       case: params.case,
-      memberIds: params.memberIds,
+      primaryId: params.primaryId,
+      competitorIds: params.competitorIds,
     }),
   { allowedRoles: [], minWorkspacePermission: "edit" },
 );

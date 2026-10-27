@@ -14,7 +14,7 @@ import type { CheckCompareMembersResult, ProjectListItem } from "@/lib/projects/
 import { projectFetch } from "@/lib/projects/utils/project-fetch";
 
 import { CompareFormActionBar } from "./compare-form-action-bar";
-import { CompareMembersPicker } from "./compare-members-picker";
+import { CompareMembersPicker, type CompareMembersValue } from "./compare-members-picker";
 
 /** Settings of a compare project (D30): its info and the projects it compares. */
 export function CompareProjectSettings({
@@ -48,11 +48,14 @@ export function CompareProjectSettings({
       return (await res.json()) as CheckCompareMembersResult;
     },
   });
-  const saved = data?.members.map((member) => member.id) ?? [];
+  const saved: CompareMembersValue = {
+    primaryId: data?.members.find((member) => member.primary)?.id ?? null,
+    competitorIds: data?.members.filter((member) => !member.primary).map((member) => member.id) ?? [],
+  };
   // Unsaved picks; the saved members until the user changes them.
-  const [draft, setDraft] = useState<string[] | null>(null);
+  const [draft, setDraft] = useState<CompareMembersValue | null>(null);
   const [saving, setSaving] = useState(false);
-  const memberIds = draft ?? saved;
+  const members = draft ?? saved;
 
   async function save() {
     setSaving(true);
@@ -64,7 +67,7 @@ export function CompareProjectSettings({
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ memberIds }),
+          body: JSON.stringify(members),
         },
       );
       const body = (await res.json()) as { message?: string; error?: string };
@@ -84,7 +87,7 @@ export function CompareProjectSettings({
     }
   }
 
-  const changed = draft !== null && draft.join(",") !== saved.join(",");
+  const changed = draft !== null && JSON.stringify(draft) !== JSON.stringify(saved);
 
   return (
     <ProjectFormPage
@@ -111,7 +114,7 @@ export function CompareProjectSettings({
           <CompareMembersPicker
             workspaceId={workspaceId}
             compareCase={compareCase}
-            value={memberIds}
+            value={members}
             onChange={setDraft}
             disabled={!canEdit}
             excludeProjectId={project.id}

@@ -64,13 +64,23 @@ export const PROJECT_NAV_GROUPS = [
 ];
 
 /**
- * Menu of a compare project (D30): it has no mentions of its own, so only the comparison and
- * the settings where its members are picked.
+ * Menu of a compare project (D30): the report pages of a project, each comparing the primary
+ * project with its competitors. It has no mentions, alerts or AI reports of its own.
  */
 export const COMPARE_PROJECT_NAV_GROUPS = [
   {
     labelKey: "nav.groupAnalysis",
-    items: [{ labelKey: "nav.projectOverview", segment: "", icon: LayoutDashboardIcon }],
+    items: [
+      { labelKey: "nav.projectOverview", segment: "", icon: LayoutDashboardIcon },
+      { labelKey: "nav.sentiment", segment: "sentiment", icon: SmileIcon },
+      { labelKey: "nav.topics", segment: "topics", icon: HashIcon },
+      { labelKey: "nav.channels", segment: "channels", icon: Share2Icon },
+      { labelKey: "nav.authors", segment: "authors", icon: UsersIcon },
+    ],
+  },
+  {
+    labelKey: "nav.groupCase",
+    items: [{ labelKey: "nav.caseSpecial", segment: "case", icon: SparklesIcon }],
   },
   {
     labelKey: "nav.groupProject",

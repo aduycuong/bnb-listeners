@@ -28,8 +28,9 @@ export const AVAILABLE_PROJECT_CASES = ["project", "market", "brand"] as const;
 export type AvailableProjectCase = (typeof AVAILABLE_PROJECT_CASES)[number];
 
 /**
- * Cases that compare 2–4 projects of one listening case (D30). A compare project only reads
- * its members: no sources, entities, enrichers, collection, Match or L4 of its own.
+ * Cases that compare a primary project with 1–3 competitors of one listening case (D30). A
+ * compare project only reads its members: no sources, entities, enrichers, collection, Match
+ * or L4 of its own.
  */
 export const COMPARE_CASES = ["project_compare", "brand_compare"] as const;
 
@@ -41,7 +42,8 @@ export const COMPARE_CASE_OF: Record<CompareCase, AvailableProjectCase> = {
   brand_compare: "brand",
 };
 
-export const COMPARE_MEMBERS = { min: 2, max: 4 } as const;
+/** Competitors besides the primary project: 2–4 members in all. */
+export const COMPARE_COMPETITORS = { min: 1, max: 3 } as const;
 
 export function isCompareCase(value: string): value is CompareCase {
   return (COMPARE_CASES as readonly string[]).includes(value);

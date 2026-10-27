@@ -5,13 +5,15 @@ import { CreateFailedError, InvalidInputError } from "@/lib/common/service-error
 import { db } from "@/lib/db";
 
 import type { CreateCompareProjectParams, CreateProjectResult } from "../types";
+import { toCompareMemberRows } from "../utils/to-compare-member-rows";
 import { toProjectListItem } from "../utils/to-project-list-item";
 import { assertUniqueProjectName } from "./assert-unique-project-name";
 import { checkCompareMembers } from "./check-compare-members";
 
 /**
- * Creates a compare project and its members (D30). It only reads its members, so it has no
- * sources, entities, aspects, enrichers or alert rules, and no scheduled AI report.
+ * Creates a compare project with its primary project and competitors (D30). It only reads its
+ * members, so it has no sources, entities, aspects, enrichers or alert rules, and no scheduled
+ * AI report.
  */
 export async function createCompareProject(
   params: CreateCompareProjectParams,
@@ -21,7 +23,8 @@ export async function createCompareProject(
   const check = await checkCompareMembers({
     workspaceId: params.workspaceId,
     case: params.case,
-    memberIds: params.memberIds,
+    primaryId: params.primaryId,
+    competitorIds: params.competitorIds,
   });
   if (check.issues.length) throw new InvalidInputError(check.issues.join(" "));
 
@@ -40,13 +43,7 @@ export async function createCompareProject(
         notificationConfig: { channels: [], recipients: [], reportSchedule: "none" },
       })
       .returning(),
-    db.insert(projectCompareMembers).values(
-      params.memberIds.map((memberProjectId, sortOrder) => ({
-        compareProjectId: projectId,
-        memberProjectId,
-        sortOrder,
-      })),
-    ),
+    db.insert(projectCompareMembers).values(toCompareMemberRows(projectId, params)),
   ]);
 
   const project = created[0];

@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "next-i18next/client";
+
 import { ProjectAuthorsReport } from "@/components/metrics/project-authors-report";
 import { ProjectAlertsPage } from "@/components/alerts/project-alerts-page";
 import { BrandCaseReport } from "@/components/metrics/brand-case-report";
@@ -9,6 +11,10 @@ import { ProjectSentimentReport } from "@/components/metrics/project-sentiment-r
 import { ProjectPendingDashboard } from "@/components/projects/project-pending-dashboard";
 import { ProjectReportPage } from "@/components/reports/project-report-page";
 import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
+import { CompareAuthorsReport } from "@/components/metrics/compare/compare-authors-report";
+import { CompareCaseReport } from "@/components/metrics/compare/compare-case-report";
+import { CompareChannelsReport } from "@/components/metrics/compare/compare-channels-report";
+import { CompareSentimentReport } from "@/components/metrics/compare/compare-sentiment-report";
 import { MetricsEmpty } from "@/components/metrics/metrics-page-header";
 import {
   ProjectPageBanner,
@@ -30,6 +36,7 @@ export function ProjectSectionPage({
   projectIndexParam,
   section,
 }: ProjectSectionPageProps) {
+  const { t } = useT("dashboard");
   const { workspace, project, workspaceIndex, projectIndex } = useProjectRouteContext(
     workspaceIndexParam,
     projectIndexParam,
@@ -48,11 +55,24 @@ export function ProjectSectionPage({
     settingsHref: getProjectNavHref(workspaceIndex, projectIndex, "settings"),
   };
   if (isCompareCase(project.case)) {
+    const compare = { scope, projectName: project.name, caseLabel: t(`cases.${project.case}`), banner };
+    if (section === "sentiment") return <CompareSentimentReport {...compare} />;
+    if (section === "channels") return <CompareChannelsReport {...compare} />;
+    if (section === "authors") return <CompareAuthorsReport {...compare} />;
+    if (section === "case") {
+      return (
+        <CompareCaseReport
+          {...compare}
+          projectCase={project.case}
+          title={t(`caseNav.${project.case}`)}
+        />
+      );
+    }
     return (
       <div className={projectReportPageClassName}>
         <ProjectPageBanner {...banner} />
         <MetricsEmpty>
-          Project so sánh chỉ có trang Tổng quan; số liệu chi tiết xem ở từng project được so sánh.
+          Project so sánh không có trang này; xem ở từng project được so sánh.
         </MetricsEmpty>
       </div>
     );

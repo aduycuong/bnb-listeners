@@ -733,7 +733,8 @@ export type NewProjectSource = typeof projectSources.$inferInsert;
 
 /**
  * Projects a compare project (`project_compare`, `brand_compare`) reads, in display order
- * (D30). A member that is deleted leaves the comparison.
+ * (D30): one primary project, the one benchmarked, and 1–3 competitors. A member that is
+ * deleted leaves the comparison.
  */
 export const projectCompareMembers = pgTable(
   "project_compare_members",
@@ -745,6 +746,8 @@ export const projectCompareMembers = pgTable(
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
     sortOrder: integer("sort_order").notNull().default(0),
+    /** The project the others are compared against; one per compare project. */
+    isPrimary: boolean("is_primary").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -752,6 +755,9 @@ export const projectCompareMembers = pgTable(
   (table) => [
     primaryKey({ columns: [table.compareProjectId, table.memberProjectId] }),
     index("project_compare_members_member_idx").on(table.memberProjectId),
+    uniqueIndex("project_compare_members_primary_idx")
+      .on(table.compareProjectId)
+      .where(sql`${table.isPrimary}`),
   ],
 );
 

@@ -214,16 +214,17 @@ Sources a project follows (required for Facebook, which has no keyword search).
 
 ### `project_compare_members`
 
-Projects a compare project (`project_compare`, `brand_compare`) reads, in display order (D30). A compare project has no sources, entities, queries, enrichers or L4 of its own; 2–4 members of the listening case it compares, in the same workspace.
+Projects a compare project (`project_compare`, `brand_compare`) reads, in display order (D30). A compare project has no sources, entities, queries, enrichers or L4 of its own: one primary project (the one benchmarked) and 1–3 competitors of the listening case it compares, in the same workspace. A compare project saved before `is_primary` existed takes its first member as primary until saved again.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | compare_project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
 | member_project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
-| sort_order | integer | NO | `0` | Display order |
+| sort_order | integer | NO | `0` | Display order; the primary first |
+| is_primary | boolean | NO | `false` | The project the others are compared against |
 | created_at | timestamptz | NO | `now()` | |
 
-**Keys:** primary key `(compare_project_id, member_project_id)`; `project_compare_members_member_idx` on `member_project_id`
+**Keys:** primary key `(compare_project_id, member_project_id)`; `project_compare_members_member_idx` on `member_project_id`; unique `project_compare_members_primary_idx` on `compare_project_id` where `is_primary` (one primary per compare project)
 
 ### `mentions`
 

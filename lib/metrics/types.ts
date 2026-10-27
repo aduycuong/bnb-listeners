@@ -201,6 +201,8 @@ export type BuyerQuestionsReport = {
 /** A pillar of the reputation index: an aspect of the brand project. */
 export type ReputationPillar = {
   id: string;
+  /** Aspect key; comparisons line pillars up by it. */
+  key: string;
   name: string;
   /** Mentions of the aspect with a sentiment. */
   mentions: number;
@@ -289,7 +291,8 @@ export type GetCompareReportsParams = {
 export type GetCompareReportsResult<R extends readonly ReportRequest[] = ReportRequest[]> = {
   /** The period in the compare project's timezone; members resolve it in their own. */
   period: ReportPeriodInfo;
-  members: ({ id: string; name: string } & Omit<GetReportsResult<R>, "period">)[];
+  /** The primary project first, then the competitors. */
+  members: ({ id: string; name: string; primary: boolean } & Omit<GetReportsResult<R>, "period">)[];
   /** Aspects every member has, by key; the others are left out of comparisons. */
   sharedAspects: { key: string; name: string }[];
   /** Why the members cannot be compared now (a member deleted, too few left). */
