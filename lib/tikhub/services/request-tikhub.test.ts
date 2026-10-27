@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, test } from "node:test";
 
 import { APIError } from "@/lib/exposers/api-error";
 
+import { countTikHubRequests } from "../utils/count-tikhub-requests";
 import { requestTikHub } from "./request-tikhub";
 
 type Call = { url: URL; init: RequestInit };
@@ -48,6 +49,26 @@ describe("requestTikHub", () => {
   afterEach(() => {
     if (previousKey === undefined) delete process.env.TIKHUB_API_KEY;
     else process.env.TIKHUB_API_KEY = previousKey;
+  });
+
+  test("counts successful responses for the enclosing counter, including before a failure", async () => {
+    const { fetchImpl } = createFetch([
+      jsonResponse({ code: 200, data: {} }),
+      jsonResponse({ code: 200, data: {} }),
+      jsonResponse({ detail: { message: "bad input" } }, 400),
+    ]);
+    const client = { fetchImpl, maxAttempts: 1 };
+    const counter = { requests: 0 };
+
+    await assert.rejects(
+      countTikHubRequests(counter, async () => {
+        await requestTikHub({ endpoint: "a", client });
+        await requestTikHub({ endpoint: "b", client });
+        await requestTikHub({ endpoint: "c", client });
+      }),
+    );
+
+    assert.equal(counter.requests, 2);
   });
 
   test("sends the key and query and returns the envelope data", async () => {

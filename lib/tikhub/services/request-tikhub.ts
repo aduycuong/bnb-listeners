@@ -3,6 +3,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { APIError } from "@/lib/exposers/api-error";
 
 import type { RequestTikHubParams, RequestTikHubResult } from "../types";
+import { recordTikHubRequest } from "../utils/count-tikhub-requests";
 import { getTikHubApiKey } from "../utils/get-tikhub-api-key";
 
 const TIKHUB_BASE_URL = "https://api.tikhub.io/api/v1/tiktok";
@@ -135,6 +136,7 @@ async function handleResponse(
     );
   }
 
+  recordTikHubRequest();
   const envelope = readEnvelope(body);
   return { data: envelope.data, requestId: envelope.requestId };
 }
