@@ -1,7 +1,4 @@
-import { notFound } from "next/navigation";
-
 import { ProjectSectionPage } from "@/components/projects/project-section-page";
-import { isProjectDemoSection } from "@/lib/dashboard/nav-items";
 
 type PageProps = {
   params: Promise<{
@@ -11,12 +8,8 @@ type PageProps = {
   }>;
 };
 
-export default async function ProjectDemoSectionRoute({ params }: PageProps) {
+export default async function ProjectSectionRoute({ params }: PageProps) {
   const { workspaceIndex, projectIndex, section } = await params;
-
-  if (!isProjectDemoSection(section)) {
-    notFound();
-  }
 
   return (
     <ProjectSectionPage

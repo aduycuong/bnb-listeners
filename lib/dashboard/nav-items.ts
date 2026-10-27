@@ -21,25 +21,6 @@ export const DASHBOARD_NAV_ITEMS = [
   { labelKey: "nav.settings", segment: "settings/workspace", icon: SettingsIcon },
 ];
 
-export const PROJECT_DEMO_SECTIONS = [
-  "mentions",
-  "sentiment",
-  "topics",
-  "channels",
-  "authors",
-  "case",
-  "alerts",
-  "report",
-] as const;
-
-export type ProjectDemoSection = (typeof PROJECT_DEMO_SECTIONS)[number];
-
-export function isProjectDemoSection(
-  value: string,
-): value is ProjectDemoSection {
-  return (PROJECT_DEMO_SECTIONS as readonly string[]).includes(value);
-}
-
 /** Management list of mentions, under the project group. The report stays at `mentions`. */
 export const PROJECT_MANAGE_MENTIONS_SEGMENT = "admin/mentions";
 

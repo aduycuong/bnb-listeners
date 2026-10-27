@@ -5,7 +5,6 @@ import { useT } from "next-i18next/client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { ProjectDemoSection } from "@/lib/dashboard/nav-items";
 import { PROJECT_CASE_ICONS, type ProjectCase } from "@/lib/projects/project-cases";
 import {
   getListeningDemo,
@@ -30,7 +29,16 @@ import {
 } from "./listening-ui";
 import { ListeningVolumeChart } from "./listening-volume-chart";
 
-type ListeningSection = "overview" | ProjectDemoSection;
+type ListeningSection =
+  | "overview"
+  | "mentions"
+  | "sentiment"
+  | "topics"
+  | "channels"
+  | "authors"
+  | "case"
+  | "alerts"
+  | "report";
 
 type ListeningDashboardProps = {
   projectName: string;

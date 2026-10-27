@@ -11,15 +11,12 @@ import { ProjectReportPage } from "@/components/reports/project-report-page";
 import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
 import type { ProjectPageBannerProps } from "@/components/projects/project-page-banner";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
-import {
-  getProjectNavHref,
-  type ProjectDemoSection,
-} from "@/lib/dashboard/nav-items";
+import { getProjectNavHref } from "@/lib/dashboard/nav-items";
 
 type ProjectSectionPageProps = {
   workspaceIndexParam: string;
   projectIndexParam: string;
-  section: ProjectDemoSection;
+  section: string;
 };
 
 export function ProjectSectionPage({

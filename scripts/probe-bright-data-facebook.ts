@@ -31,6 +31,10 @@
 //                (default: Most relevant, All comments, Newest): how many
 //                top-level comments each sort returns and how they overlap.
 //
+// profiles       scrape author profile / page URLs (Pages and Profiles,
+//                gd_mf124a0511bauquyow): which fields come back (followers,
+//                category, intro) for pages, numeric, vanity and pfbid links.
+//
 // Example:
 //   npx tsx scripts/probe-bright-data-facebook.ts post-params --url https://www.facebook.com/groups/reviewbatdongsanaz --yes
 //   npx tsx scripts/probe-bright-data-facebook.ts post-comments --post-url <url> --post-url <url> --compare --yes
@@ -55,6 +59,7 @@ const GROUP_POSTS_DATASET_ID = "gd_lz11l67o2cb3r0lkj3";
 const PAGE_POSTS_DATASET_ID = "gd_lkaxegm826bjpoo9m5";
 const POST_BY_URL_DATASET_ID = "gd_lyclm1571iy3mv57zw";
 const COMMENTS_DATASET_ID = "gd_lkay758p1eanlolqw8";
+const PAGES_AND_PROFILES_DATASET_ID = "gd_mf124a0511bauquyow";
 const POLL_INTERVAL_MS = 15_000;
 const POLL_TIMEOUT_MS = 45 * 60_000;
 
@@ -907,6 +912,51 @@ async function commentLimit(rawOptions: unknown) {
   await saveReport("bright-data-comment-limit", { report, raw: { run } });
 }
 
+const profilesOptionsSchema = z.object({
+  url: z.array(z.url()).min(1).max(20),
+  yes: z.boolean(),
+});
+
+/** One record per profile or page URL: which fields are filled, and for which inputs. */
+async function profiles(rawOptions: unknown) {
+  const options = profilesOptionsSchema.parse(rawOptions);
+
+  console.log(`[${SCRIPT}] profiles plan`, {
+    datasetId: PAGES_AND_PROFILES_DATASET_ID,
+    inputs: options.url.length,
+    maxRecords: options.url.length,
+    mode: options.yes ? "apply" : "dry-run",
+  });
+  if (!options.yes) {
+    console.log(`[${SCRIPT}] Dry run; pass --yes to trigger the job.`);
+    return;
+  }
+
+  const run = await runJob(
+    "profiles",
+    PAGES_AND_PROFILES_DATASET_ID,
+    options.url.map((url) => ({ url })),
+  );
+  const rows = okRecords(run);
+  const filled = (value: unknown) =>
+    value !== null && value !== undefined && value !== "" &&
+    !(Array.isArray(value) && value.length === 0);
+
+  const report = {
+    ...summarize(run),
+    errors: run.errorRows.map((row) => truncateStrings(row)),
+    fieldFillRate: Object.fromEntries(
+      Object.keys(collectKeyShape(rows))
+        .filter((key) => !key.includes("[]."))
+        .map((key) => [key, `${rows.filter((row) => filled(row[key])).length}/${rows.length}`]),
+    ),
+    perRecord: rows.map((row) => truncateStrings(row, 200)),
+  };
+
+  console.log(`[${SCRIPT}] Report`, JSON.stringify(report, null, 2));
+  await saveReport("bright-data-profiles", { report, raw: { run } });
+}
+
 async function main() {
   const program = new Command()
     .name(SCRIPT)
@@ -1013,6 +1063,17 @@ async function main() {
     .option("--limit <n>", "limit_records per input", "10")
     .option("--yes", "Trigger the Bright Data job (costs records)", false)
     .action(commentLimit);
+
+  program
+    .command("profiles")
+    .description("Fields of the Pages and Profiles dataset for author URLs")
+    .requiredOption(
+      "--url <url>",
+      "Facebook profile or page URL (repeatable, 1-20)",
+      (value: string, previous: string[] = []) => [...previous, value],
+    )
+    .option("--yes", "Trigger the Bright Data job (costs records)", false)
+    .action(profiles);
 
   await program.parseAsync(commandArgv());
 }
