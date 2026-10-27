@@ -1,7 +1,5 @@
 import type { z } from "zod";
 
-import type { ReportPeriod, ReportPeriodInfo } from "@/lib/metrics/types";
-
 import type { TopicStageKind, TopicStatus } from "./config";
 import type { listTopicsQuerySchema, updateTopicBodySchema } from "./schema";
 
@@ -55,40 +53,6 @@ export type ListTopicsResult = {
   /** Relevant mentions with a hint still waiting for a topic, and those not handled yet. */
   waiting: number;
   pending: number;
-};
-
-/** One row of the Topics report (same shape as the demo topics), over the chosen period. */
-export type TopicReportItem = {
-  id: string;
-  name: string;
-  /** Relevant mentions of the topic published in the period. */
-  mentions: number;
-  /** The same count for the period before. */
-  previousMentions: number;
-  /** Change against the period before, in %; null when the period before is empty. */
-  growth: number | null;
-  /** Share of the period's mentions, in %. */
-  positive: number;
-  negative: number;
-};
-
-/** A keyword of the cloud: relevant mentions of the period that Enrich gave it (D16). */
-export type TopicReportKeyword = {
-  /** Normalized key. */
-  keyword: string;
-  /** The most common way the model wrote it. */
-  text: string;
-  mentions: number;
-  /** Share of negative mentions, in %. */
-  negative: number;
-};
-
-export type TopicReportParams = { projectId: string; period: ReportPeriod };
-
-export type TopicReportResult = {
-  items: TopicReportItem[];
-  keywords: TopicReportKeyword[];
-  period: ReportPeriodInfo;
 };
 
 export type UpdateTopicParams = { projectId: string; topicId: string } & z.infer<

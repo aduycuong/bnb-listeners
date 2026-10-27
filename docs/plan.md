@@ -329,11 +329,11 @@ Xem [D30](decisions.md#d30--một-project-theo-dõi-một-chủ-thể-so-sánh-l
 - [x] Script `projects:delete-all` (dữ liệu demo tĩnh giữ nguyên đến mục dọn demo của giai đoạn 8)
 - [ ] Chạy migration, xóa project cũ, tạo lại một project mỗi case, Match và Enrich, kiểm dashboard
 
-**PR 2 — Report service theo box**
-- [ ] `getReportContext` (kỳ, timezone, case, chủ thể, product, enricher đang bật) resolve một lần
-- [ ] Mỗi box là một service trả `{ availability, data }`; registry và `POST /api/metrics/reports`
-- [ ] UI, AI tools và snapshot báo cáo dùng registry; xóa service và route theo section
-- [ ] So số từng box với service cũ trên cùng project và kỳ trước khi xóa
+**PR 2 — Report service theo box** (xem [D31](decisions.md#d31--report-service-theo-từng-box-2026-10-27))
+- [x] `getReportContext` (kỳ, timezone, case, chủ thể, product, enricher đang bật) resolve một lần
+- [x] Mỗi box là một service trả `{ availability, data }`; registry và `POST /api/metrics/reports`
+- [x] UI, AI tools và snapshot báo cáo dùng registry; xóa service và route theo section
+- [x] So số từng box với service cũ trên cùng project và kỳ trước khi xóa
 
 **PR 3 — Case so sánh**
 - [ ] `project_compare_members`; template có `kind` (`listening` | `compare`) và `compareOf`

@@ -1,9 +1,7 @@
-import { getTopicReport } from "@/lib/topics/services/get-topic-report";
-
 import { projectPeriodInputSchema } from "../schema";
 import { assertToolProject } from "../utils/assert-tool-project";
 import { defineAiTool } from "../utils/define-ai-tool";
-import { resolveToolPeriod } from "../utils/resolve-tool-period";
+import { loadToolReports } from "../utils/load-tool-reports";
 
 export const getTopicsTool = defineAiTool({
   name: "get_topics",
@@ -14,6 +12,6 @@ export const getTopicsTool = defineAiTool({
   inputSchema: projectPeriodInputSchema,
   async run({ projectId, period }, ctx) {
     await assertToolProject(ctx, projectId);
-    return getTopicReport({ projectId, period: resolveToolPeriod(period) });
+    return loadToolReports(projectId, period, [{ key: "topics" }, { key: "keywords" }]);
   },
 });

@@ -11,8 +11,10 @@ import {
 import { AQUA_PAGE_META, formatCount } from "@/lib/projects/aqua-demo";
 
 import { formatDayLabel, MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
-import { useSentimentMetrics, type MetricsApiScope } from "./use-metrics-api";
+import { useReports, type MetricsApiScope } from "./use-metrics-api";
 import { useReportPeriodDays } from "./use-report-period-days";
+
+const REPORTS = [{ key: "sentiment-trend" }, { key: "emotions" }, { key: "aspect-sentiment" }] as const;
 
 /** Sentiment page of real projects, laid out as the approved demo (phase 5b). */
 export function ProjectSentimentReport({
@@ -25,10 +27,12 @@ export function ProjectSentimentReport({
   banner: ProjectPageBannerProps;
 }) {
   const [days, setDays] = useReportPeriodDays();
-  const { data, error, isPending, isFetching } = useSentimentMetrics(scope, days);
-  const hasNss = data?.daily.some((day) => day.nss !== null) ?? false;
-  const emotionTotal = data?.emotions.reduce((total, item) => total + item.mentions, 0) ?? 0;
-  const aspects = data?.aspects.filter((aspect) => aspect.mentions > 0) ?? [];
+  const { data, error, isPending, isFetching } = useReports(scope, days, REPORTS);
+  const [trend, emotions, aspectSentiment] = data?.reports ?? [];
+  const daily = trend?.data ?? [];
+  const hasNss = daily.some((day) => day.nss !== null);
+  const emotionTotal = emotions?.data?.reduce((total, item) => total + item.mentions, 0) ?? 0;
+  const aspects = aspectSentiment?.data?.filter((aspect) => aspect.mentions > 0) ?? [];
   const loading = isPending ? "Đang tải…" : null;
 
   return (
@@ -50,10 +54,10 @@ export function ProjectSentimentReport({
           scope="common"
           note="Dưới 0: tiêu cực chiếm ưu thế. Ngày không có đề cập đã phân loại cảm xúc để trống."
         >
-          {data && hasNss ? (
+          {hasNss ? (
             <NssChart
-              days={data.daily.map((day) => formatDayLabel(day.date))}
-              values={data.daily.map((day) => day.nss)}
+              days={daily.map((day) => formatDayLabel(day.date))}
+              values={daily.map((day) => day.nss)}
             />
           ) : (
             <MetricsEmpty>{loading ?? `Chưa có đề cập đã phân loại cảm xúc trong ${days} ngày gần nhất.`}</MetricsEmpty>
@@ -65,8 +69,8 @@ export function ProjectSentimentReport({
           scope="common"
           note={`Phân loại cảm xúc bằng AI · ${formatCount(emotionTotal)} đề cập có cảm xúc`}
         >
-          {data && emotionTotal > 0 ? (
-            <EmotionChart values={data.emotions.map((item) => item.share)} />
+          {emotions?.data && emotionTotal > 0 ? (
+            <EmotionChart values={emotions.data.map((item) => item.share)} />
           ) : (
             <MetricsEmpty>{loading ?? "Chưa có đề cập có cảm xúc trong kỳ."}</MetricsEmpty>
           )}

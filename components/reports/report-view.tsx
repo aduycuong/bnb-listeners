@@ -104,7 +104,8 @@ function ReportSection({ title, children }: { title: string; children: React.Rea
 /** One AI report as in the demo: summary, key figures, highlights, risks, recommendations (D29). */
 export function ReportView({ report }: { report: ReportDetail }) {
   const citations = new Map(report.citations.map((citation) => [citation.mentionId, citation]));
-  const kpis = buildKpis(report.metrics.overview);
+  const kpiReport = report.metrics.reports.kpis.data;
+  const kpis = kpiReport ? buildKpis(kpiReport) : [];
   const { sections } = report;
 
   return (

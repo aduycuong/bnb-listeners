@@ -25,6 +25,25 @@ export const REPORT_CONFIG = {
   numberRetries: 1,
 } as const;
 
+/**
+ * Reports frozen in a report's snapshot (D29): the numbers the model may quote. Case reports a
+ * project has no numbers for are kept with their availability.
+ */
+export const REPORT_SNAPSHOT_REPORTS = [
+  { key: "kpis" },
+  { key: "sentiment-breakdown" },
+  { key: "emotions" },
+  { key: "aspect-sentiment" },
+  { key: "channel-breakdown" },
+  { key: "source-ranking", params: { limit: 6 } },
+  { key: "topics", params: { limit: REPORT_CONFIG.topTopics } },
+  { key: "keywords", params: { limit: REPORT_CONFIG.topKeywords } },
+  { key: "price-trend" },
+  { key: "buyer-questions" },
+  { key: "reputation-index" },
+  { key: "product-sentiment" },
+] as const;
+
 /** `reportSchedule` of a project → the calendar period its reports cover (D29). */
 export const REPORT_SCHEDULE_PERIODS = {
   daily: "day",

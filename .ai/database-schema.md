@@ -18,7 +18,7 @@ L4  Aggregates       project_metrics_daily · project_aspect_daily (D28); not bu
 L5  Outputs          alert_rules · alerts · ai_reports (D29); `insights` not built
 ```
 
-Layers depend only on the ones below. L3–L5 can be dropped and recomputed from L1 + L2. L1 is shared across workspaces; L2 and up belong to a project. Metric formulas (engagement, NSS, SoV) live in `lib/metrics/`, not in scattered SQL.
+Layers depend only on the ones below. L3–L5 can be dropped and recomputed from L1 + L2. L1 is shared across workspaces; L2 and up belong to a project. Metric formulas (engagement, NSS, reputation) live in `lib/metrics/`, not in scattered SQL; each dashboard box is one report of `lib/metrics/services/reports/` (D31).
 
 ### `origin` (L1 tables and `mentions`)
 
@@ -462,7 +462,7 @@ Tier 2 cache shared by projects.
 
 ### `project_metrics_daily`
 
-L4 (D28). Counts of relevant mentions per project, day of the project's timezone and source. Rewritten per (project, day range) by `refreshProjectMetricsDaily` (one statement upserts the days' rows and deletes those left without mentions; idempotent). Dashboards sum any period from it; distinct authors, the hour × weekday heat, top authors, topics and the case pages still read L3.
+L4 (D28). Counts of relevant mentions per project, day of the project's timezone and source. Rewritten per (project, day range) by `refreshProjectMetricsDaily` (one statement upserts the days' rows and deletes those left without mentions; idempotent). Dashboards sum any period from it; distinct authors, the hour × weekday heat, top authors, topics, keywords, resale prices, buyer questions and NSS per product still read L3.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |

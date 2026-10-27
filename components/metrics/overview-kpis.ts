@@ -1,5 +1,5 @@
 import { growthPercent } from "@/lib/metrics/formulas";
-import type { MetricsValue, OverviewMetricsResult } from "@/lib/metrics/types";
+import type { KpisReport, MetricsValue } from "@/lib/metrics/types";
 import { formatCount, formatShort, formatSigned, type AquaKpi } from "@/lib/projects/aqua-demo";
 
 // KPI tiles of the Overview, also the key figures of an AI report (D29).
@@ -49,12 +49,7 @@ export function pointKpi(
   };
 }
 
-export function buildKpis(
-  data: Pick<
-    OverviewMetricsResult,
-    "mentions" | "engagement" | "uniqueAuthors" | "nss" | "negativeShare"
-  >,
-): AquaKpi[] {
+export function buildKpis(data: KpisReport): AquaKpi[] {
   return [
     countKpi("Lượt đề cập", data.mentions, "Bài đăng, bình luận, trả lời có liên quan"),
     countKpi("Tương tác", data.engagement, "Tổng lượt thích, bình luận, chia sẻ", formatShort),

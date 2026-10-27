@@ -548,3 +548,13 @@ ASR viết sai tên riêng nước ngoài (D21), nên transcript ít khớp tên
 - **Chấp nhận trùng lặp:** bài nhắc hai dự án là hai mention ở hai project và được Enrich hai lần. Kho thô vẫn dùng chung.
 - **Không chuyển dữ liệu:** xóa mọi project cũ (`npm run projects:delete-all`) rồi tạo lại theo vai trò mới.
 - **Chia PR:** PR1 mô hình một chủ thể (bỏ đối thủ ở template, Enrich, metrics, cảnh báo, UI); PR2 report service theo từng box của trang (thay service theo section); PR3 case so sánh.
+
+## D31 — Report service theo từng box (2026-10-27)
+
+- **Mỗi box của trang report là một report** (`lib/metrics/services/reports/`), không còn service theo section (`getOverviewMetrics`, `getSentimentMetrics`… và `/api/metrics/{section}`). 18 report: `kpis`, `sentiment-breakdown`, `sentiment-trend`, `emotions`, `aspect-sentiment`, `channel-breakdown`, `source-ranking`, `posting-heatmap`, `topics`, `keywords`, `top-authors`, `author-tiers`, `price-trend`, `price-distribution`, `buyer-questions`, `reputation-index`, `reputation-trend`, `product-sentiment` (`REPORT_KEYS`).
+  - **Lý do:** section là cách chia của UI. Bố cục đổi (Overview, bento grid, báo cáo AI, MCP) thì chỉ đổi danh sách report, không viết lại service.
+- **Một request cho cả trang:** `POST /api/metrics/reports` nhận kỳ và danh sách `{ key, params }`, trả kết quả theo đúng thứ tự (`getReports`, hook `useReports`). Ngữ cảnh chung (kỳ, timezone, case, `caseConfig`, chủ thể, product, enricher đang chạy) resolve một lần (`getReportContext`), rồi các report chạy song song.
+- **Tham số theo report** (`REPORT_PARAMS_SCHEMAS`): hiện chỉ `limit` cho các bảng xếp hạng (nguồn, chủ đề, từ khóa, tác giả, câu hỏi), để Overview lấy top 6 còn trang chi tiết lấy đủ.
+- **Availability thay cho lỗi:** report trả `{ key, availability, data }`. `needs_enricher` khi enricher nó đọc không chạy (giá cần `price_quote`, câu hỏi cần `buyer_question`), `needs_products` khi brand chưa có dự án, `not_in_case` cho chỉ số uy tín ngoài case `brand`. Dựa vào dữ liệu project có thay vì tên case khi được, để case mới có ngay các box mà dữ liệu cho phép.
+- Trang Chủ đề dùng `topics` và `keywords` (bỏ `/api/topics/report`). Snapshot báo cáo AI (D29) lưu theo report (`REPORT_SNAPSHOT_REPORTS`). Tool MCP giữ tên cũ, bên trong gọi `getReports` và trả mỗi report theo key, report không có số liệu trả `{ unavailable }`.
+- Số liệu không đổi: so từng box với service cũ trên cùng project (TT Genesis, kỳ 7/14/30 ngày, chạy liền nhau) khớp toàn bộ.

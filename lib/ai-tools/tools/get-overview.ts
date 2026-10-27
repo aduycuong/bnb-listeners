@@ -1,9 +1,7 @@
-import { getOverviewMetrics } from "@/lib/metrics/services/get-overview-metrics";
-
 import { projectPeriodInputSchema } from "../schema";
 import { assertToolProject } from "../utils/assert-tool-project";
 import { defineAiTool } from "../utils/define-ai-tool";
-import { resolveToolPeriod } from "../utils/resolve-tool-period";
+import { loadToolReports } from "../utils/load-tool-reports";
 
 export const getOverviewTool = defineAiTool({
   name: "get_overview",
@@ -15,6 +13,12 @@ export const getOverviewTool = defineAiTool({
   inputSchema: projectPeriodInputSchema,
   async run({ projectId, period }, ctx) {
     await assertToolProject(ctx, projectId);
-    return getOverviewMetrics({ projectId, period: resolveToolPeriod(period) });
+    return loadToolReports(projectId, period, [
+      { key: "kpis" },
+      { key: "sentiment-breakdown" },
+      { key: "sentiment-trend" },
+      { key: "source-ranking", params: { limit: 6 } },
+      { key: "topics", params: { limit: 6 } },
+    ]);
   },
 });

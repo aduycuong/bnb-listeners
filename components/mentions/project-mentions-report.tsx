@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { useChannelMetrics } from "@/components/metrics/use-metrics-api";
+import { useReports } from "@/components/metrics/use-metrics-api";
 import { MetricsEmpty, MetricsPageHeader } from "@/components/metrics/metrics-page-header";
 import { useReportPeriodDays } from "@/components/metrics/use-report-period-days";
 import { ReportPanel, ReportTable, SentimentPill } from "@/components/metrics/report-ui/report-ui";
@@ -28,6 +28,9 @@ import { MentionThreadSheet } from "./mention-thread-sheet";
 import { useMentionsList, type MentionsApiScope } from "./use-mentions-api";
 
 const ALL = "all";
+
+/** Sources of the period for the channel filter: the most mentioned ones. */
+const SOURCE_REPORTS = [{ key: "source-ranking" }] as const;
 
 const SENTIMENT_PILL: Record<Sentiment, AquaSentiment> = {
   positive: "pos",
@@ -88,7 +91,7 @@ function MentionsReport({
     ...filters,
     days,
   });
-  const { data: channels } = useChannelMetrics(scope, days);
+  const { data: sourceReports } = useReports(scope, days, SOURCE_REPORTS);
   const { data: topics } = useTopicsList(scope);
   const update = (patch: Partial<ListMentionsQuery>) =>
     setFilters((current) => ({ ...current, ...patch, page: patch.page ?? 1 }));
@@ -106,7 +109,7 @@ function MentionsReport({
   const authorName = data?.items[0]?.authorName;
   const sourceOptions = [
     { value: ALL, label: "Tất cả kênh" },
-    ...(channels?.sources ?? []).flatMap((source) =>
+    ...(sourceReports?.reports[0].data ?? []).flatMap((source) =>
       source.id ? [{ value: source.id, label: source.name }] : [],
     ),
   ];

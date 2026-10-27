@@ -9,10 +9,16 @@ import {
   type ProjectPageBannerProps,
 } from "@/components/projects/project-page-banner";
 
-import { BrandCasePanels } from "./brand-case-panels";
+import { ProductSentimentPanel, ReputationIndexPanel, ReputationTrendPanel } from "./brand-case-panels";
 import { MetricsPageHeader } from "./metrics-page-header";
-import { useBrandCaseMetrics, type MetricsApiScope } from "./use-metrics-api";
+import { useReports, type MetricsApiScope } from "./use-metrics-api";
 import { useReportPeriodDays } from "./use-report-period-days";
+
+const REPORTS = [
+  { key: "reputation-index" },
+  { key: "product-sentiment" },
+  { key: "reputation-trend" },
+] as const;
 
 /** Case page of a `brand` listening case (`Chỉ số uy tín`), laid out as the approved demo. */
 export function BrandCaseReport({
@@ -26,7 +32,8 @@ export function BrandCaseReport({
 }) {
   const { t } = useT("dashboard");
   const [days, setDays] = useReportPeriodDays();
-  const { data, error, isPending, isFetching } = useBrandCaseMetrics(scope, days);
+  const { data, error, isPending, isFetching } = useReports(scope, days, REPORTS);
+  const [index, products, trend] = data?.reports ?? [];
   const caseLabel = t("cases.brand");
 
   return (
@@ -42,12 +49,13 @@ export function BrandCaseReport({
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
       <ReportGrid>
-        <BrandCasePanels
-          data={data}
+        <ReputationIndexPanel report={index} isPending={isPending} caseLabel={caseLabel} days={days} />
+        <ProductSentimentPanel report={products} isPending={isPending} caseLabel={caseLabel} />
+        <ReputationTrendPanel
+          report={trend}
           isPending={isPending}
-          days={days}
           caseLabel={caseLabel}
-          withTrend
+          subjectName={data?.subject?.name ?? projectName}
         />
       </ReportGrid>
     </div>

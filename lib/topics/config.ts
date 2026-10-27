@@ -71,6 +71,4 @@ export const TOPIC_CONFIG = {
   maxMergePairsPerRun: 20,
   /** Share of a new topic's mentions an aspect needs to become the topic's aspect. */
   aspectShare: 0.4,
-  /** Keywords in the cloud of the Topics report, most mentioned first (D16). */
-  reportKeywords: 30,
 } as const;
