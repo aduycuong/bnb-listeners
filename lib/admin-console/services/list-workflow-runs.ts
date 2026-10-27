@@ -1,6 +1,7 @@
 import type { WorkflowRunLog } from "@upstash/workflow";
 
 import { ServiceError } from "@/lib/common/service-errors";
+import { WORKFLOW_NAMES } from "@/lib/workflows/constants";
 import { getWorkflowClient } from "@/lib/workflows/utils/get-workflow-client";
 import { getWorkflowUrl } from "@/lib/workflows/utils/get-workflow-url";
 
@@ -38,6 +39,8 @@ function toAdminWorkflowRun(run: WorkflowRunLog): AdminWorkflowRun {
 
   return {
     workflowRunId: run.workflowRunId,
+    workflow: run.workflowUrl.split("/").at(-1) ?? run.workflowUrl,
+    workflowUrl: run.workflowUrl,
     state: run.workflowState,
     createdAt: new Date(run.workflowRunCreatedAt).toISOString(),
     completedAt: run.workflowRunCompletedAt
@@ -48,7 +51,11 @@ function toAdminWorkflowRun(run: WorkflowRunLog): AdminWorkflowRun {
   };
 }
 
-/** Recent runs of one workflow from the Upstash Workflow logs API, newest first. */
+/**
+ * Recent workflow runs from the Upstash Workflow logs API, newest first: of one
+ * workflow, or of every workflow of this server (the QStash account may serve
+ * other environments, so runs are always filtered by this server's URLs).
+ */
 export async function listWorkflowRuns(
   params: ListWorkflowRunsParams,
 ): Promise<ListWorkflowRunsResult> {
@@ -56,7 +63,12 @@ export async function listWorkflowRuns(
     .logs({
       cursor: params.cursor,
       count: params.count ?? DEFAULT_COUNT,
-      filter: { workflowUrl: getWorkflowUrl(params.workflow) },
+      filter: {
+        workflowUrl: params.workflow
+          ? getWorkflowUrl(params.workflow)
+          : WORKFLOW_NAMES.map((name) => getWorkflowUrl(name)),
+        state: params.state,
+      },
     })
     .catch((error: unknown) => {
       // The local QStash dev server has no logs API; say so instead of a bare 500.

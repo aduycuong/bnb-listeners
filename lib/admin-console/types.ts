@@ -1,7 +1,11 @@
 import type { ContentItemMedia } from "@/db/schema";
 import type { ActivityTier, CollectRunStatus, ConnectorKey } from "@/lib/connectors/constants";
 import type { SourceBudget } from "@/lib/connectors/services/get-source-budgets";
+import type { ManagedSchedule } from "@/lib/schedules/config";
 import type { BillingUnit, SpendingProviderKey } from "@/lib/spending/config";
+import type { WorkflowName } from "@/lib/workflows/constants";
+
+import type { JOB_RUN_STATES, WORKFLOW_RUN_STATES } from "./constants";
 
 export type PageParams = {
   page?: number;
@@ -262,15 +266,10 @@ export type AdminSchedulerState = {
     tierRules: AdminTierRules;
     checkpointsHours: readonly number[];
   };
-  schedules: {
-    scheduleId: string;
-    cron: string;
-    destination: string;
-    isPaused: boolean;
-    createdAt: string;
-    lastScheduleTime: string | null;
-    nextScheduleTime: string | null;
-  }[];
+  /** Origin this server gives QStash; enabling a schedule points it here. */
+  serverUrl: string | null;
+  /** Managed schedules first (in code order), then the others in QStash. */
+  schedules: AdminScheduleRow[];
   /** Null when QStash could not be reached; `schedulesError` says why. */
   schedulesError: string | null;
   nextTick: {
@@ -291,14 +290,47 @@ export type AdminSchedulerState = {
   };
 };
 
+export type AdminScheduleRow = {
+  scheduleId: string;
+  /** From `MANAGED_SCHEDULES`; null for a schedule the app does not own. */
+  managed: {
+    label: string;
+    kind: ManagedSchedule["kind"];
+    /** Workflow or job name. */
+    target: string;
+    cron: string;
+    /** Where this server would point it. */
+    destination: string | null;
+  } | null;
+  /** What QStash has; null when the schedule does not exist. */
+  current: {
+    cron: string;
+    destination: string;
+    /** Job name from the body; null for workflow schedules. */
+    jobName: string | null;
+    isPaused: boolean;
+    createdAt: string;
+    lastScheduleTime: string | null;
+    nextScheduleTime: string | null;
+  } | null;
+  enabled: boolean;
+  /** Where QStash differs from the code; enabling rewrites these. */
+  drift: ("cron" | "destination" | "job")[];
+};
+
 export type ListWorkflowRunsParams = {
-  workflow: "schedule-collections" | "collect-source";
+  /** All workflows of this server when omitted. */
+  workflow?: WorkflowName;
+  state?: WorkflowRunState;
   cursor?: string;
   count?: number;
 };
 
 export type AdminWorkflowRun = {
   workflowRunId: string;
+  /** Last segment of the workflow URL. */
+  workflow: string;
+  workflowUrl: string;
   state: string;
   createdAt: string;
   completedAt: string | null;
@@ -313,6 +345,38 @@ export type AdminWorkflowRun = {
 
 export type ListWorkflowRunsResult = {
   runs: AdminWorkflowRun[];
+  cursor: string | null;
+};
+
+export type WorkflowRunState = (typeof WORKFLOW_RUN_STATES)[number];
+
+export type JobRunState = (typeof JOB_RUN_STATES)[number];
+
+export type ListJobRunsParams = {
+  /** Messages with an event in this state. */
+  state?: JobRunState;
+  cursor?: string;
+};
+
+/** One QStash message to `/api/qstash/callback`, from its log events. */
+export type AdminJobRun = {
+  messageId: string;
+  jobName: string | null;
+  /** Set when a schedule published the message. */
+  scheduleId: string | null;
+  /** State of the newest event seen. */
+  state: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Delivery attempts that failed (ERROR / RETRY events). */
+  failedAttempts: number;
+  error: string | null;
+  nextDeliveryAt: string | null;
+  events: { state: string; time: string; error: string | null }[];
+};
+
+export type ListJobRunsResult = {
+  runs: AdminJobRun[];
   cursor: string | null;
 };
 

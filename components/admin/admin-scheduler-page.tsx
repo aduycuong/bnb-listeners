@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
+import { RefreshCwIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,37 +13,31 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type {
-  AdminSchedulerState,
-  ListWorkflowRunsParams,
-  ListWorkflowRunsResult,
-} from "@/lib/admin-console/types";
-import { getCronFriendlyText } from "@/lib/common/cron-presets";
+import type { AdminSchedulerState } from "@/lib/admin-console/types";
 
-import { AdminFilterSelect } from "./admin-filter-select";
-import { formatDateTime, formatDuration, formatNumber, formatRelative } from "./admin-format";
-import { AdminJsonBlock } from "./admin-json-block";
+import { formatDateTime, formatNumber, formatRelative } from "./admin-format";
 import { AdminKeyValues } from "./admin-key-values";
 import { AdminQueryState } from "./admin-query-state";
 import { adminQueryKeys } from "./admin-query-keys";
+import { AdminSchedulerRuns } from "./admin-scheduler-runs";
+import { AdminSchedulerSchedules } from "./admin-scheduler-schedules";
 import { AdminSection } from "./admin-section";
 import { AdminStatusBadge } from "./admin-status-badge";
 import { AdminTierBadge } from "./admin-tier-badge";
 import { fetchAdminJson } from "./fetch-admin-json";
 
-type WorkflowName = ListWorkflowRunsParams["workflow"];
-
-const WORKFLOWS: WorkflowName[] = ["schedule-collections", "collect-source"];
-
 function SchedulerConfig({ state }: { state: AdminSchedulerState }) {
   return (
     <AdminSection
       title="Scheduler"
-      description="Intervals and checkpoints are edited in Settings; the tick interval through npm run schedules:sync."
+      description="Intervals and checkpoints are edited in Settings; schedule crons live in code (lib/schedules/config.ts)."
       actions={
-        <Link href="/admin/settings" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-          Edit settings →
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/admin/settings" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+            Edit settings →
+          </Link>
+          <RefreshButton />
+        </div>
       }
     >
       <AdminKeyValues
@@ -66,62 +60,6 @@ function SchedulerConfig({ state }: { state: AdminSchedulerState }) {
           ],
         ]}
       />
-    </AdminSection>
-  );
-}
-
-function QStashSchedules({ state }: { state: AdminSchedulerState }) {
-  return (
-    <AdminSection title="QStash schedules">
-      {state.schedulesError ? (
-        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {state.schedulesError}
-        </p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Schedule</TableHead>
-              <TableHead>Cron (UTC)</TableHead>
-              <TableHead>Destination</TableHead>
-              <TableHead>State</TableHead>
-              <TableHead>Last run</TableHead>
-              <TableHead>Next run</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {state.schedules.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-muted-foreground">
-                  No schedules. Automatic collection is off (npm run schedules:sync -- --yes).
-                </TableCell>
-              </TableRow>
-            ) : (
-              state.schedules.map((schedule) => (
-                <TableRow key={schedule.scheduleId}>
-                  <TableCell className="font-medium">{schedule.scheduleId}</TableCell>
-                  <TableCell className="text-xs">
-                    <code>{schedule.cron}</code>
-                    <div className="text-muted-foreground">{getCronFriendlyText(schedule.cron)}</div>
-                  </TableCell>
-                  <TableCell className="max-w-72 truncate text-xs">{schedule.destination}</TableCell>
-                  <TableCell>
-                    <AdminStatusBadge value={schedule.isPaused ? "paused" : "running"} />
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    {formatDateTime(schedule.lastScheduleTime)}
-                    <div className="text-muted-foreground">{formatRelative(schedule.lastScheduleTime)}</div>
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    {formatDateTime(schedule.nextScheduleTime)}
-                    <div className="text-muted-foreground">{formatRelative(schedule.nextScheduleTime)}</div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      )}
     </AdminSection>
   );
 }
@@ -197,132 +135,32 @@ function NextTick({ state }: { state: AdminSchedulerState }) {
   );
 }
 
-function WorkflowRuns() {
-  const [workflow, setWorkflow] = useState<WorkflowName>("schedule-collections");
-  const [expanded, setExpanded] = useState<string | null>(null);
-
-  const { data, isPending, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInfiniteQuery({
-      queryKey: adminQueryKeys.workflowRuns(workflow),
-      queryFn: ({ pageParam }) =>
-        fetchAdminJson<ListWorkflowRunsResult>("/api/admin/scheduler/workflow-runs", {
-          workflow,
-          cursor: pageParam,
-        }),
-      initialPageParam: undefined as string | undefined,
-      getNextPageParam: (last) => last.cursor ?? undefined,
-      refetchInterval: 60_000,
-    });
-
-  const runs = data?.pages.flatMap((page) => page.runs) ?? [];
+function RefreshButton() {
+  const queryClient = useQueryClient();
+  const fetching = useIsFetching({ queryKey: ["admin"] });
+  const updatedAt = queryClient.getQueryState(adminQueryKeys.scheduler())?.dataUpdatedAt;
 
   return (
-    <AdminSection
-      title="Workflow runs"
-      description="From the Upstash Workflow logs API."
-      actions={
-        <AdminFilterSelect
-          label="workflows"
-          value={workflow}
-          options={WORKFLOWS}
-          onChange={(value) => setWorkflow((value || "schedule-collections") as WorkflowName)}
-        />
-      }
-    >
-      {!data ? (
-        <AdminQueryState isPending={isPending} error={error} />
-      ) : (
-        <div className="space-y-3">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Started</TableHead>
-                <TableHead>State</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Steps</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {runs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-muted-foreground">
-                    No runs.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                runs.map((run) => (
-                  <WorkflowRunRow
-                    key={run.workflowRunId}
-                    run={run}
-                    expanded={expanded === run.workflowRunId}
-                    onToggle={() =>
-                      setExpanded(expanded === run.workflowRunId ? null : run.workflowRunId)
-                    }
-                  />
-                ))
-              )}
-            </TableBody>
-          </Table>
-          {hasNextPage ? (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isFetchingNextPage}
-              onClick={() => void fetchNextPage()}
-            >
-              Load more
-            </Button>
-          ) : null}
-        </div>
-      )}
-    </AdminSection>
-  );
-}
-
-function WorkflowRunRow({
-  run,
-  expanded,
-  onToggle,
-}: {
-  run: ListWorkflowRunsResult["runs"][number];
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <>
-      <TableRow>
-        <TableCell className="text-xs whitespace-nowrap">
-          {formatDateTime(run.createdAt)}
-          <div className="text-muted-foreground">{formatRelative(run.createdAt)}</div>
-        </TableCell>
-        <TableCell>
-          <AdminStatusBadge value={run.state} />
-        </TableCell>
-        <TableCell className="text-xs">{formatDuration(run.createdAt, run.completedAt)}</TableCell>
-        <TableCell className="max-w-md text-xs whitespace-normal">
-          {run.error ? <div className="text-destructive">{run.error}</div> : null}
-          <span className="text-muted-foreground">
-            {run.steps.map((step) => step.name).join(" → ")}
-          </span>
-        </TableCell>
-        <TableCell className="text-right">
-          <Button variant="ghost" size="sm" onClick={onToggle}>
-            {expanded ? "Hide" : "Details"}
-          </Button>
-        </TableCell>
-      </TableRow>
-      {expanded ? (
-        <TableRow>
-          <TableCell colSpan={5} className="bg-muted/30">
-            <p className="mb-2 font-mono text-xs text-muted-foreground">{run.workflowRunId}</p>
-            <AdminJsonBlock
-              value={run.steps.map((step) => ({ name: step.name, state: step.state, out: step.out }))}
-            />
-          </TableCell>
-        </TableRow>
+    <div className="flex items-center gap-2">
+      {updatedAt ? (
+        <span className="text-xs text-muted-foreground">Updated {formatDateTime(new Date(updatedAt).toISOString())}</span>
       ) : null}
-    </>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={fetching > 0}
+        onClick={() =>
+          void Promise.all(
+            [adminQueryKeys.scheduler(), ["admin", "workflow-runs"], ["admin", "job-runs"]].map((queryKey) =>
+              queryClient.invalidateQueries({ queryKey }),
+            ),
+          )
+        }
+      >
+        <RefreshCwIcon className={fetching > 0 ? "animate-spin" : undefined} />
+        Refresh
+      </Button>
+    </div>
   );
 }
 
@@ -338,13 +176,13 @@ export function AdminSchedulerPage() {
       {data ? (
         <>
           <SchedulerConfig state={data} />
-          <QStashSchedules state={data} />
+          <AdminSchedulerSchedules state={data} />
           <NextTick state={data} />
         </>
       ) : (
         <AdminQueryState isPending={isPending} error={error} />
       )}
-      <WorkflowRuns />
+      <AdminSchedulerRuns />
     </>
   );
 }

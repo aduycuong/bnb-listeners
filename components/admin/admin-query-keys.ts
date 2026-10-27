@@ -21,5 +21,6 @@ export const adminQueryKeys = {
   scheduler: () => ["admin", "scheduler"] as const,
   spending: (days: string) => ["admin", "spending", days] as const,
   settings: () => ["admin", "settings"] as const,
-  workflowRuns: (workflow: string) => ["admin", "workflow-runs", workflow] as const,
+  workflowRuns: (filters: Record<string, string>) => ["admin", "workflow-runs", filters] as const,
+  jobRuns: (filters: Record<string, string>) => ["admin", "job-runs", filters] as const,
 };
