@@ -1,0 +1,2 @@
+ALTER TABLE "project_compare_members" ADD COLUMN "is_primary" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "project_compare_members_primary_idx" ON "project_compare_members" USING btree ("compare_project_id") WHERE "project_compare_members"."is_primary";
