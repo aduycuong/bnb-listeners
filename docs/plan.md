@@ -341,7 +341,7 @@ Xem [D30](decisions.md#d30--một-project-theo-dõi-một-chủ-thể-so-sánh-l
 - [x] Pipeline bỏ qua project so sánh: không có nguồn nên không thu thập, Match, Enrich, L4; cảnh báo, báo cáo theo kỳ và `metrics:refresh --all` lọc bằng `listeningProjectFilter`
 - [x] Report so sánh (`POST /api/metrics/compare-reports`) trả kết quả theo project (đề cập và SoV, NSS, khía cạnh trùng key, giá, chỉ số uy tín); trung bình không trọng số tính ở UI (`meanOf`)
 - [x] Wizard, sidebar và trang report của project so sánh
-- [ ] Chạy migration, tạo project so sánh cho mỗi case trên DB dev và kiểm trang
+- [x] Chạy migration, tạo project so sánh trên DB dev (TT Genesis, Essensia Sky) và kiểm Tổng quan, Cài đặt, đổi thứ tự thành viên, job báo cáo bỏ qua project so sánh. Chưa có project brand để thử `brand_compare`
 
 ## Câu hỏi còn mở
 

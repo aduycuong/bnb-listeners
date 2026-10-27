@@ -85,12 +85,19 @@ export function CompareOverviewReport({
   );
 
   type Member = (typeof members)[number];
-  const columns: { label: string; read: (member: Member) => Cell; format: (value: number) => string }[] = [
+  const columns: {
+    label: string;
+    read: (member: Member) => Cell;
+    format: (value: number) => string;
+    /** False when the mean says nothing (shares of a whole always average 100 / members). */
+    mean?: false;
+  }[] = [
     { label: "Đề cập", read: (member) => member.kpis?.mentions.current ?? null, format: formatCount },
     {
       label: "Share of Voice",
       read: (member) => sharePercent(member.kpis?.mentions.current ?? 0, totalMentions),
       format: (value) => `${decimal(value)}%`,
+      mean: false,
     },
     { label: "Tương tác", read: (member) => member.kpis?.engagement.current ?? null, format: formatShort },
     { label: "Tác giả", read: (member) => member.kpis?.uniqueAuthors.current ?? null, format: formatCount },
@@ -199,7 +206,9 @@ export function CompareOverviewReport({
                 [
                   <b key="mean">Trung bình</b>,
                   ...columns.map((column) =>
-                    show(meanOf(members.map((member) => column.read(member))), column.format),
+                    column.mean === false
+                      ? "—"
+                      : show(meanOf(members.map((member) => column.read(member))), column.format),
                   ),
                 ],
               ]}
