@@ -1,9 +1,7 @@
-import { getAuthorMetrics } from "@/lib/metrics/services/get-author-metrics";
-
 import { projectPeriodInputSchema } from "../schema";
 import { assertToolProject } from "../utils/assert-tool-project";
 import { defineAiTool } from "../utils/define-ai-tool";
-import { resolveToolPeriod } from "../utils/resolve-tool-period";
+import { loadToolReports } from "../utils/load-tool-reports";
 
 export const getAuthorsTool = defineAiTool({
   name: "get_authors",
@@ -14,6 +12,6 @@ export const getAuthorsTool = defineAiTool({
   inputSchema: projectPeriodInputSchema,
   async run({ projectId, period }, ctx) {
     await assertToolProject(ctx, projectId);
-    return getAuthorMetrics({ projectId, period: resolveToolPeriod(period) });
+    return loadToolReports(projectId, period, [{ key: "top-authors" }, { key: "author-tiers" }]);
   },
 });

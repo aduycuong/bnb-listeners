@@ -1,18 +1,11 @@
-import type {
-  BrandCaseMetricsResult,
-  ChannelMetricsResult,
-  OverviewMetricsResult,
-  ProjectCaseMetricsResult,
-  ReportPeriod,
-  ReportPeriodInfo,
-  SentimentMetricsResult,
-} from "@/lib/metrics/types";
+import type { ReportDataMap, ReportPeriod, ReportPeriodInfo, ReportResult } from "@/lib/metrics/types";
 import type { ProjectCase } from "@/lib/projects/project-cases";
-import type { TopicReportItem, TopicReportKeyword } from "@/lib/topics/types";
 
-import type { REPORT_TRIGGERS } from "./config";
+import type { REPORT_SNAPSHOT_REPORTS, REPORT_TRIGGERS } from "./config";
 
 export type ReportTrigger = (typeof REPORT_TRIGGERS)[number];
+
+type SnapshotKey = (typeof REPORT_SNAPSHOT_REPORTS)[number]["key"];
 
 /** Numbers a report was written from, frozen at generation (D29). */
 export type ReportMetrics = {
@@ -20,15 +13,10 @@ export type ReportMetrics = {
   case: ProjectCase;
   timezone: string;
   period: ReportPeriodInfo;
-  overview: Omit<OverviewMetricsResult, "period" | "timezone">;
-  sentiment: Pick<SentimentMetricsResult, "emotions" | "aspects">;
-  channels: Pick<ChannelMetricsResult, "channels" | "sources">;
-  topics: { items: TopicReportItem[]; keywords: TopicReportKeyword[] };
-  /** Case page numbers for `project` and `brand`; null for other cases. */
-  caseMetrics:
-    | ({ case: "project" } & Omit<ProjectCaseMetricsResult, "period" | "timezone">)
-    | ({ case: "brand" } & Omit<BrandCaseMetricsResult, "period" | "timezone">)
-    | null;
+  /** Name of the project's subject. */
+  subject: string | null;
+  /** `REPORT_SNAPSHOT_REPORTS` by key. */
+  reports: { [K in SnapshotKey]: ReportResult<ReportDataMap[K]> };
 };
 
 /** A sample mention given to the model, cited by its label. */

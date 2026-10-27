@@ -4,6 +4,7 @@ import { SettingsIcon } from "lucide-react";
 import Link from "next/link";
 
 import { MetricsPageHeader } from "@/components/metrics/metrics-page-header";
+import { useReports } from "@/components/metrics/use-metrics-api";
 import { useReportPeriodDays } from "@/components/metrics/use-report-period-days";
 import { GrowthChart } from "@/components/metrics/report-ui/report-charts";
 import { KeywordCloud } from "@/components/metrics/report-ui/keyword-cloud";
@@ -17,10 +18,12 @@ import { Button } from "@/components/ui/button";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
 import { AQUA_PAGE_META, formatCount } from "@/lib/projects/aqua-demo";
-import type { TopicReportItem } from "@/lib/topics/types";
+import type { TopicsReportItem } from "@/lib/metrics/types";
 import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
 
-import { useTopicReport, type TopicsApiScope } from "./use-topics-api";
+import type { TopicsApiScope } from "./use-topics-api";
+
+const REPORTS = [{ key: "topics" }, { key: "keywords" }] as const;
 
 /** Topics report for a project. */
 export function ProjectTopicsReportPage({
@@ -56,7 +59,7 @@ export function ProjectTopicsReportPage({
   );
 }
 
-function GrowthCell({ topic }: { topic: TopicReportItem }) {
+function GrowthCell({ topic }: { topic: TopicsReportItem }) {
   if (topic.growth === null) {
     return (
       <span className="text-muted-foreground">{topic.mentions > 0 ? "mới" : "—"}</span>
@@ -85,9 +88,10 @@ function TopicsReport({
   banner: ProjectPageBannerProps;
 }) {
   const [days, setDays] = useReportPeriodDays();
-  const { data, error, isPending, isFetching } = useTopicReport(scope, days);
-  const items = data?.items ?? [];
-  const keywords = (data?.keywords ?? []).map((keyword) => ({
+  const { data, error, isPending, isFetching } = useReports(scope, days, REPORTS);
+  const [topics, keywordReport] = data?.reports ?? [];
+  const items = topics?.data ?? [];
+  const keywords = (keywordReport?.data ?? []).map((keyword) => ({
     key: keyword.keyword,
     name: keyword.text,
     mentions: keyword.mentions,

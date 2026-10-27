@@ -17,8 +17,14 @@ import { sharePercent } from "@/lib/metrics/formulas";
 import { AQUA_PAGE_META, formatCount, formatShort } from "@/lib/projects/aqua-demo";
 
 import { MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
-import { useChannelMetrics, type MetricsApiScope } from "./use-metrics-api";
+import { useReports, type MetricsApiScope } from "./use-metrics-api";
 import { useReportPeriodDays } from "./use-report-period-days";
+
+const REPORTS = [
+  { key: "channel-breakdown" },
+  { key: "posting-heatmap" },
+  { key: "source-ranking" },
+] as const;
 
 /** Channels page of real projects, laid out as the approved demo (phase 5b). */
 export function ProjectChannelsReport({
@@ -33,11 +39,13 @@ export function ProjectChannelsReport({
   banner: ProjectPageBannerProps;
 }) {
   const [days, setDays] = useReportPeriodDays();
-  const { data, error, isPending, isFetching } = useChannelMetrics(scope, days);
-  const channels = data?.channels ?? [];
+  const { data, error, isPending, isFetching } = useReports(scope, days, REPORTS);
+  const [channelBreakdown, heatmap, sourceRanking] = data?.reports ?? [];
+  const channels = channelBreakdown?.data ?? [];
+  const sources = sourceRanking?.data ?? [];
   const total = channels.reduce((sum, channel) => sum + channel.mentions, 0);
   const heat = Array.from({ length: 7 }, () => Array<number>(24).fill(0));
-  for (const cell of data?.heat ?? []) heat[cell.weekday][cell.hour] = cell.mentions;
+  for (const cell of heatmap?.data ?? []) heat[cell.weekday][cell.hour] = cell.mentions;
   const empty = isPending ? "Đang tải…" : `Chưa có đề cập trong ${days} ngày gần nhất.`;
 
   return (
@@ -99,7 +107,7 @@ export function ProjectChannelsReport({
           scope="common"
           note="Bài: đề cập là bài đăng. Tương tác: tổng lượt thích, bình luận, chia sẻ của các đề cập. Bấm một nguồn để xem đề cập."
         >
-          {data?.sources.length ? (
+          {sources.length ? (
             <ReportTable
               headers={[
                 { label: "Nguồn" },
@@ -108,7 +116,7 @@ export function ProjectChannelsReport({
                 { label: "Đề cập", numeric: true },
                 { label: "Tương tác", numeric: true },
               ]}
-              rows={data.sources.map((source) => [
+              rows={sources.map((source) => [
                 source.id ? (
                   <Link
                     key="name"

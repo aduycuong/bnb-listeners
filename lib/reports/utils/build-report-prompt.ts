@@ -30,11 +30,35 @@ function points(current: number | null, previous: number | null) {
  * period compared already computed so the model does not compute its own.
  */
 export function buildReportFacts(metrics: ReportMetrics) {
-  const { overview, period } = metrics;
-  const caseMetrics = metrics.caseMetrics;
+  const { period, reports } = metrics;
+  const kpis = reports.kpis.data;
+  const sentiment = reports["sentiment-breakdown"].data;
+  const price = reports["price-trend"].data;
+  const questions = reports["buyer-questions"].data;
+  const reputation = reports["reputation-index"].data;
+  const products = reports["product-sentiment"].data;
+  const caseMetrics = {
+    ...(price ? { resalePriceMedian: price.median, priceRef: price.priceRef } : {}),
+    ...(questions
+      ? {
+          buyerQuestions: {
+            ...questions.total,
+            top: questions.items.map((item) => ({ name: item.name, mentions: item.mentions })),
+          },
+        }
+      : {}),
+    ...(reputation
+      ? {
+          reputationIndex: reputation.index,
+          pillars: reputation.pillars.map((pillar) => ({ name: pillar.name, score: pillar.score })),
+        }
+      : {}),
+    ...(products ? { products } : {}),
+  };
 
   return {
     project: metrics.projectName,
+    subject: metrics.subject,
     case: metrics.case,
     period: {
       type: period.type,
@@ -45,40 +69,52 @@ export function buildReportFacts(metrics: ReportMetrics) {
       comparedFrom: period.previousStart,
       comparedTo: period.previousEnd,
     },
-    kpis: {
-      mentions: {
-        ...overview.mentions,
-        changePct: growthPercent(overview.mentions.current, overview.mentions.previous),
-      },
-      engagement: {
-        ...overview.engagement,
-        changePct: growthPercent(overview.engagement.current, overview.engagement.previous),
-      },
-      authors: {
-        ...overview.uniqueAuthors,
-        changePct: growthPercent(overview.uniqueAuthors.current, overview.uniqueAuthors.previous),
-      },
-      nss: { ...overview.nss, changePoints: points(overview.nss.current, overview.nss.previous) },
-      negativeSharePct: {
-        ...overview.negativeShare,
-        changePoints: points(overview.negativeShare.current, overview.negativeShare.previous),
-      },
-    },
-    sentiment: overview.sentiment,
-    emotions: metrics.sentiment.emotions.filter((item) => item.mentions > 0),
-    aspects: metrics.sentiment.aspects
+    kpis: kpis
+      ? {
+          mentions: {
+            ...kpis.mentions,
+            changePct: growthPercent(kpis.mentions.current, kpis.mentions.previous),
+          },
+          engagement: {
+            ...kpis.engagement,
+            changePct: growthPercent(kpis.engagement.current, kpis.engagement.previous),
+          },
+          authors: {
+            ...kpis.uniqueAuthors,
+            changePct: growthPercent(kpis.uniqueAuthors.current, kpis.uniqueAuthors.previous),
+          },
+          nss: { ...kpis.nss, changePoints: points(kpis.nss.current, kpis.nss.previous) },
+          negativeSharePct: {
+            ...kpis.negativeShare,
+            changePoints: points(kpis.negativeShare.current, kpis.negativeShare.previous),
+          },
+        }
+      : null,
+    sentiment: sentiment
+      ? {
+          positive: sentiment.positive,
+          neutral: sentiment.neutral,
+          negative: sentiment.negative,
+          unknown: sentiment.unknown,
+        }
+      : null,
+    emotions: (reports.emotions.data ?? []).filter((item) => item.mentions > 0),
+    aspects: (reports["aspect-sentiment"].data ?? [])
       .filter((aspect) => aspect.mentions > 0)
       .map((aspect) => ({
         name: aspect.name,
         mentions: aspect.mentions,
         positivePct: aspect.positive,
         negativePct: aspect.negative,
+        nss: aspect.nss,
       })),
-    channels: metrics.channels.channels.slice(0, 6),
-    sources: metrics.channels.sources
-      .slice(0, 6)
-      .map((source) => ({ name: source.name, channel: source.channel, mentions: source.mentions })),
-    topics: metrics.topics.items.map((topic) => ({
+    channels: (reports["channel-breakdown"].data ?? []).slice(0, 6),
+    sources: (reports["source-ranking"].data ?? []).map((source) => ({
+      name: source.name,
+      channel: source.channel,
+      mentions: source.mentions,
+    })),
+    topics: (reports.topics.data ?? []).map((topic) => ({
       name: topic.name,
       mentions: topic.mentions,
       previousMentions: topic.previousMentions,
@@ -86,31 +122,12 @@ export function buildReportFacts(metrics: ReportMetrics) {
       positivePct: topic.positive,
       negativePct: topic.negative,
     })),
-    keywords: metrics.topics.keywords.map((keyword) => ({
+    keywords: (reports.keywords.data ?? []).map((keyword) => ({
       keyword: keyword.text,
       mentions: keyword.mentions,
       negativePct: keyword.negative,
     })),
-    caseMetrics:
-      caseMetrics?.case === "project"
-        ? {
-            subject: caseMetrics.subjectName,
-            resalePriceMedian: caseMetrics.price.median,
-            priceRef: caseMetrics.price.priceRef,
-            buyerQuestions: {
-              ...caseMetrics.questions.total,
-              top: caseMetrics.questions.items.map((item) => ({ name: item.name, mentions: item.mentions })),
-            },
-            aspectNss: caseMetrics.aspects.map((aspect) => ({ name: aspect.name, nss: aspect.nss })),
-          }
-        : caseMetrics?.case === "brand"
-          ? {
-              subject: caseMetrics.subjectName,
-              reputationIndex: caseMetrics.index,
-              pillars: caseMetrics.pillars.map((pillar) => ({ name: pillar.name, score: pillar.score })),
-              products: caseMetrics.products,
-            }
-          : null,
+    caseMetrics: Object.keys(caseMetrics).length ? caseMetrics : null,
   };
 }
 

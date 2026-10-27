@@ -78,7 +78,7 @@ export async function generateReport(params: GenerateReportParams): Promise<Repo
   let model: string = REPORT_CONFIG.model;
   let usage = { inputTokens: 0, outputTokens: 0 };
 
-  if (metrics.overview.mentions.current === 0 || evidence.length === 0) {
+  if (!metrics.reports.kpis.data?.mentions.current || evidence.length === 0) {
     model = NO_MODEL;
     sections = {
       summary: `Không có đề cập nào về ${metrics.projectName} trong kỳ này.`,

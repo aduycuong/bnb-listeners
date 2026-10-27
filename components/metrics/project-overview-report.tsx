@@ -10,11 +10,13 @@ import {
   projectReportPageClassName,
   type ProjectPageBannerProps,
 } from "@/components/projects/project-page-banner";
+import { METRICS_CONFIG } from "@/lib/metrics/config";
 import { growthPercent } from "@/lib/metrics/formulas";
 import type {
+  BuyerQuestionsReport,
+  KpisReport,
   MetricsValue,
-  OverviewMetricsResult,
-  ProjectCaseMetricsResult,
+  PriceTrendReport,
 } from "@/lib/metrics/types";
 import type { ProjectCase } from "@/lib/projects/project-cases";
 import {
@@ -25,17 +27,12 @@ import {
   type AquaKpi,
 } from "@/lib/projects/aqua-demo";
 
-import { BrandCasePanels } from "./brand-case-panels";
+import { ProductSentimentPanel, ReputationIndexPanel } from "./brand-case-panels";
 import { formatDayLabel, MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
 import { OverviewAiSummary } from "./overview-ai-summary";
 import { buildKpis, countKpi, decimal, pointKpi } from "./overview-kpis";
-import { ProjectPricePanels } from "./project-price-panels";
-import {
-  useBrandCaseMetrics,
-  useOverviewMetrics,
-  useProjectCaseMetrics,
-  type MetricsApiScope,
-} from "./use-metrics-api";
+import { PriceDistributionPanel, PriceTrendPanel } from "./project-price-panels";
+import { useReports, type MetricsApiScope } from "./use-metrics-api";
 import { useReportPeriodDays } from "./use-report-period-days";
 
 const GLOSSARY = [
@@ -54,15 +51,26 @@ const PRICE_TIP =
   "Trung vị giá rao bán lại của dự án đang theo dõi, triệu đồng/m². Đã lọc tin trùng và tin lệch.";
 const QUESTION_TIP = "Câu hỏi AI trích từ người đang cân nhắc mua hoặc thuê";
 
-/** Two case tiles. Shown while the case query is in flight so the row does not jump. */
-function waitingKpi(label: string, tip: string, pending: boolean): AquaKpi {
-  return {
-    label,
-    value: "—",
-    delta: pending ? "Đang tải" : "Chưa tải được",
-    good: true,
-    tip,
-  };
+/**
+ * Common boxes and the case boxes of the overview. Case reports a project has no numbers for
+ * come back without data and are not drawn.
+ */
+const REPORTS = [
+  { key: "kpis" },
+  { key: "sentiment-trend" },
+  { key: "sentiment-breakdown" },
+  { key: "source-ranking", params: { limit: METRICS_CONFIG.topSources } },
+  { key: "topics", params: { limit: METRICS_CONFIG.topTopics } },
+  { key: "price-trend" },
+  { key: "price-distribution" },
+  { key: "buyer-questions" },
+  { key: "reputation-index" },
+  { key: "product-sentiment" },
+] as const;
+
+/** A case tile whose report is off for this project (its enricher does not run). */
+function offKpi(label: string, tip: string): AquaKpi {
+  return { label, value: "—", delta: "Chưa bật trích xuất", good: true, tip };
 }
 
 /** Resale-price median of the tracked project, as a percent change like the other count tiles. */
@@ -91,16 +99,14 @@ function priceKpi(median: MetricsValue<number | null>): AquaKpi {
  * voice stay off this row.
  */
 function projectOverviewKpis(
-  data: OverviewMetricsResult,
-  caseData: ProjectCaseMetricsResult | undefined,
-  pending: boolean,
+  data: KpisReport,
+  priceTrend: PriceTrendReport | null,
+  buyerQuestions: BuyerQuestionsReport | null,
 ): AquaKpi[] {
-  const price = caseData
-    ? priceKpi(caseData.price.median)
-    : waitingKpi("Giá rao bán lại", PRICE_TIP, pending);
-  const questions = caseData
-    ? countKpi("Câu hỏi của người mua", caseData.questions.total, QUESTION_TIP)
-    : waitingKpi("Câu hỏi của người mua", QUESTION_TIP, pending);
+  const price = priceTrend ? priceKpi(priceTrend.median) : offKpi("Giá rao bán lại", PRICE_TIP);
+  const questions = buyerQuestions
+    ? countKpi("Câu hỏi của người mua", buyerQuestions.total, QUESTION_TIP)
+    : offKpi("Câu hỏi của người mua", QUESTION_TIP);
   return [
     countKpi("Lượt đề cập", data.mentions, "Bài đăng, bình luận, trả lời có liên quan"),
     countKpi("Tương tác", data.engagement, "Tổng lượt thích, bình luận, chia sẻ", formatShort),
@@ -136,13 +142,25 @@ export function ProjectOverviewReport({
 }) {
   const { t } = useT("dashboard");
   const [days, setDays] = useReportPeriodDays();
-  const { data, error, isPending, isFetching } = useOverviewMetrics(scope, days);
-  const caseMetrics = useProjectCaseMetrics(scope, days, projectCase === "project");
-  const brandMetrics = useBrandCaseMetrics(scope, days, projectCase === "brand");
-  const hasMentions = (data?.mentions.current ?? 0) > 0;
-  const sentimentTotal = data
-    ? data.sentiment.positive + data.sentiment.neutral + data.sentiment.negative
-    : 0;
+  const { data, error, isPending, isFetching } = useReports(scope, days, REPORTS);
+  const [
+    kpis,
+    sentimentTrend,
+    sentimentBreakdown,
+    sourceRanking,
+    topicReport,
+    priceTrend,
+    priceDistribution,
+    buyerQuestions,
+    reputationIndex,
+    productSentiment,
+  ] = data?.reports ?? [];
+  const daily = sentimentTrend?.data ?? [];
+  const sentiment = sentimentBreakdown?.data;
+  const sources = sourceRanking?.data ?? [];
+  const topics = topicReport?.data ?? [];
+  const hasMentions = (kpis?.data?.mentions.current ?? 0) > 0;
+  const sentimentTotal = sentiment ? sentiment.positive + sentiment.neutral + sentiment.negative : 0;
 
   return (
     <div className={projectReportPageClassName}>
@@ -151,22 +169,16 @@ export function ProjectOverviewReport({
         subtitle={`${projectName} · số liệu từ các đề cập có liên quan`}
         days={days}
         onDaysChange={setDays}
-        loading={
-          (isFetching && !isPending) ||
-          (caseMetrics.isFetching && !caseMetrics.isPending) ||
-          (brandMetrics.isFetching && !brandMetrics.isPending)
-        }
+        loading={isFetching && !isPending}
       />
       <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
-      {caseMetrics.error ? <p className="text-sm text-destructive">{caseMetrics.error.message}</p> : null}
-      {brandMetrics.error ? <p className="text-sm text-destructive">{brandMetrics.error.message}</p> : null}
-      {data ? (
+      {kpis?.data ? (
         <ReportKpis
           kpis={
             projectCase === "project"
-              ? projectOverviewKpis(data, caseMetrics.data, caseMetrics.isPending)
-              : buildKpis(data)
+              ? projectOverviewKpis(kpis.data, priceTrend?.data ?? null, buyerQuestions?.data ?? null)
+              : buildKpis(kpis.data)
           }
           compareLabel={`vs ${days} ngày trước`}
         />
@@ -178,19 +190,19 @@ export function ProjectOverviewReport({
           span="s8"
           scope="common"
           note={
-            data?.sentiment.unknown
-              ? `${formatCount(data.sentiment.unknown)} đề cập chưa phân loại cảm xúc không có trong biểu đồ`
+            sentiment?.unknown
+              ? `${formatCount(sentiment.unknown)} đề cập chưa phân loại cảm xúc không có trong biểu đồ`
               : undefined
           }
         >
-          {data && hasMentions ? (
+          {hasMentions ? (
             <TrendChart
               brands={null}
-              days={data.daily.map((day) => formatDayLabel(day.date))}
+              days={daily.map((day) => formatDayLabel(day.date))}
               trend={{
-                pos: data.daily.map((day) => day.positive),
-                neu: data.daily.map((day) => day.neutral),
-                neg: data.daily.map((day) => day.negative),
+                pos: daily.map((day) => day.positive),
+                neu: daily.map((day) => day.neutral),
+                neg: daily.map((day) => day.negative),
               }}
             />
           ) : (
@@ -199,13 +211,13 @@ export function ProjectOverviewReport({
         </ReportPanel>
         <OverviewAiSummary scope={scope} reportHref={reportHref} />
         <ReportPanel title="Phân bổ cảm xúc" span="s4" scope="common">
-          {data && sentimentTotal > 0 ? (
+          {sentiment && sentimentTotal > 0 ? (
             <>
               <DonutChart
                 data={[
-                  { name: "Tích cực", value: data.sentiment.positive },
-                  { name: "Trung lập", value: data.sentiment.neutral },
-                  { name: "Tiêu cực", value: data.sentiment.negative },
+                  { name: "Tích cực", value: sentiment.positive },
+                  { name: "Trung lập", value: sentiment.neutral },
+                  { name: "Tiêu cực", value: sentiment.negative },
                 ]}
                 colors={["var(--pos)", "var(--neu)", "var(--neg)"]}
               />
@@ -213,15 +225,13 @@ export function ProjectOverviewReport({
                 <div className="rounded-[10px] bg-muted px-3 py-2 text-xs text-muted-foreground">
                   NSS
                   <b className="mt-0.5 block text-[17px] text-foreground">
-                    {data.nss.current === null ? "—" : formatSigned(data.nss.current)}
+                    {sentiment.nss === null ? "—" : formatSigned(sentiment.nss)}
                   </b>
                 </div>
                 <div className="rounded-[10px] bg-muted px-3 py-2 text-xs text-muted-foreground">
                   Tiêu cực
                   <b className="mt-0.5 block text-[17px] text-foreground">
-                    {data.negativeShare.current === null
-                      ? "—"
-                      : `${decimal(data.negativeShare.current)}%`}
+                    {sentiment.negativeShare === null ? "—" : `${decimal(sentiment.negativeShare)}%`}
                   </b>
                 </div>
               </div>
@@ -236,9 +246,9 @@ export function ProjectOverviewReport({
           scope="common"
           note="Theo nguồn (group, page) có nhiều đề cập nhất trong kỳ"
         >
-          {data?.sources.length ? (
+          {sources.length ? (
             <ReportBars
-              rows={data.sources.map((source) => ({
+              rows={sources.map((source) => ({
                 label: source.name,
                 value: source.mentions,
                 display: formatCount(source.mentions),
@@ -254,9 +264,9 @@ export function ProjectOverviewReport({
           scope="common"
           note="Chủ đề có nhiều đề cập nhất trong kỳ. Bấm để xem đề cập."
         >
-          {data?.topics.length ? (
+          {topics.length ? (
             <div className="flex flex-col gap-2.5">
-              {data.topics.map((topic) => (
+              {topics.map((topic) => (
                 <Link
                   key={topic.id}
                   href={`${mentionsHref}?topicId=${topic.id}`}
@@ -268,7 +278,7 @@ export function ProjectOverviewReport({
                   <span className="h-[9px] overflow-hidden rounded-full bg-muted">
                     <i
                       className="block h-full rounded-full bg-primary"
-                      style={{ width: `${(topic.mentions / (data.topics[0]?.mentions || 1)) * 100}%` }}
+                      style={{ width: `${(topic.mentions / (topics[0]?.mentions || 1)) * 100}%` }}
                     />
                   </span>
                   <b className="text-right font-semibold">{formatCount(topic.mentions)}</b>
@@ -280,22 +290,40 @@ export function ProjectOverviewReport({
           )}
         </ReportPanel>
         {projectCase === "project" ? (
-          <ProjectPricePanels
-            data={caseMetrics.data}
-            isPending={caseMetrics.isPending}
-            days={days}
-            caseLabel={t("cases.project")}
-            detail={{ href: caseHref, label: t("caseNav.project") }}
-          />
+          <>
+            <PriceTrendPanel
+              report={priceTrend}
+              isPending={isPending}
+              days={days}
+              caseLabel={t("cases.project")}
+              detail={{ href: caseHref, label: t("caseNav.project") }}
+              subjectName={data?.subject?.name ?? projectName}
+            />
+            <PriceDistributionPanel
+              report={priceDistribution}
+              isPending={isPending}
+              days={days}
+              caseLabel={t("cases.project")}
+              detail={{ href: caseHref, label: t("caseNav.project") }}
+            />
+          </>
         ) : null}
         {projectCase === "brand" ? (
-          <BrandCasePanels
-            data={brandMetrics.data}
-            isPending={brandMetrics.isPending}
-            days={days}
-            caseLabel={t("cases.brand")}
-            detail={{ href: caseHref, label: t("caseNav.brand") }}
-          />
+          <>
+            <ReputationIndexPanel
+              report={reputationIndex}
+              isPending={isPending}
+              days={days}
+              caseLabel={t("cases.brand")}
+              detail={{ href: caseHref, label: t("caseNav.brand") }}
+            />
+            <ProductSentimentPanel
+              report={productSentiment}
+              isPending={isPending}
+              caseLabel={t("cases.brand")}
+              detail={{ href: caseHref, label: t("caseNav.brand") }}
+            />
+          </>
         ) : null}
       </ReportGrid>
       <details className="rounded-[22px] border-[1.5px] border-border bg-card px-[18px] py-3.5">

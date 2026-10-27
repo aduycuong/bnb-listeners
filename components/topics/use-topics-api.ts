@@ -3,9 +3,10 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { mentionsQueryKey } from "@/components/mentions/use-mentions-api";
+import { metricsQueryKey } from "@/components/metrics/use-metrics-api";
 import { toast } from "@/components/ui/toast";
 import { projectFetch } from "@/lib/projects/utils/project-fetch";
-import type { ListTopicsResult, TopicReportResult, TopicSummary } from "@/lib/topics/types";
+import type { ListTopicsResult, TopicSummary } from "@/lib/topics/types";
 
 export type TopicsApiScope = { workspaceId: string; projectId: string };
 
@@ -30,13 +31,6 @@ export function useTopicsList(scope: TopicsApiScope, includeHidden = false) {
   });
 }
 
-export function useTopicReport(scope: TopicsApiScope, days: number) {
-  return useQuery({
-    queryKey: [...topicsQueryKey(scope.projectId), "report", days],
-    queryFn: () => fetchJson<TopicReportResult>(scope, `/api/topics/report?days=${days}`),
-    placeholderData: keepPreviousData,
-  });
-}
 
 /** Topic changes also refresh the Mentions list, which shows each mention's topic. */
 function useTopicMutation<TBody>(
@@ -52,6 +46,7 @@ function useTopicMutation<TBody>(
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: topicsQueryKey(scope.projectId) }),
         queryClient.invalidateQueries({ queryKey: mentionsQueryKey(scope.projectId) }),
+        queryClient.invalidateQueries({ queryKey: metricsQueryKey(scope.projectId) }),
       ]);
     },
     onError: (error) => toast.add({ title: error.message, type: "error" }),

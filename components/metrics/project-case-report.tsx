@@ -13,9 +13,16 @@ import {
 import { formatCount } from "@/lib/projects/aqua-demo";
 
 import { MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
-import { ProjectPricePanels } from "./project-price-panels";
-import { useProjectCaseMetrics, type MetricsApiScope } from "./use-metrics-api";
+import { PriceDistributionPanel, PriceTrendPanel } from "./project-price-panels";
+import { useReports, type MetricsApiScope } from "./use-metrics-api";
 import { useReportPeriodDays } from "./use-report-period-days";
+
+const REPORTS = [
+  { key: "price-trend" },
+  { key: "price-distribution" },
+  { key: "buyer-questions" },
+  { key: "aspect-sentiment" },
+] as const;
 
 /** Case page of a `project` listening case, laid out as the approved demo. */
 export function ProjectCaseReport({
@@ -31,13 +38,16 @@ export function ProjectCaseReport({
 }) {
   const { t } = useT("dashboard");
   const [days, setDays] = useReportPeriodDays();
-  const { data, error, isPending, isFetching } = useProjectCaseMetrics(scope, days);
+  const { data, error, isPending, isFetching } = useReports(scope, days, REPORTS);
+  const [priceTrend, priceDistribution, buyerQuestions, aspectSentiment] = data?.reports ?? [];
+  const questions = buyerQuestions?.data;
   const loading = isPending ? "Đang tải…" : null;
   const caseLabel = t("cases.project");
-  const radarAspects = data?.aspects.filter((aspect) => aspect.nss != null) ?? [];
-  const radarSeries = data
-    ? [{ key: data.subjectName, color: "#0091FF", values: radarAspects.map((aspect) => aspect.nss ?? 0) }]
-    : [];
+  const subjectName = data?.subject?.name ?? projectName;
+  const radarAspects = aspectSentiment?.data?.filter((aspect) => aspect.nss != null) ?? [];
+  const radarSeries = [
+    { key: subjectName, color: "#0091FF", values: radarAspects.map((aspect) => aspect.nss ?? 0) },
+  ];
 
   return (
     <div className={projectReportPageClassName}>
@@ -52,8 +62,15 @@ export function ProjectCaseReport({
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
       <ReportGrid>
-        <ProjectPricePanels
-          data={data}
+        <PriceTrendPanel
+          report={priceTrend}
+          isPending={isPending}
+          days={days}
+          caseLabel={caseLabel}
+          subjectName={subjectName}
+        />
+        <PriceDistributionPanel
+          report={priceDistribution}
           isPending={isPending}
           days={days}
           caseLabel={caseLabel}
@@ -64,16 +81,16 @@ export function ProjectCaseReport({
           scope="case"
           scopeLabel={caseLabel}
           note={
-            data
-              ? data.questions.total.current
-                ? `AI gom nhóm từ ${formatCount(data.questions.total.current)} câu hỏi`
+            questions
+              ? questions.total.current
+                ? `AI gom nhóm từ ${formatCount(questions.total.current)} câu hỏi`
                 : "Chưa có câu hỏi người mua trong kỳ"
               : undefined
           }
         >
-          {data?.questions.items.length ? (
+          {questions?.items.length ? (
             <div className="flex flex-col">
-              {data.questions.items.map((question) => (
+              {questions.items.map((question) => (
                 <Link
                   key={question.id}
                   href={`${mentionsHref}?topicId=${question.id}`}
@@ -105,7 +122,7 @@ export function ProjectCaseReport({
           scopeLabel={caseLabel}
           note="Điểm cảm xúc ròng (NSS) của dự án theo từng khía cạnh"
         >
-          {data && radarAspects.length ? (
+          {radarAspects.length ? (
             <RadarAttributeChart
               labels={radarAspects.map((aspect) => aspect.name)}
               series={radarSeries}

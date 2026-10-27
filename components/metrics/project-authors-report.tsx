@@ -20,7 +20,7 @@ import {
 } from "@/lib/projects/aqua-demo";
 
 import { MetricsEmpty, MetricsPageHeader } from "./metrics-page-header";
-import { useAuthorMetrics, type MetricsApiScope } from "./use-metrics-api";
+import { useReports, type MetricsApiScope } from "./use-metrics-api";
 import { useReportPeriodDays } from "./use-report-period-days";
 
 const PILL: Record<Sentiment, AquaSentiment> = {
@@ -33,6 +33,8 @@ const PILL: Record<Sentiment, AquaSentiment> = {
 const TIER_COLORS = ["#0B2545", "#0091FF", "#5CC8FF", "#00C9A7", "#FFC93C"];
 
 const TIER_LABELS = new Map<string, string>(AUTHOR_TIERS.map((tier) => [tier.key, tier.label]));
+
+const REPORTS = [{ key: "top-authors" }, { key: "author-tiers" }] as const;
 
 /** Authors page of real projects, laid out as the approved demo (phase 5b). */
 export function ProjectAuthorsReport({
@@ -47,8 +49,11 @@ export function ProjectAuthorsReport({
   banner: ProjectPageBannerProps;
 }) {
   const [days, setDays] = useReportPeriodDays();
-  const { data, error, isPending, isFetching } = useAuthorMetrics(scope, days);
-  const authorTotal = data?.tiers.reduce((sum, tier) => sum + tier.authors, 0) ?? 0;
+  const { data, error, isPending, isFetching } = useReports(scope, days, REPORTS);
+  const [topAuthors, authorTiers] = data?.reports ?? [];
+  const authors = topAuthors?.data ?? [];
+  const tiers = authorTiers?.data;
+  const authorTotal = tiers?.tiers.reduce((sum, tier) => sum + tier.authors, 0) ?? 0;
   const empty = isPending ? "Đang tải…" : `Chưa có đề cập trong ${days} ngày gần nhất.`;
 
   return (
@@ -70,7 +75,7 @@ export function ProjectAuthorsReport({
           scope="common"
           note="Xếp theo tổng tương tác trên các đề cập của tác giả trong kỳ. Bấm tên để xem đề cập của tác giả."
         >
-          {data?.items.length ? (
+          {authors.length ? (
             <ReportTable
               headers={[
                 { label: "Tác giả" },
@@ -81,7 +86,7 @@ export function ProjectAuthorsReport({
                 { label: "Tương tác", numeric: true },
                 { label: "Thái độ chính" },
               ]}
-              rows={data.items.map((author) => [
+              rows={authors.map((author) => [
                 <span key="name" className="inline-flex items-center gap-1.5">
                   <Link
                     href={`${mentionsHref}?authorId=${author.id}`}
@@ -126,16 +131,16 @@ export function ProjectAuthorsReport({
           span="s4"
           scope="common"
           note={
-            data?.withoutFollowers
-              ? `${formatCount(data.withoutFollowers)}/${formatCount(authorTotal)} tác giả chưa có số người theo dõi, tạm tính là người dùng thường.`
+            tiers?.withoutFollowers
+              ? `${formatCount(tiers.withoutFollowers)}/${formatCount(authorTotal)} tác giả chưa có số người theo dõi, tạm tính là người dùng thường.`
               : "Phân loại theo số người theo dõi."
           }
         >
-          {data && authorTotal > 0 ? (
+          {tiers && authorTotal > 0 ? (
             <DonutChart
               height={260}
               cutout="58%"
-              data={data.tiers.map((tier) => ({
+              data={tiers.tiers.map((tier) => ({
                 name: TIER_LABELS.get(tier.tier) ?? tier.tier,
                 value: tier.authors,
               }))}

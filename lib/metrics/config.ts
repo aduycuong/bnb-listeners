@@ -14,6 +14,8 @@ export const METRICS_CONFIG = {
   /** Rows of the "Kênh thảo luận" (by source) and "Chủ đề nổi bật" panels. */
   topSources: 6,
   topTopics: 6,
+  /** Keywords in the cloud of the Topics report, most mentioned first (D16). */
+  topKeywords: 30,
   /** FAQ groups on the project-case page. */
   topBuyerQuestions: 8,
   /** Rows of the sources table on the Channels page and of the authors table. */
@@ -24,6 +26,34 @@ export const METRICS_CONFIG = {
   /** Report periods (`caseConfig.period`) on the reputation trend of the brand case. */
   reputationTrendPeriods: 6,
 } as const;
+
+/**
+ * Reports a page can request (`POST /api/metrics/reports`): each one holds the numbers of one
+ * box of a report page, so any page or grid is a list of keys, not a service of its own.
+ */
+export const REPORT_KEYS = [
+  "kpis",
+  "sentiment-breakdown",
+  "sentiment-trend",
+  "emotions",
+  "aspect-sentiment",
+  "channel-breakdown",
+  "source-ranking",
+  "posting-heatmap",
+  "topics",
+  "keywords",
+  "top-authors",
+  "author-tiers",
+  "price-trend",
+  "price-distribution",
+  "buyer-questions",
+  "reputation-index",
+  "reputation-trend",
+  "product-sentiment",
+] as const;
+
+/** Most reports one request may ask for. */
+export const MAX_REPORTS_PER_REQUEST = 20;
 
 /** Calendar report periods (D28, D29), in the project's timezone; a week runs Monday to Sunday. */
 export const REPORT_PERIOD_TYPES = ["day", "week", "month", "quarter", "year"] as const;

@@ -1,9 +1,7 @@
-import { getChannelMetrics } from "@/lib/metrics/services/get-channel-metrics";
-
 import { projectPeriodInputSchema } from "../schema";
 import { assertToolProject } from "../utils/assert-tool-project";
 import { defineAiTool } from "../utils/define-ai-tool";
-import { resolveToolPeriod } from "../utils/resolve-tool-period";
+import { loadToolReports } from "../utils/load-tool-reports";
 
 export const getChannelsTool = defineAiTool({
   name: "get_channels",
@@ -14,6 +12,10 @@ export const getChannelsTool = defineAiTool({
   inputSchema: projectPeriodInputSchema,
   async run({ projectId, period }, ctx) {
     await assertToolProject(ctx, projectId);
-    return getChannelMetrics({ projectId, period: resolveToolPeriod(period) });
+    return loadToolReports(projectId, period, [
+      { key: "channel-breakdown" },
+      { key: "posting-heatmap" },
+      { key: "source-ranking" },
+    ]);
   },
 });

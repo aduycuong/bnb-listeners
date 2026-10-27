@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { getReport } from "@/lib/reports/services/get-report";
+import { buildReportFacts } from "@/lib/reports/utils/build-report-prompt";
 
 import { toolProjectIdSchema } from "../schema";
 import { assertToolProject } from "../utils/assert-tool-project";
@@ -19,17 +20,7 @@ export const getReportTool = defineAiTool({
   async run({ projectId, reportId }, ctx) {
     await assertToolProject(ctx, projectId);
     const report = await getReport({ projectId, reportId });
-    const { metrics } = report;
-    // The daily series and channel tables are for charts; the model gets the totals.
-    return {
-      ...report,
-      metrics: {
-        period: metrics.period,
-        overview: { ...metrics.overview, daily: undefined },
-        sentiment: metrics.sentiment,
-        topics: metrics.topics,
-        caseMetrics: metrics.caseMetrics,
-      },
-    };
+    // The numbers as the report's writer got them: totals and changes, not chart series.
+    return { ...report, metrics: buildReportFacts(report.metrics) };
   },
 });
