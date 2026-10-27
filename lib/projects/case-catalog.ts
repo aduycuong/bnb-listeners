@@ -49,6 +49,14 @@ export const PROJECT_CASE_CATALOG: Record<
     description: "Chậm bàn giao, pháp lý, chất lượng công trình",
     audience: "PR, Lãnh đạo",
   },
+  project_compare: {
+    description: "So sánh 2–4 dự án đang theo dõi: đề cập, cảm xúc, khía cạnh, giá",
+    audience: "Chiến lược, Sales",
+  },
+  brand_compare: {
+    description: "So sánh 2–4 chủ đầu tư đang theo dõi: đề cập, cảm xúc, chỉ số uy tín",
+    audience: "Lãnh đạo, PR",
+  },
   residents: {
     description: "Phí quản lý, an ninh, tiện ích, ban quản trị",
     audience: "Quản lý vận hành",

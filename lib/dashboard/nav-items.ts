@@ -63,6 +63,21 @@ export const PROJECT_NAV_GROUPS = [
   },
 ];
 
+/**
+ * Menu of a compare project (D30): it has no mentions of its own, so only the comparison and
+ * the settings where its members are picked.
+ */
+export const COMPARE_PROJECT_NAV_GROUPS = [
+  {
+    labelKey: "nav.groupAnalysis",
+    items: [{ labelKey: "nav.projectOverview", segment: "", icon: LayoutDashboardIcon }],
+  },
+  {
+    labelKey: "nav.groupProject",
+    items: [{ labelKey: "nav.projectSettings", segment: "settings", icon: SettingsIcon }],
+  },
+];
+
 export function getProjectNavHref(
   workspaceIndex: number,
   projectIndex: number,

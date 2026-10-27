@@ -86,6 +86,8 @@ export type EmotionsReport = { emotion: Emotion; mentions: number; share: number
 /** Project aspects in their order; shares of the aspect's mentions, in %. */
 export type AspectSentimentReport = {
   id: string;
+  /** Stable aspect key; comparisons line aspects up by it. */
+  key: string;
   name: string;
   mentions: number;
   positive: number;
@@ -274,6 +276,25 @@ export type GetReportsParams = {
   projectId: string;
   period: ReportPeriod;
   reports: readonly ReportRequest[];
+};
+
+export type GetCompareReportsParams = {
+  workspaceId: string;
+  /** The compare project (D30). */
+  projectId: string;
+  period: ReportPeriod;
+  reports: readonly ReportRequest[];
+};
+
+export type GetCompareReportsResult<R extends readonly ReportRequest[] = ReportRequest[]> = {
+  /** The period in the compare project's timezone; members resolve it in their own. */
+  period: ReportPeriodInfo;
+  members: ({ id: string; name: string } & Omit<GetReportsResult<R>, "period">)[];
+  /** Aspects every member has, by key; the others are left out of comparisons. */
+  sharedAspects: { key: string; name: string }[];
+  /** Why the members cannot be compared now (a member deleted, too few left). */
+  issues: string[];
+  warnings: string[];
 };
 
 export type GetReportsResult<R extends readonly ReportRequest[] = ReportRequest[]> = {

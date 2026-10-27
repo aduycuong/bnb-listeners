@@ -15,6 +15,7 @@ import { z } from "zod";
 import { projects } from "@/db/schema";
 import { db } from "@/lib/db";
 import { refreshProjectMetricsDaily } from "@/lib/metrics/services/refresh-project-metrics-daily";
+import { listeningProjectFilter } from "@/lib/projects/utils/listening-project-filter";
 
 import { commandArgv } from "./script-argv";
 
@@ -48,7 +49,7 @@ async function main() {
   const rows = await db
     .select({ id: projects.id, name: projects.name })
     .from(projects)
-    .where(options.projectId ? eq(projects.id, options.projectId) : undefined)
+    .where(options.projectId ? eq(projects.id, options.projectId) : listeningProjectFilter)
     .orderBy(asc(projects.createdAt));
   const from = options.days ? new Date(Date.now() - (options.days - 1) * DAY_MS) : undefined;
 

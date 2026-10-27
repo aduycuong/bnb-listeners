@@ -9,6 +9,7 @@ import {
 } from "@/lib/enrichment/utils/effective-sentiment-sql";
 import { engagementSql } from "@/lib/metrics/utils/engagement-sql";
 import type { AlertRuleKind } from "@/lib/projects/alert-templates";
+import { listeningProjectFilter } from "@/lib/projects/utils/listening-project-filter";
 
 import { VIRAL_LOOKBACK_MS, VIRAL_POST_LIMIT, alertLevelForKind } from "../config";
 import type { AlertHit, AlertPayload, EvaluateAlertsParams, EvaluateAlertsResult } from "../types";
@@ -90,7 +91,7 @@ async function loadProjects(projectId: string | undefined): Promise<ProjectRow[]
     notificationConfig: projects.notificationConfig,
     caseConfig: projects.caseConfig,
   };
-  if (!projectId) return db.select(columns).from(projects);
+  if (!projectId) return db.select(columns).from(projects).where(listeningProjectFilter);
   const rows = await db.select(columns).from(projects).where(eq(projects.id, projectId));
   if (!rows[0]) throw new NotFoundError("projects", projectId);
   return rows;

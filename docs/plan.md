@@ -336,11 +336,12 @@ Xem [D30](decisions.md#d30--một-project-theo-dõi-một-chủ-thể-so-sánh-l
 - [x] So số từng box với service cũ trên cùng project và kỳ trước khi xóa
 
 **PR 3 — Case so sánh**
-- [ ] `project_compare_members`; template có `kind` (`listening` | `compare`) và `compareOf`
-- [ ] Tạo project so sánh: 2–4 project cùng workspace, cùng case; cảnh báo khía cạnh không trùng và timezone lệch
-- [ ] Pipeline bỏ qua project so sánh (thu thập, Match, Enrich, L4, cảnh báo, báo cáo theo kỳ)
-- [ ] Report so sánh trả series theo project (đề cập và SoV, cảm xúc, khía cạnh trùng key, emotion, giá, chỉ số uy tín); trung bình tính ở UI
-- [ ] Wizard, sidebar và trang report của project so sánh
+- [x] `project_compare_members`; case `project_compare`, `brand_compare` (`COMPARE_CASES`, `COMPARE_CASE_OF`), không dùng case template
+- [x] Tạo project so sánh: 2–4 project cùng workspace, cùng case; cảnh báo khía cạnh không trùng và timezone lệch
+- [x] Pipeline bỏ qua project so sánh: không có nguồn nên không thu thập, Match, Enrich, L4; cảnh báo, báo cáo theo kỳ và `metrics:refresh --all` lọc bằng `listeningProjectFilter`
+- [x] Report so sánh (`POST /api/metrics/compare-reports`) trả kết quả theo project (đề cập và SoV, NSS, khía cạnh trùng key, giá, chỉ số uy tín); trung bình không trọng số tính ở UI (`meanOf`)
+- [x] Wizard, sidebar và trang report của project so sánh
+- [ ] Chạy migration, tạo project so sánh cho mỗi case trên DB dev và kiểm trang
 
 ## Câu hỏi còn mở
 

@@ -8,6 +8,7 @@ import { periodDateSql } from "../../utils/resolve-report-window";
 
 type AspectRow = {
   id: string;
+  key: string;
   name: string;
   mentions: number;
   positive: number;
@@ -21,7 +22,7 @@ type AspectRow = {
  */
 export async function loadAspectSentimentReport(ctx: ReportContext): Promise<AspectSentimentReport> {
   const { rows } = await db.execute<AspectRow>(sql`
-    select pa.id, pa.name,
+    select pa.id, pa.key, pa.name,
       coalesce(sum(d.mentions), 0)::int as mentions,
       coalesce(sum(d.positive), 0)::int as positive,
       coalesce(sum(d.neutral), 0)::int as neutral,
@@ -35,6 +36,7 @@ export async function loadAspectSentimentReport(ctx: ReportContext): Promise<Asp
 
   return rows.map((row) => ({
     id: row.id,
+    key: row.key,
     name: row.name,
     mentions: row.mentions,
     positive: Math.round(sharePercent(row.positive, row.mentions) ?? 0),

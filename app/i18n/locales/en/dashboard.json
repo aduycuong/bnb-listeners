@@ -45,7 +45,8 @@
     "developer": "Developer",
     "sales": "Sales",
     "market": "Market",
-    "afterSales": "After sales"
+    "afterSales": "After sales",
+    "compare": "Comparison"
   },
   "cases": {
     "brand": "Developer reputation",
@@ -59,7 +60,9 @@
     "policy": "Policy, zoning, infrastructure",
     "kol": "Real estate KOLs",
     "crisis": "Crisis",
-    "residents": "Residents & operations"
+    "residents": "Residents & operations",
+    "project_compare": "Project comparison",
+    "brand_compare": "Developer comparison"
   },
   "caseNav": {
     "brand": "Reputation index",
@@ -73,7 +76,9 @@
     "policy": "Policy & zoning",
     "kol": "KOLs & review channels",
     "crisis": "Crisis timeline",
-    "residents": "Residents & operations"
+    "residents": "Residents & operations",
+    "project_compare": "Project comparison",
+    "brand_compare": "Developer comparison"
   },
   "settingsMenu": {
     "profile": "Profile"

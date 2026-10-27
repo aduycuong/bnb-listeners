@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   DASHBOARD_NAV_ITEMS,
+  COMPARE_PROJECT_NAV_GROUPS,
   PROJECT_NAV_GROUPS,
   getDashboardNavHref,
   getProjectNavHref,
@@ -33,6 +34,7 @@ import {
   sidebarGroupLabelClassName,
   sidebarNavMenuButtonClassName,
 } from "@/lib/dashboard/sidebar-menu-styles";
+import { isCompareCase } from "@/lib/projects/project-cases";
 import {
   fetchProjects,
   projectsQueryKey,
@@ -123,7 +125,10 @@ export function DashboardSidebar({
             </SidebarGroupContent>
           </SidebarGroup>
         ) : (
-          PROJECT_NAV_GROUPS.map((group) => (
+          (activeProject && isCompareCase(activeProject.case)
+            ? COMPARE_PROJECT_NAV_GROUPS
+            : PROJECT_NAV_GROUPS
+          ).map((group) => (
             <SidebarGroup key={group.labelKey} className="px-3 py-0">
               <SidebarGroupLabel className={sidebarGroupLabelClassName}>
                 {t(group.labelKey)}

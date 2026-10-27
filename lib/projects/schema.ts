@@ -8,7 +8,7 @@ import {
   REPORT_SCHEDULES,
 } from "./alert-templates";
 import { ENTITY_ROLES } from "./case-templates";
-import { AVAILABLE_PROJECT_CASES, PROJECT_CASES } from "./project-cases";
+import { AVAILABLE_PROJECT_CASES, COMPARE_CASES, COMPARE_MEMBERS, PROJECT_CASES } from "./project-cases";
 import { collectProjectConfigIssues } from "./utils/collect-project-config-issues";
 
 export const projectCaseSchema = z.enum(PROJECT_CASES);
@@ -114,6 +114,32 @@ export const createProjectWithConfigSchema = projectConfigSchema.and(
   }),
 );
 
+/** Projects a compare project reads, in display order (D30). */
+export const compareMemberIdsSchema = z
+  .array(z.uuid())
+  .min(COMPARE_MEMBERS.min, { error: `Chọn ít nhất ${COMPARE_MEMBERS.min} project.` })
+  .max(COMPARE_MEMBERS.max, { error: `Chọn tối đa ${COMPARE_MEMBERS.max} project.` })
+  .refine((ids) => new Set(ids).size === ids.length, { error: "Mỗi project chỉ chọn một lần." });
+
+/** Create body of a compare project: no sources, entities or aspects of its own. */
+export const createCompareProjectSchema = z.object({
+  name: z.string().trim().min(1, { error: "Nhập tên project." }).max(120),
+  description: z.string().trim().max(1000).optional(),
+  case: z.enum(COMPARE_CASES),
+  memberIds: compareMemberIdsSchema,
+});
+
+export const compareCheckQuerySchema = z.object({
+  case: z.enum(COMPARE_CASES),
+  /** Comma-separated project ids. */
+  memberIds: z
+    .string()
+    .transform((value) => value.split(",").filter(Boolean))
+    .pipe(z.array(z.uuid()).max(COMPARE_MEMBERS.max)),
+});
+
+export const updateCompareMembersSchema = z.object({ memberIds: compareMemberIdsSchema });
+
 export const updateProjectSchema = z.object({
   name: z.string().trim().min(1, { error: "Project name is required." }).optional(),
   description: z.string().trim().nullable().optional(),
@@ -126,3 +152,5 @@ export type ProjectConfigBody = z.output<typeof projectConfigSchema>;
 export type CreateProjectWithConfigInput = z.input<typeof createProjectWithConfigSchema>;
 export type CreateProjectWithConfigBody = z.output<typeof createProjectWithConfigSchema>;
 export type ProjectAlertsInput = z.output<typeof projectAlertsInputSchema>;
+export type CreateCompareProjectInput = z.input<typeof createCompareProjectSchema>;
+export type CreateCompareProjectBody = z.output<typeof createCompareProjectSchema>;

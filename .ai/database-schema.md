@@ -122,7 +122,7 @@ Social listening scope inside a workspace: one brand, campaign, or similar liste
 | workspace_id | uuid | NO | — | FK → `workspaces.id` ON DELETE CASCADE |
 | name | text | NO | — | Display name, unique per workspace |
 | description | text | YES | — | Brand or campaign description |
-| case | text | NO | `project` | Real estate case id (`docs/decisions.md` D10): `brand`, `project`, `ir`, `launch`, `broker`, `lead`, `rival`, `market`, `policy`, `kol`, `crisis`, `residents`. Only `project`, `market`, `brand` have a real config yet |
+| case | text | NO | `project` | Real estate case id (`docs/decisions.md` D10): `brand`, `project`, `ir`, `launch`, `broker`, `lead`, `rival`, `market`, `policy`, `kol`, `crisis`, `residents`, and the compare cases `project_compare`, `brand_compare` (D30, members in `project_compare_members`). Only `project`, `market`, `brand` and the compare cases have a real config yet |
 | case_version | integer | NO | `1` | Case definition version (`CASE_VERSIONS` in `lib/projects/case-templates.ts`); raised only when the user saves an upgraded config |
 | timezone | text | NO | `Asia/Ho_Chi_Minh` | Timezone for buckets and reports |
 | config_version | integer | NO | `1` | Bumped on every config change |
@@ -211,6 +211,19 @@ Sources a project follows (required for Facebook, which has no keyword search).
 | created_at | timestamptz | NO | `now()` | |
 
 **Keys:** primary key `(project_id, source_id)`; `project_sources_source_id_idx` on `source_id`
+
+### `project_compare_members`
+
+Projects a compare project (`project_compare`, `brand_compare`) reads, in display order (D30). A compare project has no sources, entities, queries, enrichers or L4 of its own; 2–4 members of the listening case it compares, in the same workspace.
+
+| Column | Type | Nullable | Default | Description |
+| ------ | ---- | -------- | ------- | ----------- |
+| compare_project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| member_project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
+| sort_order | integer | NO | `0` | Display order |
+| created_at | timestamptz | NO | `now()` | |
+
+**Keys:** primary key `(compare_project_id, member_project_id)`; `project_compare_members_member_idx` on `member_project_id`
 
 ### `mentions`
 
