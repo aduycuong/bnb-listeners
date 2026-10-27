@@ -343,6 +343,13 @@ Xem [D30](decisions.md#d30--một-project-theo-dõi-một-chủ-thể-so-sánh-l
 - [x] Wizard, sidebar và trang report của project so sánh
 - [x] Chạy migration, tạo project so sánh trên DB dev (TT Genesis, Essensia Sky) và kiểm Tổng quan, Cài đặt, đổi thứ tự thành viên, job báo cáo bỏ qua project so sánh. Chưa có project brand để thử `brand_compare`
 
+**PR 4 — Project chính và các trang so sánh**
+- [x] `project_compare_members.is_primary` (unique một mỗi project so sánh); chọn project chính rồi 1–3 đối thủ ở wizard và cài đặt
+- [x] TB đối thủ và chênh lệch (`CompareTable`); KPI Tổng quan so với TB đối thủ
+- [x] Trang Cảm xúc, Kênh & nguồn, Chủ đề & từ khóa, Tác giả, Giá & câu hỏi / Chỉ số uy tín cho project so sánh
+- [ ] Chạy migration, kiểm các trang trên DB dev
+- [ ] Sau: luồng thảo luận gộp, tác giả nói về nhiều dự án
+
 ## Câu hỏi còn mở
 
 - Kho thô dùng chung giữa các workspace (tiết kiệm chi phí cào) hay tách riêng theo workspace (dễ quản lý quyền)? Hiện đề xuất dùng chung.

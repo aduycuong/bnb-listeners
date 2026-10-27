@@ -19,7 +19,8 @@ export const PUT = createApiHandler(
     updateCompareMembers({
       workspaceId: ctx.workspaceId,
       projectId: params.id,
-      memberIds: params.memberIds,
+      primaryId: params.primaryId,
+      competitorIds: params.competitorIds,
     }),
   { allowedRoles: [], minWorkspacePermission: "edit" },
 );

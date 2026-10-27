@@ -535,7 +535,15 @@ export function PriceTrendChart({
   series,
 }: {
   days: string[];
-  series: { key: string; color: string; dashed?: boolean; dotted?: boolean; values: (number | null)[] }[];
+  series: {
+    key: string;
+    color: string;
+    dashed?: boolean;
+    dotted?: boolean;
+    /** Line width; 2 when left out. */
+    width?: number;
+    values: (number | null)[];
+  }[];
 }) {
   const data = days.map((day, index) => ({
     day,
@@ -563,7 +571,7 @@ export function PriceTrendChart({
             type="monotone"
             dataKey={item.key}
             stroke={item.color}
-            strokeWidth={2}
+            strokeWidth={item.width ?? 2}
             strokeDasharray={item.dashed ? "6 6" : undefined}
             connectNulls={false}
             dot={item.dashed ? false : { r: item.dotted ? 3 : 2.5 }}
@@ -714,6 +722,80 @@ export function RadarAttributeChart({
           />
         ))}
       </RadarChart>
+    </ChartBox>
+  );
+}
+
+/** Bars grouped by category, one bar per series (e.g. each emotion, one bar per project). */
+export function GroupedBarChart({
+  categories,
+  series,
+  unit = "",
+}: {
+  categories: string[];
+  series: { key: string; color: string; values: number[] }[];
+  unit?: string;
+}) {
+  const data = categories.map((category, index) => ({
+    category,
+    ...Object.fromEntries(series.map((item) => [item.key, item.values[index] ?? 0])),
+  }));
+  const config = Object.fromEntries(
+    series.map((item) => [item.key, { label: item.key, color: item.color }]),
+  ) satisfies ChartConfig;
+
+  return (
+    <ChartBox height={260} config={config}>
+      <BarChart data={data}>
+        <CartesianGrid vertical={false} stroke="var(--border)" />
+        <XAxis dataKey="category" tickLine={false} axisLine={false} interval={0} tick={{ fontSize: 11 }} />
+        <YAxis tickFormatter={(value) => `${value}${unit}`} tickLine={false} axisLine={false} width={40} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Legend verticalAlign="top" align="right" iconType="circle" />
+        {series.map((item) => (
+          <Bar key={item.key} dataKey={item.key} fill={item.color} radius={3} />
+        ))}
+      </BarChart>
+    </ChartBox>
+  );
+}
+
+/** One horizontal 100% bar per row, split into segments (e.g. each project's channel mix). */
+export function StackedShareChart({
+  rows,
+  segments,
+}: {
+  rows: { name: string; values: number[] }[];
+  segments: { key: string; color: string }[];
+}) {
+  const data = rows.map((row) => {
+    const total = row.values.reduce((sum, value) => sum + value, 0);
+    return {
+      name: row.name,
+      ...Object.fromEntries(
+        segments.map((segment, index) => [
+          segment.key,
+          total ? Math.round(((row.values[index] ?? 0) / total) * 1000) / 10 : 0,
+        ]),
+      ),
+    };
+  });
+  const config = Object.fromEntries(
+    segments.map((segment) => [segment.key, { label: segment.key, color: segment.color }]),
+  ) satisfies ChartConfig;
+
+  return (
+    <ChartBox height={Math.max(150, rows.length * 48 + 70)} config={config}>
+      <BarChart data={data} layout="vertical">
+        <CartesianGrid horizontal={false} stroke="var(--border)" />
+        <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} tickLine={false} axisLine={false} />
+        <YAxis type="category" dataKey="name" width={120} tickLine={false} axisLine={false} />
+        <ChartTooltip content={<ChartTooltipContent />} />
+        <Legend verticalAlign="top" align="right" iconType="circle" />
+        {segments.map((segment) => (
+          <Bar key={segment.key} dataKey={segment.key} stackId="share" fill={segment.color} />
+        ))}
+      </BarChart>
     </ChartBox>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { CompareOverviewReport } from "@/components/metrics/compare-overview-report";
+import { CompareOverviewReport } from "@/components/metrics/compare/compare-overview-report";
 import { ProjectOverviewReport } from "@/components/metrics/project-overview-report";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";

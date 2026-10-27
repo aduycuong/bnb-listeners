@@ -2,7 +2,9 @@
 
 import { SettingsIcon } from "lucide-react";
 import Link from "next/link";
+import { useT } from "next-i18next/client";
 
+import { CompareTopicsReport } from "@/components/metrics/compare/compare-topics-report";
 import { MetricsPageHeader } from "@/components/metrics/metrics-page-header";
 import { useReports } from "@/components/metrics/use-metrics-api";
 import { useReportPeriodDays } from "@/components/metrics/use-report-period-days";
@@ -18,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
 import { AQUA_PAGE_META, formatCount } from "@/lib/projects/aqua-demo";
+import { isCompareCase } from "@/lib/projects/project-cases";
 import type { TopicsReportItem } from "@/lib/metrics/types";
 import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
 
@@ -33,6 +36,7 @@ export function ProjectTopicsReportPage({
   workspaceIndexParam: string;
   projectIndexParam: string;
 }) {
+  const { t } = useT("dashboard");
   const { workspace, project, workspaceIndex, projectIndex } = useProjectRouteContext(
     workspaceIndexParam,
     projectIndexParam,
@@ -40,21 +44,34 @@ export function ProjectTopicsReportPage({
 
   if (!workspace || !project) return null;
 
+  const scope = { workspaceId: workspace.id, projectId: project.id };
+  const banner = {
+    name: project.name,
+    description: project.description,
+    projectCase: project.case,
+    settingsHref: getProjectNavHref(workspaceIndex, projectIndex, "settings"),
+  };
+  if (isCompareCase(project.case)) {
+    return (
+      <CompareTopicsReport
+        scope={scope}
+        projectName={project.name}
+        caseLabel={t(`cases.${project.case}`)}
+        banner={banner}
+      />
+    );
+  }
+
   const topicsHref = getProjectNavHref(workspaceIndex, projectIndex, "topics");
   return (
     <TopicsReport
-      scope={{ workspaceId: workspace.id, projectId: project.id }}
+      scope={scope}
       projectName={project.name}
       manageHref={
         hasMinWorkspacePermission(workspace.permission, "edit") ? `${topicsHref}/manage` : null
       }
       mentionsHref={getProjectNavHref(workspaceIndex, projectIndex, "mentions")}
-      banner={{
-        name: project.name,
-        description: project.description,
-        projectCase: project.case,
-        settingsHref: getProjectNavHref(workspaceIndex, projectIndex, "settings"),
-      }}
+      banner={banner}
     />
   );
 }

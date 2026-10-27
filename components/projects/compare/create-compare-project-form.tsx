@@ -6,7 +6,7 @@ import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 import { useT } from "next-i18next/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { FormFieldText } from "@/components/forms/form-field-text";
 import { FormFieldTextarea } from "@/components/forms/form-field-textarea";
@@ -47,8 +47,17 @@ export function CreateCompareProjectForm({
   const [saving, setSaving] = useState(false);
   const form = useForm<CreateCompareProjectInput, unknown, CreateCompareProjectBody>({
     resolver: zodResolver(createCompareProjectSchema),
-    defaultValues: { name: "", description: "", case: compareCase, memberIds: [] },
+    defaultValues: {
+      name: "",
+      description: "",
+      case: compareCase,
+      primaryId: "",
+      competitorIds: [],
+    },
   });
+
+  const primaryId = useWatch({ control: form.control, name: "primaryId" });
+  const competitorIds = useWatch({ control: form.control, name: "competitorIds" });
 
   async function onSubmit(values: CreateCompareProjectBody) {
     setSaving(true);
@@ -101,24 +110,29 @@ export function CreateCompareProjectForm({
           label="Mô tả"
           placeholder="So sánh để làm gì, ai sẽ dùng…"
         />
-        <Controller
-          control={form.control}
-          name="memberIds"
-          render={({ field, fieldState }) => (
-            <div className="flex flex-col gap-2">
-              <h3 className="text-sm font-semibold">Project so sánh</h3>
-              <CompareMembersPicker
-                workspaceId={workspaceId}
-                compareCase={compareCase}
-                value={field.value ?? []}
-                onChange={field.onChange}
-              />
-              {fieldState.error ? (
-                <p className="text-sm text-destructive">{fieldState.error.message}</p>
-              ) : null}
-            </div>
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-semibold">Project so sánh</h3>
+          <CompareMembersPicker
+            workspaceId={workspaceId}
+            compareCase={compareCase}
+            value={{ primaryId: primaryId || null, competitorIds: competitorIds ?? [] }}
+            onChange={(next) => {
+              form.setValue("primaryId", next.primaryId ?? "", {
+                shouldValidate: form.formState.isSubmitted,
+              });
+              form.setValue("competitorIds", next.competitorIds, {
+                shouldValidate: form.formState.isSubmitted,
+              });
+            }}
+          />
+          {[form.formState.errors.primaryId, form.formState.errors.competitorIds].map((error) =>
+            error?.message ? (
+              <p key={error.message} className="text-sm text-destructive">
+                {error.message}
+              </p>
+            ) : null,
           )}
-        />
+        </div>
       </form>
 
       <CompareFormActionBar>

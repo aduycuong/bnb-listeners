@@ -14,8 +14,8 @@ import { periodDateSql } from "../../utils/resolve-report-window";
 export async function loadReputationIndexReport(ctx: ReportContext): Promise<ReputationIndexReport> {
   const days = periodDateSql(ctx.window);
   const [{ rows: aspects }, rows] = await Promise.all([
-    db.execute<{ id: string; name: string }>(sql`
-      select id, name from project_aspects
+    db.execute<{ id: string; key: string; name: string }>(sql`
+      select id, key, name from project_aspects
       where project_id = ${ctx.projectId}::uuid
       order by sort_order, name
     `),
@@ -32,6 +32,7 @@ export async function loadReputationIndexReport(ctx: ReportContext): Promise<Rep
     );
     return {
       id: aspect.id,
+      key: aspect.key,
       name: aspect.name,
       mentions: counts.positive + counts.neutral + counts.negative,
       score: reputationPillarScore(counts),

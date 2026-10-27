@@ -156,6 +156,8 @@ export type CreateCompareProjectParams = CreateCompareProjectBody & { workspaceI
 export type CompareMember = {
   id: string;
   name: string;
+  /** The project the others are compared against. */
+  primary: boolean;
   case: ProjectCase;
   timezone: string;
   /** Project aspects in order; comparisons only line up keys every member has. */
@@ -165,12 +167,14 @@ export type CompareMember = {
 export type CheckCompareMembersParams = {
   workspaceId: string;
   case: CompareCase;
-  memberIds: string[];
+  primaryId: string;
+  competitorIds: string[];
   /** The compare project itself, when editing, so it is not taken as a member. */
   compareProjectId?: string;
 };
 
 export type CheckCompareMembersResult = {
+  /** The primary project first, then the competitors in order. */
   members: CompareMember[];
   /** Why the members cannot be saved; empty when they can. */
   issues: string[];
@@ -183,5 +187,6 @@ export type CheckCompareMembersResult = {
 export type UpdateCompareMembersParams = {
   workspaceId: string;
   projectId: string;
-  memberIds: string[];
+  primaryId: string;
+  competitorIds: string[];
 };

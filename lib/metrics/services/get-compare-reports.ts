@@ -6,8 +6,8 @@ import { getReports } from "./get-reports";
 
 /**
  * The same reports for every member of a compare project (D30), for one period: each member
- * runs `getReports` in its own timezone, in parallel. Series come back per member; averages
- * are for the page to compute (`meanOf`).
+ * runs `getReports` in its own timezone, in parallel. Series come back per member, the primary
+ * project first; the competitors' mean is for the page to compute (`meanOf`).
  */
 export async function getCompareReports<const R extends readonly ReportRequest[]>(
   params: GetCompareReportsParams & { reports: R },
@@ -23,7 +23,7 @@ export async function getCompareReports<const R extends readonly ReportRequest[]
         period: params.period,
         reports: params.reports,
       });
-      return { id: member.id, name: member.name, ...result };
+      return { id: member.id, name: member.name, primary: member.primary, ...result };
     }),
   );
 

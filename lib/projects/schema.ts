@@ -8,7 +8,7 @@ import {
   REPORT_SCHEDULES,
 } from "./alert-templates";
 import { ENTITY_ROLES } from "./case-templates";
-import { AVAILABLE_PROJECT_CASES, COMPARE_CASES, COMPARE_MEMBERS, PROJECT_CASES } from "./project-cases";
+import { AVAILABLE_PROJECT_CASES, COMPARE_CASES, COMPARE_COMPETITORS, PROJECT_CASES } from "./project-cases";
 import { collectProjectConfigIssues } from "./utils/collect-project-config-issues";
 
 export const projectCaseSchema = z.enum(PROJECT_CASES);
@@ -114,31 +114,41 @@ export const createProjectWithConfigSchema = projectConfigSchema.and(
   }),
 );
 
-/** Projects a compare project reads, in display order (D30). */
-export const compareMemberIdsSchema = z
-  .array(z.uuid())
-  .min(COMPARE_MEMBERS.min, { error: `Chọn ít nhất ${COMPARE_MEMBERS.min} project.` })
-  .max(COMPARE_MEMBERS.max, { error: `Chọn tối đa ${COMPARE_MEMBERS.max} project.` })
-  .refine((ids) => new Set(ids).size === ids.length, { error: "Mỗi project chỉ chọn một lần." });
+/** The members of a compare project (D30): the primary project and its competitors, in order. */
+export const compareMembersSchema = z
+  .object({
+    primaryId: z.uuid({ error: "Chọn project chính." }),
+    competitorIds: z
+      .array(z.uuid())
+      .min(COMPARE_COMPETITORS.min, { error: `Chọn ít nhất ${COMPARE_COMPETITORS.min} đối thủ.` })
+      .max(COMPARE_COMPETITORS.max, { error: `Chọn tối đa ${COMPARE_COMPETITORS.max} đối thủ.` }),
+  })
+  .refine(
+    ({ primaryId, competitorIds }) =>
+      new Set([primaryId, ...competitorIds]).size === competitorIds.length + 1,
+    { error: "Mỗi project chỉ chọn một lần.", path: ["competitorIds"] },
+  );
 
 /** Create body of a compare project: no sources, entities or aspects of its own. */
-export const createCompareProjectSchema = z.object({
-  name: z.string().trim().min(1, { error: "Nhập tên project." }).max(120),
-  description: z.string().trim().max(1000).optional(),
-  case: z.enum(COMPARE_CASES),
-  memberIds: compareMemberIdsSchema,
-});
+export const createCompareProjectSchema = z
+  .object({
+    name: z.string().trim().min(1, { error: "Nhập tên project." }).max(120),
+    description: z.string().trim().max(1000).optional(),
+    case: z.enum(COMPARE_CASES),
+  })
+  .and(compareMembersSchema);
 
 export const compareCheckQuerySchema = z.object({
   case: z.enum(COMPARE_CASES),
+  primaryId: z.uuid(),
   /** Comma-separated project ids. */
-  memberIds: z
+  competitorIds: z
     .string()
     .transform((value) => value.split(",").filter(Boolean))
-    .pipe(z.array(z.uuid()).max(COMPARE_MEMBERS.max)),
+    .pipe(z.array(z.uuid()).max(COMPARE_COMPETITORS.max)),
 });
 
-export const updateCompareMembersSchema = z.object({ memberIds: compareMemberIdsSchema });
+export const updateCompareMembersSchema = compareMembersSchema;
 
 export const updateProjectSchema = z.object({
   name: z.string().trim().min(1, { error: "Project name is required." }).optional(),

@@ -8,7 +8,8 @@ export const GET = createApiHandler(
     checkCompareMembers({
       workspaceId: ctx.workspaceId,
       case: params.case,
-      memberIds: params.memberIds,
+      primaryId: params.primaryId,
+      competitorIds: params.competitorIds,
     }),
   { allowedRoles: [], minWorkspacePermission: "read" },
 );
