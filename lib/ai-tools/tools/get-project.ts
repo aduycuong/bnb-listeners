@@ -10,7 +10,7 @@ export const getProjectTool = defineAiTool({
   name: "get_project",
   scope: null,
   description:
-    "Cấu hình của một project: case, các đối tượng theo dõi (chủ đầu tư, dự án, đối thủ) " +
+    "Cấu hình của một project: case, đối tượng theo dõi (chủ thể, các dự án của chủ đầu tư) " +
     "và các khía cạnh. Dùng id đối tượng và khía cạnh để lọc search_mentions.",
   inputSchema: z.object({ projectId: toolProjectIdSchema }),
   async run({ projectId }, ctx) {

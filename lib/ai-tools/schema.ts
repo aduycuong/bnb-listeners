@@ -28,7 +28,7 @@ const toolTermsSchema = z.array(z.string().trim().min(1).max(80)).max(30).option
 export const toolEntityInputSchema = z.object({
   role: z
     .enum(ENTITY_ROLES)
-    .describe("Vai trò theo case, xem list_case_templates (primary, competitor, product, area…)."),
+    .describe("Vai trò theo case, xem list_case_templates: subject (đúng một), product (dự án của chủ đầu tư, case brand)."),
   name: z.string().trim().min(1).max(120),
   aliases: toolTermsSchema.describe("Tên khác, viết tắt, tên cũ, mã cổ phiếu."),
   ambiguousAliases: toolTermsSchema.describe(

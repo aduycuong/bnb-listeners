@@ -11,13 +11,8 @@ import {
 import type { AlertRuleSeed } from "./alert-templates";
 import type { AvailableProjectCase } from "./project-cases";
 
-export const ENTITY_ROLES = [
-  "primary",
-  "competitor",
-  "product",
-  "person",
-  "area",
-] as const;
+/** `subject`: what the project tracks, exactly one (D30). `product`: a project of the developer (`brand`). */
+export const ENTITY_ROLES = ["subject", "product"] as const;
 
 export type EntityRole = (typeof ENTITY_ROLES)[number];
 
@@ -144,22 +139,13 @@ export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
     version: 1,
     roles: [
       {
-        role: "primary",
+        role: "subject",
         label: "Dự án theo dõi",
         hint: "Tên thương mại; alias gồm tên phân khu, tên cũ, cách viết tắt",
         placeholder: "VD: La Pura",
         aliasPlaceholder: "VD: Zenia, Astral City",
         min: 1,
         max: 1,
-      },
-      {
-        role: "competitor",
-        label: "Dự án cạnh tranh",
-        hint: "Dùng để so sánh mức độ được nhắc tới và cảm xúc",
-        placeholder: "VD: dự án cùng trục QL13",
-        aliasPlaceholder: "Tên khác",
-        min: 0,
-        max: 10,
       },
     ],
     aspects: [
@@ -182,7 +168,7 @@ export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
       { kind: "negative_share", scope: { type: "aspect_key", key: "legal" } },
       { kind: "negative_share", scope: { type: "aspect_key", key: "progress" } },
       { kind: "buyer_questions_growth", scope: { type: "project" } },
-      { kind: "viral_post", scope: { type: "first_of_role", role: "primary" } },
+      { kind: "viral_post", scope: { type: "project" } },
       { kind: "price_deviation", scope: { type: "project" }, enabled: false },
     ],
   }],
@@ -190,13 +176,13 @@ export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
     version: 1,
     roles: [
       {
-        role: "area",
+        role: "subject",
         label: "Khu vực theo dõi",
         hint: "Alias gồm tên trước sáp nhập, cách viết tắt, tên tuyến đường quen gọi",
         placeholder: "VD: Thuận An",
         aliasPlaceholder: "VD: Lái Thiêu, TA",
         min: 1,
-        max: 30,
+        max: 1,
       },
     ],
     aspects: [
@@ -211,7 +197,7 @@ export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
     defaultConfig: { segments: ["Căn hộ"], period: "week" },
     enrichers: { case: ["price_quote"], optional: ["buyer_question", "question_assign"] },
     alertSeeds: [
-      { kind: "volume_growth", scope: { type: "each_role", role: "area" } },
+      { kind: "volume_growth", scope: { type: "project" } },
       {
         kind: "keyword_hit",
         scope: { type: "project" },
@@ -226,7 +212,7 @@ export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
     version: 1,
     roles: [
       {
-        role: "primary",
+        role: "subject",
         label: "Chủ đầu tư",
         hint: "Alias gồm tên viết tắt, mã cổ phiếu, tên công ty con",
         placeholder: "VD: Phát Đạt",
@@ -243,15 +229,6 @@ export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
         min: 0,
         max: 20,
       },
-      {
-        role: "competitor",
-        label: "Chủ đầu tư để so sánh",
-        hint: "Dùng để tính Share of Voice",
-        placeholder: "VD: Becamex IDC",
-        aliasPlaceholder: "Tên khác",
-        min: 0,
-        max: 10,
-      },
     ],
     aspects: [
       { key: "legal", name: "Pháp lý minh bạch", description: "Pháp lý các dự án, sai phạm, thanh tra" },
@@ -262,16 +239,16 @@ export const CASE_VERSIONS: Record<AvailableProjectCase, CaseTemplate[]> = {
     ],
     configSchema: brandCaseConfigSchema,
     defaultConfig: { period: "month" },
-    enrichers: { case: [], optional: ["stance", "violation"] },
+    enrichers: { case: ["entities"], optional: ["stance", "violation"] },
     alertSeeds: [
-      { kind: "negative_share", scope: { type: "first_of_role", role: "primary" }, threshold: 20 },
+      { kind: "negative_share", scope: { type: "project" }, threshold: 20 },
       {
         kind: "keyword_hit",
-        scope: { type: "first_of_role", role: "primary" },
+        scope: { type: "project" },
         keywords: ["lừa đảo", "khởi tố", "thanh tra", "vỡ nợ", "chậm bàn giao"],
       },
       { kind: "volume_growth", scope: { type: "aspect_key", key: "finance" }, window: "24h" },
-      { kind: "viral_post", scope: { type: "first_of_role", role: "primary" } },
+      { kind: "viral_post", scope: { type: "project" } },
     ],
   }],
 };

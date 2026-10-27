@@ -141,7 +141,6 @@ export type AlertRuleSeed = {
   kind: AlertRuleKind;
   scope:
     | { type: "project" }
-    | { type: "first_of_role"; role: EntityRole }
     | { type: "aspect_key"; key: string }
     | { type: "each_role"; role: EntityRole };
   enabled?: boolean;

@@ -63,12 +63,6 @@ export function buildReportFacts(metrics: ReportMetrics) {
         ...overview.negativeShare,
         changePoints: points(overview.negativeShare.current, overview.negativeShare.previous),
       },
-      shareOfVoicePct: overview.shareOfVoice
-        ? {
-            ...overview.shareOfVoice,
-            changePoints: points(overview.shareOfVoice.current, overview.shareOfVoice.previous),
-          }
-        : null,
     },
     sentiment: overview.sentiment,
     emotions: metrics.sentiment.emotions.filter((item) => item.mentions > 0),
@@ -100,22 +94,21 @@ export function buildReportFacts(metrics: ReportMetrics) {
     caseMetrics:
       caseMetrics?.case === "project"
         ? {
-            primary: caseMetrics.primaryName,
+            subject: caseMetrics.subjectName,
             resalePriceMedian: caseMetrics.price.median,
             priceRef: caseMetrics.price.priceRef,
             buyerQuestions: {
               ...caseMetrics.questions.total,
               top: caseMetrics.questions.items.map((item) => ({ name: item.name, mentions: item.mentions })),
             },
-            aspectNss: caseMetrics.aspects,
+            aspectNss: caseMetrics.aspects.map((aspect) => ({ name: aspect.name, nss: aspect.nss })),
           }
         : caseMetrics?.case === "brand"
           ? {
-              primary: caseMetrics.primaryName,
+              subject: caseMetrics.subjectName,
               reputationIndex: caseMetrics.index,
               pillars: caseMetrics.pillars.map((pillar) => ({ name: pillar.name, score: pillar.score })),
               products: caseMetrics.products,
-              shareOfVoice: caseMetrics.shareOfVoice.map((row) => ({ name: row.name, mentions: row.mentions })),
             }
           : null,
   };
@@ -147,7 +140,7 @@ export function buildReportPrompt(params: {
     "- Chỉ dùng con số có trong FACTS, viết theo kiểu Việt Nam (34.260; 15,2%). Không tự tính số mới, không làm tròn khác đi, không viết tắt K hay tr.",
     "- Mỗi điểm nổi bật và rủi ro dựa trên đề cập trong EVIDENCE, trích 1–3 nhãn (M1, M2…) vào `citations`; không viết nhãn trong lời văn.",
     "- Không bịa sự kiện, tên người, tên dự án ngoài FACTS và EVIDENCE. Khi dữ liệu ít, nói rõ là ít.",
-    "- Tên chỉ số trong lời văn: `nss` viết là NSS (chỉ số cảm xúc ròng, −100 đến +100, không phải NPS); `negativeSharePct` là tỷ lệ tiêu cực; `shareOfVoicePct` là Share of Voice; `changePct` là % thay đổi; `changePoints` là chênh lệch theo điểm.",
+    "- Tên chỉ số trong lời văn: `nss` viết là NSS (chỉ số cảm xúc ròng, −100 đến +100, không phải NPS); `negativeSharePct` là tỷ lệ tiêu cực; `changePct` là % thay đổi; `changePoints` là chênh lệch theo điểm.",
     `- Tối đa ${REPORT_CONFIG.maxItems} mục mỗi phần, câu ngắn, giọng trung tính. Khuyến nghị là việc cụ thể truyền thông có thể làm.`,
     params.facts.period.complete
       ? ""

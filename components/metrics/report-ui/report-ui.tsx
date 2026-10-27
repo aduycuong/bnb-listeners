@@ -50,7 +50,12 @@ export function ReportKpis({
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+    <div
+      className={cn(
+        "grid grid-cols-2 gap-3 md:grid-cols-3",
+        kpis.length === 5 ? "xl:grid-cols-5" : "xl:grid-cols-6",
+      )}
+    >
       {kpis.map((kpi, index) => (
         <div
           key={kpi.label}

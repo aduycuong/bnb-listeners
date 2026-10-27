@@ -12,7 +12,6 @@ import {
   effectiveSentimentJoins,
   effectiveSentimentSql,
 } from "@/lib/enrichment/utils/effective-sentiment-sql";
-import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 import { netSentimentScore, sharePercent } from "@/lib/metrics/formulas";
 import type { WorkspaceContext } from "@/lib/workspaces/types";
 
@@ -77,7 +76,7 @@ export async function getDashboardOverview(
     sql`((date_trunc('day', now() at time zone ${timezone}) - ${`${daysBack} days`}::interval) at time zone ${timezone})`;
   const start = startOfDay(periodDays - 1);
   const previousStart = startOfDay(periodDays * 2 - 1);
-  const scope = sql`p.workspace_id = ${workspaceId}::uuid and m.is_relevant and ${ownMentionSql}`;
+  const scope = sql`p.workspace_id = ${workspaceId}::uuid and m.is_relevant`;
 
   const projectRows = await db
     .select({

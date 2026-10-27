@@ -62,7 +62,7 @@ const STEPS: readonly CreateProjectStep[] = [
   { label: "Kiểu case", hint: "Tình huống cần theo dõi" },
   { label: "Thông tin chung", hint: "Tên và mô tả project" },
   { label: "Nguồn", hint: "Group, page sẽ nghe" },
-  { label: "Đối tượng theo dõi", hint: "Tên, alias, đối thủ" },
+  { label: "Đối tượng theo dõi", hint: "Tên và alias" },
   { label: "Khía cạnh", hint: "Đo cảm xúc theo chủ đề" },
   { label: "Cảnh báo & báo cáo", hint: "Ngưỡng và người nhận" },
   { label: "Xem lại", hint: "Kiểm tra trước khi tạo" },
@@ -96,9 +96,9 @@ const STEP_OF_SECTION: Record<ProjectConfigSection, number> = {
 };
 
 const ENTITY_STEP_TITLE: Record<AvailableProjectCase, string> = {
-  project: "Dự án và đối thủ",
+  project: "Dự án theo dõi",
   market: "Khu vực theo dõi",
-  brand: "Chủ đầu tư, dự án và đối thủ",
+  brand: "Chủ đầu tư và các dự án",
 };
 
 export function CreateProjectPage({

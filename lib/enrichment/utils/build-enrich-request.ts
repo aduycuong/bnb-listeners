@@ -86,7 +86,7 @@ export function buildEnrichPrompt(params: {
       ? `Đối tượng theo dõi:\n${ctx.entities
           .map(
             (entity) =>
-              `- ${entity.ref}: ${entity.name} (${entity.role})${entity.aliases.length ? `, tên khác: ${entity.aliases.join(", ")}` : ""}`,
+              `- ${entity.ref}: ${entity.name} (${entity.roleLabel})${entity.aliases.length ? `, tên khác: ${entity.aliases.join(", ")}` : ""}`,
           )
           .join("\n")}`
       : "",

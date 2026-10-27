@@ -17,11 +17,11 @@ export const AI_TOOLS_CONFIG = {
 /** What each case of `create_project` is for, read by the model. */
 export const CASE_DESCRIPTIONS = {
   project:
-    "Theo dõi dự án: một dự án bất động sản (primary) so với các dự án cạnh tranh; giá rao, " +
-    "câu hỏi người mua, cảm xúc theo khía cạnh.",
+    "Theo dõi dự án: một dự án bất động sản (subject); giá rao, câu hỏi người mua, cảm xúc " +
+    "theo khía cạnh. Muốn so sánh với dự án khác thì tạo project riêng cho dự án đó.",
   market:
-    "Tâm lý thị trường khu vực: một hay nhiều khu vực (area); giá, thanh khoản, hạ tầng, lãi suất.",
+    "Tâm lý thị trường khu vực: một khu vực (subject); giá, thanh khoản, hạ tầng, lãi suất.",
   brand:
-    "Uy tín chủ đầu tư: một chủ đầu tư (primary), các dự án của họ (product) và chủ đầu tư so " +
-    "sánh (competitor); chỉ số uy tín, Share of Voice.",
+    "Uy tín chủ đầu tư: một chủ đầu tư (subject) và các dự án của họ (product); chỉ số uy tín, " +
+    "cảm xúc theo từng dự án.",
 } as const;

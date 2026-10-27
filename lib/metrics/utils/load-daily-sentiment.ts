@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import type { MetricsDay } from "../types";
 import { periodDateSql, type ReportWindow } from "./resolve-report-window";
 
-/** Own mentions of each day of the period by sentiment, from L4 (D28); days without any are zeros. */
+/** Relevant mentions of each day of the period by sentiment, from L4 (D28); days without any are zeros. */
 export async function loadDailySentiment(
   projectId: string,
   window: ReportWindow,

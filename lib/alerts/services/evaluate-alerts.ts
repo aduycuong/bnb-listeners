@@ -304,32 +304,18 @@ async function priceDrafts(
     mention_id: string;
     amount: number | string;
   }>(sql`
-    with quotes as (
-      select m.id::text as mention_id, (x.data->>'amount')::double precision as amount
-      from mention_extractions x
-      join mentions m on m.id = x.mention_id
-      where m.project_id = ${projectId}::uuid
-        and m.is_relevant
-        and x.schema_key = 'price_quote'
-        and x.data->>'unit' = 'trieu_m2'
-        and x.data->>'kind' = 'rao_ban'
-        and jsonb_typeof(x.data->'amount') = 'number'
-        and m.published_at >= ${range.start.toISOString()}::timestamptz
-        and m.published_at < ${range.end.toISOString()}::timestamptz
-        and ${scopeFilter(target)}
-    ),
-    assigned as (
-      select me.mention_id::text as mention_id, min(pe.role) as role
-      from mention_entities me
-      join project_entities pe on pe.id = me.entity_id
-      where pe.project_id = ${projectId}::uuid
-        and pe.role in ('primary', 'competitor')
-      group by me.mention_id
-      having count(*) = 1 and min(pe.role) = 'primary'
-    )
-    select q.mention_id, q.amount
-    from quotes q
-    join assigned a on a.mention_id = q.mention_id
+    select m.id::text as mention_id, (x.data->>'amount')::double precision as amount
+    from mention_extractions x
+    join mentions m on m.id = x.mention_id
+    where m.project_id = ${projectId}::uuid
+      and m.is_relevant
+      and x.schema_key = 'price_quote'
+      and x.data->>'unit' = 'trieu_m2'
+      and x.data->>'kind' = 'rao_ban'
+      and jsonb_typeof(x.data->'amount') = 'number'
+      and m.published_at >= ${range.start.toISOString()}::timestamptz
+      and m.published_at < ${range.end.toISOString()}::timestamptz
+      and ${scopeFilter(target)}
   `);
 
   const deviant = rows

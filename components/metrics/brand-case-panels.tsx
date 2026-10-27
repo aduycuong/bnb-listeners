@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  DonutChart,
   GaugeChart,
   HealthLineChart,
   ProjectSentimentChart,
@@ -10,7 +9,7 @@ import { ReportPanel } from "@/components/metrics/report-ui/report-ui";
 import { METRICS_CONFIG } from "@/lib/metrics/config";
 import { reputationBand } from "@/lib/metrics/formulas";
 import type { BrandCaseMetricsResult } from "@/lib/metrics/types";
-import { AQUA_BRAND_COLORS, formatCount, formatSigned } from "@/lib/projects/aqua-demo";
+import { formatCount, formatSigned } from "@/lib/projects/aqua-demo";
 
 import { detailNote, formatDayLabel, MetricsEmpty } from "./metrics-page-header";
 
@@ -19,8 +18,6 @@ const PERIOD_NAMES: Record<BrandCaseMetricsResult["trendPeriod"], string> = {
   month: "tháng",
   quarter: "quý",
 };
-
-const SOV_COLORS = [...AQUA_BRAND_COLORS, "#8B5CF6", "#F97316", "#14B8A6", "#64748B"];
 
 function periodLabel(start: string, period: BrandCaseMetricsResult["trendPeriod"]) {
   const [year, month] = start.split("-").map(Number);
@@ -31,8 +28,8 @@ function periodLabel(start: string, period: BrandCaseMetricsResult["trendPeriod"
 }
 
 /**
- * Reputation index, NSS per project and share of voice of a brand project. The overview
- * shows them as a preview with a link to the case page; the case page adds the trend.
+ * Reputation index and NSS per project of a brand project. The overview shows them as a
+ * preview with a link to the case page; the case page adds the trend.
  */
 export function BrandCasePanels({
   data,
@@ -56,15 +53,14 @@ export function BrandCasePanels({
       ? `${formatSigned(data.index.current - data.index.previous)} điểm so với ${days} ngày trước`
       : null;
   const products = data?.products.filter((product) => product.nss !== null) ?? [];
-  const sovTotal = data?.shareOfVoice.reduce((sum, row) => sum + row.mentions, 0) ?? 0;
   const periodName = data ? PERIOD_NAMES[data.trendPeriod] : "kỳ";
-  const hasTrend = data?.trend.some((point) => point.primary !== null) ?? false;
+  const hasTrend = data?.trend.some((point) => point.index !== null) ?? false;
 
   return (
     <>
       <ReportPanel
         title="Chỉ số uy tín chủ đầu tư"
-        span="s4"
+        span="s6"
         scope="case"
         scopeLabel={caseLabel}
         note={detailNote(
@@ -100,7 +96,7 @@ export function BrandCasePanels({
       </ReportPanel>
       <ReportPanel
         title="Cảm xúc theo từng dự án"
-        span="s4"
+        span="s6"
         scope="case"
         scopeLabel={caseLabel}
         note={detailNote("NSS của các dự án của chủ đầu tư", detail)}
@@ -114,33 +110,7 @@ export function BrandCasePanels({
             {loading ??
               (data?.products.length
                 ? "Chưa có đề cập về các dự án trong kỳ."
-                : "Thêm dự án của chủ đầu tư trong cấu hình project để so sánh.")}
-          </MetricsEmpty>
-        )}
-      </ReportPanel>
-      <ReportPanel
-        title="Share of Voice cùng khu vực"
-        span="s4"
-        scope="case"
-        scopeLabel={caseLabel}
-        note={detailNote(
-          data?.hasCompetitors
-            ? "Đề cập nhắc chủ đầu tư hoặc dự án của chủ đầu tư, so với từng đối thủ"
-            : undefined,
-          detail,
-        )}
-      >
-        {data?.hasCompetitors && sovTotal > 0 ? (
-          <DonutChart
-            data={data.shareOfVoice.map((row) => ({ name: row.name, value: row.mentions }))}
-            colors={data.shareOfVoice.map((_, index) => SOV_COLORS[index % SOV_COLORS.length])}
-          />
-        ) : (
-          <MetricsEmpty>
-            {loading ??
-              (data?.hasCompetitors
-                ? "Chưa có đề cập nhắc tới chủ đầu tư hoặc đối thủ trong kỳ."
-                : "Thêm chủ đầu tư để so sánh trong cấu hình project.")}
+                : "Thêm dự án của chủ đầu tư trong cấu hình project để xem cảm xúc theo từng dự án.")}
           </MetricsEmpty>
         )}
       </ReportPanel>
@@ -155,10 +125,8 @@ export function BrandCasePanels({
           {data && hasTrend ? (
             <HealthLineChart
               labels={data.trend.map((point) => periodLabel(point.start, data.trendPeriod))}
-              developer={data.trend.map((point) => point.primary)}
-              peers={data.hasCompetitors ? data.trend.map((point) => point.competitors) : null}
-              developerLabel={data.primaryName}
-              peersLabel="TB chủ đầu tư so sánh"
+              developer={data.trend.map((point) => point.index)}
+              developerLabel={data.subjectName}
             />
           ) : (
             <MetricsEmpty>

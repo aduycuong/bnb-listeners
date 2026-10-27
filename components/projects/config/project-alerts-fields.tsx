@@ -55,7 +55,8 @@ function useScopeOptions(form: ProjectForm, projectCase: AvailableProjectCase): 
         label: `Từng mục: ${role.label.toLowerCase()}`,
         type: "each_role",
       })),
-    ...entities.map((entity) => ({
+    // The subject is the whole project (D30); only the developer's projects narrow a rule.
+    ...entities.filter((entity) => entity.role !== "subject").map((entity) => ({
       value: `entity:${entity.id}`,
       label: `${roleLabel.get(entity.role) ?? entity.role}: ${entity.name || "(chưa đặt tên)"}`,
       type: "entity",

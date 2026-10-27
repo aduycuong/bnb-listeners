@@ -1,49 +1,38 @@
-import { eq, sql, type SQL } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { projects } from "@/db/schema";
 import { InvalidInputError, NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
-import {
-  effectiveSentimentJoins,
-  effectiveSentimentSql,
-} from "@/lib/enrichment/utils/effective-sentiment-sql";
-import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 import { projectCaseConfigSchema } from "@/lib/projects/case-templates";
 import { parseProjectCase } from "@/lib/projects/project-cases";
 
 import { METRICS_CONFIG } from "../config";
 import { netSentimentScore } from "../formulas";
 import type { MetricsReportParams, ProjectCaseMetricsResult } from "../types";
-import { periodSql, resolveReportWindow } from "../utils/resolve-report-window";
+import { periodDateSql, periodSql, resolveReportWindow } from "../utils/resolve-report-window";
 
 type QuoteRow = {
   mention_id: string;
   author_id: string | null;
   day: string;
   amount: number;
-  role: "primary" | "competitor" | null;
 };
 
 type QuestionRow = { id: string; name: string; mentions: number };
 
-type AspectNssRow = {
+type AspectRow = {
   id: string;
   name: string;
-  sort_order: number;
-  mentions: number;
   positive: number;
   neutral: number;
   negative: number;
 };
 
-type EntityRow = { role: string; name: string; count: number };
-
 /**
- * Numbers of the project-case page (`Chi tiết dự án`): resale prices, grouped
- * buyer questions, and aspect NSS of the primary project versus competitors.
- * `price.median` is the tracked project only. Question totals cover this period
- * and the one before.
- * Reads L3 directly. Only `case = project`.
+ * Numbers of the project-case page (`Chi tiết dự án`): resale prices, grouped buyer questions
+ * and NSS per aspect of the tracked project (D30: a project tracks one subject, so every
+ * relevant quote and question is about it). Question totals cover this period and the one
+ * before. Prices and questions read L3; aspects are sums of L4. Only `case = project`.
  */
 export async function getProjectCaseMetrics(
   params: MetricsReportParams,
@@ -69,52 +58,35 @@ export async function getProjectCaseMetrics(
   const priceRef = parsedConfig.success ? (parsedConfig.data.priceRef ?? null) : null;
 
   const [
-    { rows: entityRows },
+    { rows: subjectRows },
     { rows: quoteRows },
     { rows: questionRows },
     { rows: questionTotalRows },
-    { rows: primaryAspectRows },
-    { rows: competitorAspectRows },
+    { rows: aspectRows },
   ] = await Promise.all([
-    db.execute<EntityRow>(sql`
-      select role, min(name) as name, count(*)::int as count
-      from project_entities
-      where project_id = ${params.projectId}::uuid and role in ('primary', 'competitor')
-      group by role
+    db.execute<{ name: string }>(sql`
+      select name from project_entities
+      where project_id = ${params.projectId}::uuid and role = 'subject'
+      limit 1
     `),
     db.execute<QuoteRow>(sql`
-      with quotes as (
-        select m.id as mention_id, m.author_id,
-          to_char(m.published_at at time zone ${tz}, 'YYYY-MM-DD') as day,
-          (x.data->>'amount')::double precision as amount
-        from mention_extractions x
-        join mentions m on m.id = x.mention_id
-        where m.project_id = ${params.projectId}::uuid and m.is_relevant
-          and x.schema_key = 'price_quote'
-          and x.data->>'unit' = 'trieu_m2'
-          and x.data->>'kind' = 'rao_ban'
-          and jsonb_typeof(x.data->'amount') = 'number'
-          and ${inPeriod.either}
-      ),
-      assigned as (
-        select me.mention_id, min(pe.role) as role
-        from mention_entities me
-        join project_entities pe on pe.id = me.entity_id
-        where pe.project_id = ${params.projectId}::uuid
-          and pe.role in ('primary', 'competitor')
-        group by me.mention_id
-        having count(*) = 1
-      )
-      select q.mention_id, q.author_id, q.day, q.amount,
-        a.role as role
-      from quotes q
-      left join assigned a on a.mention_id = q.mention_id
+      select m.id as mention_id, m.author_id,
+        to_char(m.published_at at time zone ${tz}, 'YYYY-MM-DD') as day,
+        (x.data->>'amount')::double precision as amount
+      from mention_extractions x
+      join mentions m on m.id = x.mention_id
+      where m.project_id = ${params.projectId}::uuid and m.is_relevant
+        and x.schema_key = 'price_quote'
+        and x.data->>'unit' = 'trieu_m2'
+        and x.data->>'kind' = 'rao_ban'
+        and jsonb_typeof(x.data->'amount') = 'number'
+        and ${inPeriod.either}
     `),
     db.execute<QuestionRow>(sql`
       select t.id, t.name, count(*)::int as mentions
       from topics t
       join mention_topics mt on mt.topic_id = t.id and mt.kind = 'buyer_question'
-      join mentions m on m.id = mt.mention_id and m.is_relevant and ${ownMentionSql}
+      join mentions m on m.id = mt.mention_id and m.is_relevant
       where t.project_id = ${params.projectId}::uuid
         and t.kind = 'buyer_question' and t.status = 'active'
         and ${inPeriod.current}
@@ -128,54 +100,47 @@ export async function getProjectCaseMetrics(
         count(*) filter (where ${inPeriod.previous})::int as previous_count
       from mention_extractions x
       join mentions m on m.id = x.mention_id
-      where m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
+      where m.project_id = ${params.projectId}::uuid and m.is_relevant
         and x.schema_key = 'buyer_question'
         and ${inPeriod.either}
     `),
-    loadAspectNss(params.projectId, inPeriod.current, "primary"),
-    loadAspectNss(params.projectId, inPeriod.current, "competitor"),
+    db.execute<AspectRow>(sql`
+      select pa.id, pa.name,
+        coalesce(sum(d.positive), 0)::int as positive,
+        coalesce(sum(d.neutral), 0)::int as neutral,
+        coalesce(sum(d.negative), 0)::int as negative
+      from project_aspects pa
+      left join project_aspect_daily d on d.aspect_id = pa.id and ${periodDateSql(window).current}
+      where pa.project_id = ${params.projectId}::uuid
+      group by pa.id
+      order by pa.sort_order, pa.name
+    `),
   ]);
 
-  const primaryName =
-    entityRows.find((row) => row.role === "primary")?.name ?? project.name;
-  const hasCompetitors = (entityRows.find((row) => row.role === "competitor")?.count ?? 0) > 0;
   const currentDays = new Set(window.dates);
-  const unique = dedupeQuotes(quoteRows.filter((row) => row.role !== null));
+  const unique = dedupeQuotes(quoteRows);
   const kept = filterOutliers(unique);
   const currentKept = kept.filter((row) => currentDays.has(row.day));
   const previousKept = kept.filter((row) => !currentDays.has(row.day));
 
-  const daily = window.dates.map((date) => {
-    const ofDay = currentKept.filter((row) => row.day === date);
-    return {
-      date,
-      primary: median(ofDay.filter((row) => row.role === "primary").map((row) => row.amount)),
-      competitor: median(ofDay.filter((row) => row.role === "competitor").map((row) => row.amount)),
-      priceRef,
-    };
-  });
-
-  const competitorById = new Map(
-    competitorAspectRows.map((row) => [row.id, netSentimentScore(row)]),
-  );
-
   return {
     period: window.info,
     timezone: window.timezone,
-    primaryName,
-    hasCompetitors,
+    subjectName: subjectRows[0]?.name ?? project.name,
     price: {
-      daily,
+      daily: window.dates.map((date) => ({
+        date,
+        median: median(amountsOf(currentKept.filter((row) => row.day === date))),
+        priceRef,
+      })),
       median: {
-        current: median(amountsOf(currentKept, "primary")),
-        previous: median(amountsOf(previousKept, "primary")),
+        current: median(amountsOf(currentKept)),
+        previous: median(amountsOf(previousKept)),
       },
       priceRef,
-      buckets: priceBuckets(currentKept.map((row) => row.amount)),
+      buckets: priceBuckets(amountsOf(currentKept)),
       quotes: quoteRows.filter((row) => currentDays.has(row.day)).length,
       used: currentKept.length,
-      droppedMultiEntity: quoteRows.filter((row) => currentDays.has(row.day) && row.role === null)
-        .length,
       droppedOutlier: unique.filter((row) => currentDays.has(row.day)).length - currentKept.length,
     },
     questions: {
@@ -185,74 +150,8 @@ export async function getProjectCaseMetrics(
       },
       items: questionRows,
     },
-    aspects: primaryAspectRows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      primary: netSentimentScore(row),
-      competitor: hasCompetitors ? (competitorById.get(row.id) ?? null) : null,
-    })),
+    aspects: aspectRows.map((row) => ({ id: row.id, name: row.name, nss: netSentimentScore(row) })),
   };
-}
-
-async function loadAspectNss(
-  projectId: string,
-  inPeriod: SQL,
-  side: "primary" | "competitor",
-) {
-  const entityFilter =
-    side === "primary"
-      ? sql`true`
-      : sql`exists (
-          select 1
-          from (
-            select me.mention_id
-            from mention_entities me
-            join project_entities pe on pe.id = me.entity_id
-            where pe.project_id = ${projectId}::uuid
-              and pe.role in ('primary', 'competitor')
-            group by me.mention_id
-            having count(*) = 1 and min(pe.role) = 'competitor'
-          ) only_competitor
-          where only_competitor.mention_id = pm.id
-        )`;
-
-  return db.execute<AspectNssRow>(sql`
-    with pm as (
-      select m.id, m.content_item_id, ${effectiveSentimentSql} as sentiment
-      from mentions m
-      ${effectiveSentimentJoins}
-      where m.project_id = ${projectId}::uuid and m.is_relevant and ${inPeriod}
-        and ${side === "primary" ? ownMentionSql : sql`true`}
-    ),
-    effective as (
-      select pm.id as mention_id, pa.id as aspect_id, pm.sentiment
-      from pm
-      join item_labels il on il.content_item_id = pm.content_item_id
-        and il.project_id = ${projectId}::uuid and il.aspect_keys is not null
-      join project_aspects pa on pa.project_id = ${projectId}::uuid
-        and il.aspect_keys @> jsonb_build_array(pa.key)
-      where ${entityFilter}
-      union all
-      select pm.id, ma.aspect_id, coalesce(ma.sentiment, pm.sentiment)
-      from pm
-      join mention_aspects ma on ma.mention_id = pm.id
-      where ${entityFilter} and not exists (
-        select 1 from item_labels il
-        where il.content_item_id = pm.content_item_id
-          and il.project_id = ${projectId}::uuid and il.aspect_keys is not null
-      )
-    )
-    select pa.id, pa.name, pa.sort_order,
-      count(e.mention_id)::int as mentions,
-      (count(e.mention_id) filter (where e.sentiment = 'positive'))::int as positive,
-      (count(e.mention_id) filter (where e.sentiment = 'neutral'))::int as neutral,
-      (count(e.mention_id) filter (where e.sentiment = 'negative'))::int as negative
-    from project_aspects pa
-    left join effective e on e.aspect_id = pa.id
-    where pa.project_id = ${projectId}::uuid
-    group by pa.id
-    order by pa.sort_order, pa.name
-  `);
 }
 
 function dedupeQuotes(quotes: QuoteRow[]) {
@@ -287,8 +186,8 @@ function quantile(sorted: QuoteRow[], q: number) {
   return sorted[lo].amount + (sorted[hi].amount - sorted[lo].amount) * (index - lo);
 }
 
-function amountsOf(quotes: QuoteRow[], role: QuoteRow["role"]) {
-  return quotes.filter((quote) => quote.role === role).map((quote) => quote.amount);
+function amountsOf(quotes: QuoteRow[]) {
+  return quotes.map((quote) => quote.amount);
 }
 
 function median(values: number[]) {

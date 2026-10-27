@@ -29,20 +29,11 @@ export function ProjectPricePanels({
   const priceSeries = data
     ? [
         {
-          key: data.primaryName,
+          key: data.subjectName,
           color: "#0091FF",
           dotted: true,
-          values: data.price.daily.map((day) => day.primary),
+          values: data.price.daily.map((day) => day.median),
         },
-        ...(data.hasCompetitors
-          ? [
-              {
-                key: "TB đối thủ",
-                color: "#FFC93C",
-                values: data.price.daily.map((day) => day.competitor),
-              },
-            ]
-          : []),
         ...(data.price.priceRef != null
           ? [
               {
@@ -55,8 +46,7 @@ export function ProjectPricePanels({
           : []),
       ]
     : [];
-  const hasPriceLine =
-    data?.price.daily.some((day) => day.primary != null || day.competitor != null) ?? false;
+  const hasPriceLine = data?.price.daily.some((day) => day.median != null) ?? false;
   const medianNote = data
     ? [
         data.price.median.current != null
@@ -66,8 +56,8 @@ export function ProjectPricePanels({
           ? `kỳ trước ${decimal(data.price.median.previous)}`
           : "chưa có kỳ trước",
         data.price.priceRef != null ? `giá khởi điểm ${decimal(data.price.priceRef)}` : null,
-        data.price.droppedMultiEntity || data.price.droppedOutlier
-          ? `đã bỏ ${formatCount(data.price.droppedMultiEntity + data.price.droppedOutlier)} tin (nhiều đối tượng hoặc lệch mạnh)`
+        data.price.droppedOutlier
+          ? `đã bỏ ${formatCount(data.price.droppedOutlier)} tin lệch mạnh`
           : null,
       ]
         .filter(Boolean)
@@ -94,7 +84,7 @@ export function ProjectPricePanels({
         ) : (
           <MetricsEmpty>
             {loading ??
-              `Chưa có giá rao bán (triệu/m²) gán được cho một đối tượng trong ${days} ngày gần nhất.`}
+              `Chưa có giá rao bán (triệu/m²) trong ${days} ngày gần nhất.`}
           </MetricsEmpty>
         )}
       </ReportPanel>

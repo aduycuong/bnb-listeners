@@ -13,7 +13,6 @@ import { InvalidInputError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { triggerProjectEnrich } from "@/lib/enrichment/services/trigger-project-enrich";
 import { syncProjectMatch } from "@/lib/matching/services/sync-project-match";
-import { refreshProjectMetricsDaily } from "@/lib/metrics/services/refresh-project-metrics-daily";
 
 import { getCaseTemplate, hasCaseVersion } from "../case-templates";
 import type { UpdateProjectConfigParams, UpdateProjectConfigResult } from "../types";
@@ -92,9 +91,6 @@ export async function updateProjectConfig(
   // Entities and their queries.
   const currentEntities = new Map(current.entities.map((entity) => [entity.id, entity]));
   const keptEntityIds = new Set<string>();
-  // A role decides whether a mention is the project's own and counts for SoV (D26) on every
-  // day, but leaves the queries and so the match signature unchanged.
-  let rolesChanged = false;
 
   params.entities.forEach((entity, sortOrder) => {
     const include = toQueryInclude(entity);
@@ -125,7 +121,6 @@ export async function updateProjectConfig(
     }
 
     keptEntityIds.add(existing.id);
-    if (existing.role !== entity.role) rolesChanged = true;
     const currentIndex = current.entities.indexOf(existing);
     if (
       existing.role !== entity.role ||
@@ -336,7 +331,6 @@ export async function updateProjectConfig(
   // A new match ends by starting Enrich; otherwise aspects or entities may still have changed.
   const match = await syncProjectMatch({ projectId });
   if (!match.triggered) await triggerProjectEnrich({ projectId });
-  if (rolesChanged) await refreshProjectMetricsDaily({ projectId });
 
   const updated = await getProjectConfig({
     workspaceId: params.workspaceId,
