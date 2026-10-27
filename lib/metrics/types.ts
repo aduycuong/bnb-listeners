@@ -53,8 +53,6 @@ export type OverviewMetricsResult = {
   nss: MetricsValue<number | null>;
   /** Share of negative mentions among those with a sentiment, in %. */
   negativeShare: MetricsValue<number | null>;
-  /** Null when the project has no competitor entity. */
-  shareOfVoice: MetricsValue<number | null> | null;
   sentiment: { positive: number; neutral: number; negative: number; unknown: number };
   daily: MetricsDay[];
   sources: { id: string | null; name: string; mentions: number }[];
@@ -118,8 +116,8 @@ export type AuthorMetricsResult = {
 /** One day of the price trend; null when that day has no kept quote. */
 export type ProjectCasePricePoint = {
   date: string;
-  primary: number | null;
-  competitor: number | null;
+  /** Median of the day's kept resale quotes, million VND/m². */
+  median: number | null;
   /** Developer's `priceRef`, million VND/m², when configured. */
   priceRef: number | null;
 };
@@ -127,19 +125,17 @@ export type ProjectCasePricePoint = {
 export type ProjectCaseMetricsResult = {
   period: ReportPeriodInfo;
   timezone: string;
-  primaryName: string;
-  hasCompetitors: boolean;
+  /** Name of the tracked project (the `subject` entity). */
+  subjectName: string;
   price: {
-    /** Daily median of kept resale quotes, million VND/m². */
     daily: ProjectCasePricePoint[];
-    /** Period median of the tracked project's kept resale quotes, million VND/m². */
+    /** Period median of kept resale quotes, million VND/m². */
     median: MetricsValue<number | null>;
     priceRef: number | null;
     buckets: { label: string; count: number }[];
     /** Resale quotes of the period before dedup and outlier filters. */
     quotes: number;
     used: number;
-    droppedMultiEntity: number;
     droppedOutlier: number;
   };
   questions: {
@@ -147,12 +143,8 @@ export type ProjectCaseMetricsResult = {
     total: MetricsValue;
     items: { id: string; name: string; mentions: number }[];
   };
-  aspects: {
-    id: string;
-    name: string;
-    primary: number | null;
-    competitor: number | null;
-  }[];
+  /** Project aspects in their order; null NSS when no mention of the aspect has a sentiment. */
+  aspects: { id: string; name: string; nss: number | null }[];
 };
 
 /** A pillar of the reputation index: an aspect of the brand project. */
@@ -169,24 +161,20 @@ export type BrandCasePillar = {
 export type BrandCaseTrendPoint = {
   /** First day of the period, `YYYY-MM-DD` in the project's timezone. */
   start: string;
-  primary: number | null;
-  /** Mean index of the competitors that have one in the period. */
-  competitors: number | null;
+  index: number | null;
 };
 
 export type BrandCaseMetricsResult = {
   period: ReportPeriodInfo;
   timezone: string;
-  primaryName: string;
-  hasCompetitors: boolean;
+  /** Name of the developer (the `subject` entity). */
+  subjectName: string;
   /** Reputation index of the period and the period before, 0–100. */
   index: MetricsValue<number | null>;
   /** Pillars of the period, in aspect order. */
   pillars: BrandCasePillar[];
   /** Projects (`product` entities) of the developer, most mentioned first. */
   products: { id: string; name: string; mentions: number; nss: number | null }[];
-  /** Mentions of the period naming the developer (or its projects) and each competitor. */
-  shareOfVoice: { id: string; name: string; role: "primary" | "competitor"; mentions: number }[];
   /** `caseConfig.period` of the project: the unit of the trend. */
   trendPeriod: "week" | "month" | "quarter";
   /** Last `reputationTrendPeriods` periods, oldest first, the running one last. */

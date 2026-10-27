@@ -1,14 +1,9 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 
 import { METRICS_CONFIG } from "../config";
-import {
-  netSentimentScore,
-  sharePercent,
-  shareOfVoice,
-} from "../formulas";
+import { netSentimentScore, sharePercent } from "../formulas";
 import type { MetricsReportParams, OverviewMetricsResult } from "../types";
 import { loadDailySentiment } from "../utils/load-daily-sentiment";
 import {
@@ -26,15 +21,13 @@ type PeriodRow = {
   neutral: number;
   negative: number;
   unknown: number;
-  sov_primary: number;
-  sov_tracked: number;
 };
 
 /**
  * Numbers of the Overview page for real projects: KPIs of the period against the period
  * compared (D28), mentions per day and sentiment, mentions per source and top topics. Counts
  * are sums of L4 (`project_metrics_daily`); distinct authors and topics read L3. Only
- * relevant mentions count.
+ * relevant mentions count: they are about the project's subject (D30).
  */
 export async function getOverviewMetrics(
   params: MetricsReportParams,
@@ -42,7 +35,7 @@ export async function getOverviewMetrics(
   const window = await resolveReportWindow(params.projectId, params.period);
   const period = periodSql(window);
   const days = periodDateSql(window);
-  const scope = sql`m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}`;
+  const scope = sql`m.project_id = ${params.projectId}::uuid and m.is_relevant`;
   const inPeriod = period.current;
 
   const [
@@ -51,7 +44,6 @@ export async function getOverviewMetrics(
     daily,
     { rows: sourceRows },
     { rows: topicRows },
-    { rows: entityRows },
   ] = await Promise.all([
       db.execute<Omit<PeriodRow, "authors">>(sql`
         select case when ${days.current} then 'current' else 'previous' end as period,
@@ -60,9 +52,7 @@ export async function getOverviewMetrics(
           sum(d.positive)::int as positive,
           sum(d.neutral)::int as neutral,
           sum(d.negative)::int as negative,
-          sum(d.unknown)::int as unknown,
-          sum(d.sov_primary)::int as sov_primary,
-          sum(d.sov_tracked)::int as sov_tracked
+          sum(d.unknown)::int as unknown
         from project_metrics_daily d
         where d.project_id = ${params.projectId}::uuid and ${days.either}
         group by 1
@@ -97,10 +87,6 @@ export async function getOverviewMetrics(
         order by mentions desc, t.name
         limit ${METRICS_CONFIG.topTopics}
       `),
-      db.execute<{ competitors: number }>(sql`
-        select count(*)::int as competitors from project_entities
-        where project_id = ${params.projectId}::uuid and role = 'competitor'
-      `),
     ]);
 
   const empty: PeriodRow = {
@@ -112,8 +98,6 @@ export async function getOverviewMetrics(
     neutral: 0,
     negative: 0,
     unknown: 0,
-    sov_primary: 0,
-    sov_tracked: 0,
   };
   const withAuthors = (period: PeriodRow["period"]): PeriodRow => ({
     ...(periodRows.find((row) => row.period === period) ?? empty),
@@ -134,9 +118,6 @@ export async function getOverviewMetrics(
     negativeShare: pick((row) =>
       sharePercent(row.negative, row.positive + row.neutral + row.negative),
     ),
-    shareOfVoice: (entityRows[0]?.competitors ?? 0) > 0
-      ? pick((row) => shareOfVoice({ primary: row.sov_primary, tracked: row.sov_tracked }))
-      : null,
     sentiment: {
       positive: current.positive,
       neutral: current.neutral,

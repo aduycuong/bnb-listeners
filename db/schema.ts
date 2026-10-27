@@ -617,7 +617,7 @@ export const projectEntities = pgTable(
     projectId: uuid("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
-    /** primary | competitor | product | person | area */
+    /** subject (exactly one) | product (`brand` only), D30. */
     role: text("role").notNull(),
     name: text("name").notNull(),
     aliases: jsonb("aliases").$type<string[]>().notNull().default([]),
@@ -1355,20 +1355,17 @@ export const projectMetricsDaily = pgTable(
     /** Day of `mentions.published_at` in the project's timezone. */
     dateKey: date("date_key").notNull(),
     sourceId: uuid("source_id").references(() => sources.id, { onDelete: "set null" }),
-    /** Own mentions (D26): enriched to at least one non-competitor entity. */
+    /** Relevant mentions; a project tracks one subject (D30). */
     mentions: integer("mentions").notNull().default(0),
     posts: integer("posts").notNull().default(0),
     engagement: integer("engagement").notNull().default(0),
     positive: integer("positive").notNull().default(0),
     neutral: integer("neutral").notNull().default(0),
     negative: integer("negative").notNull().default(0),
-    /** Own mentions without a sentiment yet. */
+    /** Relevant mentions without a sentiment yet. */
     unknown: integer("unknown").notNull().default(0),
-    /** Own mentions per emotion, `{ [emotion]: count }`. */
+    /** Relevant mentions per emotion, `{ [emotion]: count }`. */
     emotions: jsonb("emotions").$type<Record<string, number>>().notNull().default({}),
-    /** Relevant mentions naming a primary or product entity, and any tracked entity (SoV). */
-    sovPrimary: integer("sov_primary").notNull().default(0),
-    sovTracked: integer("sov_tracked").notNull().default(0),
     computedAt: timestamp("computed_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1384,7 +1381,7 @@ export const projectMetricsDaily = pgTable(
 export type ProjectMetricsDaily = typeof projectMetricsDaily.$inferSelect;
 export type NewProjectMetricsDaily = typeof projectMetricsDaily.$inferInsert;
 
-/** Own mentions per effective aspect (D14) and day, with the aspect's sentiment. */
+/** Relevant mentions per effective aspect (D14) and day, with the aspect's sentiment. */
 export const projectAspectDaily = pgTable(
   "project_aspect_daily",
   {

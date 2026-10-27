@@ -96,7 +96,7 @@ export type EnricherSpec = LlmEnricherSpec | StageEnricherSpec;
 export const ENRICHER_REGISTRY = {
   sentiment: {
     kind: "llm",
-    version: 7,
+    version: 8,
     status: "ready",
     label: "Cảm xúc",
     writes: "mention_sentiments",
@@ -221,7 +221,6 @@ export const ENRICHER_KEYS = Object.keys(ENRICHER_REGISTRY) as EnricherKey[];
 export const CORE_ENRICHERS: readonly EnricherKey[] = [
   "sentiment",
   "aspects",
-  "entities",
   "topic_hint",
   "terms",
   "terms_index",

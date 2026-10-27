@@ -29,15 +29,6 @@ export function growthPercent(current: number, previous: number) {
 }
 
 /**
- * Share of voice of the project's primary entities, in %: mentions about a primary entity
- * over mentions about a primary entity or a competitor (`mention_entities` from Enrich).
- * The projects (`product`) of a brand project count as its primary entity.
- */
-export function shareOfVoice(counts: { primary: number; tracked: number }) {
-  return sharePercent(counts.primary, counts.tracked);
-}
-
-/**
  * Reputation score of one pillar (an aspect of a brand project), 0–100: the aspect's NSS moved
  * onto 0–100, `(NSS + 100) / 2`. Null below `reputationMinMentions` mentions with a sentiment.
  */

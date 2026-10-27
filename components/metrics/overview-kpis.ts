@@ -52,35 +52,19 @@ export function pointKpi(
 export function buildKpis(
   data: Pick<
     OverviewMetricsResult,
-    "mentions" | "engagement" | "uniqueAuthors" | "nss" | "shareOfVoice" | "negativeShare"
+    "mentions" | "engagement" | "uniqueAuthors" | "nss" | "negativeShare"
   >,
 ): AquaKpi[] {
-  const kpis = [
+  return [
     countKpi("Lượt đề cập", data.mentions, "Bài đăng, bình luận, trả lời có liên quan"),
     countKpi("Tương tác", data.engagement, "Tổng lượt thích, bình luận, chia sẻ", formatShort),
     countKpi("Tác giả", data.uniqueAuthors, "Số người khác nhau viết đề cập"),
     pointKpi("Chỉ số cảm xúc (NSS)", data.nss, "(Tích cực − Tiêu cực) / Tổng đề cập đã phân loại × 100", {
       signed: true,
     }),
-  ];
-  kpis.push(
-    data.shareOfVoice
-      ? pointKpi("Share of Voice", data.shareOfVoice, "Tỷ lệ đề cập của đối tượng chính so với đối thủ", {
-          suffix: "%",
-        })
-      : {
-          label: "Share of Voice",
-          value: "—",
-          delta: "Chưa có đối thủ",
-          good: true,
-          tip: "Thêm đối thủ trong cấu hình project để so sánh",
-        },
-  );
-  kpis.push(
     pointKpi("Tỷ lệ tiêu cực", data.negativeShare, "Phần trăm đề cập tiêu cực trên tổng đề cập đã phân loại", {
       suffix: "%",
       higherIsBetter: false,
     }),
-  );
-  return kpis;
+  ];
 }

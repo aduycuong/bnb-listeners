@@ -6,7 +6,6 @@ import {
   effectiveSentimentJoins,
   effectiveSentimentSql,
 } from "@/lib/enrichment/utils/effective-sentiment-sql";
-import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 import type { ReportPeriod } from "@/lib/metrics/types";
 import { engagementSql } from "@/lib/metrics/utils/engagement-sql";
 import { periodSql, resolveReportWindow } from "@/lib/metrics/utils/resolve-report-window";
@@ -23,8 +22,8 @@ function cut(text: string | null, length: number) {
 
 /**
  * Sample mentions of the period the model may cite (D29): the most engaging, the most
- * engaging negative ones, the top of each big topic, and negative ones per aspect. Own
- * relevant mentions only, as in the reports (D26).
+ * engaging negative ones, the top of each big topic, and negative ones per aspect. Relevant
+ * mentions only, as in the reports.
  */
 export async function loadReportEvidence(params: {
   projectId: string;
@@ -48,7 +47,7 @@ export async function loadReportEvidence(params: {
       left join authors a on a.id = m.author_id
       left join sources s on s.id = m.source_id
       ${effectiveSentimentJoins}
-      where m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
+      where m.project_id = ${params.projectId}::uuid and m.is_relevant
         and ${periodSql(window).current} and length(coalesce(ci.text, '')) > 0
     ),
     top_topics as (

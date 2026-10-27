@@ -39,11 +39,10 @@ import {
 import { useReportPeriodDays } from "./use-report-period-days";
 
 const GLOSSARY = [
-  ["Lượt đề cập (Mentions)", "Số bài đăng, bình luận và trả lời AI xác định nói về đối tượng của project (không tính đối thủ). Đề cập chỉ nói về đối thủ hoặc chưa rõ nói về ai chỉ dùng cho Share of Voice và phần so sánh."],
+  ["Lượt đề cập (Mentions)", "Số bài đăng, bình luận và trả lời được xác định nói về đối tượng project đang theo dõi."],
   ["Tương tác (Engagement)", "Tổng lượt thích, bình luận (trả lời, với bình luận) và chia sẻ của chính nội dung đề cập."],
   ["Tác giả", "Số người khác nhau đã viết các đề cập trong kỳ."],
   ["Chỉ số cảm xúc ròng (NSS)", "(Tích cực − Tiêu cực) / Số đề cập đã phân loại cảm xúc × 100, từ −100 đến +100."],
-  ["Share of Voice (SOV)", "Tỷ lệ đề cập nhắc tới đối tượng chính trên đề cập nhắc tới đối tượng chính hoặc đối thủ. Với case Uy tín chủ đầu tư, đề cập nhắc dự án của chủ đầu tư được tính cho chủ đầu tư. Chỉ có khi project có đối thủ."],
   ["Kỳ so sánh", "Các thay đổi so với cùng số ngày liền trước, tính theo ngày đăng và múi giờ của project."],
   ["Giá rao (tr/m²)", "Trung vị giá rao bán lại của dự án đang theo dõi, triệu đồng/m². AI trích từ tin rao; đã lọc tin trùng và tin lệch bất thường."],
   ["Chỉ số uy tín (0–100)", "Trung bình điểm các trụ cột (khía cạnh) có ít nhất 5 đề cập có cảm xúc. Điểm trụ cột = (NSS của khía cạnh + 100) / 2. Chỉ tính đề cập AI xác định nói về chủ đầu tư hoặc dự án của chủ đầu tư."],

@@ -316,6 +316,32 @@ Xem [D24](decisions.md#d24--gỡ-pipeline-cũ-2026-10-25).
 - [x] Dọn khóa i18n của pipeline cũ, `EXA_API_KEY` và 13 dependency không còn dùng (`@langchain/langgraph`, `@langchain/textsplitters`, `@modelcontextprotocol/sdk`, `react-markdown`, `remark-gfm`, `sonner`, 7 gói `@radix-ui/*`)
 - [ ] Xóa demo data khi mọi trang đã dùng dữ liệu thật
 
+## Giai đoạn 9 — Một chủ thể mỗi project, so sánh là case riêng
+
+Xem [D30](decisions.md#d30--một-project-theo-dõi-một-chủ-thể-so-sánh-là-case-riêng-2026-10-27).
+
+**PR 1 — Mô hình một chủ thể**
+- [x] Vai trò `subject` (thay `primary`) và `product` (chỉ `brand`); bỏ `competitor`, `person`, `area` ở template, schema zod, form đối tượng, MCP `create_project`
+- [x] Prompt `sentiment` hướng vào chủ thể; `entities` chỉ còn ở case `brand`
+- [x] Bỏ `ownMentionSql`; `project_metrics_daily` bỏ `sov_primary`, `sov_tracked`; Overview bỏ SoV
+- [x] Trang Chi tiết dự án và Chỉ số uy tín bỏ phần đối thủ (giá, radar, SoV, đường so sánh); khía cạnh và xu hướng uy tín đọc L4
+- [x] Cảnh báo: scope `first_of_role primary` thành `project`, bỏ `each_role area`
+- [x] Script `projects:delete-all` (dữ liệu demo tĩnh giữ nguyên đến mục dọn demo của giai đoạn 8)
+- [ ] Chạy migration, xóa project cũ, tạo lại một project mỗi case, Match và Enrich, kiểm dashboard
+
+**PR 2 — Report service theo box**
+- [ ] `getReportContext` (kỳ, timezone, case, chủ thể, product, enricher đang bật) resolve một lần
+- [ ] Mỗi box là một service trả `{ availability, data }`; registry và `POST /api/metrics/reports`
+- [ ] UI, AI tools và snapshot báo cáo dùng registry; xóa service và route theo section
+- [ ] So số từng box với service cũ trên cùng project và kỳ trước khi xóa
+
+**PR 3 — Case so sánh**
+- [ ] `project_compare_members`; template có `kind` (`listening` | `compare`) và `compareOf`
+- [ ] Tạo project so sánh: 2–4 project cùng workspace, cùng case; cảnh báo khía cạnh không trùng và timezone lệch
+- [ ] Pipeline bỏ qua project so sánh (thu thập, Match, Enrich, L4, cảnh báo, báo cáo theo kỳ)
+- [ ] Report so sánh trả series theo project (đề cập và SoV, cảm xúc, khía cạnh trùng key, emotion, giá, chỉ số uy tín); trung bình tính ở UI
+- [ ] Wizard, sidebar và trang report của project so sánh
+
 ## Câu hỏi còn mở
 
 - Kho thô dùng chung giữa các workspace (tiết kiệm chi phí cào) hay tách riêng theo workspace (dễ quản lý quyền)? Hiện đề xuất dùng chung.

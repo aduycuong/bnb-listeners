@@ -6,7 +6,6 @@ import {
   effectiveSentimentSql,
   emotionSql,
 } from "@/lib/enrichment/utils/effective-sentiment-sql";
-import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 
 import type { RefreshProjectMetricsDailyParams, RefreshProjectMetricsDailyResult } from "../types";
 import { engagementSql } from "../utils/engagement-sql";
@@ -37,18 +36,9 @@ export async function refreshProjectMetricsDaily(
   const base = sql`
     select m.id, m.content_item_id, m.source_id, m.kind,
       (m.published_at at time zone ${tz})::date as date_key,
-      ${ownMentionSql} as own,
       ${effectiveSentimentSql} as sentiment,
       ${emotionSql} as emotion,
-      ${engagementSql(sql`ci`)} as engagement,
-      exists (
-        select 1 from mention_entities me join project_entities pe on pe.id = me.entity_id
-        where me.mention_id = m.id and pe.role in ('primary', 'product')
-      ) as sov_primary,
-      exists (
-        select 1 from mention_entities me join project_entities pe on pe.id = me.entity_id
-        where me.mention_id = m.id and pe.role in ('primary', 'product', 'competitor')
-      ) as sov_tracked
+      ${engagementSql(sql`ci`)} as engagement
     from mentions m
     join content_items ci on ci.id = m.content_item_id
     ${effectiveSentimentJoins}
@@ -63,23 +53,21 @@ export async function refreshProjectMetricsDaily(
         select date_key, source_id, jsonb_object_agg(emotion, n) as emotions
         from (
           select date_key, source_id, emotion, count(*)::int as n
-          from base where own and emotion is not null
+          from base where emotion is not null
           group by 1, 2, 3
         ) e
         group by 1, 2
       ),
       agg as (
         select b.date_key, b.source_id,
-          (count(*) filter (where b.own))::int as mentions,
-          (count(*) filter (where b.own and b.kind = 'post'))::int as posts,
-          coalesce(sum(b.engagement) filter (where b.own), 0)::int as engagement,
-          (count(*) filter (where b.own and b.sentiment = 'positive'))::int as positive,
-          (count(*) filter (where b.own and b.sentiment = 'neutral'))::int as neutral,
-          (count(*) filter (where b.own and b.sentiment = 'negative'))::int as negative,
-          (count(*) filter (where b.own and b.sentiment is null))::int as unknown,
-          coalesce(min(e.emotions::text)::jsonb, '{}'::jsonb) as emotions,
-          (count(*) filter (where b.sov_primary))::int as sov_primary,
-          (count(*) filter (where b.sov_tracked))::int as sov_tracked
+          count(*)::int as mentions,
+          (count(*) filter (where b.kind = 'post'))::int as posts,
+          coalesce(sum(b.engagement), 0)::int as engagement,
+          (count(*) filter (where b.sentiment = 'positive'))::int as positive,
+          (count(*) filter (where b.sentiment = 'neutral'))::int as neutral,
+          (count(*) filter (where b.sentiment = 'negative'))::int as negative,
+          (count(*) filter (where b.sentiment is null))::int as unknown,
+          coalesce(min(e.emotions::text)::jsonb, '{}'::jsonb) as emotions
         from base b
         left join emotions e on e.date_key = b.date_key
           and e.source_id is not distinct from b.source_id
@@ -96,37 +84,35 @@ export async function refreshProjectMetricsDaily(
       upserted as (
         insert into project_metrics_daily (
           project_id, date_key, source_id, mentions, posts, engagement,
-          positive, neutral, negative, unknown, emotions, sov_primary, sov_tracked
+          positive, neutral, negative, unknown, emotions
         )
         select ${projectId}::uuid, date_key, source_id, mentions, posts, engagement,
-          positive, neutral, negative, unknown, emotions, sov_primary, sov_tracked
+          positive, neutral, negative, unknown, emotions
         from agg
         on conflict on constraint project_metrics_daily_key do update set
           mentions = excluded.mentions, posts = excluded.posts, engagement = excluded.engagement,
           positive = excluded.positive, neutral = excluded.neutral, negative = excluded.negative,
-          unknown = excluded.unknown, emotions = excluded.emotions,
-          sov_primary = excluded.sov_primary, sov_tracked = excluded.sov_tracked,
-          computed_at = now()
+          unknown = excluded.unknown, emotions = excluded.emotions, computed_at = now()
         returning 1
       )
       select count(*)::int as count from upserted
     `),
     db.execute<{ count: number }>(sql`
-      with own as (select * from (${base}) b where b.own),
+      with base as (${base}),
       effective as (
-        select own.date_key, pa.id as aspect_id, own.sentiment
-        from own
-        join item_labels il on il.content_item_id = own.content_item_id
+        select b.date_key, pa.id as aspect_id, b.sentiment
+        from base b
+        join item_labels il on il.content_item_id = b.content_item_id
           and il.project_id = ${projectId}::uuid and il.aspect_keys is not null
         join project_aspects pa on pa.project_id = ${projectId}::uuid
           and il.aspect_keys @> jsonb_build_array(pa.key)
         union all
-        select own.date_key, ma.aspect_id, coalesce(ma.sentiment, own.sentiment)
-        from own
-        join mention_aspects ma on ma.mention_id = own.id
+        select b.date_key, ma.aspect_id, coalesce(ma.sentiment, b.sentiment)
+        from base b
+        join mention_aspects ma on ma.mention_id = b.id
         where not exists (
           select 1 from item_labels il
-          where il.content_item_id = own.content_item_id
+          where il.content_item_id = b.content_item_id
             and il.project_id = ${projectId}::uuid and il.aspect_keys is not null
         )
       ),

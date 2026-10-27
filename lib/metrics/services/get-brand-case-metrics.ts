@@ -3,17 +3,13 @@ import { eq, sql, type SQL } from "drizzle-orm";
 import { projects } from "@/db/schema";
 import { InvalidInputError, NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
-import {
-  effectiveSentimentJoins,
-  effectiveSentimentSql,
-} from "@/lib/enrichment/utils/effective-sentiment-sql";
 import { brandCaseConfigSchema } from "@/lib/projects/case-templates";
 import { parseProjectCase } from "@/lib/projects/project-cases";
 
 import { METRICS_CONFIG } from "../config";
 import { netSentimentScore, reputationIndex, reputationPillarScore } from "../formulas";
 import type { BrandCaseMetricsResult, MetricsReportParams } from "../types";
-import { periodSql, resolveReportWindow } from "../utils/resolve-report-window";
+import { periodDateSql, periodSql, resolveReportWindow } from "../utils/resolve-report-window";
 
 type Period = BrandCaseMetricsResult["trendPeriod"];
 
@@ -25,24 +21,16 @@ const PERIOD_INTERVAL: Record<Period, string> = {
 
 type SentimentCounts = { positive: number; neutral: number; negative: number };
 
-type AspectCountRow = SentimentCounts & {
-  side: string;
-  bucket: string;
-  aspect_id: string;
-};
+type AspectCountRow = SentimentCounts & { bucket: string; aspect_id: string };
 
-type EntityRow = { id: string; role: string; name: string };
-
-type EntityCountRow = SentimentCounts & { id: string; mentions: number };
+type ProductRow = SentimentCounts & { id: string; name: string; mentions: number };
 
 /**
- * Numbers of the brand-case page (`Chỉ số uy tín`): the reputation index and its pillars,
- * NSS per project of the developer, share of voice against competitors, and the index over
- * the last report periods. Each project aspect is a pillar.
- *
- * The developer's side is the mentions Enrich gave the developer or one of its projects, also
- * when they name a competitor too. A competitor's side is the mentions naming that competitor
- * alone. Mentions without an entity count for no side. Reads L3 directly. Only `case = brand`.
+ * Numbers of the brand-case page (`Chỉ số uy tín`): the reputation index and its pillars, NSS
+ * per project of the developer and the index over the last report periods. Each project aspect
+ * is a pillar. Every relevant mention is about the developer or one of its projects (D30), so
+ * pillars and the trend are sums of L4 (`project_aspect_daily`); NSS per project reads the
+ * sentiment Enrich gave each `product` entity (`mention_entities`). Only `case = brand`.
  */
 export async function getBrandCaseMetrics(
   params: MetricsReportParams,
@@ -64,30 +52,28 @@ export async function getBrandCaseMetrics(
   const parsedConfig = brandCaseConfigSchema.safeParse(project.caseConfig);
   const period: Period = parsedConfig.success ? parsedConfig.data.period : "month";
   const window = await resolveReportWindow(params.projectId, params.period);
-  const inPeriod = periodSql(window);
+  const days = periodDateSql(window);
   const tz = window.timezone;
   const unit = sql.raw(`'${period}'`);
   const step = sql.raw(`interval '${PERIOD_INTERVAL[period]}'`);
 
-  const { rows: periodRows } = await db.execute<{ trend_start: string; starts: string[] }>(sql`
+  const { rows: periodRows } = await db.execute<{ starts: string[] }>(sql`
     with p as (
       select date_trunc(${unit}, now() at time zone ${tz})
         - ${METRICS_CONFIG.reputationTrendPeriods - 1}::int * ${step} as first
     )
-    select first at time zone ${tz} as trend_start,
-      array(
-        select to_char(first + n * ${step}, 'YYYY-MM-DD')
-        from generate_series(0, ${METRICS_CONFIG.reputationTrendPeriods - 1}::int) n
-      ) as starts
+    select array(
+      select to_char(first + n * ${step}, 'YYYY-MM-DD')
+      from generate_series(0, ${METRICS_CONFIG.reputationTrendPeriods - 1}::int) n
+    ) as starts
     from p
   `);
-  const trendStart = sql`${new Date(periodRows[0].trend_start).toISOString()}::timestamptz`;
+  const starts = periodRows[0].starts;
 
   const [
     { rows: aspectRows },
-    { rows: entityRows },
-    { rows: entityCountRows },
-    { rows: ownRows },
+    { rows: subjectRows },
+    { rows: productRows },
     { rows: windowRows },
     { rows: trendRows },
   ] = await Promise.all([
@@ -96,54 +82,41 @@ export async function getBrandCaseMetrics(
       where project_id = ${params.projectId}::uuid
       order by sort_order, name
     `),
-    db.execute<EntityRow>(sql`
-      select id, role, name from project_entities
-      where project_id = ${params.projectId}::uuid
-        and role in ('primary', 'product', 'competitor')
-      order by sort_order, name
+    db.execute<{ name: string }>(sql`
+      select name from project_entities
+      where project_id = ${params.projectId}::uuid and role = 'subject'
+      limit 1
     `),
-    db.execute<EntityCountRow>(sql`
-      select me.entity_id as id, count(*)::int as mentions,
-        (count(*) filter (where me.sentiment = 'positive'))::int as positive,
-        (count(*) filter (where me.sentiment = 'neutral'))::int as neutral,
-        (count(*) filter (where me.sentiment = 'negative'))::int as negative
-      from mention_entities me
-      join mentions m on m.id = me.mention_id
-      where m.project_id = ${params.projectId}::uuid and m.is_relevant
-        and ${inPeriod.current}
-      group by me.entity_id
-    `),
-    db.execute<{ mentions: number }>(sql`
-      select count(distinct me.mention_id)::int as mentions
-      from mention_entities me
-      join project_entities pe on pe.id = me.entity_id
-      join mentions m on m.id = me.mention_id
-      where m.project_id = ${params.projectId}::uuid and m.is_relevant
-        and ${inPeriod.current}
-        and pe.role in ('primary', 'product')
+    db.execute<ProductRow>(sql`
+      select pe.id, pe.name,
+        count(m.id)::int as mentions,
+        (count(m.id) filter (where me.sentiment = 'positive'))::int as positive,
+        (count(m.id) filter (where me.sentiment = 'neutral'))::int as neutral,
+        (count(m.id) filter (where me.sentiment = 'negative'))::int as negative
+      from project_entities pe
+      left join mention_entities me on me.entity_id = pe.id
+      left join mentions m on m.id = me.mention_id and m.is_relevant
+        and ${periodSql(window).current}
+      where pe.project_id = ${params.projectId}::uuid and pe.role = 'product'
+      group by pe.id
+      order by mentions desc, pe.sort_order, pe.name
     `),
     loadAspectCounts(
       params.projectId,
-      inPeriod.either,
-      sql`case when ${inPeriod.current} then 'current' else 'previous' end`,
+      days.either,
+      sql`case when ${days.current} then 'current' else 'previous' end`,
     ),
     loadAspectCounts(
       params.projectId,
-      sql`m.published_at >= ${trendStart}`,
-      sql`to_char(date_trunc(${unit}, m.published_at at time zone ${tz}), 'YYYY-MM-DD')`,
+      sql`d.date_key >= ${starts[0]}::date`,
+      sql`to_char(date_trunc(${unit}, d.date_key), 'YYYY-MM-DD')`,
     ),
   ]);
 
-  const primary = entityRows.find((row) => row.role === "primary");
-  const competitors = entityRows.filter((row) => row.role === "competitor");
-  const countsById = new Map(entityCountRows.map((row) => [row.id, row]));
   const aspectIds = aspectRows.map((row) => row.id);
-
   const pillars = aspectRows.map((aspect) => {
     const counts = sumCounts(
-      windowRows.filter(
-        (row) => row.side === "primary" && row.bucket === "current" && row.aspect_id === aspect.id,
-      ),
+      windowRows.filter((row) => row.bucket === "current" && row.aspect_id === aspect.id),
     );
     return {
       id: aspect.id,
@@ -153,60 +126,23 @@ export async function getBrandCaseMetrics(
     };
   });
 
-  const trend = periodRows[0].starts.map((periodStart) => {
-    const ofPeriod = trendRows.filter((row) => row.bucket === periodStart);
-    const competitorScores = competitors
-      .map((competitor) => sideIndex(ofPeriod, competitor.id, aspectIds))
-      .filter((score): score is number => score !== null);
-    return {
-      start: periodStart,
-      primary: sideIndex(ofPeriod, "primary", aspectIds),
-      competitors: reputationIndex(competitorScores),
-    };
-  });
-
   return {
     period: window.info,
     timezone: tz,
-    primaryName: primary?.name ?? project.name,
-    hasCompetitors: competitors.length > 0,
+    subjectName: subjectRows[0]?.name ?? project.name,
     index: {
       current: reputationIndex(pillars.map((pillar) => pillar.score)),
-      previous: sideIndex(
-        windowRows.filter((row) => row.bucket === "previous"),
-        "primary",
-        aspectIds,
-      ),
+      previous: bucketIndex(windowRows, "previous", aspectIds),
     },
     pillars,
-    products: entityRows
-      .filter((row) => row.role === "product")
-      .map((row) => {
-        const counts = countsById.get(row.id);
-        return {
-          id: row.id,
-          name: row.name,
-          mentions: counts?.mentions ?? 0,
-          nss: counts ? netSentimentScore(counts) : null,
-        };
-      })
-      .sort((a, b) => b.mentions - a.mentions),
-    shareOfVoice: [
-      {
-        id: primary?.id ?? params.projectId,
-        name: primary?.name ?? project.name,
-        role: "primary" as const,
-        mentions: ownRows[0]?.mentions ?? 0,
-      },
-      ...competitors.map((row) => ({
-        id: row.id,
-        name: row.name,
-        role: "competitor" as const,
-        mentions: countsById.get(row.id)?.mentions ?? 0,
-      })),
-    ],
+    products: productRows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      mentions: row.mentions,
+      nss: row.mentions ? netSentimentScore(row) : null,
+    })),
     trendPeriod: period,
-    trend,
+    trend: starts.map((start) => ({ start, index: bucketIndex(trendRows, start, aspectIds) })),
   };
 }
 
@@ -221,69 +157,26 @@ function sumCounts(rows: SentimentCounts[]): SentimentCounts {
   );
 }
 
-/** Reputation index of one side (`primary` or a competitor id) over the given rows. */
-function sideIndex(rows: AspectCountRow[], side: string, aspectIds: string[]) {
+/** Reputation index of one bucket over the given rows. */
+function bucketIndex(rows: AspectCountRow[], bucket: string, aspectIds: string[]) {
   return reputationIndex(
     aspectIds.map((aspectId) =>
       reputationPillarScore(
-        sumCounts(rows.filter((row) => row.side === side && row.aspect_id === aspectId)),
+        sumCounts(rows.filter((row) => row.bucket === bucket && row.aspect_id === aspectId)),
       ),
     ),
   );
 }
 
-/**
- * Aspect sentiment counts per side and bucket since `from`. Aspects follow D17: the label's
- * aspects with the mention's sentiment when the item is labelled, else Enrich's aspects with
- * their own sentiment. Mentions without an entity, or naming several competitors and nothing of
- * the developer, count for no side.
- */
+/** Aspect sentiment counts per bucket over the L4 days in range (aspects follow D14). */
 function loadAspectCounts(projectId: string, inRange: SQL, bucket: SQL) {
   return db.execute<AspectCountRow>(sql`
-    with sides as (
-      select me.mention_id,
-        bool_or(pe.role in ('primary', 'product')) as own,
-        (count(*) filter (where pe.role = 'competitor'))::int as competitors,
-        (array_agg(pe.id::text) filter (where pe.role = 'competitor'))[1] as competitor_id
-      from mention_entities me
-      join project_entities pe on pe.id = me.entity_id
-      where pe.project_id = ${projectId}::uuid
-      group by me.mention_id
-    ),
-    pm as (
-      select m.id, m.content_item_id, ${effectiveSentimentSql} as sentiment, ${bucket} as bucket,
-        case
-          when s.own then 'primary'
-          when s.competitors = 1 then s.competitor_id
-        end as side
-      from mentions m
-      ${effectiveSentimentJoins}
-      left join sides s on s.mention_id = m.id
-      where m.project_id = ${projectId}::uuid and m.is_relevant and ${inRange}
-    ),
-    effective as (
-      select pm.side, pm.bucket, pa.id as aspect_id, pm.sentiment
-      from pm
-      join item_labels il on il.content_item_id = pm.content_item_id
-        and il.project_id = ${projectId}::uuid and il.aspect_keys is not null
-      join project_aspects pa on pa.project_id = ${projectId}::uuid
-        and il.aspect_keys @> jsonb_build_array(pa.key)
-      where pm.side is not null
-      union all
-      select pm.side, pm.bucket, ma.aspect_id, coalesce(ma.sentiment, pm.sentiment)
-      from pm
-      join mention_aspects ma on ma.mention_id = pm.id
-      where pm.side is not null and not exists (
-        select 1 from item_labels il
-        where il.content_item_id = pm.content_item_id
-          and il.project_id = ${projectId}::uuid and il.aspect_keys is not null
-      )
-    )
-    select side, bucket, aspect_id,
-      (count(*) filter (where sentiment = 'positive'))::int as positive,
-      (count(*) filter (where sentiment = 'neutral'))::int as neutral,
-      (count(*) filter (where sentiment = 'negative'))::int as negative
-    from effective
-    group by side, bucket, aspect_id
+    select ${bucket} as bucket, d.aspect_id,
+      sum(d.positive)::int as positive,
+      sum(d.neutral)::int as neutral,
+      sum(d.negative)::int as negative
+    from project_aspect_daily d
+    where d.project_id = ${projectId}::uuid and ${inRange}
+    group by 1, 2
   `);
 }

@@ -13,8 +13,8 @@ export const getCaseMetricsTool = defineAiTool({
   scope: "reports:read",
   description:
     "Số liệu riêng theo case của project. Case project (Theo dõi dự án): giá rao bán, " +
-    "câu hỏi người mua, NSS theo khía cạnh so với đối thủ. Case brand (Uy tín chủ đầu tư): " +
-    "chỉ số uy tín và các trụ cột, cảm xúc theo dự án, Share of Voice, xu hướng chỉ số. " +
+    "câu hỏi người mua, NSS theo khía cạnh. Case brand (Uy tín chủ đầu tư): " +
+    "chỉ số uy tín và các trụ cột, cảm xúc theo dự án, xu hướng chỉ số. " +
     "Case khác chưa có số liệu riêng.",
   inputSchema: projectPeriodInputSchema,
   async run({ projectId, period }, ctx) {

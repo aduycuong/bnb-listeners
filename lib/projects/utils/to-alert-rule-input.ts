@@ -26,19 +26,13 @@ export function toAlertRuleInput(
   };
 }
 
-/** Resolves a case seed against the form's entity and aspect ids; null when its target is missing. */
+/** Resolves a case seed against the form's aspect ids; null when its target is missing. */
 export function seedToAlertRuleInput(
   seed: AlertRuleSeed,
-  entities: { id: string; role: string }[],
   aspects: { id: string; key?: string }[],
 ): AlertRuleInput | null {
   let scope = "project";
-  if (seed.scope.type === "first_of_role") {
-    const role = seed.scope.role;
-    const entity = entities.find((item) => item.role === role);
-    if (!entity) return null;
-    scope = `entity:${entity.id}`;
-  } else if (seed.scope.type === "aspect_key") {
+  if (seed.scope.type === "aspect_key") {
     const key = seed.scope.key;
     const aspect = aspects.find((item) => item.key === key);
     if (!aspect) return null;

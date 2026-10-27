@@ -52,7 +52,8 @@ export async function loadEnrichContext(params: { projectId: string }): Promise<
     id: row.id,
     ref: `e${index + 1}`,
     name: row.name,
-    role: roleLabels.get(row.role) ?? row.role,
+    role: row.role,
+    roleLabel: roleLabels.get(row.role) ?? row.role,
     aliases: row.aliases,
   }));
 

@@ -40,7 +40,7 @@ export function toNewProjectFormValues(
     sourceIds: current?.sourceIds ?? [],
     alerts: {
       rules: template.alertSeeds
-        .map((seed) => seedToAlertRuleInput(seed, entities, aspects))
+        .map((seed) => seedToAlertRuleInput(seed, aspects))
         .filter((rule) => rule !== null),
       channels: ["email"],
       recipients: recipient ? [recipient] : [],

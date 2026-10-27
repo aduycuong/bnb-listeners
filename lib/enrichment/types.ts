@@ -10,7 +10,10 @@ export type EnrichEntity = {
   /** Short key used in the prompt and output, e.g. `e1`. */
   ref: string;
   name: string;
+  /** Key of `ENTITY_ROLES`. */
   role: string;
+  /** The role's label in the case template, shown in the prompt. */
+  roleLabel: string;
   aliases: string[];
 };
 

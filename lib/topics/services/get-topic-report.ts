@@ -5,7 +5,6 @@ import {
   effectiveSentimentJoins,
   effectiveSentimentSql,
 } from "@/lib/enrichment/utils/effective-sentiment-sql";
-import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 import { periodSql, resolveReportWindow } from "@/lib/metrics/utils/resolve-report-window";
 
 import { TOPIC_CONFIG } from "../config";
@@ -45,7 +44,7 @@ export async function getTopicReport(params: TopicReportParams): Promise<TopicRe
         (count(m.id) filter (where not (${current})))::int as previous
       from topics t
       join mention_topics mt on mt.topic_id = t.id and mt.kind = 'topic'
-      join mentions m on m.id = mt.mention_id and m.is_relevant and ${ownMentionSql}
+      join mentions m on m.id = mt.mention_id and m.is_relevant
         and ${either}
       ${effectiveSentimentJoins}
       where t.project_id = ${params.projectId}::uuid and t.kind = 'topic' and t.status = 'active'
@@ -59,7 +58,7 @@ export async function getTopicReport(params: TopicReportParams): Promise<TopicRe
       from mention_terms mt
       join mentions m on m.id = mt.mention_id
       ${effectiveSentimentJoins}
-      where m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
+      where m.project_id = ${params.projectId}::uuid and m.is_relevant
         and mt.kind = 'keyword' and ${current}
       group by mt.term
       order by mentions desc, mt.term

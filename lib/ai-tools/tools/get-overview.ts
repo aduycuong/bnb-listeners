@@ -10,8 +10,8 @@ export const getOverviewTool = defineAiTool({
   scope: "reports:read",
   description:
     "Tổng quan của project trong kỳ: lượt đề cập, tương tác, số tác giả, NSS, tỷ lệ tiêu " +
-    "cực, Share of Voice (so với kỳ trước), đề cập theo ngày và cảm xúc, nguồn và chủ đề " +
-    "nhiều đề cập nhất. Chỉ đếm đề cập về bên mình.",
+    "cực (so với kỳ trước), đề cập theo ngày và cảm xúc, nguồn và chủ đề nhiều đề cập nhất. " +
+    "Chỉ đếm đề cập về đối tượng project theo dõi.",
   inputSchema: projectPeriodInputSchema,
   async run({ projectId, period }, ctx) {
     await assertToolProject(ctx, projectId);

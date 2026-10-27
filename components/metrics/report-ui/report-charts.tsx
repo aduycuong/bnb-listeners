@@ -481,9 +481,10 @@ export function HealthLineChart({
 }: {
   labels: string[];
   developer: (number | null)[];
-  peers: (number | null)[] | null;
+  /** A second line, e.g. the mean of compared developers; left out when absent. */
+  peers?: (number | null)[] | null;
   developerLabel: string;
-  peersLabel: string;
+  peersLabel?: string;
 }) {
   const data = labels.map((label, index) => ({
     label,
@@ -496,7 +497,7 @@ export function HealthLineChart({
       height={220}
       config={{
         developer: { label: developerLabel, color: "var(--primary)" },
-        peers: { label: peersLabel, color: "var(--muted-foreground)" },
+        peers: { label: peersLabel ?? "", color: "var(--muted-foreground)" },
       }}
     >
       <LineChart data={data}>

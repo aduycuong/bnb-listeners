@@ -88,7 +88,7 @@ function toCreateProjectValues(input: z.output<typeof inputSchema>, userEmail: s
     sourceIds: input.sourceIds,
     alerts: {
       rules: template.alertSeeds
-        .map((seed) => seedToAlertRuleInput(seed, entities, seededAspects))
+        .map((seed) => seedToAlertRuleInput(seed, seededAspects))
         .filter((rule) => rule !== null),
       channels: ["email" as const],
       recipients: input.alertRecipients ?? (userEmail ? [userEmail] : []),

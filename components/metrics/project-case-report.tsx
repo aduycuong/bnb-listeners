@@ -34,24 +34,9 @@ export function ProjectCaseReport({
   const { data, error, isPending, isFetching } = useProjectCaseMetrics(scope, days);
   const loading = isPending ? "Đang tải…" : null;
   const caseLabel = t("cases.project");
-  const radarAspects = data?.aspects.filter((aspect) => aspect.primary != null || aspect.competitor != null) ?? [];
+  const radarAspects = data?.aspects.filter((aspect) => aspect.nss != null) ?? [];
   const radarSeries = data
-    ? [
-        {
-          key: data.primaryName,
-          color: "#0091FF",
-          values: radarAspects.map((aspect) => aspect.primary ?? 0),
-        },
-        ...(data.hasCompetitors && radarAspects.some((aspect) => aspect.competitor != null)
-          ? [
-              {
-                key: "TB đối thủ",
-                color: "#FFC93C",
-                values: radarAspects.map((aspect) => aspect.competitor ?? 0),
-              },
-            ]
-          : []),
-      ]
+    ? [{ key: data.subjectName, color: "#0091FF", values: radarAspects.map((aspect) => aspect.nss ?? 0) }]
     : [];
 
   return (
@@ -114,11 +99,11 @@ export function ProjectCaseReport({
           )}
         </ReportPanel>
         <ReportPanel
-          title="So sánh khía cạnh với dự án cạnh tranh"
+          title="Cảm xúc theo khía cạnh"
           span="s6"
           scope="case"
           scopeLabel={caseLabel}
-          note="Điểm cảm xúc ròng theo khía cạnh. Đối thủ chỉ tính mention nói đúng một đối thủ."
+          note="Điểm cảm xúc ròng (NSS) của dự án theo từng khía cạnh"
         >
           {data && radarAspects.length ? (
             <RadarAttributeChart

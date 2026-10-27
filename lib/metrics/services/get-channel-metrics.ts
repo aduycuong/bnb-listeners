@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { ownMentionSql } from "@/lib/mentions/utils/own-mention-sql";
 
 import { METRICS_CONFIG } from "../config";
 import type { ChannelMetricsResult, MetricsReportParams } from "../types";
@@ -37,7 +36,7 @@ export async function getChannelMetrics(
   params: MetricsReportParams,
 ): Promise<ChannelMetricsResult> {
   const window = await resolveReportWindow(params.projectId, params.period);
-  const scope = sql`m.project_id = ${params.projectId}::uuid and m.is_relevant and ${ownMentionSql}
+  const scope = sql`m.project_id = ${params.projectId}::uuid and m.is_relevant
     and ${periodSql(window).current}`;
   const days = sql`d.project_id = ${params.projectId}::uuid and ${periodDateSql(window).current}`;
 

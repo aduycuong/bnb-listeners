@@ -146,13 +146,13 @@ Social listening scope inside a workspace: one brand, campaign, or similar liste
 
 ### `project_entities`
 
-Brand, project, competitor or area a project listens for.
+The subject a project listens for (one project, one subject: D30) and, for `brand`, the developer's projects.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
 | id | uuid | NO | `gen_random_uuid()` | Primary key |
 | project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
-| role | text | NO | — | `primary`, `competitor`, `product`, `person`, `area` |
+| role | text | NO | — | `subject` (exactly one), `product` (`brand` only) |
 | name | text | NO | — | Display name |
 | aliases | jsonb | NO | `[]` | Other names (string[]) |
 | color | text | YES | — | Chart color |
@@ -469,21 +469,19 @@ L4 (D28). Counts of relevant mentions per project, day of the project's timezone
 | project_id | uuid | NO | — | FK → `projects.id` ON DELETE CASCADE |
 | date_key | date | NO | — | Day of `mentions.published_at` in `projects.timezone` |
 | source_id | uuid | YES | — | FK → `sources.id` ON DELETE SET NULL |
-| mentions | int | NO | `0` | Own mentions (D26) |
-| posts | int | NO | `0` | Own mentions that are posts |
-| engagement | int | NO | `0` | Sum of item engagement of own mentions |
-| positive / neutral / negative | int | NO | `0` | Own mentions by effective sentiment |
-| unknown | int | NO | `0` | Own mentions without a sentiment |
-| emotions | jsonb | NO | `{}` | Own mentions per emotion |
-| sov_primary | int | NO | `0` | Relevant mentions naming a `primary` or `product` entity |
-| sov_tracked | int | NO | `0` | Relevant mentions naming a `primary`, `product` or `competitor` entity |
+| mentions | int | NO | `0` | Relevant mentions |
+| posts | int | NO | `0` | Relevant mentions that are posts |
+| engagement | int | NO | `0` | Sum of item engagement of relevant mentions |
+| positive / neutral / negative | int | NO | `0` | Relevant mentions by effective sentiment |
+| unknown | int | NO | `0` | Relevant mentions without a sentiment |
+| emotions | jsonb | NO | `{}` | Relevant mentions per emotion |
 | computed_at | timestamptz | NO | `now()` | |
 
 **Constraints:** unique `(project_id, date_key, source_id)` NULLS NOT DISTINCT (`project_metrics_daily_key`), the upsert target.
 
 ### `project_aspect_daily`
 
-L4 (D28). Own mentions per effective aspect (D14: label keys when labeled, else Enrich's aspects) and day, with the aspect's sentiment. Rewritten with `project_metrics_daily`. Do not add aspects up into a mention count: one mention can have several aspects.
+L4 (D28). Relevant mentions per effective aspect (D14: label keys when labeled, else Enrich's aspects) and day, with the aspect's sentiment. Rewritten with `project_metrics_daily`. Do not add aspects up into a mention count: one mention can have several aspects.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
