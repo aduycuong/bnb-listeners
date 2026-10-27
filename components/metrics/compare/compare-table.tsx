@@ -33,8 +33,14 @@ export function compareGap<M extends CompareMemberBase>(members: M[], row: Compa
   return value === null || mean === null ? null : Math.round((value - mean) * 10) / 10;
 }
 
-export function formatGap(gap: number, unit = "") {
-  return `${decimal(formatSigned(gap))}${unit}`;
+/**
+ * The gap in the row's own format with a sign ("-5,4K", "+12"); in points when the row has a
+ * gap unit, as for shares and NSS ("-3,5 điểm").
+ */
+export function formatGap<M extends CompareMemberBase>(gap: number, row: CompareRow<M>) {
+  if (row.gapUnit) return `${decimal(formatSigned(gap))}${row.gapUnit}`;
+  const sign = gap > 0 ? "+" : gap < 0 ? "-" : "";
+  return `${sign}${row.format(Math.abs(gap))}`;
 }
 
 function show(value: Cell, format: (value: number) => string) {
@@ -109,7 +115,7 @@ export function CompareTable<M extends CompareMemberBase>({
                           : "text-muted-foreground",
                       )}
                     >
-                      {gap === null ? "—" : formatGap(gap, row.gapUnit)}
+                      {gap === null ? "—" : formatGap(gap, row)}
                     </td>
                   </>
                 ) : null}

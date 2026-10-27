@@ -79,7 +79,7 @@ export function CompareCaseReport({
   return (
     <CompareReportShell
       title={title}
-      subtitle={`${projectName} · ${caseLabel.toLowerCase()}`}
+      subtitle={`${projectName} · ${title.toLowerCase()} của project chính so với đối thủ`}
       days={days}
       onDaysChange={setDays}
       loading={isFetching && !isPending}
@@ -92,7 +92,7 @@ export function CompareCaseReport({
         <ReportGrid>
           <ReportPanel
             title="Giá rao bán lại theo ngày"
-            span="s8"
+            span="s12"
             scope="case"
             scopeLabel={caseLabel}
             note="Trung vị giá rao của từng dự án, triệu đồng/m². Nét đứt: TB đối thủ."
@@ -103,7 +103,7 @@ export function CompareCaseReport({
               <MetricsEmpty>{loading ?? `Chưa có giá rao bán trong ${days} ngày gần nhất.`}</MetricsEmpty>
             )}
           </ReportPanel>
-          <ReportPanel title="Giá và câu hỏi" span="s4" scope="case" scopeLabel={caseLabel}>
+          <ReportPanel title="Giá và câu hỏi" span="s5" scope="case" scopeLabel={caseLabel}>
             {members.length ? (
               <CompareTable
                 members={members}
@@ -136,7 +136,7 @@ export function CompareCaseReport({
           </ReportPanel>
           <ReportPanel
             title="Câu hỏi thường gặp của người mua"
-            span="s12"
+            span="s7"
             scope="case"
             scopeLabel={caseLabel}
             note="Top 5 nhóm câu hỏi của từng dự án"

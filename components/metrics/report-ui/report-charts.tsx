@@ -788,7 +788,15 @@ export function StackedShareChart({
     <ChartBox height={Math.max(150, rows.length * 48 + 70)} config={config}>
       <BarChart data={data} layout="vertical">
         <CartesianGrid horizontal={false} stroke="var(--border)" />
-        <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} tickLine={false} axisLine={false} />
+        <XAxis
+          type="number"
+          domain={[0, 100]}
+          ticks={[0, 25, 50, 75, 100]}
+          allowDataOverflow
+          tickFormatter={(value) => `${value}%`}
+          tickLine={false}
+          axisLine={false}
+        />
         <YAxis type="category" dataKey="name" width={120} tickLine={false} axisLine={false} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend verticalAlign="top" align="right" iconType="circle" />

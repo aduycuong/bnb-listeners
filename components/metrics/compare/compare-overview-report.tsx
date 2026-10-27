@@ -139,7 +139,7 @@ export function CompareOverviewReport({
           return {
             label: row.label as string,
             value: value === null ? "—" : row.format(value),
-            delta: gap === null ? "Chưa đủ số liệu" : formatGap(gap, row.gapUnit),
+            delta: gap === null ? "Chưa đủ số liệu" : formatGap(gap, row),
             good:
               gap === null || row.higherIsBetter === undefined || gap === 0
                 ? true

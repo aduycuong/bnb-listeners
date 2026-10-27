@@ -70,7 +70,7 @@ export function MemberColumns<M extends CompareMemberBase>({
   render: (member: M) => ReactNode;
 }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
       {members.map((member) => (
         <div key={member.id} className="min-w-0">
           <h4 className="mb-2 flex items-center gap-1.5 text-[13px] font-semibold">

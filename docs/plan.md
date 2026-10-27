@@ -347,7 +347,7 @@ Xem [D30](decisions.md#d30--một-project-theo-dõi-một-chủ-thể-so-sánh-l
 - [x] `project_compare_members.is_primary` (unique một mỗi project so sánh); chọn project chính rồi 1–3 đối thủ ở wizard và cài đặt
 - [x] TB đối thủ và chênh lệch (`CompareTable`); KPI Tổng quan so với TB đối thủ
 - [x] Trang Cảm xúc, Kênh & nguồn, Chủ đề & từ khóa, Tác giả, Giá & câu hỏi / Chỉ số uy tín cho project so sánh
-- [ ] Chạy migration, kiểm các trang trên DB dev
+- [x] Chạy migration, kiểm các trang trên DB dev (TT Genesis so với Essensia Sky): 6 trang, đổi project chính ở cài đặt. Chưa có project brand để thử `brand_compare`
 - [ ] Sau: luồng thảo luận gộp, tác giả nói về nhiều dự án
 
 ## Câu hỏi còn mở
