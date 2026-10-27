@@ -11,6 +11,7 @@ import { useForm, useWatch, type FieldErrors, type FieldPath } from "react-hook-
 import { FormFieldText } from "@/components/forms/form-field-text";
 import { FormFieldTextarea } from "@/components/forms/form-field-textarea";
 import { useAuth } from "@/components/auth/auth-provider";
+import { CreateCompareProjectForm } from "@/components/projects/compare/create-compare-project-form";
 import { ProjectAlertsFields } from "@/components/projects/config/project-alerts-fields";
 import { ProjectAspectsFields } from "@/components/projects/config/project-aspects-fields";
 import { ProjectCaseConfigFields } from "@/components/projects/config/project-case-config-fields";
@@ -44,7 +45,10 @@ import {
   PROJECT_CASE_GROUPS,
   PROJECT_CASE_ICONS,
   isAvailableProjectCase,
+  isCompareCase,
   type AvailableProjectCase,
+  type CompareCase,
+  type ProjectCase,
 } from "@/lib/projects/project-cases";
 import {
   createProjectWithConfigSchema,
@@ -118,6 +122,7 @@ export function CreateProjectPage({
   });
   const [step, setStep] = useState(0);
   const [projectCase, setProjectCase] = useState<AvailableProjectCase | null>(null);
+  const [compareCase, setCompareCase] = useState<CompareCase | null>(null);
   const [saving, setSaving] = useState(false);
   const form = useForm<FormValues, unknown, CreateProjectWithConfigBody>({
     resolver: zodResolver(createProjectWithConfigSchema),
@@ -130,7 +135,13 @@ export function CreateProjectPage({
     topRef.current?.scrollIntoView({ block: "start" });
   }, [step]);
 
-  function chooseCase(next: AvailableProjectCase) {
+  function chooseCase(next: ProjectCase) {
+    if (isCompareCase(next)) {
+      setCompareCase(next);
+      return;
+    }
+    if (!isAvailableProjectCase(next)) return;
+    setCompareCase(null);
     if (next !== projectCase) {
       const current = form.getValues();
       form.reset(toNewProjectFormValues(next, current, user?.email));
@@ -219,6 +230,18 @@ export function CreateProjectPage({
 
   if (!workspace) {
     return null;
+  }
+
+  if (compareCase) {
+    return (
+      <CreateCompareProjectForm
+        workspaceId={workspace.id}
+        workspaceIndex={workspaceIndex}
+        compareCase={compareCase}
+        nextProjectIndex={data?.items.length}
+        onBack={() => setCompareCase(null)}
+      />
+    );
   }
 
   const caseLabel = projectCase ? t(`cases.${projectCase}`) : null;
@@ -426,7 +449,7 @@ function CaseStep({
   selected: AvailableProjectCase | null;
   caseLabel: (value: string) => string;
   groupLabel: (key: string) => string;
-  onChoose: (value: AvailableProjectCase) => void;
+  onChoose: (value: ProjectCase) => void;
 }) {
   return (
     <StepBody
@@ -438,7 +461,7 @@ function CaseStep({
           <h3 className="mb-2 text-sm font-semibold">{groupLabel(group.labelKey)}</h3>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-2.5">
             {group.cases.map((value) => {
-              const ready = isAvailableProjectCase(value);
+              const ready = isAvailableProjectCase(value) || isCompareCase(value);
               const catalog = PROJECT_CASE_CATALOG[value];
               return (
                 <button
@@ -454,7 +477,7 @@ function CaseStep({
                     !ready && "cursor-not-allowed opacity-55",
                   )}
                   onClick={() => {
-                    if (isAvailableProjectCase(value)) onChoose(value);
+                    if (ready) onChoose(value);
                   }}
                 >
                   <span className="text-lg">{PROJECT_CASE_ICONS[value]}</span>

@@ -23,6 +23,16 @@ export function sharePercent(part: number, total: number) {
   return total ? Math.round((part / total) * 1000) / 10 : null;
 }
 
+/**
+ * Unweighted mean of the values that exist, one decimal; null when none does. The average of a
+ * comparison (D30): each project counts once, whatever its number of mentions.
+ */
+export function meanOf(values: (number | null)[]) {
+  const present = values.filter((value): value is number => value !== null);
+  if (!present.length) return null;
+  return Math.round((present.reduce((sum, value) => sum + value, 0) / present.length) * 10) / 10;
+}
+
 /** Change of a count against the period before, in %; null when the period before is 0. */
 export function growthPercent(current: number, previous: number) {
   return previous ? Math.round(((current - previous) / previous) * 1000) / 10 : null;

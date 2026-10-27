@@ -2,6 +2,7 @@ import { and, inArray } from "drizzle-orm";
 
 import { aiReports, projects } from "@/db/schema";
 import { db } from "@/lib/db";
+import { listeningProjectFilter } from "@/lib/projects/utils/listening-project-filter";
 
 import { REPORT_SCHEDULE_PERIODS } from "../config";
 import { lastClosedPeriodStart } from "../utils/last-closed-period";
@@ -31,7 +32,8 @@ export async function findDueReports(now = new Date()): Promise<DueReport[]> {
       timezone: projects.timezone,
       notificationConfig: projects.notificationConfig,
     })
-    .from(projects);
+    .from(projects)
+    .where(listeningProjectFilter);
 
   const candidates = rows.flatMap((row) => {
     const schedule = row.notificationConfig?.reportSchedule ?? "weekly";

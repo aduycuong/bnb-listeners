@@ -1,8 +1,9 @@
 import type { z } from "zod";
 
 import type { EntityRole } from "./case-templates";
-import type { ProjectCase } from "./project-cases";
+import type { CompareCase, ProjectCase } from "./project-cases";
 import type {
+  CreateCompareProjectBody,
   CreateProjectWithConfigBody,
   ProjectAlertsInput,
   ProjectConfigBody,
@@ -147,4 +148,40 @@ export type ListProjectSummariesParams = {
 export type ListProjectSummariesResult = {
   periodDays: number;
   items: ProjectSummaryItem[];
+};
+
+export type CreateCompareProjectParams = CreateCompareProjectBody & { workspaceId: string };
+
+/** A project a compare project reads, with what the comparison needs to know of it. */
+export type CompareMember = {
+  id: string;
+  name: string;
+  case: ProjectCase;
+  timezone: string;
+  /** Project aspects in order; comparisons only line up keys every member has. */
+  aspects: { key: string; name: string }[];
+};
+
+export type CheckCompareMembersParams = {
+  workspaceId: string;
+  case: CompareCase;
+  memberIds: string[];
+  /** The compare project itself, when editing, so it is not taken as a member. */
+  compareProjectId?: string;
+};
+
+export type CheckCompareMembersResult = {
+  members: CompareMember[];
+  /** Why the members cannot be saved; empty when they can. */
+  issues: string[];
+  /** Saved anyway, shown when picking members. */
+  warnings: string[];
+  /** Aspects every member has, by key, in the first member's order. */
+  sharedAspects: { key: string; name: string }[];
+};
+
+export type UpdateCompareMembersParams = {
+  workspaceId: string;
+  projectId: string;
+  memberIds: string[];
 };

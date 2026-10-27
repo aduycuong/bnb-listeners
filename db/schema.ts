@@ -106,7 +106,7 @@ export const projects = pgTable(
       .references(() => workspaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description"),
-    /** Real estate case id, see `lib/projects/project-cases.ts` and docs/decisions.md D10. */
+    /** Real estate case id, see `lib/projects/project-cases.ts` and docs/decisions.md D10, D30. */
     listeningCase: text("case").notNull().default("project"),
     /** Version of the case definition the project runs on; the user decides when to upgrade. */
     caseVersion: integer("case_version").notNull().default(1),
@@ -730,6 +730,33 @@ export const projectSources = pgTable(
 
 export type ProjectSource = typeof projectSources.$inferSelect;
 export type NewProjectSource = typeof projectSources.$inferInsert;
+
+/**
+ * Projects a compare project (`project_compare`, `brand_compare`) reads, in display order
+ * (D30). A member that is deleted leaves the comparison.
+ */
+export const projectCompareMembers = pgTable(
+  "project_compare_members",
+  {
+    compareProjectId: uuid("compare_project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    memberProjectId: uuid("member_project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.compareProjectId, table.memberProjectId] }),
+    index("project_compare_members_member_idx").on(table.memberProjectId),
+  ],
+);
+
+export type ProjectCompareMember = typeof projectCompareMembers.$inferSelect;
+export type NewProjectCompareMember = typeof projectCompareMembers.$inferInsert;
 
 // ---------------------------------------------------------------------------
 // L5 — Outputs. Rules are configured in the project wizard. The hourly

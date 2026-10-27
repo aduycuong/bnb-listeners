@@ -45,7 +45,8 @@
     "developer": "Chủ đầu tư",
     "sales": "Bán hàng",
     "market": "Thị trường",
-    "afterSales": "Sau bán hàng"
+    "afterSales": "Sau bán hàng",
+    "compare": "So sánh"
   },
   "cases": {
     "brand": "Uy tín chủ đầu tư",
@@ -59,7 +60,9 @@
     "policy": "Chính sách, quy hoạch, hạ tầng",
     "kol": "KOL bất động sản",
     "crisis": "Khủng hoảng",
-    "residents": "Cư dân & vận hành"
+    "residents": "Cư dân & vận hành",
+    "project_compare": "So sánh dự án",
+    "brand_compare": "So sánh chủ đầu tư"
   },
   "caseNav": {
     "brand": "Chỉ số uy tín",
@@ -73,7 +76,9 @@
     "policy": "Chính sách & quy hoạch",
     "kol": "KOL & kênh review",
     "crisis": "Diễn biến khủng hoảng",
-    "residents": "Cư dân & vận hành"
+    "residents": "Cư dân & vận hành",
+    "project_compare": "So sánh dự án",
+    "brand_compare": "So sánh chủ đầu tư"
   },
   "settingsMenu": {
     "profile": "Hồ sơ"

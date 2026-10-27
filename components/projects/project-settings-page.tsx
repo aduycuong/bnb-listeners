@@ -25,12 +25,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
+import { CompareProjectSettings } from "@/components/projects/compare/compare-project-settings";
 import { ProjectConfigEditor } from "@/components/projects/config/project-config-editor";
 import { ProjectDeleteDialog } from "@/components/projects/project-delete-dialog";
 import {
   projectsQueryKey,
   useProjectRouteContext,
 } from "@/hooks/use-project-route-context";
+import { isCompareCase } from "@/lib/projects/project-cases";
 import { updateProjectSchema } from "@/lib/projects/schema";
 import type { ProjectListItem } from "@/lib/projects/types";
 import { projectFetch } from "@/lib/projects/utils/project-fetch";
@@ -118,31 +120,43 @@ export function ProjectSettingsPage({
     return true;
   }
 
+  const dangerZone = canEdit ? (
+    <section className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] border-[1.5px] border-destructive/40 px-4 py-4 md:px-6">
+      <div>
+        <h2 className="text-base font-semibold text-destructive">Xóa project</h2>
+        <p className="text-[13px] text-muted-foreground">
+          Xóa cấu hình và toàn bộ dữ liệu đã khớp của project. Không thể hoàn tác.
+        </p>
+      </div>
+      <Button type="button" variant="destructive" onClick={() => setDeleting(true)}>
+        <Trash2Icon />
+        Xóa project
+      </Button>
+    </section>
+  ) : null;
+
   return (
     <>
-      <ProjectConfigEditor
-        workspaceId={workspace.id}
-        project={project}
-        caseLabel={t(`cases.${project.case}`)}
-        canEdit={canEdit}
-        onEditInfo={() => setEditing(true)}
-        dangerZone={
-          canEdit ? (
-            <section className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] border-[1.5px] border-destructive/40 px-4 py-4 md:px-6">
-              <div>
-                <h2 className="text-base font-semibold text-destructive">Xóa project</h2>
-                <p className="text-[13px] text-muted-foreground">
-                  Xóa cấu hình và toàn bộ dữ liệu đã khớp của project. Không thể hoàn tác.
-                </p>
-              </div>
-              <Button type="button" variant="destructive" onClick={() => setDeleting(true)}>
-                <Trash2Icon />
-                Xóa project
-              </Button>
-            </section>
-          ) : null
-        }
-      />
+      {isCompareCase(project.case) ? (
+        <CompareProjectSettings
+          compareCase={project.case}
+          workspaceId={workspace.id}
+          project={project}
+          caseLabel={t(`cases.${project.case}`)}
+          canEdit={canEdit}
+          onEditInfo={() => setEditing(true)}
+          dangerZone={dangerZone}
+        />
+      ) : (
+        <ProjectConfigEditor
+          workspaceId={workspace.id}
+          project={project}
+          caseLabel={t(`cases.${project.case}`)}
+          canEdit={canEdit}
+          onEditInfo={() => setEditing(true)}
+          dangerZone={dangerZone}
+        />
+      )}
       <ProjectDeleteDialog
         open={deleting}
         onOpenChange={setDeleting}

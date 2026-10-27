@@ -9,9 +9,15 @@ import { ProjectSentimentReport } from "@/components/metrics/project-sentiment-r
 import { ProjectPendingDashboard } from "@/components/projects/project-pending-dashboard";
 import { ProjectReportPage } from "@/components/reports/project-report-page";
 import { hasMinWorkspacePermission } from "@/lib/workspaces/utils/permission-rank";
-import type { ProjectPageBannerProps } from "@/components/projects/project-page-banner";
+import { MetricsEmpty } from "@/components/metrics/metrics-page-header";
+import {
+  ProjectPageBanner,
+  projectReportPageClassName,
+  type ProjectPageBannerProps,
+} from "@/components/projects/project-page-banner";
 import { useProjectRouteContext } from "@/hooks/use-project-route-context";
 import { getProjectNavHref } from "@/lib/dashboard/nav-items";
+import { isCompareCase } from "@/lib/projects/project-cases";
 
 type ProjectSectionPageProps = {
   workspaceIndexParam: string;
@@ -41,6 +47,16 @@ export function ProjectSectionPage({
     projectCase: project.case,
     settingsHref: getProjectNavHref(workspaceIndex, projectIndex, "settings"),
   };
+  if (isCompareCase(project.case)) {
+    return (
+      <div className={projectReportPageClassName}>
+        <ProjectPageBanner {...banner} />
+        <MetricsEmpty>
+          Project so sánh chỉ có trang Tổng quan; số liệu chi tiết xem ở từng project được so sánh.
+        </MetricsEmpty>
+      </div>
+    );
+  }
   if (section === "sentiment") {
     return <ProjectSentimentReport scope={scope} projectName={project.name} banner={banner} />;
   }
