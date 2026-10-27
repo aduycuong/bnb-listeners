@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 
-import { DonutChart } from "@/components/projects/demo/demo-charts";
-import { DemoGrid, DemoPanel, DemoTable, SentimentPill } from "@/components/projects/demo/demo-ui";
+import { DonutChart } from "@/components/metrics/report-ui/report-charts";
+import { ReportGrid, ReportPanel, ReportTable, SentimentPill } from "@/components/metrics/report-ui/report-ui";
 import {
   ProjectPageBanner,
   projectReportPageClassName,
@@ -63,15 +63,15 @@ export function ProjectAuthorsReport({
       <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
-      <DemoGrid>
-        <DemoPanel
+      <ReportGrid>
+        <ReportPanel
           title="Tác giả có ảnh hưởng nhất"
           span="s8"
           scope="common"
           note="Xếp theo tổng tương tác trên các đề cập của tác giả trong kỳ. Bấm tên để xem đề cập của tác giả."
         >
           {data?.items.length ? (
-            <DemoTable
+            <ReportTable
               headers={[
                 { label: "Tác giả" },
                 { label: "Nền tảng" },
@@ -120,8 +120,8 @@ export function ProjectAuthorsReport({
           ) : (
             <MetricsEmpty>{empty}</MetricsEmpty>
           )}
-        </DemoPanel>
-        <DemoPanel
+        </ReportPanel>
+        <ReportPanel
           title="Cơ cấu tác giả"
           span="s4"
           scope="common"
@@ -144,8 +144,8 @@ export function ProjectAuthorsReport({
           ) : (
             <MetricsEmpty>{empty}</MetricsEmpty>
           )}
-        </DemoPanel>
-      </DemoGrid>
+        </ReportPanel>
+      </ReportGrid>
     </div>
   );
 }

@@ -5,8 +5,8 @@ import {
   GaugeChart,
   HealthLineChart,
   ProjectSentimentChart,
-} from "@/components/projects/demo/demo-charts";
-import { DemoPanel } from "@/components/projects/demo/demo-ui";
+} from "@/components/metrics/report-ui/report-charts";
+import { ReportPanel } from "@/components/metrics/report-ui/report-ui";
 import { METRICS_CONFIG } from "@/lib/metrics/config";
 import { reputationBand } from "@/lib/metrics/formulas";
 import type { BrandCaseMetricsResult } from "@/lib/metrics/types";
@@ -62,7 +62,7 @@ export function BrandCasePanels({
 
   return (
     <>
-      <DemoPanel
+      <ReportPanel
         title="Chỉ số uy tín chủ đầu tư"
         span="s4"
         scope="case"
@@ -97,8 +97,8 @@ export function BrandCasePanels({
               `Chưa trụ cột nào có đủ ${METRICS_CONFIG.reputationMinMentions} đề cập có cảm xúc trong ${days} ngày gần nhất.`}
           </MetricsEmpty>
         )}
-      </DemoPanel>
-      <DemoPanel
+      </ReportPanel>
+      <ReportPanel
         title="Cảm xúc theo từng dự án"
         span="s4"
         scope="case"
@@ -117,8 +117,8 @@ export function BrandCasePanels({
                 : "Thêm dự án của chủ đầu tư trong cấu hình project để so sánh.")}
           </MetricsEmpty>
         )}
-      </DemoPanel>
-      <DemoPanel
+      </ReportPanel>
+      <ReportPanel
         title="Share of Voice cùng khu vực"
         span="s4"
         scope="case"
@@ -143,9 +143,9 @@ export function BrandCasePanels({
                 : "Thêm chủ đầu tư để so sánh trong cấu hình project.")}
           </MetricsEmpty>
         )}
-      </DemoPanel>
+      </ReportPanel>
       {withTrend ? (
-        <DemoPanel
+        <ReportPanel
           title={`Chỉ số uy tín ${METRICS_CONFIG.reputationTrendPeriods} ${periodName}`}
           span="s12"
           scope="case"
@@ -165,7 +165,7 @@ export function BrandCasePanels({
               {loading ?? `Chưa ${periodName} nào có đủ dữ liệu để tính chỉ số.`}
             </MetricsEmpty>
           )}
-        </DemoPanel>
+        </ReportPanel>
       ) : null}
     </>
   );

@@ -2,7 +2,7 @@
 
 import { useT } from "next-i18next/client";
 
-import { DemoGrid } from "@/components/projects/demo/demo-ui";
+import { ReportGrid } from "@/components/metrics/report-ui/report-ui";
 import {
   ProjectPageBanner,
   projectReportPageClassName,
@@ -41,7 +41,7 @@ export function BrandCaseReport({
       <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
-      <DemoGrid>
+      <ReportGrid>
         <BrandCasePanels
           data={data}
           isPending={isPending}
@@ -49,7 +49,7 @@ export function BrandCaseReport({
           caseLabel={caseLabel}
           withTrend
         />
-      </DemoGrid>
+      </ReportGrid>
     </div>
   );
 }

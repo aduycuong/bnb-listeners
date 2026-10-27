@@ -68,7 +68,7 @@ export function TrendChart({
 }: {
   trend: AquaTrend;
   brands: Record<string, number[]> | null;
-  /** Axis labels, one per value; the demo's 14 days by default. */
+  /** Axis labels, one per value. Defaults to the standard 14 days. */
   days?: readonly string[];
 }) {
   if (brands) {
@@ -250,7 +250,7 @@ export function AspectChart({
   names = AQUA_ASPECTS,
 }: {
   aspects: { positive: number; negative: number }[];
-  /** Aspect names in the order of `aspects`; the demo's aspects by default. */
+  /** Aspect names in the order of `aspects`. */
   names?: readonly string[];
 }) {
   const data = names.map((name, index) => ({
@@ -346,17 +346,17 @@ export function ChannelMixChart({
   names = AQUA_CHANNELS,
 }: {
   channels: number[];
-  /** Channel names in the order of `channels`; the demo's channels by default. */
+  /** Channel names in the order of `channels`. */
   names?: readonly string[];
 }) {
   const data = names.map((name, index) => ({
     name,
     value: channels[index],
   }));
-  // A channel keeps its demo colour wherever it sits in the list.
+  // A known channel keeps its palette color wherever it sits in the list.
   const colors = names.map((name, index) => {
-    const demoIndex = AQUA_CHANNELS.indexOf(name);
-    return AQUA_CHANNEL_COLORS[demoIndex >= 0 ? demoIndex : index % AQUA_CHANNEL_COLORS.length];
+    const channelIndex = AQUA_CHANNELS.indexOf(name);
+    return AQUA_CHANNEL_COLORS[channelIndex >= 0 ? channelIndex : index % AQUA_CHANNEL_COLORS.length];
   });
 
   return <DonutChart data={data} colors={colors} height={260} cutout="60%" />;

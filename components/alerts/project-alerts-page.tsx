@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { DemoGrid, DemoPanel, DemoTable, SentimentPill } from "@/components/projects/demo/demo-ui";
+import { ReportGrid, ReportPanel, ReportTable, SentimentPill } from "@/components/metrics/report-ui/report-ui";
 import {
   ProjectPageBanner,
   projectReportPageClassName,
@@ -49,8 +49,8 @@ export function ProjectAlertsPage({
       <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
-      <DemoGrid>
-        <DemoPanel title="Cảnh báo gần đây" span="s7" scope="common">
+      <ReportGrid>
+        <ReportPanel title="Cảnh báo gần đây" span="s7" scope="common">
           {error ? (
             <MetricsEmpty>Không tải được cảnh báo.</MetricsEmpty>
           ) : data && data.alerts.length > 0 ? (
@@ -85,8 +85,8 @@ export function ProjectAlertsPage({
               {loading ?? "Chưa có cảnh báo. Quy tắc được kiểm tra mỗi giờ."}
             </MetricsEmpty>
           )}
-        </DemoPanel>
-        <DemoPanel
+        </ReportPanel>
+        <ReportPanel
           title="Quy tắc cảnh báo đang bật"
           span="s5"
           scope="common"
@@ -106,7 +106,7 @@ export function ProjectAlertsPage({
           {error ? (
             <MetricsEmpty>Không tải được quy tắc.</MetricsEmpty>
           ) : data && data.rules.length > 0 ? (
-            <DemoTable
+            <ReportTable
               headers={[{ label: "Quy tắc" }, { label: "Ngưỡng" }, { label: "Gửi đến" }]}
               rows={data.rules.map((rule) => [
                 <span key={rule.id}>
@@ -122,8 +122,8 @@ export function ProjectAlertsPage({
           ) : (
             <MetricsEmpty>{loading ?? "Chưa bật quy tắc nào."}</MetricsEmpty>
           )}
-        </DemoPanel>
-      </DemoGrid>
+        </ReportPanel>
+      </ReportGrid>
     </div>
   );
 }

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useT } from "next-i18next/client";
 
-import { RadarAttributeChart } from "@/components/projects/demo/demo-charts";
-import { DemoGrid, DemoPanel } from "@/components/projects/demo/demo-ui";
+import { RadarAttributeChart } from "@/components/metrics/report-ui/report-charts";
+import { ReportGrid, ReportPanel } from "@/components/metrics/report-ui/report-ui";
 import {
   ProjectPageBanner,
   projectReportPageClassName,
@@ -66,14 +66,14 @@ export function ProjectCaseReport({
       <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
-      <DemoGrid>
+      <ReportGrid>
         <ProjectPricePanels
           data={data}
           isPending={isPending}
           days={days}
           caseLabel={caseLabel}
         />
-        <DemoPanel
+        <ReportPanel
           title="Câu hỏi thường gặp của người mua"
           span="s6"
           scope="case"
@@ -112,8 +112,8 @@ export function ProjectCaseReport({
                 "Chưa có nhóm câu hỏi. Gom câu hỏi người mua (`buyer_question`) để có danh sách."}
             </MetricsEmpty>
           )}
-        </DemoPanel>
-        <DemoPanel
+        </ReportPanel>
+        <ReportPanel
           title="So sánh khía cạnh với dự án cạnh tranh"
           span="s6"
           scope="case"
@@ -130,8 +130,8 @@ export function ProjectCaseReport({
               {loading ?? "Chưa có khía cạnh đã phân loại cảm xúc trong kỳ."}
             </MetricsEmpty>
           )}
-        </DemoPanel>
-      </DemoGrid>
+        </ReportPanel>
+      </ReportGrid>
     </div>
   );
 }

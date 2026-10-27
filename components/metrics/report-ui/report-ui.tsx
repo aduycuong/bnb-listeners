@@ -21,7 +21,7 @@ const SPANS = {
   s12: "col-span-12",
 } as const;
 
-export type DemoSpan = keyof typeof SPANS;
+export type ReportSpan = keyof typeof SPANS;
 
 const PILL_CLASS: Record<AquaSentiment | AquaAlertLevel, string> = {
   pos: "bg-[color-mix(in_srgb,var(--pos)_16%,transparent)] text-[#0B8A6B]",
@@ -32,7 +32,7 @@ const PILL_CLASS: Record<AquaSentiment | AquaAlertLevel, string> = {
   low: "bg-muted text-muted-foreground",
 };
 
-export function DemoKpis({
+export function ReportKpis({
   kpis,
   compareLabel = "vs 14 ngày trước",
 }: {
@@ -94,11 +94,11 @@ export function DemoKpis({
   );
 }
 
-export function DemoGrid({ children }: { children: ReactNode }) {
+export function ReportGrid({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-12 gap-4">{children}</div>;
 }
 
-export function DemoPanel({
+export function ReportPanel({
   title,
   span,
   scope,
@@ -109,7 +109,7 @@ export function DemoPanel({
   className,
 }: {
   title: string;
-  span: DemoSpan;
+  span: ReportSpan;
   scope: "common" | "case";
   scopeLabel?: string;
   note?: ReactNode;
@@ -149,7 +149,7 @@ export function DemoPanel({
   );
 }
 
-export function DemoBars({
+export function ReportBars({
   rows,
   suffix = "",
 }: {
@@ -200,7 +200,7 @@ export function SentimentPill({
   );
 }
 
-export function DemoTable({
+export function ReportTable({
   headers,
   rows,
 }: {

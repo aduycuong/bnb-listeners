@@ -4,7 +4,7 @@
 
 Ứng dụng social listening: theo dõi **ai nói gì về một đối tượng** (thương hiệu, chủ đầu tư, dự án, đối thủ…), **ở đâu, khi nào, với thái độ nào và lan rộng đến đâu**, rồi biến thành dashboard, cảnh báo và báo cáo.
 
-Mỗi **project** là một case listening (`general`, `campaign`, `crisis`, `competitor`, `market`, `cx`, …). Giao diện demo hiện tại trong `components/projects/demo/` là hình mẫu cho các report cần có.
+Mỗi **project** là một case listening (`general`, `campaign`, `crisis`, `competitor`, `market`, `cx`, …). Khung giao diện report nằm trong `components/metrics/report-ui/`.
 
 ## Nguyên tắc
 

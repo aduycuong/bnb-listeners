@@ -1,6 +1,6 @@
 "use client";
 
-/** Dark navy of the demo becomes a theme color, readable on the dark theme too. */
+/** Dark navy, readable on the dark theme too. */
 const COLORS = ["#0A6CFF", "var(--tile-blue-foreground)", "#22C5EE", "#14B8A6", "#4A6583"];
 
 export type KeywordCloudWord = {

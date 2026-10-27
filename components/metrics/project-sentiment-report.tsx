@@ -1,8 +1,8 @@
 "use client";
 
 
-import { AspectChart, EmotionChart, NssChart } from "@/components/projects/demo/demo-charts";
-import { DemoGrid, DemoPanel } from "@/components/projects/demo/demo-ui";
+import { AspectChart, EmotionChart, NssChart } from "@/components/metrics/report-ui/report-charts";
+import { ReportGrid, ReportPanel } from "@/components/metrics/report-ui/report-ui";
 import {
   ProjectPageBanner,
   projectReportPageClassName,
@@ -43,8 +43,8 @@ export function ProjectSentimentReport({
       <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
-      <DemoGrid>
-        <DemoPanel
+      <ReportGrid>
+        <ReportPanel
           title="Chỉ số cảm xúc (NSS) theo ngày"
           span="s8"
           scope="common"
@@ -58,8 +58,8 @@ export function ProjectSentimentReport({
           ) : (
             <MetricsEmpty>{loading ?? `Chưa có đề cập đã phân loại cảm xúc trong ${days} ngày gần nhất.`}</MetricsEmpty>
           )}
-        </DemoPanel>
-        <DemoPanel
+        </ReportPanel>
+        <ReportPanel
           title="Cảm xúc chi tiết"
           span="s4"
           scope="common"
@@ -70,8 +70,8 @@ export function ProjectSentimentReport({
           ) : (
             <MetricsEmpty>{loading ?? "Chưa có đề cập có cảm xúc trong kỳ."}</MetricsEmpty>
           )}
-        </DemoPanel>
-        <DemoPanel
+        </ReportPanel>
+        <ReportPanel
           title="Cảm xúc theo khía cạnh"
           span="s12"
           scope="common"
@@ -88,8 +88,8 @@ export function ProjectSentimentReport({
           ) : (
             <MetricsEmpty>{loading ?? "Chưa có đề cập nhắc tới khía cạnh nào trong kỳ."}</MetricsEmpty>
           )}
-        </DemoPanel>
-      </DemoGrid>
+        </ReportPanel>
+      </ReportGrid>
     </div>
   );
 }

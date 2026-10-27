@@ -4,7 +4,7 @@ import { ChevronDownIcon, ExternalLinkIcon } from "lucide-react";
 import { useState } from "react";
 
 import { buildKpis } from "@/components/metrics/overview-kpis";
-import { SentimentPill } from "@/components/projects/demo/demo-ui";
+import { SentimentPill } from "@/components/metrics/report-ui/report-ui";
 import { Button } from "@/components/ui/button";
 import type { ReportCitation, ReportDetail, ReportItem } from "@/lib/reports/types";
 import { formatReportPeriod } from "@/lib/reports/utils/format-report-period";

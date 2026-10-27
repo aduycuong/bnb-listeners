@@ -1,7 +1,7 @@
 "use client";
 
-import { PriceBucketChart, PriceTrendChart } from "@/components/projects/demo/demo-charts";
-import { DemoPanel } from "@/components/projects/demo/demo-ui";
+import { PriceBucketChart, PriceTrendChart } from "@/components/metrics/report-ui/report-charts";
+import { ReportPanel } from "@/components/metrics/report-ui/report-ui";
 import { formatCount } from "@/lib/projects/aqua-demo";
 import type { ProjectCaseMetricsResult } from "@/lib/metrics/types";
 
@@ -76,7 +76,7 @@ export function ProjectPricePanels({
 
   return (
     <>
-      <DemoPanel
+      <ReportPanel
         title="Giá rao bán lại theo ngày"
         span="s8"
         scope="case"
@@ -97,8 +97,8 @@ export function ProjectPricePanels({
               `Chưa có giá rao bán (triệu/m²) gán được cho một đối tượng trong ${days} ngày gần nhất.`}
           </MetricsEmpty>
         )}
-      </DemoPanel>
-      <DemoPanel
+      </ReportPanel>
+      <ReportPanel
         title="Phân bố giá rao"
         span="s4"
         scope="case"
@@ -118,7 +118,7 @@ export function ProjectPricePanels({
         ) : (
           <MetricsEmpty>{loading ?? "Chưa có tin rao để vẽ phân bố."}</MetricsEmpty>
         )}
-      </DemoPanel>
+      </ReportPanel>
     </>
   );
 }

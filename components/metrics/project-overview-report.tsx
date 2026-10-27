@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useT } from "next-i18next/client";
 
-import { DonutChart, TrendChart } from "@/components/projects/demo/demo-charts";
-import { DemoBars, DemoGrid, DemoKpis, DemoPanel } from "@/components/projects/demo/demo-ui";
+import { DonutChart, TrendChart } from "@/components/metrics/report-ui/report-charts";
+import { ReportBars, ReportGrid, ReportKpis, ReportPanel } from "@/components/metrics/report-ui/report-ui";
 import {
   ProjectPageBanner,
   projectReportPageClassName,
@@ -163,7 +163,7 @@ export function ProjectOverviewReport({
       {caseMetrics.error ? <p className="text-sm text-destructive">{caseMetrics.error.message}</p> : null}
       {brandMetrics.error ? <p className="text-sm text-destructive">{brandMetrics.error.message}</p> : null}
       {data ? (
-        <DemoKpis
+        <ReportKpis
           kpis={
             projectCase === "project"
               ? projectOverviewKpis(data, caseMetrics.data, caseMetrics.isPending)
@@ -173,8 +173,8 @@ export function ProjectOverviewReport({
         />
       ) : null}
 
-      <DemoGrid>
-        <DemoPanel
+      <ReportGrid>
+        <ReportPanel
           title="Lượt đề cập theo ngày và cảm xúc"
           span="s8"
           scope="common"
@@ -197,9 +197,9 @@ export function ProjectOverviewReport({
           ) : (
             <MetricsEmpty>{isPending ? "Đang tải…" : `Chưa có đề cập trong ${days} ngày gần nhất.`}</MetricsEmpty>
           )}
-        </DemoPanel>
+        </ReportPanel>
         <OverviewAiSummary scope={scope} reportHref={reportHref} />
-        <DemoPanel title="Phân bổ cảm xúc" span="s4" scope="common">
+        <ReportPanel title="Phân bổ cảm xúc" span="s4" scope="common">
           {data && sentimentTotal > 0 ? (
             <>
               <DonutChart
@@ -230,15 +230,15 @@ export function ProjectOverviewReport({
           ) : (
             <MetricsEmpty>{isPending ? "Đang tải…" : "Chưa có đề cập đã phân loại cảm xúc."}</MetricsEmpty>
           )}
-        </DemoPanel>
-        <DemoPanel
+        </ReportPanel>
+        <ReportPanel
           title="Kênh thảo luận"
           span="s4"
           scope="common"
           note="Theo nguồn (group, page) có nhiều đề cập nhất trong kỳ"
         >
           {data?.sources.length ? (
-            <DemoBars
+            <ReportBars
               rows={data.sources.map((source) => ({
                 label: source.name,
                 value: source.mentions,
@@ -248,8 +248,8 @@ export function ProjectOverviewReport({
           ) : (
             <MetricsEmpty>{isPending ? "Đang tải…" : "Chưa có đề cập trong kỳ."}</MetricsEmpty>
           )}
-        </DemoPanel>
-        <DemoPanel
+        </ReportPanel>
+        <ReportPanel
           title="Chủ đề nổi bật"
           span="s4"
           scope="common"
@@ -279,7 +279,7 @@ export function ProjectOverviewReport({
           ) : (
             <MetricsEmpty>{isPending ? "Đang tải…" : "Chưa có chủ đề có đề cập trong kỳ."}</MetricsEmpty>
           )}
-        </DemoPanel>
+        </ReportPanel>
         {projectCase === "project" ? (
           <ProjectPricePanels
             data={caseMetrics.data}
@@ -298,7 +298,7 @@ export function ProjectOverviewReport({
             detail={{ href: caseHref, label: t("caseNav.brand") }}
           />
         ) : null}
-      </DemoGrid>
+      </ReportGrid>
       <details className="rounded-[22px] border-[1.5px] border-border bg-card px-[18px] py-3.5">
         <summary className="cursor-pointer text-sm font-semibold">Định nghĩa các chỉ số</summary>
         <div className="mt-3.5 grid gap-3.5 md:grid-cols-3">

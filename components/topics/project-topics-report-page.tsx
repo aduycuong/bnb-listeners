@@ -5,9 +5,9 @@ import Link from "next/link";
 
 import { MetricsPageHeader } from "@/components/metrics/metrics-page-header";
 import { useReportPeriodDays } from "@/components/metrics/use-report-period-days";
-import { GrowthChart } from "@/components/projects/demo/demo-charts";
-import { KeywordCloud } from "@/components/projects/demo/demo-keyword-cloud";
-import { DemoGrid, DemoPanel, DemoTable } from "@/components/projects/demo/demo-ui";
+import { GrowthChart } from "@/components/metrics/report-ui/report-charts";
+import { KeywordCloud } from "@/components/metrics/report-ui/keyword-cloud";
+import { ReportGrid, ReportPanel, ReportTable } from "@/components/metrics/report-ui/report-ui";
 import {
   ProjectPageBanner,
   projectReportPageClassName,
@@ -124,8 +124,8 @@ function TopicsReport({
       <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
-      <DemoGrid>
-        <DemoPanel
+      <ReportGrid>
+        <ReportPanel
           title="Đám mây từ khóa"
           span="s5"
           scope="common"
@@ -138,8 +138,8 @@ function TopicsReport({
               {isPending ? "Đang tải…" : "Chưa có từ khóa trong kỳ này."}
             </p>
           )}
-        </DemoPanel>
-        <DemoPanel
+        </ReportPanel>
+        <ReportPanel
           title="Tăng trưởng chủ đề"
           span="s7"
           scope="common"
@@ -154,15 +154,15 @@ function TopicsReport({
                 : `Chưa đủ dữ liệu để so sánh: cần mention của ${days} ngày trước đó.`}
             </p>
           )}
-        </DemoPanel>
-        <DemoPanel
+        </ReportPanel>
+        <ReportPanel
           title="Danh sách chủ đề"
           span="s12"
           scope="common"
           note={`Chủ đề được AI tự động gom nhóm từ nội dung đề cập. Số đề cập và tỷ lệ cảm xúc tính trong ${days} ngày gần nhất. Bấm một chủ đề để xem các đề cập.`}
         >
           {items.length ? (
-            <DemoTable
+            <ReportTable
               headers={[
                 { label: "Chủ đề" },
                 { label: "Đề cập", numeric: true },
@@ -196,8 +196,8 @@ function TopicsReport({
                 : `Không có topic nào có đề cập trong ${days * 2} ngày gần nhất. Topic được tạo sau khi làm giàu mention, khi đủ mention cùng bàn một chuyện.`}
             </p>
           )}
-        </DemoPanel>
-      </DemoGrid>
+        </ReportPanel>
+      </ReportGrid>
     </div>
   );
 }

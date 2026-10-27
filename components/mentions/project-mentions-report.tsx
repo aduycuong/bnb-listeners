@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useChannelMetrics } from "@/components/metrics/use-metrics-api";
 import { MetricsEmpty, MetricsPageHeader } from "@/components/metrics/metrics-page-header";
 import { useReportPeriodDays } from "@/components/metrics/use-report-period-days";
-import { DemoPanel, DemoTable, SentimentPill } from "@/components/projects/demo/demo-ui";
+import { ReportPanel, ReportTable, SentimentPill } from "@/components/metrics/report-ui/report-ui";
 import {
   ProjectPageBanner,
   projectReportPageClassName,
@@ -199,14 +199,14 @@ function MentionsReport({
         </div>
       ) : null}
 
-      <DemoPanel
+      <ReportPanel
         title="Đề cập mới nhất"
         span="s12"
         scope="common"
         note="Đề cập có liên quan trong kỳ, mới nhất trước. Bấm một dòng để xem cả thread."
       >
         {data && data.items.length > 0 ? (
-          <DemoTable
+          <ReportTable
             headers={[
               { label: "Tác giả" },
               { label: "Nội dung" },
@@ -285,7 +285,7 @@ function MentionsReport({
             </Button>
           </div>
         ) : null}
-      </DemoPanel>
+      </ReportPanel>
 
       <MentionThreadSheet
         scope={scope}

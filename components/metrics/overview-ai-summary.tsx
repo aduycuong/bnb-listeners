@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { DemoPanel } from "@/components/projects/demo/demo-ui";
+import { ReportPanel } from "@/components/metrics/report-ui/report-ui";
 import { formatGeneratedAt } from "@/components/reports/report-view";
 import { useReport, useReports } from "@/components/reports/use-reports-api";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ export function OverviewAiSummary({
   const highlights = report.data?.sections.highlights.slice(0, HIGHLIGHTS) ?? [];
 
   return (
-    <DemoPanel
+    <ReportPanel
       title="AI tóm tắt"
       span="s4"
       scope="common"
@@ -118,6 +118,6 @@ export function OverviewAiSummary({
           </p>
         ) : null}
       </form>
-    </DemoPanel>
+    </ReportPanel>
   );
 }

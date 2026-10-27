@@ -6,8 +6,8 @@ import {
   ChannelMixChart,
   ChannelSentimentChart,
   HeatmapChart,
-} from "@/components/projects/demo/demo-charts";
-import { DemoGrid, DemoPanel, DemoTable } from "@/components/projects/demo/demo-ui";
+} from "@/components/metrics/report-ui/report-charts";
+import { ReportGrid, ReportPanel, ReportTable } from "@/components/metrics/report-ui/report-ui";
 import {
   ProjectPageBanner,
   projectReportPageClassName,
@@ -52,8 +52,8 @@ export function ProjectChannelsReport({
       <ProjectPageBanner {...banner} />
       {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
 
-      <DemoGrid>
-        <DemoPanel title="Tỷ trọng theo kênh" span="s5" scope="common">
+      <ReportGrid>
+        <ReportPanel title="Tỷ trọng theo kênh" span="s5" scope="common">
           {total > 0 ? (
             <ChannelMixChart
               names={channels.map((channel) => channel.channel)}
@@ -62,8 +62,8 @@ export function ProjectChannelsReport({
           ) : (
             <MetricsEmpty>{empty}</MetricsEmpty>
           )}
-        </DemoPanel>
-        <DemoPanel
+        </ReportPanel>
+        <ReportPanel
           title="Cảm xúc theo kênh"
           span="s7"
           scope="common"
@@ -84,23 +84,23 @@ export function ProjectChannelsReport({
           ) : (
             <MetricsEmpty>{empty}</MetricsEmpty>
           )}
-        </DemoPanel>
-        <DemoPanel
+        </ReportPanel>
+        <ReportPanel
           title="Thời điểm thảo luận sôi nổi nhất"
           span="s7"
           scope="common"
           note={`Số đề cập theo giờ trong ngày và thứ trong tuần (giờ ${data?.timezone ?? "của project"}). Dùng để chọn giờ đăng bài, giờ trực CSKH.`}
         >
           {total > 0 ? <HeatmapChart counts={heat} /> : <MetricsEmpty>{empty}</MetricsEmpty>}
-        </DemoPanel>
-        <DemoPanel
+        </ReportPanel>
+        <ReportPanel
           title="Nguồn có ảnh hưởng nhất"
           span="s5"
           scope="common"
           note="Bài: đề cập là bài đăng. Tương tác: tổng lượt thích, bình luận, chia sẻ của các đề cập. Bấm một nguồn để xem đề cập."
         >
           {data?.sources.length ? (
-            <DemoTable
+            <ReportTable
               headers={[
                 { label: "Nguồn" },
                 { label: "Loại" },
@@ -129,8 +129,8 @@ export function ProjectChannelsReport({
           ) : (
             <MetricsEmpty>{empty}</MetricsEmpty>
           )}
-        </DemoPanel>
-      </DemoGrid>
+        </ReportPanel>
+      </ReportGrid>
     </div>
   );
 }
