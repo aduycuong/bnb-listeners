@@ -5,6 +5,7 @@ import {
   collectTiersSetting,
   collectTiktokSearchSetting,
 } from "@/lib/connectors/settings";
+import { spendingPricingSetting } from "@/lib/spending/settings";
 
 import type { SettingDefinition } from "./types";
 
@@ -18,6 +19,7 @@ export const SETTINGS = {
   "collect-tiers": collectTiersSetting,
   "collect-tiktok-search": collectTiktokSearchSetting,
   "collect-comment-refresh": collectCommentRefreshSetting,
+  "spending-pricing": spendingPricingSetting,
 } as const satisfies Record<string, SettingDefinition>;
 
 export type SettingKey = keyof typeof SETTINGS;

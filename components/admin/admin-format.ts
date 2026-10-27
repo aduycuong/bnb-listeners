@@ -41,3 +41,16 @@ export function formatDuration(start: string | null, end: string | null): string
   if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
+
+const usdFormat = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const smallUsdFormat = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 4,
+});
+
+/** "$12.34"; amounts under a dollar keep up to 4 decimals so cheap runs do not show as $0.00. */
+export function formatUsd(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return Math.abs(value) > 0 && Math.abs(value) < 1 ? smallUsdFormat.format(value) : usdFormat.format(value);
+}

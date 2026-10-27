@@ -1,6 +1,7 @@
 import type { ContentItemMedia } from "@/db/schema";
 import type { ActivityTier, CollectRunStatus, ConnectorKey } from "@/lib/connectors/constants";
 import type { SourceBudget } from "@/lib/connectors/services/get-source-budgets";
+import type { BillingUnit, SpendingProviderKey } from "@/lib/spending/config";
 
 export type PageParams = {
   page?: number;
@@ -313,4 +314,74 @@ export type AdminWorkflowRun = {
 export type ListWorkflowRunsResult = {
   runs: AdminWorkflowRun[];
   cursor: string | null;
+};
+
+// --- Spending ---------------------------------------------------------------
+
+export type GetAdminSpendingParams = {
+  /** Days of the range, ending today (UTC). */
+  days?: number;
+};
+
+export type AdminSpendingAmount = {
+  /** Billed units: records or requests, per the provider's billing. */
+  units: number;
+  /** USD at the current price. */
+  cost: number;
+};
+
+export type AdminSpendingProvider = {
+  key: SpendingProviderKey;
+  label: string;
+  billing: BillingUnit;
+  unitLabel: string;
+  color: string;
+  pricePer1k: number;
+  /** USD per month; null when none is set. */
+  monthlyBudget: number | null;
+};
+
+export type AdminSpendingDay = {
+  /** UTC day, `YYYY-MM-DD`. */
+  date: string;
+  byProvider: Record<SpendingProviderKey, AdminSpendingAmount>;
+};
+
+export type AdminSpendingMonthProvider = AdminSpendingAmount & {
+  /** Average daily cost of the last `runRateDays` full days. */
+  runRatePerDay: number;
+  /** Month to date plus the run rate over the rest of the month. */
+  forecastCost: number;
+};
+
+export type AdminSpendingBreakdownRow = AdminSpendingAmount & {
+  provider: SpendingProviderKey;
+  runs: number;
+};
+
+export type AdminSpending = {
+  currency: string;
+  generatedAt: string;
+  providers: AdminSpendingProvider[];
+  /** First day of the selected range (UTC). */
+  rangeStart: string;
+  rangeDays: number;
+  /** One row per UTC day from the earlier of the range start and the month start, to today. */
+  daily: AdminSpendingDay[];
+  month: {
+    start: string;
+    /** First day of the next month. */
+    end: string;
+    daysInMonth: number;
+    runRateDays: number;
+    byProvider: Record<SpendingProviderKey, AdminSpendingMonthProvider>;
+  };
+  /** Within the range. */
+  byConnector: (AdminSpendingBreakdownRow & { connector: string })[];
+  /** Within the range; the most expensive sources of each provider. */
+  topSources: (AdminSpendingBreakdownRow & {
+    sourceId: string;
+    name: string | null;
+    platform: string | null;
+  })[];
 };

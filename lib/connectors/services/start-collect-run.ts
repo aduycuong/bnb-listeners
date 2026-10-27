@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { collectRuns } from "@/db/schema";
 import { db } from "@/lib/db";
+import { countTikHubRequests } from "@/lib/tikhub/utils/count-tikhub-requests";
 
 import { getConnector } from "../registry";
 import type { StartCollectRunResult } from "../types";
@@ -11,6 +12,11 @@ import { storeRawPayload } from "./store-raw-payload";
 type StartCollectRunParams = {
   collectRunId: string;
 };
+
+function readRequests(stats: Record<string, unknown> | null): number {
+  const requests = stats?.requests;
+  return typeof requests === "number" ? requests : 0;
+}
 
 /** First workflow step: marks the run running and starts collection. */
 export async function startCollectRun(
@@ -43,10 +49,31 @@ export async function startCollectRun(
     .where(eq(collectRuns.id, run.id));
 
   if (connector.mode === "direct") {
-    const fetched = await connector.fetchRecords(connectorParams, context);
-    const { records, stats } = Array.isArray(fetched)
+    // TikHub requests of earlier attempts that threw are billed too: keep
+    // their count and add this attempt's, whether it succeeds or not.
+    const earlierRequests = readRequests(run.stats);
+    const counter = { requests: 0 };
+    let fetched: Awaited<ReturnType<typeof connector.fetchRecords>>;
+
+    try {
+      fetched = await countTikHubRequests(counter, () =>
+        connector.fetchRecords(connectorParams, context),
+      );
+    } catch (error) {
+      if (counter.requests > 0) {
+        await db
+          .update(collectRuns)
+          .set({ stats: { ...run.stats, requests: earlierRequests + counter.requests } })
+          .where(eq(collectRuns.id, run.id));
+      }
+      throw error;
+    }
+
+    const { records, stats: fetchStats } = Array.isArray(fetched)
       ? { records: fetched, stats: undefined }
       : fetched;
+    const requests = earlierRequests + counter.requests;
+    const stats = requests > 0 ? { ...fetchStats, requests } : fetchStats;
 
     const stored = await storeRawPayload({
       collectRunId: run.id,

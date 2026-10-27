@@ -611,7 +611,7 @@ Stores metadata for workspace API keys managed via Unkey. The actual key value i
 
 ## app_settings
 
-Admin overrides of app-wide settings (collection frequency, comment refresh checkpoints, …), one row per settings group. A group without a row uses the defaults in code. Groups, their Zod schemas and defaults are declared in `lib/settings/registry.ts`; edited in `/admin/settings`.
+Admin overrides of app-wide settings (collection frequency, comment refresh checkpoints, spending prices and budgets, …), one row per settings group. A group without a row uses the defaults in code. Groups, their Zod schemas and defaults are declared in `lib/settings/registry.ts`; edited in `/admin/settings`.
 
 | Column | Type | Nullable | Default | Description |
 | ------ | ---- | -------- | ------- | ----------- |
@@ -686,7 +686,7 @@ One connector run, driven by the `collect-source` Upstash Workflow.
 | external_job_id | text | YES | — | Provider job id (Bright Data snapshot id) |
 | payload_key | text | YES | — | Object key of the raw payload in payload storage (R2 today) |
 | item_count | integer | YES | — | Items in the raw payload |
-| stats | jsonb | YES | — | Normalize counts `{ inserted, updated, skipped }` plus connector stats (post runs: `lateArrivals`, `maxLatenessMinutes`, `schedulesCreated`, `postsToCollect`, `activityTier`, `postsPerDay`; refresh runs: `checked`, `postsToCollect`, `commentRunsPlanned`; comment runs: `expectedMaxRecords`, `posts[] { postExternalId, numComments, collected, replies }`; TikTok runs also `requests`, and per kind `stoppedBy` / `truncated` (channel scan), `pageSizes` / `duplicates` (search), `requested` / `returned` (refresh), `videos[] { videoId, comments, replies, complete }` / `incompleteVideos` (comments)) |
+| stats | jsonb | YES | — | Normalize counts `{ inserted, updated, skipped }` plus connector stats (post runs: `lateArrivals`, `maxLatenessMinutes`, `schedulesCreated`, `postsToCollect`, `activityTier`, `postsPerDay`; refresh runs: `checked`, `postsToCollect`, `commentRunsPlanned`; comment runs: `expectedMaxRecords`, `posts[] { postExternalId, numComments, collected, replies }`; TikTok runs also `requests` (billed TikHub responses, summed over retried fetch attempts and kept on a run that fails while fetching; `/admin/spending` bills it), and per kind `stoppedBy` / `truncated` (channel scan), `pageSizes` / `duplicates` (search), `requested` / `returned` (refresh), `videos[] { videoId, comments, replies, complete }` / `incompleteVideos` (comments)) |
 | error | text | YES | — | Failure message |
 | started_at | timestamptz | YES | — | Run start time |
 | finished_at | timestamptz | YES | — | Run end time |
