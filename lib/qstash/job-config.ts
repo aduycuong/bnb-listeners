@@ -3,6 +3,8 @@ import { z } from "zod";
 import { EVALUATE_ALERTS_JOB_NAME } from "@/lib/alerts/config";
 import { evaluateAlerts } from "@/lib/alerts/services/evaluate-alerts";
 import { reportPeriodSchema } from "@/lib/metrics/schema";
+import { RUN_SYNTHETIC_SOURCE_JOB_NAME } from "@/lib/personas/config";
+import { runSyntheticSource } from "@/lib/personas/services/run-synthetic-source";
 import { GENERATE_DUE_REPORTS_JOB_NAME, GENERATE_REPORT_JOB_NAME } from "@/lib/reports/config";
 import { enqueueDueReports } from "@/lib/reports/services/enqueue-due-reports";
 import { generateReport } from "@/lib/reports/services/generate-report";
@@ -48,5 +50,10 @@ export const qstashJobHandlers: Record<string, QstashJobHandler> = {
       .parse(payload);
     const report = await generateReport({ projectId, period, trigger: "schedule" });
     return { reportId: report.id, periodStart: report.periodStart, warnings: report.warnings.length };
+  },
+  /** One run of a scheduled synthetic source: `{ sourceId }`, on the source's own cron. Calls the model. */
+  [RUN_SYNTHETIC_SOURCE_JOB_NAME]: async (payload) => {
+    const { sourceId } = z.object({ sourceId: z.uuid() }).parse(payload);
+    return runSyntheticSource({ id: sourceId, scheduled: true });
   },
 };

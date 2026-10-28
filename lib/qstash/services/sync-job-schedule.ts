@@ -7,6 +7,8 @@ export type SyncJobScheduleParams = {
   jobName: string;
   /** QStash cron, `CRON_TZ=…` allowed; null removes the schedule. */
   cron: string | null;
+  /** Job payload; fixed per schedule id, so it is not compared. Defaults to `{}`. */
+  payload?: Record<string, unknown>;
   /** Report the action without calling QStash writes. */
   dryRun?: boolean;
 };
@@ -77,7 +79,7 @@ export async function syncJobSchedule(params: SyncJobScheduleParams): Promise<Sy
       scheduleId: params.scheduleId,
       destination,
       cron: params.cron!,
-      body: JSON.stringify({ jobName: params.jobName, payload: {} }),
+      body: JSON.stringify({ jobName: params.jobName, payload: params.payload ?? {} }),
       headers: { "Content-Type": "application/json" },
     });
   }

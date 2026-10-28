@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import { sources } from "@/db/schema";
-import { NotFoundError } from "@/lib/common/service-errors";
+import { InvalidInputError, NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { getSourceLatestPublishedAt } from "@/lib/raw-store/services/get-source-latest-published-at";
 
@@ -38,6 +38,7 @@ export async function collectSource(
       sourceType: sources.sourceType,
       externalId: sources.externalId,
       url: sources.url,
+      origin: sources.origin,
       metadata: sources.metadata,
     })
     .from(sources)
@@ -46,6 +47,9 @@ export async function collectSource(
 
   if (!source) {
     throw new NotFoundError("source", params.sourceId);
+  }
+  if (source.origin === "synthetic") {
+    throw new InvalidInputError("A synthetic source is written by its own schedule, not scanned.");
   }
 
   const connector = getPostConnectorKey(source);

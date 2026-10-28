@@ -1,5 +1,9 @@
+import { eq } from "drizzle-orm";
+
+import { sources } from "@/db/schema";
 import { mapWithConcurrency } from "@/lib/common/map-with-concurrency";
 import { NotFoundError } from "@/lib/common/service-errors";
+import { db } from "@/lib/db";
 
 import { OFF_TOPIC_TEXTS, SPAM_TEXTS } from "../noise-texts";
 import { SYNTHETIC_CONFIG } from "../config";
@@ -13,8 +17,10 @@ import {
 } from "../utils/create-seeded-random";
 import { degradeText } from "../utils/degrade-text";
 import { assignThreadAuthors } from "./assign-thread-authors";
+import { generateBriefs } from "./generate-briefs";
 import { loadAuthorPools } from "./load-author-pools";
 import { loadPanelMembers } from "./load-panel-members";
+import { loadRecentBriefs } from "./load-recent-briefs";
 import { loadStyleSamples } from "./load-style-samples";
 import { planThreads } from "./plan-threads";
 import { writeThreadTexts } from "./write-thread-texts";
@@ -22,18 +28,20 @@ import { writeThreadTexts } from "./write-thread-texts";
 type GenerateSyntheticRecordsParams = {
   params: SyntheticThreadsParams;
   collectRunId: string;
+  sourceId: string;
 };
 
 /**
  * Builds the raw records of one run: code plans the threads and picks authors,
  * the LLM writes each thread, code assembles ids, thread links, engagement and
- * noise. A thread the model cannot complete is dropped; a run where every
+ * noise. Without a fixed brief the model first writes briefs from the topics
+ * and each thread is about one of them. A thread the model cannot complete is dropped; a run where every
  * thread fails throws so the workflow marks it failed.
  */
 export async function generateSyntheticRecords(
   input: GenerateSyntheticRecordsParams,
 ): Promise<SyntheticRecord[]> {
-  const { params, collectRunId } = input;
+  const { params, collectRunId, sourceId } = input;
   const startedAt = Date.now();
   const random = createSeededRandom(params.seed);
 
@@ -60,13 +68,26 @@ export async function generateSyntheticRecords(
   ]);
   assignThreadAuthors({ threads, pools, random });
 
+  const briefs = params.brief
+    ? [params.brief]
+    : await generateBriefs({
+        topics: params.topics,
+        count: params.briefCount,
+        recentBriefs: await loadRecentBriefs(sourceId, SYNTHETIC_CONFIG.recentBriefCount),
+        members,
+        sourceName: await loadSourceName(sourceId),
+        at: new Date(params.window.to),
+        model: params.model,
+      });
+  const threadBriefs = assignBriefs(threads.length, briefs, random);
+
   const written = await mapWithConcurrency(
     threads,
     SYNTHETIC_CONFIG.concurrency,
     (thread) =>
       writeThreadTexts({
         thread,
-        brief: params.brief,
+        brief: threadBriefs[thread.index]!,
         samples,
         model: params.model,
       }),
@@ -86,6 +107,7 @@ export async function generateSyntheticRecords(
     const threadRecords = assembleThread({
       thread,
       texts,
+      brief: threadBriefs[index]!,
       params,
       collectRunId,
       firstSequence: sequence,
@@ -98,6 +120,7 @@ export async function generateSyntheticRecords(
   console.log("[synthetic-threads] generated", {
     collectRunId,
     model: params.model,
+    briefs: briefs.length,
     threads: threads.length,
     failedThreads,
     records: records.length,
@@ -113,9 +136,34 @@ export async function generateSyntheticRecords(
   return records;
 }
 
+/**
+ * Brief of each thread: every brief gets a thread when there are enough, the
+ * rest are spread at random so stories differ in size.
+ */
+function assignBriefs(threadCount: number, briefs: string[], random: SeededRandom): string[] {
+  const order = briefs.map((_, index) => ({ index, key: random() }));
+  order.sort((a, b) => a.key - b.key);
+
+  return Array.from({ length: threadCount }, (_, thread) =>
+    thread < briefs.length
+      ? briefs[order[thread]!.index]!
+      : briefs[Math.floor(random() * briefs.length)]!,
+  );
+}
+
+async function loadSourceName(sourceId: string): Promise<string | null> {
+  const [source] = await db
+    .select({ name: sources.name })
+    .from(sources)
+    .where(eq(sources.id, sourceId))
+    .limit(1);
+  return source?.name ?? null;
+}
+
 function assembleThread(input: {
   thread: PlannedThread;
   texts: Map<number, string>;
+  brief: string;
   params: SyntheticThreadsParams;
   collectRunId: string;
   firstSequence: number;
@@ -161,7 +209,7 @@ function assembleThread(input: {
       },
       spec: {
         panelId: params.panelId,
-        brief: params.brief,
+        brief: input.brief,
         threadIndex: thread.index,
         personaId: item.persona?.id ?? null,
         sentiment: item.sentiment,

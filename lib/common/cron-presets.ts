@@ -90,3 +90,19 @@ export function getCronFriendlyText(cronPattern: string): string {
     return s;
   }
 }
+
+/**
+ * True for a standard 5-field cron that cronstrue can read. QStash still has
+ * the last word when the schedule is created.
+ */
+export function isValidCronExpression(cronPattern: string): boolean {
+  const s = cronPattern.trim();
+  if (s.split(/\s+/).length !== 5) return false;
+
+  try {
+    cronstrue.toString(s, { throwExceptionOnParseError: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
