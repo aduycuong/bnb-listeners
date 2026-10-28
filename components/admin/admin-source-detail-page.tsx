@@ -154,7 +154,7 @@ export function AdminSourceDetailPage({ id }: { id: string }) {
       {synthetic ? (
         <AdminSection
           title="Synthetic schedule"
-          description="Each tick the model writes briefs from the topics, then posts and comments as the panel's personas. Saving updates the QStash schedule; runs already started keep their params."
+          description="Each tick the model writes briefs from the topic guide, then posts and comments as the panel's personas. Saving updates the QStash schedule; runs already started keep their params."
           actions={<AdminRunSyntheticSourceButton source={data} />}
         >
           <AdminSyntheticSourceSettings key={data.updatedAt} source={data} />

@@ -13,20 +13,21 @@ const commentsPerPostSchema = z
     error: "commentsPerPost must be [min, max] with min <= max.",
   });
 
-const topicsSchema = z.array(z.string().trim().min(1).max(300)).max(20);
+/** Free text about the project and what people discuss; the model draws briefs from it. */
+const topicGuideSchema = z.string().trim().max(SYNTHETIC_CONFIG.maxTopicGuideLength);
 
 /**
  * Params of one `synthetic-threads` run (`collect_runs.params`). The source is
- * `collect_runs.source_id`. A run takes either a `brief` or `topics`: with
- * topics the model first writes `briefCount` briefs, and each thread gets one.
+ * `collect_runs.source_id`. A run takes either a `brief` or a `topicGuide`:
+ * with a guide the model first writes `briefCount` briefs, and each thread gets one.
  */
 export const syntheticThreadsParamsSchema = z
   .object({
     panelId: z.uuid(),
     /** What happened; goes into every prompt and into each item's metadata. */
     brief: z.string().trim().min(1).max(2000).optional(),
-    /** Subjects the briefs are drawn from when there is no `brief`. */
-    topics: topicsSchema.default([]),
+    /** What the briefs are drawn from when there is no `brief`. */
+    topicGuide: topicGuideSchema.min(1).optional(),
     briefCount: z.int().min(1).max(SYNTHETIC_CONFIG.maxBriefsPerRun).default(3),
     postCount: z.int().min(1).max(SYNTHETIC_CONFIG.maxThreadsPerRun),
     commentsPerPost: commentsPerPostSchema.default([0, 12]),
@@ -58,9 +59,9 @@ export const syntheticThreadsParamsSchema = z
     /** Look-alike sentences (same name, other meaning) mixed in as noise comments. */
     distractors: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
   })
-  .refine((value) => value.brief !== undefined || value.topics.length > 0, {
-    error: "A run needs a brief or at least one topic.",
-    path: ["topics"],
+  .refine((value) => value.brief !== undefined || value.topicGuide !== undefined, {
+    error: "A run needs a brief or a topic guide.",
+    path: ["topicGuide"],
   });
 
 export type SyntheticThreadsParams = z.infer<typeof syntheticThreadsParamsSchema>;
@@ -202,13 +203,13 @@ const cronConfigSchema = z.object({
 /**
  * How a synthetic source writes on its own (`sources.metadata.syntheticConfig`).
  * Each cron tick starts one run of `postsPerRun` threads about `briefsPerRun`
- * briefs that the model draws from `topics`.
+ * briefs that the model draws from `topicGuide`.
  */
 export const syntheticSourceConfigSchema = z.object({
   /** Off: the QStash schedule is removed; runs can still be started by hand. */
   enabled: z.boolean(),
   panelId: z.uuid("Pick a panel."),
-  topics: topicsSchema.min(1, "Add at least one topic."),
+  topicGuide: topicGuideSchema.min(1, "Describe the project and its topics."),
   postsPerRun: z
     .number("Posts must be a number.")
     .int()
@@ -250,20 +251,13 @@ export const updateSyntheticSourceBodySchema = z.object({
 
 export type UpdateSyntheticSourceBody = z.infer<typeof updateSyntheticSourceBodySchema>;
 
-/** The form edits topics one per line and comments as two numbers. */
+/** The form edits comments as two numbers. */
 export const syntheticSourceFormSchema = z
   .object({
     name: syntheticSourceNameSchema,
     enabled: z.boolean(),
     panelId: z.string().min(1, "Pick a panel."),
-    topics: z
-      .string()
-      .max(6000)
-      .refine((value) => splitLines(value).length > 0, { error: "Add at least one topic." })
-      .refine((value) => splitLines(value).length <= 20, { error: "At most 20 topics." })
-      .refine((value) => splitLines(value).every((line) => line.length <= 300), {
-        error: "Keep each topic under 300 characters.",
-      }),
+    topicGuide: syntheticSourceConfigSchema.shape.topicGuide,
     postsPerRun: syntheticSourceConfigSchema.shape.postsPerRun,
     minComments: z.number("Min comments must be a number.").int().min(0).max(200),
     maxComments: z.number("Max comments must be a number.").int().min(0).max(200),
@@ -279,17 +273,10 @@ export function toSyntheticSourceConfig(values: SyntheticSourceFormValues): Synt
   return {
     enabled: values.enabled,
     panelId: values.panelId,
-    topics: splitLines(values.topics),
+    topicGuide: values.topicGuide,
     postsPerRun: values.postsPerRun,
     commentsPerPost: [values.minComments, values.maxComments],
     briefsPerRun: values.briefsPerRun,
     cronConfig: values.cronConfig,
   };
-}
-
-function splitLines(value: string): string[] {
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
 }

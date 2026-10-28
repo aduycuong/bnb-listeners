@@ -11,7 +11,7 @@ const responseSchema = z.object({
   briefs: z
     .array(
       z.object({
-        topic: z.string().describe("The topic from the list this brief is about"),
+        topic: z.string().describe("The topic of the guide this brief is about, in a few words"),
         brief: z
           .string()
           .describe("One or two sentences in Vietnamese: what happened, as a news line"),
@@ -23,14 +23,16 @@ const responseSchema = z.object({
 const SYSTEM_PROMPT = [
   "Bạn lên kịch bản cho một group Facebook về bất động sản ở Việt Nam: mỗi brief là một chuyện đang xảy ra mà thành viên group sẽ đăng bài và bàn tán.",
   "Mỗi brief 1–2 câu, viết như một dòng tin: ai, làm gì, chuyện gì. Cụ thể nhưng ngắn; không bình luận, không cảm xúc.",
-  "Mỗi brief bám một chủ đề trong danh sách. Ưu tiên mỗi brief một chủ đề khác nhau.",
+  "Hướng dẫn chủ đề mô tả dự án và những gì người ta hay bàn. Mỗi brief bám một chủ đề trong hướng dẫn; ưu tiên mỗi brief một chủ đề khác nhau.",
+  "Gọi đúng tên dự án, chủ đầu tư, vị trí, con số như trong hướng dẫn; không bịa tên dự án khác.",
   "Nếu có brief gần đây: một phần brief nên là diễn biến tiếp theo của chuyện cũ (phản ứng, cập nhật, phản hồi của chủ đầu tư…), phần còn lại là chuyện mới. Không lặp lại nguyên chuyện cũ.",
   "Chi tiết phải hợp lý với thời điểm đã cho và với những người trong group.",
   "Trả về JSON đúng schema.",
 ].join("\n");
 
 type GenerateBriefsParams = {
-  topics: string[];
+  /** Project facts and what people discuss, written by the admin. */
+  topicGuide: string;
   count: number;
   /** Newest first; the model continues some of these stories. */
   recentBriefs: string[];
@@ -42,7 +44,7 @@ type GenerateBriefsParams = {
 };
 
 /**
- * Asks the model for `count` briefs drawn from the topics, continuing recent
+ * Asks the model for `count` briefs drawn from the topic guide, continuing recent
  * stories of the source where it fits. Throws when no brief comes back, so
  * the run fails instead of writing threads about nothing.
  */
@@ -96,8 +98,8 @@ function buildUserPrompt(params: GenerateBriefsParams): string {
     "Thành viên tiêu biểu:",
     ...params.members.map((member) => `- ${member.persona.name}: ${member.persona.description}`),
     "",
-    "Chủ đề:",
-    ...params.topics.map((topic) => `- ${topic}`),
+    "Hướng dẫn chủ đề:",
+    params.topicGuide,
     "",
   ];
 

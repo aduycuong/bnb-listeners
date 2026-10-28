@@ -32,7 +32,7 @@ export const SYNTHETIC_SOURCE_DEFAULTS: SyntheticSourceFormValues = {
   name: "",
   enabled: true,
   panelId: "",
-  topics: "",
+  topicGuide: "",
   postsPerRun: 5,
   minComments: 0,
   maxComments: 12,
@@ -52,7 +52,7 @@ export function toSyntheticSourceFormValues(
     name: name ?? "",
     enabled: config.enabled,
     panelId: config.panelId,
-    topics: config.topics.join("\n"),
+    topicGuide: config.topicGuide,
     postsPerRun: config.postsPerRun,
     minComments: config.commentsPerPost[0],
     maxComments: config.commentsPerPost[1],
@@ -71,7 +71,7 @@ type AdminSyntheticSourceFormProps = {
   actions: ReactNode;
 };
 
-/** Name, panel, topics, run size and cron of a synthetic source that writes on its own. */
+/** Name, panel, topic guide, run size and cron of a synthetic source that writes on its own. */
 export function AdminSyntheticSourceForm({
   defaultValues,
   mode,
@@ -116,11 +116,13 @@ export function AdminSyntheticSourceForm({
         />
         <FormFieldTextarea
           control={form.control}
-          name="topics"
-          label="Topics"
-          rows={4}
-          placeholder={"Tiến độ bàn giao dự án X\nGiá thứ cấp khu Y\nPháp lý sổ hồng"}
-          description="One per line. Each run the model writes briefs from these, continuing the source's recent briefs."
+          name="topicGuide"
+          label="Topic guide"
+          rows={10}
+          placeholder={
+            "Dự án X (chủ đầu tư, vị trí, giá, quy mô…)\n\nNhững chủ đề hay được bàn:\n- Tiến độ bàn giao\n- Giá thứ cấp\n- Pháp lý sổ hồng"
+          }
+          description={`Free text: project facts and what people discuss, up to ${SYNTHETIC_CONFIG.maxTopicGuideLength.toLocaleString("en-US")} characters. Each run the model writes briefs from it, continuing the source's recent briefs.`}
         />
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <FormFieldText control={form.control} name="postsPerRun" label="Posts / run" type="number" />

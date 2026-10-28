@@ -64,20 +64,21 @@ Payload R2 là danh sách record phẳng (mỗi record một post, comment hoặ
 
 Một yêu cầu sinh nhiều hơn `maxThreadsPerRun` được chia thành nhiều run (`startSyntheticGeneration`), run thứ `i` dùng `seed + i`.
 
-Run có thể nhận `topics` (và `briefCount`) thay cho `brief`. Khi đó, trước bước viết thread, LLM viết `briefCount` brief từ topics, có xem các brief gần đây của source để câu chuyện có diễn biến tiếp thay vì lặp lại. Mỗi thread được gán một brief, brief nào cũng có ít nhất một thread nếu đủ số bài. Brief của từng item vẫn nằm ở `metadata.brief`; danh sách brief của run ghi vào `collect_runs.stats.briefs`.
+Run có thể nhận `topicGuide` (và `briefCount`) thay cho `brief`. `topicGuide` là văn bản tự do: thông tin dự án (tên, chủ đầu tư, vị trí, giá…) và những chủ đề người ta hay bàn. Khi đó, trước bước viết thread, LLM viết `briefCount` brief từ hướng dẫn này, giữ đúng tên và số liệu của dự án, có xem các brief gần đây của source để câu chuyện có diễn biến tiếp thay vì lặp lại. Mỗi thread được gán một brief, brief nào cũng có ít nhất một thread nếu đủ số bài. Brief của từng item vẫn nằm ở `metadata.brief`; danh sách brief của run ghi vào `collect_runs.stats.briefs`.
 
 ## Source giả chạy theo lịch
 
 Tạo ở Add source → "Synthetic group". Cấu hình lưu ở `sources.metadata.syntheticConfig`:
 
 ```
-{ enabled, panelId, topics[], postsPerRun, commentsPerPost: [min, max], briefsPerRun,
+{ enabled, panelId, topicGuide, postsPerRun, commentsPerPost: [min, max], briefsPerRun,
   cronConfig: { cron, timezone } }
 ```
 
 - Mỗi source một QStash schedule (`synthetic-source-schedule-{sourceId}`) gọi job `run-synthetic-source` với `{ sourceId }`. `syncSyntheticSourceSchedule` tạo, cập nhật hoặc xóa schedule khi tạo, sửa hoặc xóa source; tắt `enabled` thì xóa schedule.
 - Mỗi tick (`runSyntheticSource`) bắt đầu một run `synthetic-threads` từ cấu hình. Bài rải từ lần chạy trước tới hiện tại (lần đầu: 1 giờ, tối đa 24 giờ, xem `SYNTHETIC_CONFIG.schedule`). Source còn run `pending` hoặc `running` thì tick đó bỏ qua.
 - Scheduler 15 phút của source thật bỏ qua source giả, và `collectSource` từ chối source giả, để không gọi Bright Data cho group giả.
+- Cấu hình cũ lưu `topics[]` được đọc thành `topicGuide` (mỗi topic một dòng).
 - Trang chi tiết source giả có form sửa cấu hình và nút "Run now". Source giả tạo từ trang Generate chưa có cấu hình; lưu form là bật lịch cho nó.
 
 Spec của từng item được ghi vào `content_items.metadata`: `personaId`, `panelId`, `brief`, `threadIndex`, `sentiment`, `aspect`, `length`, `briefRelevance` (`direct`, `related`, `general`: bám sự kiện trong brief nhiều hay ít), `noise` (`spam`, `off-topic`, `distractor` hoặc null), `degraded` (`typo`, `no-diacritics`). Đây chỉ là dấu vết lúc sinh, không dùng làm nhãn để kiểm chứng (xem [D12](decisions.md#d12--dữ-liệu-giả-không-dùng-để-kiểm-chứng-2026-10-14)).
