@@ -83,7 +83,7 @@ export async function runSyntheticSource(
     sourceId: source.id,
     params: {
       panelId: config.panelId,
-      topics: config.topics,
+      topicGuide: config.topicGuide,
       briefCount: config.briefsPerRun,
       postCount: config.postsPerRun,
       commentsPerPost: config.commentsPerPost,

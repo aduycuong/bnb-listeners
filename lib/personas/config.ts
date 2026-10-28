@@ -30,6 +30,8 @@ export const SYNTHETIC_CONFIG = {
 
   /** Briefs a run without a fixed brief asks the model for, at most. */
   maxBriefsPerRun: 10,
+  /** Topic guide of a scheduled source (project facts and what people discuss), in characters. */
+  maxTopicGuideLength: 10_000,
   /** Recent briefs of the source shown to the model, so stories continue instead of repeating. */
   recentBriefCount: 5,
   /** Attempts at the brief call before the run fails. */

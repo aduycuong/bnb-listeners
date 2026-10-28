@@ -12,7 +12,7 @@ import type { DirectConnector, NormalizeResult } from "../types";
 /**
  * Writes posts, comments and replies as personas of a panel. Code plans the
  * threads, the LLM writes them (see lib/personas); without a fixed brief it
- * first writes briefs from the run's topics. The records go through the
+ * first writes briefs from the run's topic guide. The records go through the
  * normal collect workflow, so the payload is archived and can be normalized
  * again without calling the LLM.
  */

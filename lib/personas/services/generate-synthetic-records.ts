@@ -34,7 +34,7 @@ type GenerateSyntheticRecordsParams = {
 /**
  * Builds the raw records of one run: code plans the threads and picks authors,
  * the LLM writes each thread, code assembles ids, thread links, engagement and
- * noise. Without a fixed brief the model first writes briefs from the topics
+ * noise. Without a fixed brief the model first writes briefs from the topic guide
  * and each thread is about one of them. A thread the model cannot complete is dropped; a run where every
  * thread fails throws so the workflow marks it failed.
  */
@@ -71,7 +71,7 @@ export async function generateSyntheticRecords(
   const briefs = params.brief
     ? [params.brief]
     : await generateBriefs({
-        topics: params.topics,
+        topicGuide: params.topicGuide!,
         count: params.briefCount,
         recentBriefs: await loadRecentBriefs(sourceId, SYNTHETIC_CONFIG.recentBriefCount),
         members,
