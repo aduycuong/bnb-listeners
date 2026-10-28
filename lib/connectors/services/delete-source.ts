@@ -4,6 +4,7 @@ import { collectRuns, contentItems, projects, projectSources, sources } from "@/
 import { InvalidInputError, NotFoundError } from "@/lib/common/service-errors";
 import { db } from "@/lib/db";
 import { syncProjectMatch } from "@/lib/matching/services/sync-project-match";
+import { syncSyntheticSourceSchedule } from "@/lib/personas/services/sync-synthetic-source-schedule";
 import {
   MAX_DELETE_CONTENT_ITEMS,
   deleteContentItems,
@@ -16,14 +17,14 @@ type DeleteSourceParams = {
 };
 
 /**
- * Deletes a connector source with its posts, comments and replies (and,
+ * Deletes a connector or synthetic source with its posts, comments and replies (and,
  * through them, mentions and the rest of their analysis). Collect runs stay
  * with `source_id` cleared, so past provider usage still counts in the
  * overview. Projects that followed the source lose it, get a new
  * `config_version`, and re-match when their match signature changed.
  *
  * Refused while a run of the source is pending or running: its webhook would
- * land on a deleted source.
+ * land on a deleted source. A synthetic source loses its QStash schedule.
  */
 export async function deleteSource(params: DeleteSourceParams): Promise<DeleteSourceResult> {
   const [source] = await db
@@ -34,9 +35,9 @@ export async function deleteSource(params: DeleteSourceParams): Promise<DeleteSo
   if (!source) {
     throw new NotFoundError("source", params.id);
   }
-  if (source.origin !== "connector") {
+  if (source.origin !== "connector" && source.origin !== "synthetic") {
     throw new InvalidInputError(
-      `Only connector sources can be deleted here (this one is ${source.origin}).`,
+      `Only connector and synthetic sources can be deleted here (this one is ${source.origin}).`,
     );
   }
 
@@ -82,6 +83,10 @@ export async function deleteSource(params: DeleteSourceParams): Promise<DeleteSo
 
   // `project_sources` rows go with the source (ON DELETE CASCADE).
   await db.delete(sources).where(eq(sources.id, source.id));
+  // The source is gone, so the sync removes its schedule.
+  if (source.origin === "synthetic") {
+    await syncSyntheticSourceSchedule(source.id);
+  }
 
   if (projectIds.length > 0) {
     await db

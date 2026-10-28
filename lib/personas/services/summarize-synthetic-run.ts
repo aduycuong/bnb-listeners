@@ -8,6 +8,8 @@ export type SyntheticRunSummary = {
   comments: number;
   replies: number;
   noiseItems: number;
+  /** Briefs the posts were written about. */
+  briefs: string[];
 };
 
 /** What a synthetic run left in the raw store, read back by `collect_run_id`. */
@@ -31,6 +33,17 @@ export async function summarizeSyntheticRun(
     )
     .groupBy(contentItems.kind);
 
+  const briefRows = await db
+    .selectDistinct({ brief: sql<string | null>`${contentItems.metadata}->>'brief'` })
+    .from(contentItems)
+    .where(
+      and(
+        eq(contentItems.collectRunId, collectRunId),
+        eq(contentItems.origin, "synthetic"),
+        eq(contentItems.kind, "post"),
+      ),
+    );
+
   const totalOf = (kind: string) =>
     rows.find((row) => row.kind === kind)?.total ?? 0;
 
@@ -39,5 +52,6 @@ export async function summarizeSyntheticRun(
     comments: totalOf("comment"),
     replies: totalOf("reply"),
     noiseItems: rows.reduce((sum, row) => sum + row.noise, 0),
+    briefs: briefRows.flatMap((row) => (row.brief ? [row.brief] : [])),
   };
 }

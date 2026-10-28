@@ -11,6 +11,7 @@ import {
 import { NotFoundError } from "@/lib/common/service-errors";
 import { getCollectSettings } from "@/lib/connectors/services/get-collect-settings";
 import { db } from "@/lib/db";
+import { readSyntheticSourceConfig } from "@/lib/personas/utils/read-synthetic-source-config";
 
 import type { AdminSourceDetail } from "../types";
 import { buildAdminSourceRows } from "../utils/build-admin-source-rows";
@@ -63,5 +64,7 @@ export async function getAdminSource(params: GetAdminSourceParams): Promise<Admi
     pendingRefreshes: refreshes?.value ?? 0,
     projects: projectRows,
     activeRuns: active?.value ?? 0,
+    syntheticConfig:
+      source.origin === "synthetic" ? readSyntheticSourceConfig(source.metadata) : null,
   };
 }

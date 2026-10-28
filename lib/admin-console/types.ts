@@ -1,6 +1,7 @@
 import type { ContentItemMedia } from "@/db/schema";
 import type { ActivityTier, CollectRunStatus, ConnectorKey } from "@/lib/connectors/constants";
 import type { SourceBudget } from "@/lib/connectors/services/get-source-budgets";
+import type { SyntheticSourceConfig } from "@/lib/personas/schema";
 import type { ManagedSchedule } from "@/lib/schedules/config";
 import type { BillingUnit, SpendingProviderKey } from "@/lib/spending/config";
 import type { WorkflowName } from "@/lib/workflows/constants";
@@ -123,6 +124,8 @@ export type AdminSourceDetail = AdminSourceRow & {
   projects: { id: string; name: string }[];
   /** Collect runs still pending or running; the source cannot be deleted meanwhile. */
   activeRuns: number;
+  /** Schedule config of a synthetic source that writes on its own; null otherwise. */
+  syntheticConfig: SyntheticSourceConfig | null;
 };
 
 // --- Content items ----------------------------------------------------------

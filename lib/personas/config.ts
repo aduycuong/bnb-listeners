@@ -2,6 +2,9 @@ import type { ChatModelId } from "@/lib/langchain/models/registry";
 
 import type { BriefRelevance, Sentiment, TextLength } from "./types";
 
+/** QStash job of a scheduled synthetic source: `{ sourceId }`. */
+export const RUN_SYNTHETIC_SOURCE_JOB_NAME = "run-synthetic-source";
+
 /**
  * Synthetic generation tuning in one place. Numbers are first guesses; the
  * real-group figures come from the Bright Data probes in docs/plan.md.
@@ -24,6 +27,21 @@ export const SYNTHETIC_CONFIG = {
   maxThreadsPerRun: 30,
   /** LLM calls in flight inside one run. */
   concurrency: 5,
+
+  /** Briefs a run without a fixed brief asks the model for, at most. */
+  maxBriefsPerRun: 10,
+  /** Recent briefs of the source shown to the model, so stories continue instead of repeating. */
+  recentBriefCount: 5,
+  /** Attempts at the brief call before the run fails. */
+  briefAttempts: 2,
+
+  /** Scheduled sources: posts of a run are spread from the previous run to now. */
+  schedule: {
+    /** Window of a source's first run. */
+    firstWindowHours: 1,
+    /** Cap after a long pause, so a run does not spread its posts over weeks. */
+    maxWindowHours: 24,
+  },
 
   /** Real comments shown to the model as voice examples. */
   fewShotCount: 6,

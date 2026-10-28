@@ -132,6 +132,11 @@ Mục tiêu thu hẹp: có dữ liệu post và comment nằm trong kho thô đ�
 - [x] Màn hình trong admin console: `/admin/personas` (xem, tạo, sửa; sửa tăng `version`), `/admin/panels` (chọn persona và `weight`, hiển thị tỷ lệ), `/admin/generate` (form chạy sinh kèm bảng run gần đây). Chưa có xóa persona/panel và chưa có sinh persona bằng LLM
 - [ ] Kiểm tay màn hình sau khi đăng nhập admin (đã kiểm: route compile, API trả 401 khi chưa đăng nhập)
 
+**Bước 4 — Source giả chạy theo lịch**
+- [x] Add source → "Synthetic group": panel, topics, số bài và số brief mỗi lần, khoảng comment, cron. Cấu hình nằm ở `sources.metadata.syntheticConfig`; mỗi source một QStash schedule (`synthetic-source-schedule-{id}`, job `run-synthetic-source`)
+- [x] Mỗi lần chạy, LLM viết brief từ topics (tiếp diễn các brief gần đây của source), rồi viết thread theo brief; sửa cấu hình, chạy tay và xóa source trên trang chi tiết
+- [ ] Chạy thật một source theo lịch vài giờ, đọc brief và mẫu bài
+
 **Kết quả:** từ một panel và một `brief`, sinh được post, comment và reply vào kho thô với `origin = synthetic`, truy vết được theo `collect_run_id` và persona.
 
 **Để sau** (không làm trong giai đoạn này): bảng `scenarios`, chế độ replay (giai đoạn 6), dự báo phản ứng và backtest, khai thác persona từ dữ liệu thật, quy tắc cô lập dữ liệu giả theo project.

@@ -67,7 +67,7 @@ export async function dispatchDueSources(
         inArray(collectRuns.connector, [...POST_CONNECTOR_KEYS]),
       ),
     )
-    .where(ne(sources.activityTier, "paused"))
+    .where(and(ne(sources.activityTier, "paused"), ne(sources.origin, "synthetic")))
     .groupBy(
       sources.id,
       sources.platform,

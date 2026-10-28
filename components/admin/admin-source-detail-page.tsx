@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 
+import { getCronFriendlyText } from "@/lib/common/cron-presets";
 import type {
   AdminCollectRunRow,
   AdminContentItemRow,
@@ -20,6 +22,10 @@ import { AdminQueryState } from "./admin-query-state";
 import { adminQueryKeys } from "./admin-query-keys";
 import { AdminSection } from "./admin-section";
 import { AdminSourceSettingsForm } from "./admin-source-settings-form";
+import {
+  AdminRunSyntheticSourceButton,
+  AdminSyntheticSourceSettings,
+} from "./admin-synthetic-source-settings";
 import { AdminTierBadge, describeTierSchedule } from "./admin-tier-badge";
 import { fetchAdminJson } from "./fetch-admin-json";
 
@@ -59,6 +65,69 @@ export function AdminSourceDetailPage({ id }: { id: string }) {
   const data = source.data;
   if (!data) return <AdminQueryState isPending={source.isPending} error={source.error} />;
 
+  const synthetic = data.origin === "synthetic";
+  const config = data.syntheticConfig;
+  // Tier, budgets and refresh checkpoints belong to scanned sources; a synthetic one runs on its cron.
+  const scheduleItems: [string, ReactNode][] = synthetic
+    ? [
+        [
+          "Synthetic schedule",
+          config
+            ? `${config.enabled ? "" : "off · "}${getCronFriendlyText(config.cronConfig.cron)} (${config.cronConfig.timezone}) · ${config.postsPerRun} posts and ${config.briefsPerRun} briefs per run`
+            : "not configured",
+        ],
+        ["Posts", formatNumber(data.posts)],
+        ["Comments + replies", formatNumber(data.comments)],
+        ["Last collected", formatDateTime(data.lastCollectedAt)],
+      ]
+    : [
+        [
+          "Tier",
+          <span key="tier" className="inline-flex items-center gap-2">
+            <AdminTierBadge
+              tier={data.activityTier}
+              manual={data.tierMode === "manual"}
+              lines={describeTierSchedule(data, data.tierRules)}
+            />
+            {data.tierMode === "manual" ? "manual" : "automatic"}
+            {data.intervalHours !== null ? ` · every ${data.intervalHours}h` : null}
+          </span>,
+        ],
+        [`Posts / day (${data.tierRules.windowDays}d)`, data.postsPerDay],
+        ["Posts", formatNumber(data.posts)],
+        ["Comments + replies", formatNumber(data.comments)],
+        ["Followers / members", `${formatNumber(data.followerCount)} / ${formatNumber(data.memberCount)}`],
+        [
+          "Usage this month",
+          `${formatNumber(data.usedThisMonth)} / ${
+            data.monthlyRecordLimit === null ? "unlimited" : formatNumber(data.monthlyRecordLimit)
+          }`,
+        ],
+        [
+          "Usage today (Vietnam time)",
+          `${formatNumber(data.usedToday)} / ${
+            data.dailyRecordLimit === null ? "unlimited" : formatNumber(data.dailyRecordLimit)
+          }`,
+        ],
+        ["Last collected", formatDateTime(data.lastCollectedAt)],
+        [
+          "Next post run",
+          data.nextPostRunAt
+            ? `${formatDateTime(data.nextPostRunAt)} (${formatRelative(data.nextPostRunAt)})`
+            : "not scheduled",
+        ],
+        [
+          "Pending refresh checkpoints",
+          <Link
+            key="refreshes"
+            href={`/admin/refresh-schedules?sourceId=${data.id}`}
+            className="hover:underline"
+          >
+            {formatNumber(data.pendingRefreshes)}
+          </Link>,
+        ],
+      ];
+
   return (
     <>
       <AdminSection title={data.name ?? data.url ?? data.id}>
@@ -76,62 +145,28 @@ export function AdminSourceDetailPage({ id }: { id: string }) {
               ) : null,
             ],
             ["Origin", data.origin],
-            [
-              "Tier",
-              <span key="tier" className="inline-flex items-center gap-2">
-                <AdminTierBadge
-                  tier={data.activityTier}
-                  manual={data.tierMode === "manual"}
-                  lines={describeTierSchedule(data, data.tierRules)}
-                />
-                {data.tierMode === "manual" ? "manual" : "automatic"}
-                {data.intervalHours !== null ? ` · every ${data.intervalHours}h` : null}
-              </span>,
-            ],
-            [`Posts / day (${data.tierRules.windowDays}d)`, data.postsPerDay],
-            ["Posts", formatNumber(data.posts)],
-            ["Comments + replies", formatNumber(data.comments)],
-            ["Followers / members", `${formatNumber(data.followerCount)} / ${formatNumber(data.memberCount)}`],
-            [
-              "Usage this month",
-              `${formatNumber(data.usedThisMonth)} / ${
-                data.monthlyRecordLimit === null ? "unlimited" : formatNumber(data.monthlyRecordLimit)
-              }`,
-            ],
-            [
-              "Usage today (Vietnam time)",
-              `${formatNumber(data.usedToday)} / ${
-                data.dailyRecordLimit === null ? "unlimited" : formatNumber(data.dailyRecordLimit)
-              }`,
-            ],
-            ["Last collected", formatDateTime(data.lastCollectedAt)],
-            [
-              "Next post run",
-              data.nextPostRunAt
-                ? `${formatDateTime(data.nextPostRunAt)} (${formatRelative(data.nextPostRunAt)})`
-                : "not scheduled",
-            ],
-            [
-              "Pending refresh checkpoints",
-              <Link
-                key="refreshes"
-                href={`/admin/refresh-schedules?sourceId=${data.id}`}
-                className="hover:underline"
-              >
-                {formatNumber(data.pendingRefreshes)}
-              </Link>,
-            ],
+            ...scheduleItems,
             ["Created / updated", `${formatDateTime(data.createdAt)} / ${formatDateTime(data.updatedAt)}`],
           ]}
         />
       </AdminSection>
 
-      <AdminSection
-        title="Collection settings"
-        description="Intervals and automatic-tier thresholds are shared by all sources; edit them in Settings."
-      >
-        <AdminSourceSettingsForm key={data.updatedAt} source={data} />
-      </AdminSection>
+      {synthetic ? (
+        <AdminSection
+          title="Synthetic schedule"
+          description="Each tick the model writes briefs from the topics, then posts and comments as the panel's personas. Saving updates the QStash schedule; runs already started keep their params."
+          actions={<AdminRunSyntheticSourceButton source={data} />}
+        >
+          <AdminSyntheticSourceSettings key={data.updatedAt} source={data} />
+        </AdminSection>
+      ) : (
+        <AdminSection
+          title="Collection settings"
+          description="Intervals and automatic-tier thresholds are shared by all sources; edit them in Settings."
+        >
+          <AdminSourceSettingsForm key={data.updatedAt} source={data} />
+        </AdminSection>
+      )}
 
       <AdminSection title="Metadata">
         <AdminJsonBlock value={data.metadata} />
@@ -159,7 +194,7 @@ export function AdminSourceDetailPage({ id }: { id: string }) {
         )}
       </AdminSection>
 
-      {data.origin === "connector" ? (
+      {data.origin === "connector" || synthetic ? (
         <AdminSection
           title="Delete source"
           description={

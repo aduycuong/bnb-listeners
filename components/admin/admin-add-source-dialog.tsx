@@ -5,9 +5,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, PlusIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 
-import { FormFieldSelect } from "@/components/forms/form-field-select";
 import { FormFieldText } from "@/components/forms/form-field-text";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,17 +24,40 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
-import { createSourceBodySchema, type CreateSourceBody } from "@/lib/connectors/schema";
+import {
+  createSourceBodySchema,
+  type CreateSourceBody,
+  type NewSourceKind,
+} from "@/lib/connectors/schema";
 import type { CreateSourceResult } from "@/lib/connectors/types";
+import {
+  toSyntheticSourceConfig,
+  type CreateSyntheticSourceBody,
+  type SyntheticSourceFormValues,
+} from "@/lib/personas/schema";
 
+import {
+  AdminSyntheticSourceForm,
+  SYNTHETIC_SOURCE_DEFAULTS,
+} from "./admin-synthetic-source-form";
 import { sendAdminJson } from "./send-admin-json";
 
-const KIND_OPTIONS = [
+type SourceType = NewSourceKind | "synthetic";
+
+const TYPE_OPTIONS: { value: SourceType; label: string }[] = [
   { value: "facebook", label: "Facebook group or page" },
   { value: "tiktok-channel", label: "TikTok channel" },
   { value: "tiktok-search", label: "TikTok keyword search" },
+  { value: "synthetic", label: "Synthetic group (written by personas)" },
 ];
 
 const URL_HINTS: Record<string, { placeholder: string; description: string }> = {
@@ -58,9 +80,22 @@ const DEFAULT_VALUES: CreateSourceBody = {
   collectNow: true,
 };
 
+type CreateRequest =
+  | { type: "connector"; body: CreateSourceBody }
+  | { type: "synthetic"; body: CreateSyntheticSourceBody };
+
+function toCreateSyntheticSourceBody(values: SyntheticSourceFormValues): CreateSyntheticSourceBody {
+  return {
+    name: values.name,
+    config: toSyntheticSourceConfig(values),
+    collectNow: values.collectNow,
+  };
+}
+
 /** "Add source" button and its dialog on the sources page. */
 export function AdminAddSourceDialog() {
   const [open, setOpen] = useState(false);
+  const [type, setType] = useState<SourceType>("facebook");
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -68,11 +103,14 @@ export function AdminAddSourceDialog() {
     resolver: zodResolver(createSourceBodySchema),
     defaultValues: DEFAULT_VALUES,
   });
-  const kind = useWatch({ control: form.control, name: "kind" });
 
   const create = useMutation({
-    mutationFn: (values: CreateSourceBody) =>
-      sendAdminJson<CreateSourceResult>("/api/admin/sources", "POST", values),
+    mutationFn: (request: CreateRequest) =>
+      sendAdminJson<CreateSourceResult>(
+        request.type === "synthetic" ? "/api/admin/synthetic/sources" : "/api/admin/sources",
+        "POST",
+        request.body,
+      ),
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ["admin"] });
       if (!result.created) {
@@ -91,6 +129,7 @@ export function AdminAddSourceDialog() {
       }
       setOpen(false);
       form.reset(DEFAULT_VALUES);
+      setType("facebook");
       router.push(`/admin/sources/${result.sourceId}`);
     },
     onError: (error: Error) => {
@@ -98,7 +137,23 @@ export function AdminAddSourceDialog() {
     },
   });
 
-  const urlHint = URL_HINTS[kind];
+  const urlHint = URL_HINTS[type];
+  const footer = (
+    <DialogFooter>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={create.isPending}
+        onClick={() => setOpen(false)}
+      >
+        Cancel
+      </Button>
+      <Button type="submit" disabled={create.isPending}>
+        {create.isPending ? <Loader2Icon className="animate-spin" data-icon="inline-start" /> : null}
+        Add source
+      </Button>
+    </DialogFooter>
+  );
 
   return (
     <>
@@ -112,93 +167,113 @@ export function AdminAddSourceDialog() {
           if (!create.isPending) setOpen(next);
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader className="pr-8">
             <DialogTitle>Add source</DialogTitle>
             <DialogDescription>
-              Projects can follow the source once it is added. Tier and record limits are set on
-              its page.
+              {type === "synthetic"
+                ? "A fake group whose posts and comments are written by the personas of a panel, on a schedule (origin = synthetic). Projects can follow it like any source."
+                : "Projects can follow the source once it is added. Tier and record limits are set on its page."}
             </DialogDescription>
           </DialogHeader>
-          <form
-            noValidate
-            className="space-y-6"
-            onSubmit={form.handleSubmit((values) => create.mutate(values))}
-          >
-            <FieldGroup>
-              <FormFieldSelect control={form.control} name="kind" label="Type" options={KIND_OPTIONS} />
-              {urlHint ? (
-                <>
-                  <FormFieldText
-                    control={form.control}
-                    name="url"
-                    label="URL"
-                    placeholder={urlHint.placeholder}
-                    description={urlHint.description}
-                  />
-                  <FormFieldText
-                    control={form.control}
-                    name="name"
-                    label="Name"
-                    placeholder="Optional"
-                    description="Empty: filled in from the first run (TikTok: the channel's nickname)."
-                  />
-                </>
-              ) : (
-                <>
-                  <FormFieldText
-                    control={form.control}
-                    name="keyword"
-                    label="Keyword"
-                    description="Spacing and case do not matter; the same keyword and region is one source."
-                  />
-                  <FormFieldText
-                    control={form.control}
-                    name="region"
-                    label="Region"
-                    placeholder="VN"
-                    description="Two-letter country code. Empty: the configured search region."
-                  />
-                </>
-              )}
-              <Controller
-                control={form.control}
-                name="collectNow"
-                render={({ field }) => (
-                  <Field orientation="horizontal">
-                    <Switch
-                      id={field.name}
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
+          <Field>
+            <FieldLabel htmlFor="add-source-type">Type</FieldLabel>
+            <Select
+              items={TYPE_OPTIONS}
+              value={type}
+              onValueChange={(value) => {
+                if (!value) return;
+                const next = value as SourceType;
+                setType(next);
+                if (next !== "synthetic") form.setValue("kind", next);
+              }}
+            >
+              <SelectTrigger id="add-source-type" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          {type === "synthetic" ? (
+            <AdminSyntheticSourceForm
+              mode="create"
+              defaultValues={SYNTHETIC_SOURCE_DEFAULTS}
+              onSubmit={(values) =>
+                create.mutate({ type: "synthetic", body: toCreateSyntheticSourceBody(values) })
+              }
+              actions={footer}
+            />
+          ) : (
+            <form
+              noValidate
+              className="space-y-6"
+              onSubmit={form.handleSubmit((values) => create.mutate({ type: "connector", body: values }))}
+            >
+              <FieldGroup>
+                {urlHint ? (
+                  <>
+                    <FormFieldText
+                      control={form.control}
+                      name="url"
+                      label="URL"
+                      placeholder={urlHint.placeholder}
+                      description={urlHint.description}
                     />
-                    <FieldContent>
-                      <FieldLabel htmlFor={field.name}>Start the first run now</FieldLabel>
-                      <FieldDescription>
-                        Scheduled runs only start after a source has been collected once. The
-                        first run is billed by the provider like any other.
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
+                    <FormFieldText
+                      control={form.control}
+                      name="name"
+                      label="Name"
+                      placeholder="Optional"
+                      description="Empty: filled in from the first run (TikTok: the channel's nickname)."
+                    />
+                  </>
+                ) : (
+                  <>
+                    <FormFieldText
+                      control={form.control}
+                      name="keyword"
+                      label="Keyword"
+                      description="Spacing and case do not matter; the same keyword and region is one source."
+                    />
+                    <FormFieldText
+                      control={form.control}
+                      name="region"
+                      label="Region"
+                      placeholder="VN"
+                      description="Two-letter country code. Empty: the configured search region."
+                    />
+                  </>
                 )}
-              />
-            </FieldGroup>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={create.isPending}
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={create.isPending}>
-                {create.isPending ? (
-                  <Loader2Icon className="animate-spin" data-icon="inline-start" />
-                ) : null}
-                Add source
-              </Button>
-            </DialogFooter>
-          </form>
+                <Controller
+                  control={form.control}
+                  name="collectNow"
+                  render={({ field }) => (
+                    <Field orientation="horizontal">
+                      <Switch
+                        id={field.name}
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                      <FieldContent>
+                        <FieldLabel htmlFor={field.name}>Start the first run now</FieldLabel>
+                        <FieldDescription>
+                          Scheduled runs only start after a source has been collected once. The
+                          first run is billed by the provider like any other.
+                        </FieldDescription>
+                      </FieldContent>
+                    </Field>
+                  )}
+                />
+              </FieldGroup>
+              {footer}
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </>

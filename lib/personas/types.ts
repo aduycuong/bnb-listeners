@@ -113,3 +113,9 @@ export type StartedGeneration = {
   collectRunIds: string[];
   threadsPerRun: number[];
 };
+
+export type RunSyntheticSourceResult = {
+  collectRunId: string | null;
+  /** Why no run started: the schedule is off, or a run is still pending or running. */
+  skipped: "disabled" | "running" | null;
+};
