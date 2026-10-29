@@ -130,6 +130,7 @@ Social listening scope inside a workspace: one brand, campaign, or similar liste
 | match_signature | text | YES | — | Hash of query ids + versions and sources at the last full Match |
 | matched_at | timestamptz | YES | — | Last full Match |
 | notification_config | jsonb | NO | `{}` | `{ channels, recipients, reportSchedule }`: default alert delivery and AI report schedule |
+| chat_widget | jsonb | NO | `{}` | `{ enabled, publicKey }`: BNB chat widget embedded on the project's pages (AI connection page) |
 | created_at | timestamptz | NO | `now()` | Row creation time |
 | updated_at | timestamptz | NO | `now()` | Auto-updated via Drizzle `$onUpdate` |
 

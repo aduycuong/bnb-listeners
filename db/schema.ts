@@ -130,6 +130,11 @@ export const projects = pgTable(
       }>()
       .notNull()
       .default({}),
+    /** BNB chat widget embedded on the project's pages: public key and on/off. */
+    chatWidget: jsonb("chat_widget")
+      .$type<{ enabled?: boolean; publicKey?: string }>()
+      .notNull()
+      .default({}),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

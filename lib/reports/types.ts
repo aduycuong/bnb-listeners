@@ -44,6 +44,8 @@ export type ReportSections = {
   highlights: ReportItem[];
   risks: ReportItem[];
   recommendations: { title: string; body: string }[];
+  /** Follow-up questions for the chat widget; reports made before this field have none. */
+  suggestedQuestions?: string[];
 };
 
 /** A cited mention as it was at generation. */

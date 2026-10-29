@@ -41,6 +41,7 @@ export async function updateProject(
     .set({
       name,
       description,
+      chatWidget: params.chatWidget ?? current.chatWidget,
       updatedAt: new Date(),
     })
     .where(eq(projects.id, current.id))

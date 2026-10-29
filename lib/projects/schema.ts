@@ -150,9 +150,20 @@ export const compareCheckQuerySchema = z.object({
 
 export const updateCompareMembersSchema = compareMembersSchema;
 
+export const projectChatWidgetSchema = z
+  .object({
+    enabled: z.boolean(),
+    publicKey: z.string().trim().max(200),
+  })
+  .refine((value) => !value.enabled || value.publicKey.length > 0, {
+    error: "Nhập public key để bật chat widget.",
+    path: ["publicKey"],
+  });
+
 export const updateProjectSchema = z.object({
   name: z.string().trim().min(1, { error: "Project name is required." }).optional(),
   description: z.string().trim().nullable().optional(),
+  chatWidget: projectChatWidgetSchema.optional(),
 });
 
 export type CreateProjectFormValues = z.infer<typeof createProjectSchema>;

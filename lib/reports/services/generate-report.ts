@@ -25,6 +25,7 @@ const NO_MODEL = "none";
 function draftText(draft: ReportDraft) {
   return [
     draft.summary,
+    ...draft.suggestedQuestions,
     ...[...draft.highlights, ...draft.risks, ...draft.recommendations].flatMap((item) => [
       item.title,
       item.body,
@@ -116,6 +117,7 @@ export async function generateReport(params: GenerateReportParams): Promise<Repo
       highlights: draft.highlights.map(toItem),
       risks: draft.risks.map(toItem),
       recommendations: draft.recommendations,
+      suggestedQuestions: draft.suggestedQuestions.map((q) => q.trim()).filter(Boolean),
     };
     if (invalid.size > 0) warnings.push(`Bỏ nhãn trích dẫn không có: ${[...invalid].join(", ")}`);
 

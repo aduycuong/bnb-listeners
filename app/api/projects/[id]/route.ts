@@ -20,6 +20,7 @@ export const PATCH = createApiHandler(
       projectId: params.id,
       name: params.name,
       description: params.description,
+      chatWidget: params.chatWidget,
     }),
   {
     allowedRoles: [],

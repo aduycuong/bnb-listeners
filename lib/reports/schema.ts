@@ -19,6 +19,12 @@ export const reportDraftSchema = z.object({
   recommendations: z
     .array(z.object({ title: z.string(), body: z.string() }))
     .max(REPORT_CONFIG.maxItems),
+  suggestedQuestions: z
+    .array(z.string())
+    .max(REPORT_CONFIG.suggestedQuestions)
+    .describe(
+      `${REPORT_CONFIG.suggestedQuestions} câu hỏi ngắn (dưới 80 ký tự) người đọc nên hỏi tiếp về dữ liệu của kỳ này, bám vào điểm nổi bật, rủi ro hoặc biến động trong FACTS.`,
+    ),
 });
 
 export type ReportDraft = z.infer<typeof reportDraftSchema>;
