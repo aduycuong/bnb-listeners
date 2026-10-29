@@ -6,6 +6,7 @@ import { useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProjectChatWidgetCard } from "@/components/projects/project-chat-widget-card";
 import { ProjectFormPage } from "@/components/projects/project-form-layout";
 import { mcpEndpointUrl } from "@/components/workspace/api-key-dialog";
 import { WorkspaceApiKeysCard } from "@/components/workspace/workspace-api-keys-card";
@@ -153,6 +154,12 @@ export function ProjectAiConnectPage({
             </Tabs>
           </CardContent>
         </Card>
+
+        <ProjectChatWidgetCard
+          key={`${project.id}:${project.chatWidget.enabled}:${project.chatWidget.publicKey}`}
+          workspace={workspace}
+          project={project}
+        />
 
         <WorkspaceApiKeysCard workspace={workspace} project={project} />
       </div>

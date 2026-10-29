@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "chat_widget" jsonb DEFAULT '{}'::jsonb NOT NULL;

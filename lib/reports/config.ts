@@ -18,6 +18,8 @@ export const REPORT_CONFIG = {
   /** Items per section the model may write, and mentions per cited item. */
   maxItems: 5,
   maxCitations: 3,
+  /** Follow-up questions the model suggests for the chat widget. */
+  suggestedQuestions: 3,
   /** Topics and keywords kept in the snapshot. */
   topTopics: 10,
   topKeywords: 10,

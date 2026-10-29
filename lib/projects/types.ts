@@ -19,8 +19,14 @@ export type ProjectListItem = {
   case: ProjectCase;
   caseVersion: number;
   configVersion: number;
+  chatWidget: ProjectChatWidget;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ProjectChatWidget = {
+  enabled: boolean;
+  publicKey: string;
 };
 
 export type ListProjectsParams = {

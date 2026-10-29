@@ -12,6 +12,10 @@ export function toProjectListItem(row: Project): ProjectListItem {
     case: parseProjectCase(row.listeningCase),
     caseVersion: row.caseVersion,
     configVersion: row.configVersion,
+    chatWidget: {
+      enabled: row.chatWidget.enabled === true,
+      publicKey: row.chatWidget.publicKey ?? "",
+    },
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

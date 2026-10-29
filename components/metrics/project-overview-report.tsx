@@ -131,6 +131,7 @@ export function ProjectOverviewReport({
   mentionsHref,
   caseHref,
   reportHref,
+  connectHref,
 }: {
   scope: MetricsApiScope;
   projectName: string;
@@ -139,6 +140,7 @@ export function ProjectOverviewReport({
   mentionsHref: string;
   caseHref: string;
   reportHref: string;
+  connectHref: string;
 }) {
   const { t } = useT("dashboard");
   const [days, setDays] = useReportPeriodDays();
@@ -209,7 +211,7 @@ export function ProjectOverviewReport({
             <MetricsEmpty>{isPending ? "Đang tải…" : `Chưa có đề cập trong ${days} ngày gần nhất.`}</MetricsEmpty>
           )}
         </ReportPanel>
-        <OverviewAiSummary scope={scope} reportHref={reportHref} />
+        <OverviewAiSummary scope={scope} reportHref={reportHref} connectHref={connectHref} />
         <ReportPanel title="Phân bổ cảm xúc" span="s4" scope="common">
           {sentiment && sentimentTotal > 0 ? (
             <>

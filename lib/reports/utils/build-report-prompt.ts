@@ -158,6 +158,7 @@ export function buildReportPrompt(params: {
     "- Mỗi điểm nổi bật và rủi ro dựa trên đề cập trong EVIDENCE, trích 1–3 nhãn (M1, M2…) vào `citations`; không viết nhãn trong lời văn.",
     "- Không bịa sự kiện, tên người, tên dự án ngoài FACTS và EVIDENCE. Khi dữ liệu ít, nói rõ là ít.",
     "- Tên chỉ số trong lời văn: `nss` viết là NSS (chỉ số cảm xúc ròng, −100 đến +100, không phải NPS); `negativeSharePct` là tỷ lệ tiêu cực; `changePct` là % thay đổi; `changePoints` là chênh lệch theo điểm.",
+    `- Đưa ra ${REPORT_CONFIG.suggestedQuestions} câu hỏi gợi ý để người đọc hỏi tiếp trợ lý AI về dữ liệu này: cụ thể theo kỳ này (nhắc tên chủ đề, khía cạnh hay kênh có trong FACTS), viết như người dùng đặt câu hỏi, không lặp lại nội dung báo cáo.`,
     `- Tối đa ${REPORT_CONFIG.maxItems} mục mỗi phần, câu ngắn, giọng trung tính. Khuyến nghị là việc cụ thể truyền thông có thể làm.`,
     params.facts.period.complete
       ? ""

@@ -50,6 +50,7 @@ export function ProjectOverviewPage({
       projectCase={project.case}
       caseHref={getProjectNavHref(workspaceIndex, projectIndex, "case")}
       reportHref={getProjectNavHref(workspaceIndex, projectIndex, "report")}
+      connectHref={getProjectNavHref(workspaceIndex, projectIndex, "connect")}
       banner={banner}
       mentionsHref={getProjectNavHref(workspaceIndex, projectIndex, "mentions")}
     />
